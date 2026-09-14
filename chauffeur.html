@@ -138,6 +138,10 @@ window.onerror = function(msg, url, line, col, err) {
   .course .heure{ color:var(--gris); font-size:.85rem; margin-bottom:10px; }
   .course .trajet{ font-size:.9rem; line-height:1.5; margin-bottom:10px; }
   .course .trajet b{ color:var(--blanc); }
+  .rappel-avant-depart{
+    background:#fdf3e0; color:#8a5a00; border:1px solid #f0d9a6;
+    border-radius:8px; padding:8px 10px; font-size:.8rem; margin-bottom:10px;
+  }
   .course .statut-label{
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
     background:#dcdcda; color:var(--gris); margin-bottom:10px;
@@ -400,6 +404,7 @@ async function chargerCourses() {
   dernieresCoursesChauffeur = courses || [];
   rendreCalendrier(dernieresCoursesChauffeur);
   afficherCoursesDuJour(calJourSelectionne);
+  mettreAJourGainsJour(dernieresCoursesChauffeur);
 
   if (!courses || courses.length === 0) {
     videMsg.style.display = "block";
@@ -408,6 +413,26 @@ async function chargerCourses() {
   videMsg.style.display = "none";
 
   courses.forEach(c => conteneur.appendChild(construireCarteCourse(c)));
+}
+
+// ---------- GAINS DU JOUR (caisse) ----------
+function mettreAJourGainsJour(courses) {
+  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const coursesDuJourTerminees = (courses || []).filter(c =>
+    c.statut === "terminee" && c.date_heure && c.date_heure.slice(0, 10) === aujourdHui
+  );
+
+  let totalCash = 0, totalCarte = 0;
+  coursesDuJourTerminees.forEach(c => {
+    const prix = Number(c.prix) || 0;
+    if (c.mode_paiement === "cash") totalCash += prix;
+    else if (c.mode_paiement === "carte") totalCarte += prix;
+  });
+
+  const fmt = (n) => n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  document.getElementById("gains-nb-courses").textContent = coursesDuJourTerminees.length;
+  document.getElementById("gains-cash").textContent = fmt(totalCash);
+  document.getElementById("gains-carte").textContent = fmt(totalCarte);
 }
 
 // ---------- NAVIGATION PAR ONGLETS ----------
@@ -531,6 +556,10 @@ function construireCarteCourse(course) {
       ${course.passagers ? `<b>Passagers :</b> ${course.passagers}` : ""}
       ${course.notes ? `<br><b>Note :</b> ${course.notes}` : ""}
     </div>
+    ${course.statut === "assignee" ? `
+    <div class="rappel-avant-depart">
+      ⚠️ Avant de démarrer : imprime le ticket du taximètre et complète ta feuille de route.
+    </div>` : ""}
   `;
 
   const actions = document.createElement("div");
@@ -555,7 +584,15 @@ function construireCarteCourse(course) {
   }
 
   if (course.statut === "assignee") {
-    actions.appendChild(creerBouton("Démarrer la course", () => changerStatut(course.id, "en_cours")));
+    actions.appendChild(creerBouton("Démarrer la course", () => {
+      const ok = window.confirm(
+        "Avant de démarrer :\n\n" +
+        "1) Imprime le ticket du taximètre\n" +
+        "2) Complète ta feuille de route\n\n" +
+        "Continuer et démarrer la course ?"
+      );
+      if (ok) changerStatut(course.id, "en_cours");
+    }));
   } else if (course.statut === "en_cours") {
     actions.appendChild(creerBouton("Marquer terminée", () => ouvrirModalePaiement(course.id)));
   }
