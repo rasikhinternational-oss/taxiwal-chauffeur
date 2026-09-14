@@ -15,34 +15,29 @@ window.onerror = function(msg, url, line, col, err) {
 <title>Feuille de route — Taxi Wal</title>
 <meta name="theme-color" content="#f7f7f5">
 <style>
-  :root{ --noir:#f7f7f5; --noir-2:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c; --gris:#6b6b6b; --blanc:#1c1c1c; }
+  :root{ color-scheme:light; --noir:#f7f7f5; --noir-2:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c; --gris:#6b6b6b; --blanc:#1c1c1c; }
   *{box-sizing:border-box;}
   body{ margin:0; background:var(--noir); color:var(--blanc); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:60px; }
   header{ padding:calc(20px + env(safe-area-inset-top)) 20px 20px; border-bottom:1px solid #dcdcda; position:sticky; top:0; background:var(--noir); z-index:5; display:flex; flex-direction:column; }
   header h1{ margin:0; font-size:1.05rem; }
   header p{ margin:4px 0 0; color:var(--gris); font-size:.8rem; }
-
   .bloc{ margin:16px 20px; background:var(--noir-2); border-radius:12px; padding:16px; }
   .bloc h2{ margin:0 0 12px; font-size:.9rem; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
   .grille2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   label{ display:block; font-size:.78rem; color:var(--gris); margin-bottom:4px; }
   input{ width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.9rem; margin-bottom:10px; }
   input:disabled{ opacity:.5; }
-
   .grille3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
   .total-ro{ background:#e6e6e4 !important; color:var(--gris) !important; font-weight:600; }
   .identite{ font-size:.85rem; margin:2px 0; }
   .identite b{ color:var(--blanc); }
   .identite span{ color:var(--gris); }
-
   #btn-ouvrir-service{ display:block; width:calc(100% - 40px); margin:16px 20px; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; }
-
   .ligne-course{ background:#f0f1ee; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #dcdcda; }
-  .ligne-course .num{ color:var(--gris); font-size:.75rem; margin-bottom:6px; }
+  .ligne-course .num{ color:var(--blanc); font-size:.82rem; margin-bottom:6px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .ligne-course .num .chevron-ligne{ color:var(--gris); font-size:.75rem; flex-shrink:0; }
   .sous-titre-mini{ font-size:.72rem; color:var(--gris); margin:8px 0 4px; }
-
   #btn-ajouter-ligne{ width:100%; padding:12px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.9rem; margin-top:6px; }
-
   #btn-signer{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-weight:600; margin-top:10px; }
   #avertissement{ font-size:.78rem; color:var(--gris); margin-top:10px; background:#eef0ee; padding:10px; border-radius:8px; }
   #statut-feuille{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#dcdcda; color:var(--gris); }
@@ -155,7 +150,7 @@ const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let feuilleActuelle = null; // ligne de feuilles_route en cours
-let lignesActuelles = [];   // lignes de course chargées
+let lignesActuelles = []; // lignes de course chargées
 
 const champsEntete = {
   "heure-debut": "heure_debut", "heure-fin": "heure_fin", "interruptions": "interruptions",
@@ -238,6 +233,7 @@ async function remplirIdentite(user) {
       feuilleActuelle.vehicule_id = vehicule.id;
     }
   }
+
   if (vehicule) {
     document.getElementById("identite-vehicule").textContent = vehicule.nom || "—";
     document.getElementById("identite-plaque").textContent = vehicule.plaque || "—";
@@ -315,10 +311,23 @@ function construireLigneHtml(ligne) {
 
   let badge = "";
   if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
-  div.innerHTML = `
-    <div class="num">Course n° ${ligne.n_ordre}${badge}</div>
-    <div class="etat-sauvegarde" id="etat-ligne-${ligne.id}"></div>
-  `;
+
+  // Résumé affiché sur la ligne repliée : lieu de départ → lieu d'arrivée + heure
+  const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
+  const heureResume = ligne.embarquement_heure ? " · " + ligne.embarquement_heure : "";
+
+  const entete = document.createElement("div");
+  entete.className = "num";
+  entete.innerHTML = `<span>Course n° ${ligne.n_ordre} · ${resume}${heureResume}${badge}</span><span class="chevron-ligne">▾</span>`;
+  div.appendChild(entete);
+
+  const corps = document.createElement("div");
+  corps.style.display = "none";
+
+  const etat = document.createElement("div");
+  etat.className = "etat-sauvegarde";
+  etat.id = `etat-ligne-${ligne.id}`;
+  corps.appendChild(etat);
 
   champsLigne.forEach(([champ, libelle, type]) => {
     const wrap = document.createElement("div");
@@ -331,21 +340,28 @@ function construireLigneHtml(ligne) {
     input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {
       const valeur = e.target.value === "" ? null : e.target.value;
-      const etat = document.getElementById(`etat-ligne-${ligne.id}`);
-      if (etat) { etat.textContent = "Enregistrement…"; etat.className = "etat-sauvegarde en-cours"; }
+      const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+      if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
       const { error } = await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
-      if (!etat) return;
+      if (!etatEl) return;
       if (error) {
-        etat.textContent = "⚠️ Non enregistré (course déjà terminée ou verrouillée)";
-        etat.className = "etat-sauvegarde erreur";
+        etatEl.textContent = "⚠️ Non enregistré (course déjà terminée ou verrouillée)";
+        etatEl.className = "etat-sauvegarde erreur";
       } else {
-        etat.textContent = "✓ Enregistré";
-        etat.className = "etat-sauvegarde ok";
-        setTimeout(() => { if (etat.textContent === "✓ Enregistré") etat.textContent = ""; }, 2500);
+        etatEl.textContent = "✓ Enregistré";
+        etatEl.className = "etat-sauvegarde ok";
+        setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
       }
     });
     wrap.appendChild(lab); wrap.appendChild(input);
-    div.appendChild(wrap);
+    corps.appendChild(wrap);
+  });
+  div.appendChild(corps);
+
+  entete.addEventListener("click", () => {
+    const ouvert = corps.style.display !== "none";
+    corps.style.display = ouvert ? "none" : "block";
+    entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
   });
 
   return div;
@@ -373,7 +389,6 @@ document.getElementById("btn-signer").addEventListener("click", async () => {
     .update({ signee: true }).eq("id", feuilleActuelle.id);
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
-
   feuilleActuelle.verrouillee = true;
   appliquerVerrouillage();
 });

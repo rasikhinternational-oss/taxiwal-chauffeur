@@ -22,6 +22,7 @@ window.onerror = function(msg, url, line, col, err) {
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{
+    color-scheme:light;
     --noir:#f7f7f5; --noir-2:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c;
     --gris:#6b6b6b; --blanc:#1c1c1c; --bleu:#3b82c4;
   }
@@ -138,9 +139,10 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin .mini-titre{ font-size:.7rem; color:var(--gris); text-transform:uppercase; margin:10px 0 4px; }
   .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.8rem; cursor:pointer; float:right; }
   .ligne-admin{ background:#f0f1ee; border-radius:10px; padding:10px; margin-bottom:8px; border:1px solid #dcdcda; }
-  .ligne-admin .num-ligne{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-  .ligne-admin .num-ligne span{ color:var(--gris); font-size:.75rem; }
-  .ligne-admin .num-ligne button{ width:auto; padding:5px 10px; font-size:.72rem; border-radius:6px; border:1px solid #cfcfcd; background:#fbe2e2; color:#b83232; cursor:pointer; }
+  .ligne-admin .num-ligne{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; cursor:pointer; gap:8px; }
+  .ligne-admin .num-ligne span{ color:var(--blanc); font-size:.82rem; flex:1; }
+  .ligne-admin .num-ligne .chevron-ligne{ color:var(--gris); font-size:.75rem; margin-left:6px; flex-shrink:0; }
+  .ligne-admin .num-ligne button{ width:auto; padding:5px 10px; font-size:.72rem; border-radius:6px; border:1px solid #cfcfcd; background:#fbe2e2; color:#b83232; cursor:pointer; flex-shrink:0; }
   .ligne-admin .grille3-fa > div{ margin-bottom:6px; }
   #btn-ajouter-ligne-admin{ width:100%; padding:10px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.85rem; margin-top:4px; cursor:pointer; }
   #feuilles-vide{ color:var(--gris); text-align:center; padding:30px 0; }
@@ -1372,12 +1374,18 @@ function construireLigneAdmin(ligne) {
     en_cours: "🚕 en cours", terminee: "✅ terminée", annulee: "❌ annulée"
   }[statutCourse];
 
+  // Résumé affiché sur la ligne repliée : lieu de départ → lieu d'arrivée + heure
+  const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
+  const heureResume = ligne.embarquement_heure ? " · " + ligne.embarquement_heure : "";
+
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  entete.innerHTML = `<span>Course n° ${ligne.n_ordre}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""}</span>`;
+  entete.innerHTML = `<span><b>Course n° ${ligne.n_ordre}</b> · ${resume}${heureResume}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""} <span class="chevron-ligne">▾</span></span>`;
+
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
-  btnSupprimer.addEventListener("click", async () => {
+  btnSupprimer.addEventListener("click", async (e) => {
+    e.stopPropagation();
     if (!confirm("Supprimer cette ligne de la feuille de route ?")) return;
     await supabase.from("lignes_feuille_route").delete().eq("id", ligne.id);
     chargerFeuillesAdmin();
@@ -1387,6 +1395,7 @@ function construireLigneAdmin(ligne) {
 
   const grille = document.createElement("div");
   grille.className = "grille3-fa";
+  grille.style.display = "none";
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const wrap = document.createElement("div");
     const lab = document.createElement("label"); lab.textContent = libelle;
@@ -1400,6 +1409,12 @@ function construireLigneAdmin(ligne) {
     grille.appendChild(wrap);
   });
   div.appendChild(grille);
+
+  entete.addEventListener("click", () => {
+    const ouvert = grille.style.display !== "none";
+    grille.style.display = ouvert ? "none" : "grid";
+    entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
+  });
 
   return div;
 }
