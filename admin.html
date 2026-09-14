@@ -468,6 +468,37 @@ async function chargerChauffeurs() {
     .join("");
 }
 
+// ---------- NOTIFICATION ADMIN : nouvelle demande client (son + notification navigateur) ----------
+let idsCoursesConnusAdmin = null; // null = pas encore initialisé
+
+function jouerSonAlerteAdmin() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.22, 0.44].forEach(delai => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine"; osc.frequency.value = 740;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + delai);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delai + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + delai); osc.stop(ctx.currentTime + delai + 0.2);
+    });
+  } catch (e) { console.error("Son impossible :", e); }
+}
+
+function notifierNouvelleCourseAdmin(course) {
+  jouerSonAlerteAdmin();
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification("Nouvelle demande de course 🚕", {
+      body: `${course.client_nom || "Client"} — ${course.adresse_depart} → ${course.adresse_arrivee}`,
+      tag: "admin-course-" + course.id
+    });
+  }
+}
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission();
+}
+
 // ---------- CHARGER TOUTES LES COURSES ----------
 async function chargerCoursesAdmin() {
   const { data: courses, error } = await supabase
@@ -476,6 +507,21 @@ async function chargerCoursesAdmin() {
     .order("date_heure", { ascending: true });
 
   if (error) { console.error(error); return; }
+
+  // Détecte les nouvelles demandes clients jamais vues, et les paiements tout juste déclarés
+  if (idsCoursesConnusAdmin === null) {
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, c.statut]));
+  } else {
+    (courses || []).forEach(c => {
+      const ancienStatut = idsCoursesConnusAdmin.get(c.id);
+      if (ancienStatut === undefined && c.origine === "client") {
+        notifierNouvelleCourseAdmin(c);
+      } else if (ancienStatut && ancienStatut !== "acompte_declare" && c.statut === "acompte_declare") {
+        notifierNouvelleCourseAdmin({ ...c, adresse_depart: "💰 Acompte déclaré payé", adresse_arrivee: c.adresse_arrivee });
+      }
+      idsCoursesConnusAdmin.set(c.id, c.statut);
+    });
+  }
 
   dernieresCoursesAdmin = courses || [];
 
