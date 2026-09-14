@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+window.onerror = function(msg, url, line, col, err) {
+  document.documentElement.insertAdjacentHTML("afterbegin",
+    '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
+    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
+  return false;
+};
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taxi Wal — Admin</title>
+<link rel="manifest" href="manifest-admin.json">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Taxi Wal Admin">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --noir:#0d0d0d; --noir-2:#161616; --rouge:#c81e2c; --vert:#1f8a4c;
+    --gris:#8a8a8a; --blanc:#f5f5f3; --bleu:#3b82c4;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0;
+    background:
+      linear-gradient(rgba(13,13,13,.90), rgba(13,13,13,.97)),
+      url('fond-flotte.jpg') center/cover no-repeat fixed;
+    color:var(--blanc);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:60px; }
+  header{ padding:20px; border-bottom:1px solid #262626; position:sticky; top:0; background:rgba(13,13,13,.92); backdrop-filter:blur(6px); z-index:10; }
+  header h1{ margin:0; font-size:1.1rem; }
+  @keyframes logo-pulse{
+    0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(200,30,44,0)); }
+    50%{ transform:scale(1.06); filter:drop-shadow(0 0 10px rgba(200,30,44,.55)); }
+  }
+  header img{ animation:logo-pulse 3.5s ease-in-out infinite; }
+  nav{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:14px; }
+  nav button{ padding:16px 8px; border-radius:12px; border:1px solid #333; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
+  nav button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
+
+  section{ display:none; padding:20px; }
+  section.visible{ display:block; }
+
+  /* Agenda / calendrier */
+  .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #333; border-radius:8px; color:var(--blanc); cursor:pointer; }
+  .cal-header span{ font-weight:600; text-transform:capitalize; }
+  .cal-grille{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
+  .cal-jour-nom{ font-size:.7rem; color:var(--gris); padding:4px 0; }
+  .cal-jour{ position:relative; padding:9px 0; border-radius:8px; font-size:.85rem; cursor:pointer; background:var(--noir); }
+  .cal-jour.hors-mois{ visibility:hidden; }
+  .cal-jour.aujourdhui{ border:1px solid var(--vert); }
+  .cal-jour.selectionne{ background:var(--rouge); color:#fff; }
+  .cal-jour .point{ position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:5px; height:5px; border-radius:50%; background:var(--vert); }
+  .cal-jour.selectionne .point{ background:#fff; }
+  #agenda-jour-titre{ color:var(--gris); font-size:.9rem; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+  #btn-ajouter-jour{ width:auto; padding:8px 12px; font-size:.8rem; background:var(--vert); border:none; border-radius:8px; color:#fff; cursor:pointer; }
+
+  /* Onglet courses */
+  #btn-nouvelle-course{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:16px; cursor:pointer; }
+  .course{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:12px; border-left:4px solid var(--gris); }
+  .course.assignee{ border-left-color:var(--bleu); }
+  .course.prix_envoye{ border-left-color:#c8961e; }
+  .course.attente_acompte{ border-left-color:#c8961e; }
+  .course.acompte_declare{ border-left-color:#3b82c4; }
+  .course.confirmee{ border-left-color:var(--vert); }
+  .course.en_cours{ border-left-color:var(--rouge); }
+  .course.terminee{ border-left-color:var(--vert); }
+  .course.annulee{ border-left-color:#444; opacity:.5; }
+  .course h3{ margin:0 0 4px; font-size:1rem; }
+  .course .heure{ color:var(--gris); font-size:.85rem; margin-bottom:8px; }
+  .course .trajet{ font-size:.9rem; line-height:1.5; margin-bottom:10px; }
+  .course select{ width:100%; padding:10px; border-radius:8px; background:#0d0d0d; color:#fff; border:1px solid #333; margin-bottom:8px; }
+  .course .ligne-actions{ display:flex; gap:8px; }
+  .course .ligne-actions button{ flex:1; padding:9px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:var(--blanc); font-size:.85rem; cursor:pointer; }
+  .statut-label{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#262626; color:var(--gris); margin-bottom:8px; }
+
+  .bloc-prix-admin{ display:flex; gap:8px; margin-bottom:8px; }
+  .bloc-prix-admin input{ flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; }
+  .bloc-prix-admin button{ width:auto; padding:10px 14px; font-size:.85rem; background:var(--vert); border:none; border-radius:8px; color:#fff; cursor:pointer; }
+  .alerte-acompte{ background:rgba(59,130,196,.15); border:1px solid var(--bleu); border-radius:8px; padding:10px; margin-bottom:8px; font-size:.85rem; }
+  .alerte-acompte button{ width:100%; margin-top:8px; padding:10px; border:none; border-radius:8px; background:var(--vert); color:#fff; font-weight:600; cursor:pointer; }
+
+  /* Carte */
+  #carte{ height:45vh; border-radius:12px; }
+  #carte-liste-chauffeurs{ margin-top:14px; }
+  .cc-chauffeur{ background:var(--noir-2); border-radius:12px; padding:12px 14px; margin-bottom:10px; border-left:4px solid var(--gris); font-size:.9rem; }
+  .cc-chauffeur.cc-dispo{ border-left-color:var(--vert); }
+  .cc-chauffeur.cc-course{ border-left-color:var(--rouge); }
+  .cc-chauffeur h4{ margin:0 0 6px; font-size:.95rem; }
+  .cc-chauffeur .cc-ligne{ color:var(--gris); font-size:.82rem; margin-top:2px; }
+  .cc-chauffeur .cc-ligne b{ color:var(--blanc); }
+
+  #outil-calcul{ background:var(--noir-2); border-radius:12px; padding:16px; margin-top:18px; }
+  #outil-calcul h3{ margin:0 0 4px; font-size:.95rem; }
+  #outil-calcul p{ margin:0 0 12px; color:var(--gris); font-size:.8rem; }
+  #outil-calcul label{ display:block; font-size:.78rem; color:var(--gris); margin:8px 0 4px; }
+  #outil-calcul select, #outil-calcul input{ width:100%; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; font-size:.9rem; }
+  #btn-calculer-trajet{ width:100%; padding:12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-top:12px; cursor:pointer; }
+  #calc-resultat{ margin-top:12px; font-size:.9rem; padding:10px; border-radius:8px; background:#0d0d0d; display:none; }
+  #calc-resultat.visible{ display:block; }
+  #calc-adresse-centrale-bloc{ margin-top:14px; padding-top:12px; border-top:1px solid #262626; }
+
+  /* Caisse */
+  .caisse-chauffeur{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .caisse-chauffeur h3{ margin:0 0 10px; font-size:1rem; }
+  .caisse-ligne{ display:flex; justify-content:space-between; font-size:.9rem; margin-bottom:6px; color:var(--gris); }
+  .caisse-ligne b{ color:var(--blanc); }
+  .caisse-total{ font-size:1.1rem; font-weight:700; margin-top:10px; padding-top:10px; border-top:1px solid #262626; display:flex; justify-content:space-between; }
+  .caisse-fond{ display:flex; gap:8px; margin-top:12px; align-items:center; }
+  .caisse-fond input{ flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; }
+  .caisse-fond button{ width:auto; padding:10px 14px; font-size:.85rem; }
+
+  /* Feuilles de route (admin) */
+  #feuilles-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  #feuilles-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; }
+  #feuilles-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:var(--blanc); cursor:pointer; font-size:.85rem; }
+  .feuille-admin{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:14px; border-left:4px solid var(--gris); }
+  .feuille-admin.verrouillee-fa{ border-left-color:var(--vert); }
+  .feuille-admin h3{ margin:0 0 4px; font-size:1rem; }
+  .feuille-admin .sous{ color:var(--gris); font-size:.82rem; margin-bottom:10px; }
+  .feuille-admin .grille3-fa{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:8px; }
+  .feuille-admin label{ display:block; font-size:.72rem; color:var(--gris); margin-bottom:3px; }
+  .feuille-admin input{ width:100%; padding:9px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; font-size:.85rem; }
+  .feuille-admin .mini-titre{ font-size:.7rem; color:var(--gris); text-transform:uppercase; margin:10px 0 4px; }
+  .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:var(--blanc); font-size:.8rem; cursor:pointer; float:right; }
+  .ligne-admin{ background:#101010; border-radius:10px; padding:10px; margin-bottom:8px; border:1px solid #262626; }
+  .ligne-admin .num-ligne{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .ligne-admin .num-ligne span{ color:var(--gris); font-size:.75rem; }
+  .ligne-admin .num-ligne button{ width:auto; padding:5px 10px; font-size:.72rem; border-radius:6px; border:1px solid #333; background:#1a0d0d; color:#e07070; cursor:pointer; }
+  .ligne-admin .grille3-fa > div{ margin-bottom:6px; }
+  #btn-ajouter-ligne-admin{ width:100%; padding:10px; border-radius:8px; border:1px dashed #444; background:transparent; color:var(--blanc); font-size:.85rem; margin-top:4px; cursor:pointer; }
+  #feuilles-vide{ color:var(--gris); text-align:center; padding:30px 0; }
+
+  /* Modale nouvelle course */
+  #modale{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:50; align-items:flex-end; }
+  #modale.visible{ display:flex; }
+  #modale-contenu{ background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:20px; max-height:90vh; overflow-y:auto; }
+  #modale-contenu h2{ margin-top:0; font-size:1.1rem; }
+  #modale-contenu label{ display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px; }
+  #modale-contenu input, #modale-contenu select, #modale-contenu textarea{
+    width:100%; padding:12px; border-radius:8px; border:1px solid #333; background:var(--noir); color:var(--blanc); font-size:.95rem;
+  }
+  #modale-contenu textarea{ resize:vertical; min-height:50px; }
+  #modale-actions{ display:flex; gap:10px; margin-top:18px; }
+  #modale-actions button{ flex:1; padding:13px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
+  #btn-annuler-modale{ background:#262626; color:var(--blanc); }
+  #btn-creer-course{ background:var(--rouge); color:#fff; }
+  #erreur-modale{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
+
+  /* Écran de connexion admin */
+  #ecran-login-admin{ padding:60px 20px; max-width:360px; margin:0 auto; }
+  #ecran-login-admin label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
+  #ecran-login-admin input{
+    width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
+    border:1px solid #333; background:var(--noir-2); color:var(--blanc); font-size:1rem;
+  }
+  #ecran-login-admin button{
+    width:100%; padding:14px; border-radius:10px; border:none;
+    background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
+  }
+  #ecran-login-admin button.secondaire{ background:var(--noir-2); border:1px solid #333; margin-top:10px; }
+  #erreur-login-admin{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
+</style>
+</head>
+<body>
+
+<div id="ecran-login-admin">
+  <img src="icon-192.png" alt="Taxi Wal" style="width:64px; height:64px; border-radius:16px; display:block; margin:0 auto 14px; animation:logo-pulse 3.5s ease-in-out infinite;">
+  <h1 style="text-align:center; font-size:1.2rem;">Taxi Wal — Admin</h1>
+  <label for="email-admin">Adresse email administrateur</label>
+  <input type="email" id="email-admin" placeholder="ton.email@exemple.com" autocomplete="email">
+  <div id="bloc-otp-admin" style="display:none;">
+    <label for="otp-admin">Code reçu par email</label>
+    <input type="text" id="otp-admin" inputmode="numeric" placeholder="123456">
+  </div>
+  <button id="btn-envoyer-code-admin">Recevoir un code</button>
+  <button id="btn-valider-code-admin" class="secondaire" style="display:none;">Se connecter</button>
+  <p id="erreur-login-admin"></p>
+</div>
+
+<div id="app-admin" style="display:none;">
+
+<header>
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+    <img src="icon-192.png" alt="Taxi Wal" style="width:40px; height:40px; border-radius:10px; flex-shrink:0;">
+    <h1 style="margin:0;">Taxi Wal — Admin</h1>
+  </div>
+  <nav>
+    <button class="actif" data-onglet="courses">Courses</button>
+    <button data-onglet="agenda">Agenda</button>
+    <button data-onglet="carte">Carte chauffeurs</button>
+    <button data-onglet="feuilles">Feuilles de route</button>
+    <button data-onglet="caisse">Caisse</button>
+  </nav>
+  <button id="btn-installer-app" style="display:none; margin-top:10px; background:var(--vert); border:none; border-radius:8px; color:#fff; padding:10px; font-weight:600; cursor:pointer;">📲 Installer l'application</button>
+</header>
+
+<section id="section-courses" class="visible">
+  <button id="btn-nouvelle-course">+ Nouvelle course</button>
+  <div id="liste-courses-admin"></div>
+</section>
+
+<section id="section-agenda">
+  <div class="calendrier">
+    <div class="cal-header">
+      <button id="cal-prev">‹</button>
+      <span id="cal-titre"></span>
+      <button id="cal-next">›</button>
+    </div>
+    <div class="cal-grille" id="cal-grille"></div>
+  </div>
+  <div id="agenda-jour-titre">
+    <span id="agenda-jour-texte"></span>
+    <button id="btn-ajouter-jour">+ Ajouter</button>
+  </div>
+  <div id="agenda-liste-jour"></div>
+</section>
+
+<section id="section-carte">
+  <div id="carte"></div>
+  <div id="carte-liste-chauffeurs"></div>
+
+  <div id="outil-calcul">
+    <h3>🧭 Calculer un trajet</h3>
+    <p>Estime le temps de route entre deux points, pour donner une estimation au prochain client.</p>
+
+    <label>Point de départ</label>
+    <select id="calc-depart-type">
+      <option value="adresse">Adresse libre</option>
+      <option value="chauffeur">Position actuelle d'un chauffeur</option>
+    </select>
+    <input type="text" id="calc-depart-adresse" placeholder="Adresse de départ" style="margin-top:8px;">
+    <select id="calc-depart-chauffeur" style="margin-top:8px; display:none;"></select>
+
+    <label>Point d'arrivée</label>
+    <input type="text" id="calc-arrivee-adresse" placeholder="Adresse d'arrivée">
+
+    <button id="btn-calculer-trajet">Calculer le temps de trajet</button>
+    <div id="calc-resultat"></div>
+
+    <div id="calc-adresse-centrale-bloc">
+      <label>Adresse de la centrale (dépôt / point de départ des chauffeurs)</label>
+      <input type="text" id="calc-adresse-centrale" placeholder="ex: Boussu, Belgique">
+    </div>
+  </div>
+</section>
+
+<section id="section-feuilles">
+  <div id="feuilles-date-nav">
+    <button id="fa-prev">‹</button>
+    <input type="date" id="fa-date">
+    <button id="fa-next">›</button>
+    <button id="fa-aujourdhui">Aujourd'hui</button>
+  </div>
+  <div id="liste-feuilles-admin"></div>
+</section>
+
+<section id="section-caisse">
+  <div id="liste-caisse"></div>
+</section>
+
+<!-- Modale création course -->
+<div id="modale">
+  <div id="modale-contenu">
+    <h2>Nouvelle course</h2>
+    <label>Chauffeur assigné</label>
+    <select id="input-chauffeur"></select>
+
+    <label>Nom du client</label>
+    <input type="text" id="input-client-nom">
+
+    <label>Téléphone client</label>
+    <input type="text" id="input-client-tel">
+
+    <label>Adresse de départ</label>
+    <input type="text" id="input-depart">
+
+    <label>Adresse d'arrivée</label>
+    <input type="text" id="input-arrivee">
+
+    <label>Date et heure</label>
+    <input type="datetime-local" id="input-date">
+
+    <label>Passagers</label>
+    <input type="number" id="input-passagers" value="1" min="1">
+
+    <label>Prix (€)</label>
+    <input type="number" id="input-prix" step="0.5">
+
+    <label>Notes</label>
+    <textarea id="input-notes"></textarea>
+
+    <p id="erreur-modale"></p>
+    <div id="modale-actions">
+      <button id="btn-annuler-modale">Annuler</button>
+      <button id="btn-creer-course">Créer la course</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- fin #app-admin -->
+
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script>
+const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
+if (!window.supabase) {
+  document.body.insertAdjacentHTML("afterbegin",
+    '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
+    'Problème de connexion internet — recharge la page.</div>');
+  throw new Error("supabase-js non chargé (pas de connexion internet ?)");
+}
+const stockageMemoire = {};
+const stockageSecurise = {
+  getItem: (cle) => { try { return window.localStorage.getItem(cle); } catch (e) { return stockageMemoire[cle] || null; } },
+  setItem: (cle, valeur) => { try { window.localStorage.setItem(cle, valeur); } catch (e) { stockageMemoire[cle] = valeur; } },
+  removeItem: (cle) => { try { window.localStorage.removeItem(cle); } catch (e) { delete stockageMemoire[cle]; } }
+};
+
+let supabase;
+try {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      storage: stockageSecurise
+    }
+  });
+} catch (e) {
+  document.body.insertAdjacentHTML("afterbegin",
+    '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
+    'Erreur au démarrage : ' + e.message + '</div>');
+}
+
+// ---------- CONNEXION ADMIN (OTP email + vérification du rôle) ----------
+document.getElementById("btn-envoyer-code-admin").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-envoyer-code-admin");
+  const email = document.getElementById("email-admin").value.trim();
+  const erreur = document.getElementById("erreur-login-admin");
+  erreur.textContent = "";
+  if (!email) { erreur.textContent = "Entre ton adresse email."; return; }
+
+  btn.disabled = true;
+  const texteOriginal = btn.textContent;
+  btn.textContent = "Envoi en cours…";
+
+  try {
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) { erreur.textContent = "Erreur : " + error.message; btn.disabled = false; btn.textContent = texteOriginal; return; }
+
+    document.getElementById("bloc-otp-admin").style.display = "block";
+    btn.style.display = "none";
+    document.getElementById("btn-valider-code-admin").style.display = "block";
+  } catch (e) {
+    erreur.textContent = "Connexion impossible. Vérifie ta connexion internet et réessaie.";
+    btn.disabled = false;
+    btn.textContent = texteOriginal;
+  }
+});
+
+document.getElementById("btn-valider-code-admin").addEventListener("click", async () => {
+  const email = document.getElementById("email-admin").value.trim();
+  const otp = document.getElementById("otp-admin").value.trim();
+  const erreur = document.getElementById("erreur-login-admin");
+
+  const { data, error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+  if (error) { erreur.textContent = "Code invalide."; return; }
+
+  await verifierEtDemarrerAdmin();
+});
+
+async function verifierEtDemarrerAdmin() {
+  const erreur = document.getElementById("erreur-login-admin");
+  const { data: profil, error } = await supabase
+    .from("profils").select("role").eq("id", (await supabase.auth.getUser()).data.user.id).single();
+
+  if (error || !profil || profil.role !== "admin") {
+    erreur.textContent = "Ce compte n'est pas autorisé à accéder à l'administration.";
+    await supabase.auth.signOut();
+    return;
+  }
+
+  document.getElementById("ecran-login-admin").style.display = "none";
+  document.getElementById("app-admin").style.display = "block";
+  demarrerAdmin();
+}
+
+// Restaure la session si déjà connecté (et toujours re-vérifier le rôle admin)
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) verifierEtDemarrerAdmin();
+})();
+
+function demarrerAdmin() {
+  chargerChauffeurs();
+  chargerCoursesAdmin();
+  setInterval(chargerCoursesAdmin, 20000);
+  setInterval(() => {
+    if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
+  }, 15000);
+}
+
+// ---------- NAVIGATION ONGLETS ----------
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("actif"));
+    btn.classList.add("actif");
+    document.querySelectorAll("section").forEach(s => s.classList.remove("visible"));
+    document.getElementById("section-" + btn.dataset.onglet).classList.add("visible");
+    if (btn.dataset.onglet === "agenda") rendreCalendrierAdmin();
+    if (btn.dataset.onglet === "carte") chargerCarte();
+    if (btn.dataset.onglet === "caisse") chargerCaisse();
+    if (btn.dataset.onglet === "feuilles") chargerFeuillesAdmin();
+  });
+});
+
+// ---------- CHARGER LA LISTE DES CHAUFFEURS (pour le menu déroulant) ----------
+let chauffeursCache = [];
+let dernieresCoursesAdmin = [];
+async function chargerChauffeurs() {
+  const { data, error } = await supabase
+    .from("profils")
+    .select("id, nom, telephone")
+    .eq("role", "chauffeur")
+    .eq("actif", true);
+
+  if (error) { console.error(error); return; }
+  chauffeursCache = data || [];
+
+  const select = document.getElementById("input-chauffeur");
+  select.innerHTML = chauffeursCache
+    .map(c => `<option value="${c.id}">${c.nom || c.telephone || c.id}</option>`)
+    .join("");
+}
+
+// ---------- CHARGER TOUTES LES COURSES ----------
+async function chargerCoursesAdmin() {
+  const { data: courses, error } = await supabase
+    .from("courses")
+    .select("*, profils:chauffeur_id(nom)")
+    .order("date_heure", { ascending: true });
+
+  if (error) { console.error(error); return; }
+
+  dernieresCoursesAdmin = courses || [];
+
+  const conteneur = document.getElementById("liste-courses-admin");
+  conteneur.innerHTML = "";
+
+  (courses || []).forEach(c => conteneur.appendChild(construireCarteAdmin(c)));
+
+  if (document.getElementById("section-agenda").classList.contains("visible")) {
+    rendreCalendrierAdmin();
+  }
+}
+
+// ---------- LIEN WHATSAPP PRÉ-REMPLI POUR PRÉVENIR UN CHAUFFEUR ----------
+function numeroWhatsapp(telephone) {
+  if (!telephone) return null;
+  let n = telephone.replace(/[^\d+]/g, "");
+  if (n.startsWith("+")) n = n.slice(1);
+  else if (n.startsWith("0")) n = "32" + n.slice(1); // Belgique par défaut
+  return n;
+}
+
+function lienWhatsappCourse(course) {
+  const chauffeur = chauffeursCache.find(c => c.id === course.chauffeur_id);
+  const numero = chauffeur ? numeroWhatsapp(chauffeur.telephone) : null;
+  if (!numero) return null;
+
+  const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
+    weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+  });
+  const texte = `Nouvelle course Taxi Wal 🚕\n${heure}\nDépart : ${course.adresse_depart}\nArrivée : ${course.adresse_arrivee}\nMerci de vérifier l'application.`;
+  return `https://wa.me/${numero}?text=${encodeURIComponent(texte)}`;
+}
+
+let calMoisAffiche = new Date();
+calMoisAffiche.setDate(1);
+let calJourSelectionne = new Date().toISOString().slice(0, 10);
+
+// ---------- AGENDA / CALENDRIER (toutes les courses, tous chauffeurs) ----------
+function joursAvecCoursesAdmin(courses) {
+  const map = {};
+  (courses || []).forEach(c => {
+    const jour = c.date_heure.slice(0, 10);
+    map[jour] = (map[jour] || 0) + 1;
+  });
+  return map;
+}
+
+function rendreCalendrierAdmin() {
+  const grille = document.getElementById("cal-grille");
+  const titre = document.getElementById("cal-titre");
+  grille.innerHTML = "";
+
+  ["L", "M", "M", "J", "V", "S", "D"].forEach(n => {
+    const d = document.createElement("div");
+    d.className = "cal-jour-nom";
+    d.textContent = n;
+    grille.appendChild(d);
+  });
+
+  const annee = calMoisAffiche.getFullYear(), mois = calMoisAffiche.getMonth();
+  titre.textContent = calMoisAffiche.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+
+  const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
+  const nbJours = new Date(annee, mois + 1, 0).getDate();
+  const map = joursAvecCoursesAdmin(dernieresCoursesAdmin);
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  for (let i = 0; i < premierJourSemaine; i++) {
+    const vide = document.createElement("div");
+    vide.className = "cal-jour hors-mois";
+    grille.appendChild(vide);
+  }
+
+  for (let jour = 1; jour <= nbJours; jour++) {
+    const dateStr = `${annee}-${String(mois + 1).padStart(2, "0")}-${String(jour).padStart(2, "0")}`;
+    const cell = document.createElement("div");
+    cell.className = "cal-jour"
+      + (dateStr === todayStr ? " aujourdhui" : "")
+      + (dateStr === calJourSelectionne ? " selectionne" : "");
+    cell.textContent = jour;
+    if (map[dateStr]) {
+      const point = document.createElement("div");
+      point.className = "point";
+      cell.appendChild(point);
+    }
+    cell.addEventListener("click", () => {
+      calJourSelectionne = dateStr;
+      rendreCalendrierAdmin();
+    });
+    grille.appendChild(cell);
+  }
+
+  afficherCoursesDuJourAdmin(calJourSelectionne);
+}
+
+function afficherCoursesDuJourAdmin(dateStr) {
+  const texte = document.getElementById("agenda-jour-texte");
+  const liste = document.getElementById("agenda-liste-jour");
+  const dateLisible = new Date(dateStr + "T12:00:00").toLocaleDateString("fr-BE", {
+    weekday: "long", day: "2-digit", month: "long"
+  });
+  texte.textContent = dateLisible;
+
+  const coursesDuJour = dernieresCoursesAdmin.filter(c => c.date_heure.slice(0, 10) === dateStr);
+  liste.innerHTML = "";
+  if (coursesDuJour.length === 0) {
+    liste.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune course ce jour-là.</p>';
+    return;
+  }
+  coursesDuJour.forEach(c => liste.appendChild(construireCarteAdmin(c)));
+}
+
+document.getElementById("cal-prev").addEventListener("click", () => {
+  calMoisAffiche.setMonth(calMoisAffiche.getMonth() - 1);
+  rendreCalendrierAdmin();
+});
+document.getElementById("cal-next").addEventListener("click", () => {
+  calMoisAffiche.setMonth(calMoisAffiche.getMonth() + 1);
+  rendreCalendrierAdmin();
+});
+
+// "+ Ajouter" ouvre la même fenêtre de création de course, pré-remplie avec le jour choisi
+document.getElementById("btn-ajouter-jour").addEventListener("click", () => {
+  document.getElementById("input-date").value = calJourSelectionne + "T09:00";
+  modale.classList.add("visible");
+});
+
+function construireCarteAdmin(course) {
+  const div = document.createElement("div");
+  div.className = "course " + course.statut;
+
+  const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
+    weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+  });
+
+  const nomChauffeur = course.profils?.nom || "Non assigné";
+  const labelStatut = {
+    en_attente: "En attente", prix_envoye: "Prix envoyé — attente réponse client",
+    attente_acompte: "Acompte à payer par le client", acompte_declare: "💰 Paiement déclaré — à vérifier",
+    confirmee: "✅ Acompte reçu — à attribuer", assignee: "Assignée",
+    en_cours: "En cours", terminee: "Terminée", annulee: "Annulée"
+  }[course.statut] || course.statut;
+
+  div.innerHTML = `
+    <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}</span>
+    <h3>${course.client_nom || "Client"} — ${course.prix ? course.prix + " €" : ""}</h3>
+    <div class="heure">${heure} · Chauffeur : ${nomChauffeur}</div>
+    <div class="trajet">
+      <b>Départ :</b> ${course.adresse_depart}<br>
+      <b>Arrivée :</b> ${course.adresse_arrivee}
+      ${course.notes ? `<br><b>Note :</b> ${course.notes}` : ""}
+    </div>
+  `;
+
+  // Demande client sans prix encore envoyé : formulaire pour proposer un prix
+  if (course.origine === "client" && course.statut === "en_attente" && course.client_id) {
+    const blocPrix = document.createElement("div");
+    blocPrix.className = "bloc-prix-admin";
+    blocPrix.innerHTML = `
+      <input type="number" step="0.5" placeholder="Prix à proposer (€)">
+      <button type="button">Envoyer le prix</button>
+    `;
+    blocPrix.querySelector("button").addEventListener("click", async () => {
+      const prix = parseFloat(blocPrix.querySelector("input").value);
+      if (!prix || prix <= 0) { alert("Indique un prix valide."); return; }
+      const acompte = Math.round(prix * 0.3 * 100) / 100;
+      await supabase.from("courses").update({ prix, acompte_montant: acompte, statut: "prix_envoye" }).eq("id", course.id);
+      notifierClientParEmail(course.id, "prix_envoye");
+      chargerCoursesAdmin();
+    });
+    div.appendChild(blocPrix);
+  }
+
+  // Client a déclaré avoir payé l'acompte : à vérifier puis confirmer
+  if (course.statut === "acompte_declare") {
+    const blocVerif = document.createElement("div");
+    blocVerif.className = "alerte-acompte";
+    blocVerif.innerHTML = `
+      💰 Le client indique avoir payé l'acompte de <b>${course.acompte_montant} €</b>.<br>
+      Vérifie la réception sur le compte avant de confirmer.
+      <button type="button">✅ Confirmer la réception de l'acompte</button>
+    `;
+    blocVerif.querySelector("button").addEventListener("click", async () => {
+      await supabase.from("courses").update({
+        statut: "confirmee", acompte_paye: true, acompte_confirme_at: new Date().toISOString()
+      }).eq("id", course.id);
+      notifierClientParEmail(course.id, "acompte_confirme");
+      chargerCoursesAdmin();
+    });
+    div.appendChild(blocVerif);
+  }
+
+  if (course.statut === "confirmee") {
+    const note = document.createElement("div");
+    note.className = "alerte-acompte";
+    note.style.borderColor = "var(--vert)";
+    note.innerHTML = `✅ Acompte reçu — la course est dans l'agenda. Attribue-la à un chauffeur ci-dessous.`;
+    div.appendChild(note);
+  }
+
+  // Réassignation
+  const selectChauffeur = document.createElement("select");
+  selectChauffeur.innerHTML = `<option value="">— Réassigner à —</option>` +
+    chauffeursCache.map(c => `<option value="${c.id}" ${c.id === course.chauffeur_id ? "selected" : ""}>${c.nom || c.telephone}</option>`).join("");
+  selectChauffeur.addEventListener("change", async (e) => {
+    const nouveauChauffeurId = e.target.value || null;
+    await supabase.from("courses").update({ chauffeur_id: nouveauChauffeurId, statut: "assignee" }).eq("id", course.id);
+    chargerCoursesAdmin();
+  });
+  div.appendChild(selectChauffeur);
+
+  // Actions : rouvrir / annuler (admin uniquement, même si verrouillée)
+  const actions = document.createElement("div");
+  actions.className = "ligne-actions";
+
+  if (course.statut === "assignee" || course.statut === "en_attente" || course.statut === "en_cours") {
+    const lienWA = lienWhatsappCourse(course);
+    if (lienWA) {
+      const btnWA = document.createElement("button");
+      btnWA.textContent = "📲 Prévenir par WhatsApp";
+      btnWA.style.background = "#1f8a4c";
+      btnWA.addEventListener("click", () => window.open(lienWA, "_blank"));
+      actions.appendChild(btnWA);
+    }
+  }
+  if (course.statut === "terminee") {
+    actions.appendChild(creerBoutonAdmin("Rouvrir", async () => {
+      await supabase.from("courses").update({ statut: "en_cours", verrouillee: false }).eq("id", course.id);
+      chargerCoursesAdmin();
+    }));
+  }
+  if (course.statut !== "annulee") {
+    actions.appendChild(creerBoutonAdmin("Annuler la course", async () => {
+      await supabase.from("courses").update({ statut: "annulee" }).eq("id", course.id);
+      chargerCoursesAdmin();
+    }));
+  }
+  if (actions.children.length > 0) div.appendChild(actions);
+
+  return div;
+}
+
+function creerBoutonAdmin(texte, onClick) {
+  const btn = document.createElement("button");
+  btn.textContent = texte;
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+// Envoie une notification par email au client via la fonction serveur (Brevo).
+// N'empêche jamais l'action admin de continuer si l'envoi échoue (ex: clé Brevo pas encore configurée).
+async function notifierClientParEmail(courseId, type) {
+  try {
+    const { error } = await supabase.functions.invoke("notifier-client-email", { body: { courseId, type } });
+    if (error) console.error("Notification email non envoyée :", error);
+  } catch (e) { console.error("Notification email non envoyée :", e); }
+}
+
+// La synchronisation course -> feuille de route du chauffeur (création/mise à jour/suppression
+// de la ligne) est désormais entièrement gérée côté base de données par un trigger automatique
+// (fonction gerer_ligne_feuille_route), qui se déclenche à chaque création ou modification de
+// course. L'application n'a donc plus besoin de dupliquer cette logique ici.
+
+// ---------- MODALE NOUVELLE COURSE ----------
+const modale = document.getElementById("modale");
+document.getElementById("btn-nouvelle-course").addEventListener("click", () => modale.classList.add("visible"));
+document.getElementById("btn-annuler-modale").addEventListener("click", () => modale.classList.remove("visible"));
+
+document.getElementById("btn-creer-course").addEventListener("click", async () => {
+  const erreur = document.getElementById("erreur-modale");
+  const depart = document.getElementById("input-depart").value.trim();
+  const arrivee = document.getElementById("input-arrivee").value.trim();
+  const date = document.getElementById("input-date").value;
+
+  if (!depart || !arrivee || !date) {
+    erreur.textContent = "Adresse de départ, d'arrivée et date/heure sont obligatoires.";
+    return;
+  }
+
+  const { error } = await supabase.from("courses").insert({
+    chauffeur_id: document.getElementById("input-chauffeur").value || null,
+    client_nom: document.getElementById("input-client-nom").value.trim(),
+    client_telephone: document.getElementById("input-client-tel").value.trim(),
+    adresse_depart: depart,
+    adresse_arrivee: arrivee,
+    date_heure: new Date(date).toISOString(),
+    passagers: parseInt(document.getElementById("input-passagers").value) || 1,
+    prix: parseFloat(document.getElementById("input-prix").value) || null,
+    notes: document.getElementById("input-notes").value.trim(),
+    statut: document.getElementById("input-chauffeur").value ? "assignee" : "en_attente"
+  });
+
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+
+  modale.classList.remove("visible");
+  chargerCoursesAdmin();
+});
+
+// ---------- CARTE DES CHAUFFEURS (statut + destination + temps restant) ----------
+let carteLeaflet = null;
+let marqueurs = {};
+const cacheGeocodage = {}; // adresse -> {lat, lon}
+const cacheEta = {}; // course_id -> { minutes, texte, calculeA: timestamp }
+
+async function geocoderAdresse(adresse) {
+  if (cacheGeocodage[adresse]) return cacheGeocodage[adresse];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=be,fr&q=${encodeURIComponent(adresse)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && data[0]) {
+      const point = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      cacheGeocodage[adresse] = point;
+      return point;
+    }
+  } catch (e) { console.error("Géocodage impossible :", e); }
+  return null;
+}
+
+async function calculerEta(courseId, depLat, depLon, adresseArrivee) {
+  // Réutilise un calcul récent (moins de 60s) pour ne pas spammer les services gratuits
+  const cache = cacheEta[courseId];
+  if (cache && (Date.now() - cache.calculeA) < 60000) return cache;
+
+  const dest = await geocoderAdresse(adresseArrivee);
+  if (!dest) return null;
+
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${depLon},${depLat};${dest.lon},${dest.lat}?overview=false`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      const minutes = Math.round(data.routes[0].duration / 60);
+      const resultat = { minutes, texte: `${minutes} min`, calculeA: Date.now() };
+      cacheEta[courseId] = resultat;
+      return resultat;
+    }
+  } catch (e) { console.error("Calcul ETA impossible :", e); }
+  return null;
+}
+
+// Calcul générique de trajet routier entre deux coordonnées (utilisé par le retour centrale + l'outil manuel)
+async function calculerTrajetCoords(depLat, depLon, arrLat, arrLon) {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${depLon},${depLat};${arrLon},${arrLat}?overview=false`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      return { minutes: Math.round(data.routes[0].duration / 60), km: (data.routes[0].distance / 1000).toFixed(1) };
+    }
+  } catch (e) { console.error("Calcul de trajet impossible :", e); }
+  return null;
+}
+
+const cacheRetourCentrale = {}; // adresse destination -> résultat (60s)
+function getAdresseCentrale() {
+  return document.getElementById("calc-adresse-centrale").value.trim() || "Boussu, Belgique";
+}
+async function calculerRetourCentrale(adresseDepuis) {
+  const cle = adresseDepuis + "|" + getAdresseCentrale();
+  const cache = cacheRetourCentrale[cle];
+  if (cache && (Date.now() - cache.calculeA) < 60000) return cache;
+
+  const depart = await geocoderAdresse(adresseDepuis);
+  const centrale = await geocoderAdresse(getAdresseCentrale());
+  if (!depart || !centrale) return null;
+
+  const trajet = await calculerTrajetCoords(depart.lat, depart.lon, centrale.lat, centrale.lon);
+  if (!trajet) return null;
+  const resultat = { ...trajet, calculeA: Date.now() };
+  cacheRetourCentrale[cle] = resultat;
+  return resultat;
+}
+
+// Adresse centrale : mémorisée localement (sur cet appareil)
+const adresseCentraleInput = document.getElementById("calc-adresse-centrale");
+adresseCentraleInput.value = localStorage.getItem("taxiwal_adresse_centrale") || "Boussu, Belgique";
+adresseCentraleInput.addEventListener("change", () => {
+  localStorage.setItem("taxiwal_adresse_centrale", adresseCentraleInput.value.trim());
+});
+
+// ---------- LISTE DES CHAUFFEURS EN DIRECT (dépose + retour centrale) ----------
+async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
+  const conteneur = document.getElementById("carte-liste-chauffeurs");
+  conteneur.innerHTML = "";
+
+  for (const p of (positions || [])) {
+    const nom = p.profils?.nom || "Chauffeur";
+    const courseActive = coursesParChauffeur[p.chauffeur_id];
+
+    const div = document.createElement("div");
+    div.className = "cc-chauffeur " + (courseActive ? "cc-course" : (p.disponible ? "cc-dispo" : ""));
+
+    if (courseActive) {
+      div.innerHTML = `<h4>${nom}</h4>
+        <div class="cc-ligne">🚕 En route vers <b>${courseActive.adresse_arrivee}</b></div>
+        <div class="cc-ligne">⏱️ Dépose du client : <b id="cc-depose-${courseActive.id}">calcul…</b></div>
+        <div class="cc-ligne">↩️ Retour centrale ensuite : <b id="cc-retour-${courseActive.id}">calcul…</b></div>`;
+      conteneur.appendChild(div);
+
+      calculerEta(courseActive.id, p.latitude, p.longitude, courseActive.adresse_arrivee).then(eta => {
+        const el = document.getElementById(`cc-depose-${courseActive.id}`);
+        if (el) el.textContent = eta ? `dans environ ${eta.texte} (arrivée ~${heureDansXMinutes(eta.minutes)})` : "indisponible";
+      });
+      calculerRetourCentrale(courseActive.adresse_arrivee).then(retour => {
+        const el = document.getElementById(`cc-retour-${courseActive.id}`);
+        if (el) el.textContent = retour ? `environ ${retour.minutes} min (${retour.km} km)` : "indisponible";
+      });
+    } else {
+      div.innerHTML = `<h4>${nom}</h4>
+        <div class="cc-ligne">${p.disponible ? "✅ Disponible" : "⛔ Hors service"}</div>`;
+      conteneur.appendChild(div);
+    }
+  }
+
+  if (!positions || positions.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun chauffeur avec position partagée pour le moment.</p>';
+  }
+}
+
+function heureDansXMinutes(minutes) {
+  const d = new Date(Date.now() + minutes * 60000);
+  return d.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
+}
+
+// ---------- OUTIL : CALCULER UN TRAJET ENTRE DEUX POINTS (adresse ou chauffeur) ----------
+let dernieresPositionsCarte = []; // rafraîchi par chargerCarte()
+
+document.getElementById("calc-depart-type").addEventListener("change", (e) => {
+  const estChauffeur = e.target.value === "chauffeur";
+  document.getElementById("calc-depart-adresse").style.display = estChauffeur ? "none" : "block";
+  document.getElementById("calc-depart-chauffeur").style.display = estChauffeur ? "block" : "none";
+  if (estChauffeur) remplirSelectChauffeursCarte();
+});
+
+function remplirSelectChauffeursCarte() {
+  const select = document.getElementById("calc-depart-chauffeur");
+  select.innerHTML = dernieresPositionsCarte.length
+    ? dernieresPositionsCarte.map(p => `<option value="${p.chauffeur_id}">${p.profils?.nom || "Chauffeur"}</option>`).join("")
+    : `<option value="">Aucun chauffeur avec position partagée</option>`;
+}
+
+document.getElementById("btn-calculer-trajet").addEventListener("click", async () => {
+  const resultatDiv = document.getElementById("calc-resultat");
+  resultatDiv.classList.add("visible");
+  resultatDiv.textContent = "Calcul en cours…";
+
+  const arriveeTexte = document.getElementById("calc-arrivee-adresse").value.trim();
+  if (!arriveeTexte) { resultatDiv.textContent = "Indique une adresse d'arrivée."; return; }
+
+  let depLat, depLon, libelleDepart;
+
+  if (document.getElementById("calc-depart-type").value === "chauffeur") {
+    const chauffeurId = document.getElementById("calc-depart-chauffeur").value;
+    const position = dernieresPositionsCarte.find(p => p.chauffeur_id === chauffeurId);
+    if (!position) { resultatDiv.textContent = "Ce chauffeur n'a pas de position partagée actuellement."; return; }
+    depLat = position.latitude; depLon = position.longitude;
+    libelleDepart = `la position actuelle de ${position.profils?.nom || "ce chauffeur"}`;
+  } else {
+    const departTexte = document.getElementById("calc-depart-adresse").value.trim();
+    if (!departTexte) { resultatDiv.textContent = "Indique une adresse de départ."; return; }
+    const depart = await geocoderAdresse(departTexte);
+    if (!depart) { resultatDiv.textContent = "Adresse de départ introuvable."; return; }
+    depLat = depart.lat; depLon = depart.lon;
+    libelleDepart = departTexte;
+  }
+
+  const arrivee = await geocoderAdresse(arriveeTexte);
+  if (!arrivee) { resultatDiv.textContent = "Adresse d'arrivée introuvable."; return; }
+
+  const trajet = await calculerTrajetCoords(depLat, depLon, arrivee.lat, arrivee.lon);
+  if (!trajet) { resultatDiv.textContent = "Calcul impossible pour le moment."; return; }
+
+  resultatDiv.innerHTML = `Entre <b>${libelleDepart}</b> et <b>${arriveeTexte}</b> :<br>
+    ⏱️ Environ <b>${trajet.minutes} min</b> (${trajet.km} km) — arrivée estimée vers <b>${heureDansXMinutes(trajet.minutes)}</b>.`;
+});
+
+async function chargerCarte() {
+  if (!carteLeaflet) {
+    carteLeaflet = L.map("carte").setView([50.45, 4.10], 10); // centré Belgique par défaut
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(carteLeaflet);
+    setTimeout(() => carteLeaflet.invalidateSize(), 200);
+  }
+
+  const { data: positions, error } = await supabase
+    .from("positions_chauffeurs")
+    .select("*, profils:chauffeur_id(nom)");
+  if (error) { console.error(error); return; }
+
+  // Courses en cours, pour savoir qui roule vers où
+  const { data: coursesEnCours } = await supabase
+    .from("courses")
+    .select("id, chauffeur_id, adresse_arrivee")
+    .eq("statut", "en_cours");
+  const coursesParChauffeur = {};
+  (coursesEnCours || []).forEach(c => { coursesParChauffeur[c.chauffeur_id] = c; });
+
+  dernieresPositionsCarte = positions || [];
+  afficherListeChauffeursCarte(positions, coursesParChauffeur);
+
+  for (const p of (positions || [])) {
+    const nom = p.profils?.nom || "Chauffeur";
+    const courseActive = coursesParChauffeur[p.chauffeur_id];
+
+    let couleur = "gray";
+    let popup = `<b>${nom}</b><br>Hors service`;
+
+    if (courseActive) {
+      couleur = "red";
+      popup = `<b>${nom}</b><br>🚕 En course<br>Vers : ${courseActive.adresse_arrivee}<br><span id="eta-${courseActive.id}">Calcul du temps restant…</span>`;
+    } else if (p.disponible) {
+      couleur = "green";
+      popup = `<b>${nom}</b><br>✅ Disponible`;
+    }
+
+    const icone = L.divIcon({
+      className: "",
+      html: `<div style="width:16px;height:16px;border-radius:50%;background:${couleur};border:2px solid #fff;"></div>`,
+      iconSize: [16, 16]
+    });
+
+    if (marqueurs[p.chauffeur_id]) {
+      marqueurs[p.chauffeur_id].setLatLng([p.latitude, p.longitude]);
+      marqueurs[p.chauffeur_id].setIcon(icone);
+      marqueurs[p.chauffeur_id].setPopupContent(popup);
+    } else {
+      marqueurs[p.chauffeur_id] = L.marker([p.latitude, p.longitude], { icon: icone })
+        .addTo(carteLeaflet)
+        .bindPopup(popup);
+    }
+
+    // Calcule le temps restant en tâche de fond et met à jour le popup si ouvert
+    if (courseActive) {
+      calculerEta(courseActive.id, p.latitude, p.longitude, courseActive.adresse_arrivee).then(eta => {
+        const span = document.getElementById(`eta-${courseActive.id}`);
+        if (span) span.textContent = eta ? `⏱️ Environ ${eta.texte} avant dépose` : "Temps restant indisponible";
+      });
+    }
+  }
+}
+
+// Rafraîchit la carte toutes les 20 secondes si l'onglet est ouvert
+setInterval(() => {
+  if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
+}, 20000);
+
+// ---------- CAISSE (fond du matin + suivi cash/carte) ----------
+async function chargerCaisse() {
+  const conteneur = document.getElementById("liste-caisse");
+  conteneur.innerHTML = "Chargement…";
+
+  const aujourdHui = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // Chauffeurs actifs
+  const { data: chauffeurs } = await supabase
+    .from("profils").select("id, nom").eq("role", "chauffeur").eq("actif", true);
+
+  // Fonds de caisse du jour
+  const { data: fonds } = await supabase
+    .from("fonds_de_caisse").select("*").eq("date", aujourdHui);
+  const fondParChauffeur = {};
+  (fonds || []).forEach(f => { fondParChauffeur[f.chauffeur_id] = f; });
+
+  // Courses terminées aujourd'hui, avec mode de paiement
+  const debutJour = aujourdHui + "T00:00:00";
+  const finJour = aujourdHui + "T23:59:59";
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("chauffeur_id, prix, mode_paiement, statut, date_heure")
+    .eq("statut", "terminee")
+    .gte("date_heure", debutJour)
+    .lte("date_heure", finJour);
+
+  conteneur.innerHTML = "";
+
+  (chauffeurs || []).forEach(ch => {
+    const fond = fondParChauffeur[ch.id];
+    const montantFond = fond ? parseFloat(fond.montant_initial) : 0;
+
+    const coursesChauffeur = (courses || []).filter(c => c.chauffeur_id === ch.id);
+    const totalCash = coursesChauffeur.filter(c => c.mode_paiement === "cash")
+      .reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
+    const totalCarte = coursesChauffeur.filter(c => c.mode_paiement === "carte")
+      .reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
+    const caisseActuelle = montantFond + totalCash;
+
+    const div = document.createElement("div");
+    div.className = "caisse-chauffeur";
+    div.innerHTML = `
+      <h3>${ch.nom || "Chauffeur"}</h3>
+      <div class="caisse-ligne"><span>Fond de caisse du matin</span><b>${montantFond.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>Courses payées cash aujourd'hui</span><b>${totalCash.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>Courses payées carte aujourd'hui</span><b>${totalCarte.toFixed(2)} €</b></div>
+      <div class="caisse-total"><span>Caisse actuelle (espèces)</span><span>${caisseActuelle.toFixed(2)} €</span></div>
+      <div class="caisse-fond">
+        <input type="number" step="0.5" placeholder="Nouveau fond (€)" id="input-fond-${ch.id}" value="${montantFond || ""}">
+        <button data-chauffeur="${ch.id}" class="btn-enregistrer-fond">Enregistrer</button>
+      </div>
+    `;
+    conteneur.appendChild(div);
+  });
+
+  document.querySelectorAll(".btn-enregistrer-fond").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const chauffeurId = btn.dataset.chauffeur;
+      const montant = parseFloat(document.getElementById(`input-fond-${chauffeurId}`).value) || 0;
+      const { data: { user } } = await supabase.auth.getUser();
+
+      await supabase.from("fonds_de_caisse").upsert({
+        chauffeur_id: chauffeurId,
+        date: aujourdHui,
+        montant_initial: montant,
+        created_by: user?.id || null
+      }, { onConflict: "chauffeur_id,date" });
+
+      chargerCaisse();
+    });
+  });
+}
+
+// ---------- FEUILLES DE ROUTE (vue admin, temps réel + édition complète) ----------
+const champsEnteteFA = {
+  "heure_debut": ["Début service", "time"], "heure_fin": ["Fin service", "time"], "interruptions": ["Interruptions", "text"],
+  "index_km_debut": ["Km tableau bord — début", "number"], "index_km_fin": ["Km tableau bord — fin", "number"],
+  "taximetre_debut": ["Taximètre — début", "number"], "taximetre_fin": ["Taximètre — fin", "number"],
+  "prise_en_charge_debut": ["Prise en charge — début", "number"], "prise_en_charge_fin": ["Prise en charge — fin", "number"],
+  "index_km_totaux_debut": ["Km totaux — début", "number"], "index_km_totaux_fin": ["Km totaux — fin", "number"],
+  "km_en_charge_debut": ["Km en charge — début", "number"], "km_en_charge_fin": ["Km en charge — fin", "number"],
+  "chutes_debut": ["Chutes — début", "number"], "chutes_fin": ["Chutes — fin", "number"],
+  "recettes_debut": ["Recettes — début", "number"], "recettes_fin": ["Recettes — fin", "number"]
+};
+const champsLigneFA = [
+  ["index_depart", "Index départ", "number"],
+  ["embarquement_index", "Embarq. — Index", "number"],
+  ["embarquement_lieu", "Embarq. — Lieu", "text"],
+  ["embarquement_heure", "Embarq. — Heure", "time"],
+  ["debarquement_index", "Débarq. — Index", "number"],
+  ["debarquement_lieu", "Débarq. — Lieu", "text"],
+  ["debarquement_heure", "Débarq. — Heure", "time"],
+  ["prix_taximetre", "Prix taximètre (€)", "number"],
+  ["sommes_percues", "Sommes perçues (€)", "number"]
+];
+
+document.getElementById("fa-date").value = new Date().toISOString().slice(0, 10);
+document.getElementById("fa-prev").addEventListener("click", () => decalerDateFA(-1));
+document.getElementById("fa-next").addEventListener("click", () => decalerDateFA(1));
+document.getElementById("fa-aujourdhui").addEventListener("click", () => {
+  document.getElementById("fa-date").value = new Date().toISOString().slice(0, 10);
+  chargerFeuillesAdmin();
+});
+document.getElementById("fa-date").addEventListener("change", chargerFeuillesAdmin);
+
+function decalerDateFA(jours) {
+  const d = new Date(document.getElementById("fa-date").value + "T00:00:00");
+  d.setDate(d.getDate() + jours);
+  document.getElementById("fa-date").value = d.toISOString().slice(0, 10);
+  chargerFeuillesAdmin();
+}
+
+async function chargerFeuillesAdmin() {
+  const conteneur = document.getElementById("liste-feuilles-admin");
+  const dateChoisie = document.getElementById("fa-date").value;
+
+  const { data: feuilles, error } = await supabase
+    .from("feuilles_route")
+    .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque)")
+    .eq("date_service", dateChoisie)
+    .order("created_at", { ascending: true });
+
+  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+
+  if (!feuilles || feuilles.length === 0) {
+    conteneur.innerHTML = '<p id="feuilles-vide">Aucune feuille de route pour ce jour.</p>';
+    return;
+  }
+
+  const feuilleIds = feuilles.map(f => f.id);
+  const { data: toutesLignes } = await supabase
+    .from("lignes_feuille_route")
+    .select("*")
+    .in("feuille_route_id", feuilleIds)
+    .order("n_ordre", { ascending: true });
+
+  conteneur.innerHTML = "";
+  feuilles.forEach(feuille => {
+    const lignes = (toutesLignes || []).filter(l => l.feuille_route_id === feuille.id);
+    conteneur.appendChild(construireFeuilleAdmin(feuille, lignes));
+  });
+}
+
+function construireFeuilleAdmin(feuille, lignes) {
+  const div = document.createElement("div");
+  div.className = "feuille-admin" + (feuille.verrouillee ? " verrouillee-fa" : "");
+
+  const entete = document.createElement("div");
+  entete.innerHTML = `
+    <button class="btn-verrou">${feuille.verrouillee ? "🔓 Déverrouiller" : "🔒 Verrouiller"}</button>
+    <h3>${feuille.profils?.nom || "Chauffeur"}</h3>
+    <div class="sous">${feuille.vehicules ? (feuille.vehicules.nom + (feuille.vehicules.plaque ? " · " + feuille.vehicules.plaque : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "Signée" : "En cours"}</div>
+  `;
+  entete.querySelector(".btn-verrou").addEventListener("click", async () => {
+    const nouvelEtat = !feuille.verrouillee;
+    await supabase.from("feuilles_route").update({ verrouillee: nouvelEtat, signee: nouvelEtat }).eq("id", feuille.id);
+    chargerFeuillesAdmin();
+  });
+  div.appendChild(entete);
+
+  const grilleEntete = document.createElement("div");
+  grilleEntete.className = "grille3-fa";
+  Object.entries(champsEnteteFA).forEach(([champ, [libelle, type]]) => {
+    const wrap = document.createElement("div");
+    const lab = document.createElement("label"); lab.textContent = libelle;
+    const input = document.createElement("input");
+    input.type = type; if (type === "number") input.step = "0.01";
+    input.value = feuille[champ] ?? "";
+    input.addEventListener("change", async (e) => {
+      await supabase.from("feuilles_route").update({ [champ]: e.target.value || null }).eq("id", feuille.id);
+    });
+    wrap.appendChild(lab); wrap.appendChild(input);
+    grilleEntete.appendChild(wrap);
+  });
+  div.appendChild(grilleEntete);
+
+  const titreCourses = document.createElement("div");
+  titreCourses.className = "mini-titre"; titreCourses.textContent = "Courses";
+  div.appendChild(titreCourses);
+
+  const conteneurLignes = document.createElement("div");
+  lignes.forEach(ligne => conteneurLignes.appendChild(construireLigneAdmin(ligne)));
+  div.appendChild(conteneurLignes);
+
+  const btnAjouter = document.createElement("button");
+  btnAjouter.id = "btn-ajouter-ligne-admin";
+  btnAjouter.textContent = "+ Ajouter une ligne manuelle";
+  btnAjouter.addEventListener("click", async () => {
+    const prochainNumero = lignes.length > 0 ? Math.max(...lignes.map(l => l.n_ordre)) + 1 : 1;
+    await supabase.from("lignes_feuille_route").insert({ feuille_route_id: feuille.id, n_ordre: prochainNumero });
+    chargerFeuillesAdmin();
+  });
+  div.appendChild(btnAjouter);
+
+  return div;
+}
+
+function construireLigneAdmin(ligne) {
+  const div = document.createElement("div");
+  div.className = "ligne-admin";
+
+  const entete = document.createElement("div");
+  entete.className = "num-ligne";
+  entete.innerHTML = `<span>Course n° ${ligne.n_ordre}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}</span>`;
+  const btnSupprimer = document.createElement("button");
+  btnSupprimer.textContent = "Supprimer";
+  btnSupprimer.addEventListener("click", async () => {
+    if (!confirm("Supprimer cette ligne de la feuille de route ?")) return;
+    await supabase.from("lignes_feuille_route").delete().eq("id", ligne.id);
+    chargerFeuillesAdmin();
+  });
+  entete.appendChild(btnSupprimer);
+  div.appendChild(entete);
+
+  const grille = document.createElement("div");
+  grille.className = "grille3-fa";
+  champsLigneFA.forEach(([champ, libelle, type]) => {
+    const wrap = document.createElement("div");
+    const lab = document.createElement("label"); lab.textContent = libelle;
+    const input = document.createElement("input");
+    input.type = type; if (type === "number") input.step = "0.1";
+    input.value = ligne[champ] ?? "";
+    input.addEventListener("change", async (e) => {
+      await supabase.from("lignes_feuille_route").update({ [champ]: e.target.value || null }).eq("id", ligne.id);
+    });
+    wrap.appendChild(lab); wrap.appendChild(input);
+    grille.appendChild(wrap);
+  });
+  div.appendChild(grille);
+
+  return div;
+}
+
+// ---------- INSTALLATION APP (Android / ordinateur) ----------
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(e => console.error("Service worker :", e));
+}
+
+let evenementInstallation = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  evenementInstallation = e;
+  document.getElementById("btn-installer-app").style.display = "block";
+});
+document.getElementById("btn-installer-app").addEventListener("click", async () => {
+  if (!evenementInstallation) return;
+  evenementInstallation.prompt();
+  await evenementInstallation.userChoice;
+  evenementInstallation = null;
+  document.getElementById("btn-installer-app").style.display = "none";
+});
+
+// ---------- INIT ----------
+// (le chargement des données se fait dans demarrerAdmin(), après connexion vérifiée)
+</script>
+</body>
+</html>

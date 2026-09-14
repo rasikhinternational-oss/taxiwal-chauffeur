@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+window.onerror = function(msg, url, line, col, err) {
+  document.documentElement.insertAdjacentHTML("afterbegin",
+    '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
+    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
+  return false;
+};
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taxi Wal — Réserver</title>
+<link rel="manifest" href="manifest-client.json">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Taxi Wal">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --noir:#0d0d0d; --noir-2:#161616; --rouge:#c81e2c; --vert:#1f8a4c;
+    --gris:#8a8a8a; --blanc:#f5f5f3; --bleu:#3b82c4;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:
+      linear-gradient(rgba(13,13,13,.90), rgba(13,13,13,.97)),
+      url('fond-flotte.jpg') center/cover no-repeat fixed;
+    color:var(--blanc);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh; padding-bottom:80px;
+  }
+  header{
+    padding:20px 20px 16px; border-bottom:3px solid transparent;
+    border-image:linear-gradient(90deg, var(--rouge), var(--vert)) 1;
+    position:sticky; top:0; background:rgba(13,13,13,.92); backdrop-filter:blur(6px); z-index:5;
+    display:flex; align-items:center; gap:12px;
+  }
+  @keyframes logo-pulse{
+    0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(200,30,44,0)); }
+    50%{ transform:scale(1.06); filter:drop-shadow(0 0 10px rgba(200,30,44,.55)); }
+  }
+  header img{ width:38px; height:38px; border-radius:10px; animation:logo-pulse 3.5s ease-in-out infinite; }
+  header h1{ margin:0; font-size:1.05rem; font-weight:600; }
+  header p{ margin:2px 0 0; color:var(--gris); font-size:.8rem; }
+
+  #btn-installer-app{
+    display:none; margin:12px 20px 0; width:calc(100% - 40px); padding:12px;
+    border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; cursor:pointer;
+  }
+
+  #ecran-login{ padding:40px 20px; max-width:360px; margin:0 auto; }
+  #ecran-login label, #ecran-profil-setup label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
+  #ecran-login input, #ecran-profil-setup input{
+    width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
+    border:1px solid #333; background:var(--noir-2); color:var(--blanc); font-size:1rem;
+  }
+  button{
+    width:100%; padding:14px; border-radius:10px; border:none;
+    background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
+  }
+  button.secondaire{ background:var(--noir-2); border:1px solid #333; margin-top:10px; }
+  button.vert{ background:var(--vert); }
+  #erreur-login, #erreur-profil, #erreur-reservation{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
+
+  #ecran-profil-setup{ padding:40px 20px; max-width:360px; margin:0 auto; }
+
+  nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px 0; }
+  nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #333; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; }
+  nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
+
+  /* Agenda / calendrier */
+  .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #333; border-radius:8px; color:var(--blanc); cursor:pointer; }
+  .cal-header span{ font-weight:600; text-transform:capitalize; }
+  .cal-grille{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
+  .cal-jour-nom{ font-size:.7rem; color:var(--gris); padding:4px 0; }
+  .cal-jour{ position:relative; padding:9px 0; border-radius:8px; font-size:.85rem; cursor:pointer; background:var(--noir); }
+  .cal-jour.hors-mois{ visibility:hidden; }
+  .cal-jour.aujourdhui{ border:1px solid var(--vert); }
+  .cal-jour.selectionne{ background:var(--rouge); color:#fff; }
+  .cal-jour .point{ position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:5px; height:5px; border-radius:50%; background:var(--vert); }
+  .cal-jour.selectionne .point{ background:#fff; }
+  #agenda-jour-titre{ color:var(--gris); font-size:.9rem; margin-bottom:10px; }
+
+  section{ display:none; padding:20px; }
+  section.visible{ display:block; }
+
+  .champ{ margin-bottom:14px; }
+  .champ label{ display:block; font-size:.8rem; color:var(--gris); margin-bottom:5px; }
+  .champ input, .champ textarea{
+    width:100%; padding:12px; border-radius:8px; border:1px solid #333;
+    background:var(--noir-2); color:var(--blanc); font-size:.95rem;
+  }
+  .champ textarea{ resize:vertical; min-height:50px; }
+  .champ-double{ display:flex; gap:10px; }
+  .champ-double .champ{ flex:1; }
+
+  .course{
+    background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:12px;
+    border-left:4px solid var(--gris);
+  }
+  .course.en_attente{ border-left-color:var(--gris); }
+  .course.prix_envoye{ border-left-color:#c8961e; }
+  .course.attente_acompte{ border-left-color:#c8961e; }
+  .course.acompte_declare{ border-left-color:#3b82c4; }
+  .course.confirmee{ border-left-color:var(--vert); }
+  .course.assignee{ border-left-color:var(--bleu); }
+  .course.en_cours{ border-left-color:var(--rouge); }
+  .course.terminee{ border-left-color:var(--vert); opacity:.75; }
+  .course.annulee{ border-left-color:#444; opacity:.5; }
+  .course h3{ margin:0 0 6px; font-size:1rem; }
+  .course .heure{ color:var(--gris); font-size:.85rem; margin-bottom:10px; }
+  .course .trajet{ font-size:.9rem; line-height:1.5; margin-bottom:10px; }
+  .course .trajet b{ color:var(--blanc); }
+  .statut-label{
+    display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
+    background:#262626; color:var(--gris); margin-bottom:10px;
+  }
+  .statut-label.en_attente{ background:#333; color:#ccc; }
+  .statut-label.prix_envoye{ background:rgba(200,150,30,.2); color:#e0b040; }
+  .statut-label.attente_acompte{ background:rgba(200,150,30,.2); color:#e0b040; }
+  .statut-label.acompte_declare{ background:rgba(59,130,196,.2); color:var(--bleu); }
+  .statut-label.confirmee{ background:rgba(31,138,76,.2); color:var(--vert); }
+  .statut-label.assignee{ background:rgba(59,130,196,.2); color:var(--bleu); }
+  .statut-label.en_cours{ background:rgba(200,30,44,.2); color:var(--rouge); }
+  .statut-label.terminee{ background:rgba(31,138,76,.2); color:var(--vert); }
+  .statut-label.annulee{ background:#262626; color:var(--gris); }
+  #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
+
+  /* Info process de réservation */
+  #info-process{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; font-size:.83rem; color:var(--gris); line-height:1.6; }
+  #info-process b{ color:var(--blanc); }
+  #info-process ol{ margin:6px 0 0; padding-left:18px; }
+
+  /* Bloc prix proposé (à accepter) */
+  .bloc-prix-propose{ background:#161616; border:1px solid #c8961e; border-radius:10px; padding:12px; margin-top:6px; }
+  .bloc-prix-propose .montant{ font-size:1.3rem; font-weight:700; color:#e0b040; margin-bottom:8px; }
+
+  /* Bloc paiement acompte (QR + IBAN) */
+  .bloc-paiement{ background:#0d0d0d; border-radius:10px; padding:14px; margin-top:8px; text-align:center; }
+  .bloc-paiement img{ width:180px; height:180px; border-radius:8px; background:#fff; padding:6px; margin:8px auto; display:block; }
+  .bloc-paiement .ligne-info{ text-align:left; font-size:.85rem; margin:6px 0; color:var(--gris); }
+  .bloc-paiement .ligne-info b{ color:var(--blanc); user-select:all; }
+  .bloc-paiement .note-instant{ font-size:.78rem; color:#e0b040; margin-top:8px; text-align:left; }
+  #btn-copier-iban{ background:#262626; margin-top:10px; font-size:.85rem; padding:10px; }
+  .bloc-verif{ background:rgba(59,130,196,.12); border-radius:10px; padding:12px; margin-top:6px; font-size:.85rem; color:var(--bleu); }
+
+  .badge-marque{
+    display:inline-block; padding:2px 10px; border-radius:20px; font-size:.7rem; font-weight:700;
+    background:linear-gradient(90deg, var(--rouge), var(--vert)); color:#fff; margin-bottom:4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="icon-192.png" alt="Taxi Wal">
+  <div>
+    <h1>Taxi Wal</h1>
+    <p id="sous-titre">Connexion requise</p>
+  </div>
+</header>
+<button id="btn-installer-app">📲 Installer l'application</button>
+
+<!-- ÉCRAN CONNEXION -->
+<div id="ecran-login">
+  <label for="email">Adresse email</label>
+  <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email">
+  <div id="bloc-otp" style="display:none;">
+    <label for="otp">Code reçu par email</label>
+    <input type="text" id="otp" inputmode="numeric" placeholder="123456">
+  </div>
+  <button id="btn-envoyer-code">Recevoir un code</button>
+  <button id="btn-valider-code" class="secondaire" style="display:none;">Se connecter</button>
+  <p id="erreur-login"></p>
+</div>
+
+<!-- ÉCRAN CRÉATION DE PROFIL (première connexion) -->
+<div id="ecran-profil-setup" style="display:none;">
+  <h2 style="text-align:center; font-size:1.1rem;">Bienvenue 👋</h2>
+  <p style="text-align:center; color:var(--gris); font-size:.9rem; margin-top:-8px;">Encore une étape avant de réserver.</p>
+  <label for="profil-nom">Ton nom</label>
+  <input type="text" id="profil-nom" placeholder="Nom et prénom">
+  <label for="profil-tel">Ton téléphone</label>
+  <input type="tel" id="profil-tel" placeholder="04xx xx xx xx">
+  <button id="btn-creer-profil">Continuer</button>
+  <p id="erreur-profil"></p>
+</div>
+
+<!-- ÉCRAN PRINCIPAL -->
+<div id="ecran-principal" style="display:none;">
+  <nav class="onglets">
+    <button class="actif" data-onglet="reserver">Réserver</button>
+    <button data-onglet="mes-courses">Mes courses</button>
+    <button data-onglet="agenda">Agenda</button>
+    <button data-onglet="profil">Profil</button>
+  </nav>
+
+  <!-- Onglet Réserver -->
+  <section id="section-reserver" class="visible">
+    <span class="badge-marque">TAXI WAL</span>
+    <div id="info-process">
+      <b>Comment ça se passe :</b>
+      <ol>
+        <li>Tu envoies ta demande de course</li>
+        <li>Notre équipe la confirme et t'envoie un prix</li>
+        <li>Tu acceptes le prix, puis tu payes un acompte de 30%</li>
+        <li>Dès que l'acompte est reçu, ta course est confirmée</li>
+      </ol>
+    </div>
+    <div class="champ">
+      <label>Adresse de départ</label>
+      <input type="text" id="input-depart" placeholder="Ex : Rue de Boussu 12, Boussu">
+    </div>
+    <div class="champ">
+      <label>Adresse d'arrivée</label>
+      <input type="text" id="input-arrivee" placeholder="Ex : Aéroport de Charleroi">
+    </div>
+    <div class="champ-double">
+      <div class="champ">
+        <label>Date et heure</label>
+        <input type="datetime-local" id="input-date">
+      </div>
+      <div class="champ">
+        <label>Passagers</label>
+        <input type="number" id="input-passagers" value="1" min="1">
+      </div>
+    </div>
+    <div class="champ">
+      <label>Bagages (optionnel)</label>
+      <input type="number" id="input-bagages" value="0" min="0">
+    </div>
+    <div class="champ">
+      <label>Notes pour le chauffeur (optionnel)</label>
+      <textarea id="input-notes" placeholder="Ex : siège bébé, gros bagages, vol à confirmer…"></textarea>
+    </div>
+    <p id="erreur-reservation"></p>
+    <button id="btn-reserver">Demander cette course</button>
+  </section>
+
+  <!-- Onglet Mes courses -->
+  <section id="section-mes-courses">
+    <div id="liste-mes-courses"></div>
+    <div id="vide" style="display:none;">Aucune course pour le moment.</div>
+  </section>
+
+  <!-- Onglet Agenda -->
+  <section id="section-agenda">
+    <div class="calendrier">
+      <div class="cal-header">
+        <button id="cal-prev">‹</button>
+        <span id="cal-titre"></span>
+        <button id="cal-next">›</button>
+      </div>
+      <div class="cal-grille" id="cal-grille"></div>
+    </div>
+    <p id="agenda-jour-titre"></p>
+    <div id="agenda-liste-jour"></div>
+  </section>
+
+  <!-- Onglet Profil -->
+  <section id="section-profil">
+    <div class="champ">
+      <label>Nom</label>
+      <input type="text" id="edit-profil-nom">
+    </div>
+    <div class="champ">
+      <label>Téléphone</label>
+      <input type="tel" id="edit-profil-tel">
+    </div>
+    <p id="erreur-edit-profil"></p>
+    <button id="btn-sauver-profil" class="vert">Enregistrer</button>
+    <button id="btn-deconnexion" class="secondaire">Se déconnecter</button>
+  </section>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script>
+// =====================================================================
+// CONFIGURATION — même projet Supabase que Chauffeur/Admin
+// =====================================================================
+const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
+
+// ---------- COORDONNÉES BANCAIRES (acompte de réservation) ----------
+const COMPTE_BENEFICIAIRE = "Rasikh International";
+const COMPTE_IBAN = "BE61 0019 7821 9717"; // affiché avec espaces
+const COMPTE_IBAN_BRUT = COMPTE_IBAN.replace(/\s/g, ""); // sans espaces, pour le QR et la copie
+
+// Construit le texte du QR code de paiement (norme européenne EPC069-12,
+// reconnue par le scanner intégré de toutes les applications bancaires belges)
+function genererPayloadEpcQr({ montant, communication }) {
+  const lignes = [
+    "BCD", "002", "1", "SCT", "",
+    COMPTE_BENEFICIAIRE.slice(0, 70),
+    COMPTE_IBAN_BRUT,
+    "EUR" + Number(montant).toFixed(2),
+    "", "",
+    communication.slice(0, 140)
+  ];
+  return lignes.join("\n");
+}
+function urlQrPaiement({ montant, communication }) {
+  const payload = genererPayloadEpcQr({ montant, communication });
+  return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=M&data=" + encodeURIComponent(payload);
+}
+function communicationCourse(course) {
+  const heure = new Date(course.date_heure).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return `Course Taxi - ${course.adresse_depart} - ${course.adresse_arrivee} - ${heure}`;
+}
+
+if (!window.supabase) {
+  document.body.insertAdjacentHTML("afterbegin",
+    '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
+    'Problème de connexion internet — recharge la page.</div>');
+  throw new Error("supabase-js non chargé (pas de connexion internet ?)");
+}
+const stockageMemoire = {};
+const stockageSecurise = {
+  getItem: (cle) => { try { return window.localStorage.getItem(cle); } catch (e) { return stockageMemoire[cle] || null; } },
+  setItem: (cle, valeur) => { try { window.localStorage.setItem(cle, valeur); } catch (e) { stockageMemoire[cle] = valeur; } },
+  removeItem: (cle) => { try { window.localStorage.removeItem(cle); } catch (e) { delete stockageMemoire[cle]; } }
+};
+
+let supabase;
+try {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      storage: stockageSecurise
+    }
+  });
+} catch (e) {
+  document.body.insertAdjacentHTML("afterbegin",
+    '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
+    'Erreur au démarrage : ' + e.message + '</div>');
+}
+
+let monProfil = null;
+
+// ---------- CONNEXION (OTP email) ----------
+document.getElementById("btn-envoyer-code").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-envoyer-code");
+  const email = document.getElementById("email").value.trim();
+  const erreur = document.getElementById("erreur-login");
+  erreur.textContent = "";
+  if (!email) { erreur.textContent = "Entre ton adresse email."; return; }
+
+  btn.disabled = true;
+  const texteOriginal = btn.textContent;
+  btn.textContent = "Envoi en cours…";
+
+  try {
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) { erreur.textContent = "Erreur : " + error.message; btn.disabled = false; btn.textContent = texteOriginal; return; }
+
+    document.getElementById("bloc-otp").style.display = "block";
+    btn.style.display = "none";
+    document.getElementById("btn-valider-code").style.display = "block";
+  } catch (e) {
+    erreur.textContent = "Connexion impossible. Vérifie ta connexion internet et réessaie.";
+    btn.disabled = false;
+    btn.textContent = texteOriginal;
+  }
+});
+
+document.getElementById("btn-valider-code").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const otp = document.getElementById("otp").value.trim();
+  const erreur = document.getElementById("erreur-login");
+
+  const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+  if (error) { erreur.textContent = "Code invalide."; return; }
+
+  await apresConnexion();
+});
+
+// ---------- APRÈS CONNEXION : vérifie si le profil client existe déjà ----------
+async function apresConnexion() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: profil } = await supabase
+    .from("profils").select("*").eq("id", user.id).maybeSingle();
+
+  document.getElementById("ecran-login").style.display = "none";
+
+  if (!profil) {
+    document.getElementById("ecran-profil-setup").style.display = "block";
+  } else {
+    monProfil = profil;
+    demarrerEspaceClient();
+  }
+}
+
+document.getElementById("btn-creer-profil").addEventListener("click", async () => {
+  const nom = document.getElementById("profil-nom").value.trim();
+  const tel = document.getElementById("profil-tel").value.trim();
+  const erreur = document.getElementById("erreur-profil");
+  if (!nom || !tel) { erreur.textContent = "Merci de remplir ton nom et ton téléphone."; return; }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from("profils").insert({
+    id: user.id, role: "client", nom, telephone: tel, actif: true
+  }).select().single();
+
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+
+  monProfil = data;
+  document.getElementById("ecran-profil-setup").style.display = "none";
+  demarrerEspaceClient();
+});
+
+// ---------- DÉMARRAGE ESPACE CLIENT ----------
+function demarrerEspaceClient() {
+  document.getElementById("ecran-principal").style.display = "block";
+  document.getElementById("sous-titre").textContent = "Bonjour " + (monProfil.nom || "").split(" ")[0];
+
+  document.getElementById("edit-profil-nom").value = monProfil.nom || "";
+  document.getElementById("edit-profil-tel").value = monProfil.telephone || "";
+
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+
+  // Pré-remplit la date avec "maintenant + 1h" par confort
+  const dansUneHeure = new Date(Date.now() + 60 * 60000);
+  dansUneHeure.setMinutes(0);
+  document.getElementById("input-date").value = dansUneHeure.toISOString().slice(0, 16);
+
+  chargerMesCourses();
+  setInterval(chargerMesCourses, 20000);
+}
+
+// ---------- NAVIGATION ONGLETS ----------
+document.querySelectorAll("nav.onglets button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav.onglets button").forEach(b => b.classList.remove("actif"));
+    btn.classList.add("actif");
+    document.querySelectorAll("section").forEach(s => s.classList.remove("visible"));
+    document.getElementById("section-" + btn.dataset.onglet).classList.add("visible");
+  });
+});
+
+// ---------- RÉSERVER UNE COURSE ----------
+document.getElementById("btn-reserver").addEventListener("click", async () => {
+  const erreur = document.getElementById("erreur-reservation");
+  erreur.textContent = "";
+
+  const depart = document.getElementById("input-depart").value.trim();
+  const arrivee = document.getElementById("input-arrivee").value.trim();
+  const date = document.getElementById("input-date").value;
+
+  if (!depart || !arrivee || !date) {
+    erreur.textContent = "Adresse de départ, d'arrivée et date/heure sont obligatoires.";
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("courses").insert({
+    client_id: user.id,
+    origine: "client",
+    statut: "en_attente",
+    chauffeur_id: null,
+    client_nom: monProfil.nom,
+    client_telephone: monProfil.telephone,
+    adresse_depart: depart,
+    adresse_arrivee: arrivee,
+    date_heure: new Date(date).toISOString(),
+    passagers: parseInt(document.getElementById("input-passagers").value) || 1,
+    bagages: parseInt(document.getElementById("input-bagages").value) || 0,
+    notes: document.getElementById("input-notes").value.trim()
+  });
+
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+
+  document.getElementById("input-depart").value = "";
+  document.getElementById("input-arrivee").value = "";
+  document.getElementById("input-notes").value = "";
+  alert("Demande envoyée ! Elle doit être confirmée par notre équipe. Tu vas d'abord recevoir un prix à accepter, puis un acompte de 30% te sera demandé pour confirmer la course. Suis l'avancement dans \"Mes courses\".");
+  document.querySelector('[data-onglet="mes-courses"]').click();
+  chargerMesCourses();
+});
+
+// ---------- MES COURSES ----------
+let idsEtStatutsConnus = null; // détecte les changements de statut pour notifier
+
+async function chargerMesCourses() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: courses, error } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("client_id", user.id)
+    .order("date_heure", { ascending: false });
+
+  if (error) { console.error(error); return; }
+
+  // Détecte les changements de statut depuis le dernier chargement
+  if (idsEtStatutsConnus === null) {
+    idsEtStatutsConnus = new Map((courses || []).map(c => [c.id, c.statut]));
+  } else {
+    (courses || []).forEach(c => {
+      const ancienStatut = idsEtStatutsConnus.get(c.id);
+      if (ancienStatut && ancienStatut !== c.statut) {
+        notifierChangementStatut(c);
+      }
+      idsEtStatutsConnus.set(c.id, c.statut);
+    });
+  }
+
+  const conteneur = document.getElementById("liste-mes-courses");
+  const videMsg = document.getElementById("vide");
+  conteneur.innerHTML = "";
+
+  dernieresCoursesClient = courses || [];
+  rendreCalendrierClient();
+
+  if (!courses || courses.length === 0) {
+    videMsg.style.display = "block";
+    return;
+  }
+  videMsg.style.display = "none";
+
+  courses.forEach(c => conteneur.appendChild(construireCarteCourseClient(c)));
+}
+
+// ---------- AGENDA / CALENDRIER (mes réservations) ----------
+let dernieresCoursesClient = [];
+let calMoisAffiche = new Date();
+calMoisAffiche.setDate(1);
+let calJourSelectionne = new Date().toISOString().slice(0, 10);
+
+function joursAvecCoursesClient(courses) {
+  const map = {};
+  (courses || []).forEach(c => {
+    const jour = c.date_heure.slice(0, 10);
+    map[jour] = (map[jour] || 0) + 1;
+  });
+  return map;
+}
+
+function rendreCalendrierClient() {
+  const grille = document.getElementById("cal-grille");
+  const titre = document.getElementById("cal-titre");
+  if (!grille) return;
+  grille.innerHTML = "";
+
+  ["L", "M", "M", "J", "V", "S", "D"].forEach(n => {
+    const d = document.createElement("div");
+    d.className = "cal-jour-nom";
+    d.textContent = n;
+    grille.appendChild(d);
+  });
+
+  const annee = calMoisAffiche.getFullYear(), mois = calMoisAffiche.getMonth();
+  titre.textContent = calMoisAffiche.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+
+  const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
+  const nbJours = new Date(annee, mois + 1, 0).getDate();
+  const map = joursAvecCoursesClient(dernieresCoursesClient);
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  for (let i = 0; i < premierJourSemaine; i++) {
+    const vide = document.createElement("div");
+    vide.className = "cal-jour hors-mois";
+    grille.appendChild(vide);
+  }
+
+  for (let jour = 1; jour <= nbJours; jour++) {
+    const dateStr = `${annee}-${String(mois + 1).padStart(2, "0")}-${String(jour).padStart(2, "0")}`;
+    const cell = document.createElement("div");
+    cell.className = "cal-jour"
+      + (dateStr === todayStr ? " aujourdhui" : "")
+      + (dateStr === calJourSelectionne ? " selectionne" : "");
+    cell.textContent = jour;
+    if (map[dateStr]) {
+      const point = document.createElement("div");
+      point.className = "point";
+      cell.appendChild(point);
+    }
+    cell.addEventListener("click", () => {
+      calJourSelectionne = dateStr;
+      rendreCalendrierClient();
+    });
+    grille.appendChild(cell);
+  }
+
+  afficherCoursesDuJourClient(calJourSelectionne);
+}
+
+function afficherCoursesDuJourClient(dateStr) {
+  const titre = document.getElementById("agenda-jour-titre");
+  const liste = document.getElementById("agenda-liste-jour");
+  const dateLisible = new Date(dateStr + "T12:00:00").toLocaleDateString("fr-BE", {
+    weekday: "long", day: "2-digit", month: "long"
+  });
+  titre.textContent = dateLisible;
+
+  const coursesDuJour = dernieresCoursesClient.filter(c => c.date_heure.slice(0, 10) === dateStr);
+  liste.innerHTML = "";
+  if (coursesDuJour.length === 0) {
+    liste.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune course ce jour-là.</p>';
+    return;
+  }
+  coursesDuJour.forEach(c => liste.appendChild(construireCarteCourseClient(c)));
+}
+
+document.getElementById("cal-prev").addEventListener("click", () => {
+  calMoisAffiche.setMonth(calMoisAffiche.getMonth() - 1);
+  rendreCalendrierClient();
+});
+document.getElementById("cal-next").addEventListener("click", () => {
+  calMoisAffiche.setMonth(calMoisAffiche.getMonth() + 1);
+  rendreCalendrierClient();
+});
+
+function construireCarteCourseClient(course) {
+  const div = document.createElement("div");
+  div.className = "course " + course.statut;
+
+  const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
+    weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+  });
+
+  const labelStatut = {
+    en_attente: "En attente de confirmation",
+    prix_envoye: "Prix proposé — à accepter",
+    attente_acompte: "Acompte à payer",
+    acompte_declare: "Paiement déclaré — vérification en cours",
+    confirmee: "Confirmée — chauffeur à venir",
+    assignee: "Chauffeur en route",
+    en_cours: "Course en cours", terminee: "Terminée", annulee: "Annulée"
+  }[course.statut] || course.statut;
+
+  div.innerHTML = `
+    <span class="statut-label ${course.statut}">${labelStatut}</span>
+    <div class="heure">${heure}</div>
+    <div class="trajet">
+      <b>Départ :</b> ${course.adresse_depart}<br>
+      <b>Arrivée :</b> ${course.adresse_arrivee}
+      ${course.prix ? `<br><b>Prix :</b> ${course.prix} €` : ""}
+    </div>
+  `;
+
+  // --- Prix proposé : le client doit l'accepter avant de pouvoir payer l'acompte ---
+  if (course.statut === "prix_envoye") {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-prix-propose";
+    bloc.innerHTML = `
+      <div class="montant">${course.prix} € — acompte de ${course.acompte_montant} €</div>
+      <button type="button">✅ Accepter ce prix</button>
+    `;
+    bloc.querySelector("button").addEventListener("click", async () => {
+      await supabase.from("courses").update({ statut: "attente_acompte" }).eq("id", course.id);
+      chargerMesCourses();
+    });
+    div.appendChild(bloc);
+  }
+
+  // --- Acompte à payer : QR code + IBAN + bouton "j'ai payé" ---
+  if (course.statut === "attente_acompte") {
+    const communication = communicationCourse(course);
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-paiement";
+    bloc.innerHTML = `
+      <div style="font-weight:700; margin-bottom:4px;">Acompte à payer : ${course.acompte_montant} €</div>
+      <img src="${urlQrPaiement({ montant: course.acompte_montant, communication })}" alt="QR code de paiement">
+      <div class="ligne-info">Bénéficiaire<br><b>${COMPTE_BENEFICIAIRE}</b></div>
+      <div class="ligne-info">IBAN<br><b>${COMPTE_IBAN}</b></div>
+      <div class="ligne-info">Communication (important)<br><b>${communication}</b></div>
+      <button type="button" id="btn-copier-iban">📋 Copier l'IBAN</button>
+      <div class="note-instant">⚡ Merci de faire un virement instantané si ta banque le propose : on reçoit la confirmation en quelques secondes et on peut valider ta course tout de suite.</div>
+      <div class="note-instant" style="color:var(--gris);">Scanne ce QR code avec l'appareil photo ou l'app de ta banque : le montant et la communication se remplissent automatiquement.</div>
+      <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">J'ai payé l'acompte</button>
+    `;
+    bloc.querySelector("#btn-copier-iban").addEventListener("click", async (e) => {
+      try {
+        await navigator.clipboard.writeText(COMPTE_IBAN_BRUT);
+        e.target.textContent = "✅ IBAN copié";
+        setTimeout(() => { e.target.textContent = "📋 Copier l'IBAN"; }, 2000);
+      } catch (err) { alert("IBAN : " + COMPTE_IBAN); }
+    });
+    bloc.querySelector("#btn-jai-paye").addEventListener("click", async () => {
+      if (!confirm("Confirmes-tu avoir déjà envoyé le virement de " + course.acompte_montant + " € ?")) return;
+      await supabase.from("courses").update({
+        statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
+      }).eq("id", course.id);
+      chargerMesCourses();
+    });
+    div.appendChild(bloc);
+  }
+
+  // --- Paiement déclaré : en attente de vérification côté admin ---
+  if (course.statut === "acompte_declare") {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-verif";
+    bloc.textContent = "Merci ! Ton paiement est en cours de vérification par notre équipe. Ta course sera confirmée dès réception.";
+    div.appendChild(bloc);
+  }
+
+  if (course.statut === "confirmee") {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-verif";
+    bloc.style.background = "rgba(31,138,76,.12)"; bloc.style.color = "var(--vert)";
+    bloc.textContent = "Acompte reçu, ta course est confirmée ! Un chauffeur te sera assigné prochainement.";
+    div.appendChild(bloc);
+  }
+
+  if (["en_attente", "prix_envoye", "attente_acompte"].includes(course.statut)) {
+    const btn = document.createElement("button");
+    btn.textContent = "Annuler la demande";
+    btn.className = "secondaire";
+    btn.addEventListener("click", async () => {
+      if (!confirm("Annuler cette demande de course ?")) return;
+      await supabase.from("courses").update({ statut: "annulee" }).eq("id", course.id);
+      chargerMesCourses();
+    });
+    div.appendChild(btn);
+  }
+
+  return div;
+}
+
+function notifierChangementStatut(course) {
+  const messages = {
+    prix_envoye: "Un prix t'a été proposé pour ta course 💶",
+    attente_acompte: "Prix accepté — il ne reste plus qu'à payer l'acompte",
+    confirmee: "Acompte reçu, ta course est confirmée ✅",
+    assignee: "Un chauffeur a accepté ta course 🚕",
+    en_cours: "Ton chauffeur est en route !",
+    terminee: "Course terminée, merci d'avoir choisi Taxi Wal 🙏",
+    annulee: "Ta course a été annulée."
+  };
+  const texte = messages[course.statut];
+  if (!texte) return;
+
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine"; osc.frequency.value = 660;
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {}
+
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification("Taxi Wal", { body: texte, tag: "course-" + course.id });
+  }
+}
+
+// ---------- PROFIL ----------
+document.getElementById("btn-sauver-profil").addEventListener("click", async () => {
+  const erreur = document.getElementById("erreur-edit-profil");
+  const nom = document.getElementById("edit-profil-nom").value.trim();
+  const tel = document.getElementById("edit-profil-tel").value.trim();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("profils").update({ nom, telephone: tel }).eq("id", user.id);
+
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+  monProfil.nom = nom; monProfil.telephone = tel;
+  document.getElementById("sous-titre").textContent = "Bonjour " + nom.split(" ")[0];
+  erreur.style.color = "var(--vert)"; erreur.textContent = "Profil enregistré ✓";
+  setTimeout(() => erreur.textContent = "", 2000);
+});
+
+document.getElementById("btn-deconnexion").addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+// ---------- INSTALLATION APP (Android / ordinateur) ----------
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(e => console.error("Service worker :", e));
+}
+let evenementInstallation = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  evenementInstallation = e;
+  document.getElementById("btn-installer-app").style.display = "block";
+});
+document.getElementById("btn-installer-app").addEventListener("click", async () => {
+  if (!evenementInstallation) return;
+  evenementInstallation.prompt();
+  await evenementInstallation.userChoice;
+  evenementInstallation = null;
+  document.getElementById("btn-installer-app").style.display = "none";
+});
+
+// ---------- RESTAURER LA SESSION SI DÉJÀ CONNECTÉ ----------
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) apresConnexion();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+window.onerror = function(msg, url, line, col, err) {
+  document.documentElement.insertAdjacentHTML("afterbegin",
+    '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
+    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
+  return false;
+};
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Feuille de route — Taxi Wal</title>
+<meta name="theme-color" content="#0d0d0d">
+<style>
+  :root{ --noir:#0d0d0d; --noir-2:#161616; --rouge:#c81e2c; --vert:#1f8a4c; --gris:#8a8a8a; --blanc:#f5f5f3; }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--noir); color:var(--blanc); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:60px; }
+  header{ padding:20px; border-bottom:1px solid #262626; position:sticky; top:0; background:var(--noir); z-index:5; }
+  header h1{ margin:0; font-size:1.05rem; }
+  header p{ margin:4px 0 0; color:var(--gris); font-size:.8rem; }
+
+  .bloc{ margin:16px 20px; background:var(--noir-2); border-radius:12px; padding:16px; }
+  .bloc h2{ margin:0 0 12px; font-size:.9rem; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
+  .grille2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  label{ display:block; font-size:.78rem; color:var(--gris); margin-bottom:4px; }
+  input{ width:100%; padding:11px; border-radius:8px; border:1px solid #333; background:var(--noir); color:var(--blanc); font-size:.9rem; margin-bottom:10px; }
+  input:disabled{ opacity:.5; }
+
+  .grille3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .total-ro{ background:#0a0a0a !important; color:var(--gris) !important; font-weight:600; }
+  .identite{ font-size:.85rem; margin:2px 0; }
+  .identite b{ color:var(--blanc); }
+  .identite span{ color:var(--gris); }
+
+  #btn-ouvrir-service{ display:block; width:calc(100% - 40px); margin:16px 20px; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; }
+
+  .ligne-course{ background:#101010; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #262626; }
+  .ligne-course .num{ color:var(--gris); font-size:.75rem; margin-bottom:6px; }
+  .sous-titre-mini{ font-size:.72rem; color:var(--gris); margin:8px 0 4px; }
+
+  #btn-ajouter-ligne{ width:100%; padding:12px; border-radius:8px; border:1px dashed #444; background:transparent; color:var(--blanc); font-size:.9rem; margin-top:6px; }
+
+  #btn-signer{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-weight:600; margin-top:10px; }
+  #avertissement{ font-size:.78rem; color:var(--gris); margin-top:10px; background:#1a1a1a; padding:10px; border-radius:8px; }
+  #statut-feuille{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#262626; color:var(--gris); }
+  #statut-feuille.verrouillee{ background:#2a1414; color:#e07070; }
+  #erreur{ color:var(--rouge); font-size:.85rem; margin:10px 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Feuille de route</h1>
+  <p id="sous-titre">Chargement…</p>
+</header>
+
+<div class="bloc" id="bloc-identite">
+  <h2>Identité</h2>
+  <p class="identite"><span>Identité de l'exploitant :</span> <b>Rasikh international</b></p>
+  <p class="identite"><span>Date :</span> <b id="identite-date">—</b></p>
+  <p class="identite"><span>Nom du chauffeur :</span> <b id="identite-chauffeur">—</b></p>
+  <p class="identite"><span>Véhicule :</span> <b id="identite-vehicule">—</b></p>
+  <p class="identite"><span>N° plaque d'immatriculation :</span> <b id="identite-plaque">—</b></p>
+  <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
+</div>
+
+<div class="bloc" id="bloc-entete">
+  <h2>Service <span id="statut-feuille"></span></h2>
+  <div class="grille3">
+    <div><label>Début</label><input type="time" id="heure-debut"></div>
+    <div><label>Fin</label><input type="time" id="heure-fin"></div>
+    <div><label>Interruptions</label><input type="text" id="interruptions" placeholder="ex: 12h30-13h00"></div>
+  </div>
+
+  <div class="sous-titre-mini">INDEX KM — TABLEAU DE BORD</div>
+  <div class="grille3">
+    <div><label>Début</label><input type="number" step="0.1" id="km-debut"></div>
+    <div><label>Fin</label><input type="number" step="0.1" id="km-fin"></div>
+    <div><label>Total</label><input class="total-ro" type="text" id="km-total" disabled></div>
+  </div>
+
+  <div class="sous-titre-mini">INDEX TAXIMÈTRE</div>
+  <div class="grille3">
+    <div><label>Début</label><input type="number" step="0.1" id="taxi-debut"></div>
+    <div><label>Fin</label><input type="number" step="0.1" id="taxi-fin"></div>
+    <div><label>Total</label><input class="total-ro" type="text" id="taxi-total" disabled></div>
+  </div>
+</div>
+
+<div class="bloc" id="bloc-compteurs">
+  <h2>Prise en charge / Km / Chutes / Recettes</h2>
+
+  <div class="sous-titre-mini">PRISE EN CHARGE</div>
+  <div class="grille3">
+    <div><label>Début</label><input type="number" step="0.1" id="prise-debut"></div>
+    <div><label>Fin</label><input type="number" step="0.1" id="prise-fin"></div>
+    <div><label>Total</label><input class="total-ro" type="text" id="prise-total" disabled></div>
+  </div>
+
+  <div class="sous-titre-mini">INDEX KM (KM TOTAUX)</div>
+  <div class="grille3">
+    <div><label>Début</label><input type="number" step="0.1" id="kmtotaux-debut"></div>
+    <div><label>Fin</label><input type="number" step="0.1" id="kmtotaux-fin"></div>
+    <div><label>Total</label><input class="total-ro" type="text" id="kmtotaux-total" disabled></div>
+  </div>
+
+  <div class="sous-titre-mini">KM EN CHARGE</div>
+  <div class="grille3">
+    <div><label>Début</label><input type="number" step="0.1" id="kmcharge-debut"></div>
+    <div><label>Fin</label><input type="number" step="0.1" id="kmcharge-fin"></div>
+    <div><label>Total</label><input class="total-ro" type="text" id="kmcharge-total" disabled></div>
+  </div>
+
+  <div class="sous-titre-mini">CHUTES (€)</div>
+  <div class="grille3">
+    <div><label>Début</label><input type="number" step="0.01" id="chutes-debut"></div>
+    <div><label>Fin</label><input type="number" step="0.01" id="chutes-fin"></div>
+    <div><label>Total</label><input class="total-ro" type="text" id="chutes-total" disabled></div>
+  </div>
+
+  <div class="sous-titre-mini">RECETTES (€)</div>
+  <div class="grille3">
+    <div><label>Début</label><input type="number" step="0.01" id="recettes-debut"></div>
+    <div><label>Fin</label><input type="number" step="0.01" id="recettes-fin"></div>
+    <div><label>Total</label><input class="total-ro" type="text" id="recettes-total" disabled></div>
+  </div>
+</div>
+
+<div class="bloc" id="bloc-courses">
+  <h2>Courses</h2>
+  <div id="liste-lignes"></div>
+  <button id="btn-ajouter-ligne">+ Ajouter une course</button>
+</div>
+
+<div class="bloc" id="bloc-signature">
+  <p id="avertissement">Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
+  <button id="btn-signer">Signer et clôturer la feuille</button>
+</div>
+
+<p id="erreur"></p>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script>
+const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let feuilleActuelle = null; // ligne de feuilles_route en cours
+let lignesActuelles = [];   // lignes de course chargées
+
+const champsEntete = {
+  "heure-debut": "heure_debut", "heure-fin": "heure_fin", "interruptions": "interruptions",
+  "km-debut": "index_km_debut", "km-fin": "index_km_fin",
+  "taxi-debut": "taximetre_debut", "taxi-fin": "taximetre_fin",
+  "prise-debut": "prise_en_charge_debut", "prise-fin": "prise_en_charge_fin",
+  "kmtotaux-debut": "index_km_totaux_debut", "kmtotaux-fin": "index_km_totaux_fin",
+  "kmcharge-debut": "km_en_charge_debut", "kmcharge-fin": "km_en_charge_fin",
+  "chutes-debut": "chutes_debut", "chutes-fin": "chutes_fin",
+  "recettes-debut": "recettes_debut", "recettes-fin": "recettes_fin"
+};
+
+// Paires Début/Fin -> case Total en lecture seule, calculée automatiquement
+const pairesTotal = [
+  ["km-debut", "km-fin", "km-total"],
+  ["taxi-debut", "taxi-fin", "taxi-total"],
+  ["prise-debut", "prise-fin", "prise-total"],
+  ["kmtotaux-debut", "kmtotaux-fin", "kmtotaux-total"],
+  ["kmcharge-debut", "kmcharge-fin", "kmcharge-total"],
+  ["chutes-debut", "chutes-fin", "chutes-total"],
+  ["recettes-debut", "recettes-fin", "recettes-total"]
+];
+
+function calculerTotaux() {
+  pairesTotal.forEach(([idDebut, idFin, idTotal]) => {
+    const debut = parseFloat(document.getElementById(idDebut).value);
+    const fin = parseFloat(document.getElementById(idFin).value);
+    document.getElementById(idTotal).value =
+      (!isNaN(debut) && !isNaN(fin)) ? (fin - debut).toFixed(2) : "";
+  });
+}
+
+// ---------- INIT : récupère ou crée la feuille du jour ----------
+(async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { document.getElementById("erreur").textContent = "Connecte-toi d'abord depuis l'app chauffeur."; return; }
+
+  const aujourdHui = new Date().toISOString().slice(0, 10);
+
+  let { data: feuille } = await supabase
+    .from("feuilles_route")
+    .select("*")
+    .eq("chauffeur_id", user.id)
+    .eq("date_service", aujourdHui)
+    .maybeSingle();
+
+  if (!feuille) {
+    const { data: nouvelle, error } = await supabase
+      .from("feuilles_route")
+      .insert({ chauffeur_id: user.id, date_service: aujourdHui })
+      .select().single();
+    if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+    feuille = nouvelle;
+  }
+
+  feuilleActuelle = feuille;
+  document.getElementById("sous-titre").textContent = "Feuille du " + aujourdHui;
+  document.getElementById("identite-date").textContent = aujourdHui.split("-").reverse().join("/");
+
+  await remplirIdentite(user);
+  remplirEntete();
+  calculerTotaux();
+  await chargerLignes();
+  appliquerVerrouillage();
+})();
+
+async function remplirIdentite(user) {
+  const { data: profil } = await supabase.from("profils").select("nom").eq("id", user.id).maybeSingle();
+  if (profil?.nom) document.getElementById("identite-chauffeur").textContent = profil.nom;
+
+  // Véhicule déjà lié à la feuille, sinon celui actuellement assigné à ce chauffeur
+  let vehiculeId = feuilleActuelle.vehicule_id;
+  let vehicule = null;
+  if (vehiculeId) {
+    ({ data: vehicule } = await supabase.from("vehicules").select("*").eq("id", vehiculeId).maybeSingle());
+  } else {
+    ({ data: vehicule } = await supabase.from("vehicules").select("*").eq("chauffeur_id", user.id).eq("actif", true).maybeSingle());
+    if (vehicule) {
+      await supabase.from("feuilles_route").update({ vehicule_id: vehicule.id }).eq("id", feuilleActuelle.id);
+      feuilleActuelle.vehicule_id = vehicule.id;
+    }
+  }
+  if (vehicule) {
+    document.getElementById("identite-vehicule").textContent = vehicule.nom || "—";
+    document.getElementById("identite-plaque").textContent = vehicule.plaque || "—";
+    document.getElementById("identite-numid").textContent = vehicule.numero_identification || "—";
+  }
+}
+
+function remplirEntete() {
+  Object.entries(champsEntete).forEach(([idHtml, champBdd]) => {
+    const val = feuilleActuelle[champBdd];
+    if (val !== null && val !== undefined) document.getElementById(idHtml).value = val;
+  });
+  const badge = document.getElementById("statut-feuille");
+  badge.textContent = feuilleActuelle.verrouillee ? "Signée · verrouillée" : "En cours";
+  badge.classList.toggle("verrouillee", feuilleActuelle.verrouillee);
+}
+
+// Sauvegarde l'en-tête à chaque modification d'un champ (auto-save) + recalcul des totaux
+Object.keys(champsEntete).forEach(idHtml => {
+  document.getElementById(idHtml).addEventListener("change", async (e) => {
+    const champBdd = champsEntete[idHtml];
+    const valeur = e.target.value === "" ? null : e.target.value;
+    const { error } = await supabase.from("feuilles_route")
+      .update({ [champBdd]: valeur }).eq("id", feuilleActuelle.id);
+    if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+    calculerTotaux();
+  });
+});
+
+// ---------- LIGNES DE COURSES ----------
+async function chargerLignes() {
+  const { data, error } = await supabase
+    .from("lignes_feuille_route")
+    .select("*")
+    .eq("feuille_route_id", feuilleActuelle.id)
+    .order("n_ordre", { ascending: true });
+
+  if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+  lignesActuelles = data || [];
+  afficherLignes();
+}
+
+function afficherLignes() {
+  const conteneur = document.getElementById("liste-lignes");
+  conteneur.innerHTML = "";
+  lignesActuelles.forEach(ligne => conteneur.appendChild(construireLigneHtml(ligne)));
+}
+
+const champsLigne = [
+  ["index_depart", "Index départ", "number"],
+  ["embarquement_index", "Embarquement — Index", "number"],
+  ["embarquement_lieu", "Embarquement — Lieu", "text"],
+  ["embarquement_heure", "Embarquement — Heure", "time"],
+  ["debarquement_index", "Débarquement — Index", "number"],
+  ["debarquement_lieu", "Débarquement — Lieu", "text"],
+  ["debarquement_heure", "Débarquement — Heure", "time"],
+  ["prix_taximetre", "Prix taximètre (€)", "number"],
+  ["sommes_percues", "Sommes perçues (€)", "number"]
+];
+
+function construireLigneHtml(ligne) {
+  const div = document.createElement("div");
+  div.className = "ligne-course";
+  div.innerHTML = `<div class="num">Course n° ${ligne.n_ordre}${ligne.course_id ? " · attribuée par la centrale" : ""}</div>`;
+
+  champsLigne.forEach(([champ, libelle, type]) => {
+    const wrap = document.createElement("div");
+    const lab = document.createElement("label");
+    lab.textContent = libelle;
+    const input = document.createElement("input");
+    input.type = type;
+    if (type === "number") input.step = "0.1";
+    input.value = ligne[champ] ?? "";
+    input.disabled = feuilleActuelle.verrouillee;
+    input.addEventListener("change", async (e) => {
+      const valeur = e.target.value === "" ? null : e.target.value;
+      await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
+    });
+    wrap.appendChild(lab); wrap.appendChild(input);
+    div.appendChild(wrap);
+  });
+
+  return div;
+}
+
+document.getElementById("btn-ajouter-ligne").addEventListener("click", async () => {
+  const prochainNumero = lignesActuelles.length > 0
+    ? Math.max(...lignesActuelles.map(l => l.n_ordre)) + 1 : 1;
+
+  const { data, error } = await supabase
+    .from("lignes_feuille_route")
+    .insert({ feuille_route_id: feuilleActuelle.id, n_ordre: prochainNumero })
+    .select().single();
+
+  if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+  lignesActuelles.push(data);
+  afficherLignes();
+});
+
+// ---------- SIGNATURE / CLÔTURE ----------
+document.getElementById("btn-signer").addEventListener("click", async () => {
+  if (!confirm("Confirmer la signature ? La feuille sera verrouillée et ne pourra plus être modifiée.")) return;
+
+  const { error } = await supabase.from("feuilles_route")
+    .update({ signee: true }).eq("id", feuilleActuelle.id);
+
+  if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+
+  feuilleActuelle.verrouillee = true;
+  appliquerVerrouillage();
+});
+
+function appliquerVerrouillage() {
+  const verrou = feuilleActuelle.verrouillee;
+  Object.keys(champsEntete).forEach(id => document.getElementById(id).disabled = verrou);
+  document.getElementById("btn-ajouter-ligne").style.display = verrou ? "none" : "block";
+  document.getElementById("btn-signer").style.display = verrou ? "none" : "block";
+  document.getElementById("bloc-signature").style.display = verrou ? "none" : "block";
+  const badge = document.getElementById("statut-feuille");
+  badge.textContent = verrou ? "Signée · verrouillée" : "En cours";
+  badge.classList.toggle("verrouillee", verrou);
+}
+</script>
+</body>
+</html>
