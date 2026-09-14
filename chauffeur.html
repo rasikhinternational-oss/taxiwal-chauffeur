@@ -311,9 +311,31 @@ async function demarrerEspaceChauffeur() {
     Notification.requestPermission();
   }
 
+  await creerFeuilleDuJourSiAbsente(); // toujours une feuille de route prête, dès l'ouverture de l'app
   await chargerCourses(); // premier chargement : on note juste les courses existantes, sans sonner
   // Rafraîchit la liste toutes les 30 secondes (nouvelles courses assignées)
   setInterval(chargerCourses, 30000);
+}
+
+// Garantit qu'une feuille de route (avec identité/véhicule déjà pré-remplis) existe pour aujourd'hui,
+// sans attendre que le chauffeur ouvre l'écran dédié ou qu'une course lui soit assignée.
+async function creerFeuilleDuJourSiAbsente() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const aujourdHui = new Date().toISOString().slice(0, 10);
+
+    const { data: feuilleExistante } = await supabase
+      .from("feuilles_route").select("id").eq("chauffeur_id", user.id).eq("date_service", aujourdHui).maybeSingle();
+    if (feuilleExistante) return;
+
+    const { data: vehicule } = await supabase
+      .from("vehicules").select("id").eq("chauffeur_id", user.id).eq("actif", true).maybeSingle();
+
+    await supabase.from("feuilles_route").insert({
+      chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehicule?.id || null
+    });
+  } catch (e) { console.error("Création feuille du jour :", e); }
 }
 
 // ---------- SON + NOTIFICATION POUR NOUVELLE COURSE ----------

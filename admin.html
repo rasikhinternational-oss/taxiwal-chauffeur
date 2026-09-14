@@ -1254,6 +1254,17 @@ function decalerDateFA(jours) {
 async function chargerFeuillesAdmin() {
   const conteneur = document.getElementById("liste-feuilles-admin");
   const dateChoisie = document.getElementById("fa-date").value;
+  conteneur.innerHTML = "Chargement…";
+
+  // Tous les chauffeurs actifs, pour toujours tous les afficher — même sans feuille créée aujourd'hui
+  const { data: chauffeurs, error: erreurChauffeurs } = await supabase
+    .from("profils")
+    .select("id, nom")
+    .eq("role", "chauffeur")
+    .eq("actif", true)
+    .order("nom", { ascending: true });
+
+  if (erreurChauffeurs) { conteneur.innerHTML = "Erreur : " + erreurChauffeurs.message; return; }
 
   const { data: feuilles, error } = await supabase
     .from("feuilles_route")
@@ -1263,24 +1274,38 @@ async function chargerFeuillesAdmin() {
 
   if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
 
-  if (!feuilles || feuilles.length === 0) {
-    conteneur.innerHTML = '<p id="feuilles-vide">Aucune feuille de route pour ce jour.</p>';
+  if (!chauffeurs || chauffeurs.length === 0) {
+    conteneur.innerHTML = '<p id="feuilles-vide">Aucun chauffeur actif enregistré.</p>';
     return;
   }
 
+  // Crée automatiquement (et silencieusement) la feuille du jour pour tout chauffeur qui n'en a pas encore
+  const chauffeursSansFeuille = chauffeurs.filter(ch => !(feuilles || []).some(f => f.chauffeur_id === ch.id));
+  if (chauffeursSansFeuille.length > 0) {
+    for (const chauffeur of chauffeursSansFeuille) {
+      const { data: vehicule } = await supabase
+        .from("vehicules").select("id").eq("chauffeur_id", chauffeur.id).eq("actif", true).maybeSingle();
+      await supabase.from("feuilles_route").insert({
+        chauffeur_id: chauffeur.id, date_service: dateChoisie, vehicule_id: vehicule?.id || null
+      });
+    }
+    // Recharge maintenant que toutes les feuilles existent
+    return chargerFeuillesAdmin();
+  }
+
   const feuilleIds = feuilles.map(f => f.id);
-  const { data: toutesLignes } = await supabase
-    .from("lignes_feuille_route")
-    .select("*")
-    .in("feuille_route_id", feuilleIds)
-    .order("n_ordre", { ascending: true });
+  const { data: toutesLignes } = feuilleIds.length
+    ? await supabase.from("lignes_feuille_route").select("*, courses(statut, mode_paiement)").in("feuille_route_id", feuilleIds).order("n_ordre", { ascending: true })
+    : { data: [] };
 
   conteneur.innerHTML = "";
-  feuilles.forEach(feuille => {
+  chauffeurs.forEach(chauffeur => {
+    const feuille = (feuilles || []).find(f => f.chauffeur_id === chauffeur.id);
     const lignes = (toutesLignes || []).filter(l => l.feuille_route_id === feuille.id);
     conteneur.appendChild(construireFeuilleAdmin(feuille, lignes));
   });
 }
+
 
 function construireFeuilleAdmin(feuille, lignes) {
   const div = document.createElement("div");
@@ -1340,9 +1365,16 @@ function construireLigneAdmin(ligne) {
   const div = document.createElement("div");
   div.className = "ligne-admin";
 
+  const statutCourse = ligne.courses?.statut;
+  const labelStatutLigne = {
+    en_attente: "en attente", prix_envoye: "prix envoyé", attente_acompte: "acompte à payer",
+    acompte_declare: "paiement à vérifier", confirmee: "confirmée", assignee: "assignée",
+    en_cours: "🚕 en cours", terminee: "✅ terminée", annulee: "❌ annulée"
+  }[statutCourse];
+
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  entete.innerHTML = `<span>Course n° ${ligne.n_ordre}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}</span>`;
+  entete.innerHTML = `<span>Course n° ${ligne.n_ordre}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""}</span>`;
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
   btnSupprimer.addEventListener("click", async () => {
