@@ -40,7 +40,7 @@ window.onerror = function(msg, url, line, col, err) {
     padding-bottom:40px;
   }
   header{
-    padding:20px 20px 16px;
+    padding:calc(20px + env(safe-area-inset-top)) 20px 16px;
     border-bottom:1px solid #dcdcda;
     position:sticky; top:0; background:rgba(255,255,255,.85); backdrop-filter:blur(6px); z-index:5;
   }

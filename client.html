@@ -34,7 +34,7 @@ window.onerror = function(msg, url, line, col, err) {
     min-height:100vh; padding-bottom:80px;
   }
   header{
-    padding:20px 20px 16px; border-bottom:3px solid transparent;
+    padding:calc(20px + env(safe-area-inset-top)) 20px 16px; border-bottom:3px solid transparent;
     border-image:linear-gradient(90deg, var(--rouge), var(--vert)) 1;
     position:sticky; top:0; background:rgba(255,255,255,.85); backdrop-filter:blur(6px); z-index:5;
     display:flex; align-items:center; gap:12px;
