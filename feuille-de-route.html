@@ -49,6 +49,10 @@ window.onerror = function(msg, url, line, col, err) {
   #statut-feuille.verrouillee{ background:#f9d6d6; color:#b83232; }
   #erreur{ color:var(--rouge); font-size:.85rem; margin:10px 20px; }
   #btn-retour{ display:inline-flex; align-items:center; gap:4px; color:var(--blanc); text-decoration:none; font-size:.85rem; background:#dcdcda; padding:7px 14px; border-radius:20px; margin-bottom:10px; width:fit-content; }
+  .etat-sauvegarde{ font-size:.72rem; min-height:1.1em; margin-bottom:6px; }
+  .etat-sauvegarde.en-cours{ color:var(--gris); }
+  .etat-sauvegarde.ok{ color:var(--vert); font-weight:600; }
+  .etat-sauvegarde.erreur{ color:var(--rouge); font-weight:600; }
 </style>
 </head>
 <body>
@@ -256,18 +260,25 @@ Object.keys(champsEntete).forEach(idHtml => {
   document.getElementById(idHtml).addEventListener("change", async (e) => {
     const champBdd = champsEntete[idHtml];
     const valeur = e.target.value === "" ? null : e.target.value;
+    const erreurEl = document.getElementById("erreur");
     const { error } = await supabase.from("feuilles_route")
       .update({ [champBdd]: valeur }).eq("id", feuilleActuelle.id);
-    if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+    if (error) { erreurEl.textContent = "⚠️ Non enregistré : " + error.message; erreurEl.style.color = "var(--rouge)"; return; }
+    erreurEl.style.color = "var(--vert)";
+    erreurEl.textContent = "✓ Enregistré";
+    setTimeout(() => { if (erreurEl.textContent === "✓ Enregistré") erreurEl.textContent = ""; }, 2000);
     calculerTotaux();
   });
 });
 
 // ---------- LIGNES DE COURSES ----------
 async function chargerLignes() {
+  // On récupère aussi le statut de la course liée à chaque ligne (pour verrouiller
+  // automatiquement une ligne dont la course est déjà terminée/annulée, comme le fait
+  // déjà la base de données côté sécurité — l'écran doit refléter la même règle).
   const { data, error } = await supabase
     .from("lignes_feuille_route")
-    .select("*")
+    .select("*, courses(statut)")
     .eq("feuille_route_id", feuilleActuelle.id)
     .order("n_ordre", { ascending: true });
 
@@ -297,7 +308,17 @@ const champsLigne = [
 function construireLigneHtml(ligne) {
   const div = document.createElement("div");
   div.className = "ligne-course";
-  div.innerHTML = `<div class="num">Course n° ${ligne.n_ordre}${ligne.course_id ? " · attribuée par la centrale" : ""}</div>`;
+
+  const statutCourse = ligne.courses?.statut;
+  const ligneTerminee = statutCourse === "terminee" || statutCourse === "annulee";
+  const ligneVerrouillee = feuilleActuelle.verrouillee || ligneTerminee;
+
+  let badge = "";
+  if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
+  div.innerHTML = `
+    <div class="num">Course n° ${ligne.n_ordre}${badge}</div>
+    <div class="etat-sauvegarde" id="etat-ligne-${ligne.id}"></div>
+  `;
 
   champsLigne.forEach(([champ, libelle, type]) => {
     const wrap = document.createElement("div");
@@ -307,10 +328,21 @@ function construireLigneHtml(ligne) {
     input.type = type;
     if (type === "number") input.step = "0.1";
     input.value = ligne[champ] ?? "";
-    input.disabled = feuilleActuelle.verrouillee;
+    input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {
       const valeur = e.target.value === "" ? null : e.target.value;
-      await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
+      const etat = document.getElementById(`etat-ligne-${ligne.id}`);
+      if (etat) { etat.textContent = "Enregistrement…"; etat.className = "etat-sauvegarde en-cours"; }
+      const { error } = await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
+      if (!etat) return;
+      if (error) {
+        etat.textContent = "⚠️ Non enregistré (course déjà terminée ou verrouillée)";
+        etat.className = "etat-sauvegarde erreur";
+      } else {
+        etat.textContent = "✓ Enregistré";
+        etat.className = "etat-sauvegarde ok";
+        setTimeout(() => { if (etat.textContent === "✓ Enregistré") etat.textContent = ""; }, 2500);
+      }
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     div.appendChild(wrap);
