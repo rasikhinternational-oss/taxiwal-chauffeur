@@ -145,6 +145,18 @@ window.onerror = function(msg, url, line, col, err) {
   #btn-ajouter-ligne-admin{ width:100%; padding:10px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.85rem; margin-top:4px; cursor:pointer; }
   #feuilles-vide{ color:var(--gris); text-align:center; padding:30px 0; }
 
+  /* Véhicules (admin) */
+  #btn-ajouter-vehicule{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:16px; cursor:pointer; }
+  .vehicule-admin{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:12px; border-left:4px solid var(--gris); }
+  .vehicule-admin.inactif{ opacity:.55; border-left-color:#c8961e; }
+  .vehicule-admin .grille2-veh{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .vehicule-admin label{ display:block; font-size:.72rem; color:var(--gris); margin-bottom:3px; }
+  .vehicule-admin input, .vehicule-admin select{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; }
+  .vehicule-admin .ligne-actions-veh{ display:flex; gap:8px; margin-top:10px; }
+  .vehicule-admin .ligne-actions-veh button{ flex:1; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.82rem; cursor:pointer; }
+  .vehicule-admin .btn-suppr-veh{ border-color:var(--rouge); color:var(--rouge); }
+  .vehicule-admin .btn-actif-veh.actif{ border-color:var(--vert); color:var(--vert); }
+
   /* Modale nouvelle course */
   #modale{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:50; align-items:flex-end; }
   #modale.visible{ display:flex; }
@@ -204,6 +216,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="agenda">Agenda</button>
     <button data-onglet="carte">Carte chauffeurs</button>
     <button data-onglet="feuilles">Feuilles de route</button>
+    <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
   </nav>
   <button id="btn-installer-app" style="display:none; margin-top:10px; background:var(--vert); border:none; border-radius:8px; color:#fff; padding:10px; font-weight:600; cursor:pointer;">📲 Installer l'application</button>
@@ -267,6 +280,11 @@ window.onerror = function(msg, url, line, col, err) {
     <button id="fa-aujourdhui">Aujourd'hui</button>
   </div>
   <div id="liste-feuilles-admin"></div>
+</section>
+
+<section id="section-vehicules">
+  <button id="btn-ajouter-vehicule">+ Ajouter un véhicule</button>
+  <div id="liste-vehicules-admin"></div>
 </section>
 
 <section id="section-caisse">
@@ -427,6 +445,7 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "carte") chargerCarte();
     if (btn.dataset.onglet === "caisse") chargerCaisse();
     if (btn.dataset.onglet === "feuilles") chargerFeuillesAdmin();
+    if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
   });
 });
 
@@ -1306,6 +1325,100 @@ function construireLigneAdmin(ligne) {
 
   return div;
 }
+
+// ---------- VÉHICULES (admin) ----------
+async function chargerVehiculesAdmin() {
+  const conteneur = document.getElementById("liste-vehicules-admin");
+  conteneur.innerHTML = "Chargement…";
+
+  const { data: vehicules, error } = await supabase
+    .from("vehicules")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+
+  conteneur.innerHTML = "";
+  if (!vehicules || vehicules.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun véhicule enregistré.</p>';
+    return;
+  }
+  vehicules.forEach(v => conteneur.appendChild(construireVehiculeAdmin(v)));
+}
+
+function construireVehiculeAdmin(vehicule) {
+  const div = document.createElement("div");
+  div.className = "vehicule-admin" + (vehicule.actif ? "" : " inactif");
+
+  const champs = [
+    ["nom", "Nom du véhicule", "text"],
+    ["plaque", "Plaque d'immatriculation", "text"],
+    ["numero_identification", "N° identification", "text"],
+    ["places", "Nombre de places", "number"]
+  ];
+
+  const grille = document.createElement("div");
+  grille.className = "grille2-veh";
+  champs.forEach(([champ, libelle, type]) => {
+    const wrap = document.createElement("div");
+    const lab = document.createElement("label"); lab.textContent = libelle;
+    const input = document.createElement("input");
+    input.type = type; input.value = vehicule[champ] ?? "";
+    input.addEventListener("change", async (e) => {
+      const val = type === "number" ? (e.target.value ? parseInt(e.target.value) : null) : (e.target.value || null);
+      await supabase.from("vehicules").update({ [champ]: val }).eq("id", vehicule.id);
+    });
+    wrap.appendChild(lab); wrap.appendChild(input);
+    grille.appendChild(wrap);
+  });
+  div.appendChild(grille);
+
+  const wrapChauffeur = document.createElement("div");
+  const labChauffeur = document.createElement("label"); labChauffeur.textContent = "Chauffeur assigné";
+  const selectChauffeur = document.createElement("select");
+  selectChauffeur.innerHTML = `<option value="">— Aucun —</option>` +
+    chauffeursCache.map(c => `<option value="${c.id}" ${c.id === vehicule.chauffeur_id ? "selected" : ""}>${c.nom || c.telephone}</option>`).join("");
+  selectChauffeur.addEventListener("change", async (e) => {
+    await supabase.from("vehicules").update({ chauffeur_id: e.target.value || null }).eq("id", vehicule.id);
+    chargerVehiculesAdmin();
+  });
+  wrapChauffeur.appendChild(labChauffeur); wrapChauffeur.appendChild(selectChauffeur);
+  div.appendChild(wrapChauffeur);
+
+  const actions = document.createElement("div");
+  actions.className = "ligne-actions-veh";
+
+  const btnActif = document.createElement("button");
+  btnActif.className = "btn-actif-veh" + (vehicule.actif ? " actif" : "");
+  btnActif.textContent = vehicule.actif ? "✅ En service" : "⛔ Hors service";
+  btnActif.addEventListener("click", async () => {
+    await supabase.from("vehicules").update({ actif: !vehicule.actif }).eq("id", vehicule.id);
+    chargerVehiculesAdmin();
+  });
+  actions.appendChild(btnActif);
+
+  const btnSupprimer = document.createElement("button");
+  btnSupprimer.className = "btn-suppr-veh";
+  btnSupprimer.textContent = "🗑️ Supprimer";
+  btnSupprimer.addEventListener("click", async () => {
+    if (!confirm(`Supprimer définitivement le véhicule "${vehicule.nom}" ?`)) return;
+    const { error } = await supabase.from("vehicules").delete().eq("id", vehicule.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    chargerVehiculesAdmin();
+  });
+  actions.appendChild(btnSupprimer);
+
+  div.appendChild(actions);
+  return div;
+}
+
+document.getElementById("btn-ajouter-vehicule").addEventListener("click", async () => {
+  const nom = prompt("Nom du véhicule (ex: Toyota Corolla) :");
+  if (!nom) return;
+  const { error } = await supabase.from("vehicules").insert({ nom, places: 4, actif: true });
+  if (error) { alert("Erreur : " + error.message); return; }
+  chargerVehiculesAdmin();
+});
 
 // ---------- INSTALLATION APP (Android / ordinateur) ----------
 if ("serviceWorker" in navigator) {
