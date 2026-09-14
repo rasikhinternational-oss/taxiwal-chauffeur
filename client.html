@@ -64,6 +64,10 @@ window.onerror = function(msg, url, line, col, err) {
   }
   button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
   button.vert{ background:var(--vert); }
+  #btn-visiter-site{
+    width:100%; padding:14px; border-radius:10px; text-align:center; box-sizing:border-box;
+    background:var(--noir-2); border:1px solid #cfcfcd; color:var(--blanc); font-size:1rem; font-weight:600; margin-top:10px;
+  }
   #erreur-login, #erreur-profil, #erreur-reservation{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 
   #ecran-profil-setup{ padding:40px 20px; max-width:360px; margin:0 auto; }
@@ -275,6 +279,7 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
     <p id="erreur-edit-profil"></p>
     <button id="btn-sauver-profil" class="vert">Enregistrer</button>
+    <a href="https://taxiwal.com" target="_blank" id="btn-visiter-site" style="text-decoration:none; display:block;">🌐 Visiter le site Taxi Wal</a>
     <button id="btn-deconnexion" class="secondaire">Se déconnecter</button>
   </section>
 </div>
