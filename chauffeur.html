@@ -14,25 +14,25 @@ window.onerror = function(msg, url, line, col, err) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Taxi Wal — Espace Chauffeur</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#f7f7f5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Taxi Wal">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
-    --noir:#0d0d0d;
-    --noir-2:#161616;
+    --noir:#f7f7f5;
+    --noir-2:#ffffff;
     --rouge:#c81e2c;
     --vert:#1f8a4c;
-    --gris:#8a8a8a;
-    --blanc:#f5f5f3;
+    --gris:#6b6b6b;
+    --blanc:#1c1c1c;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     background:
-      linear-gradient(rgba(13,13,13,.90), rgba(13,13,13,.97)),
+      linear-gradient(rgba(255,255,255,.90), rgba(255,255,255,.94)),
       url('fond-flotte.jpg') center/cover no-repeat fixed;
     color:var(--blanc);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -41,8 +41,8 @@ window.onerror = function(msg, url, line, col, err) {
   }
   header{
     padding:20px 20px 16px;
-    border-bottom:1px solid #262626;
-    position:sticky; top:0; background:rgba(13,13,13,.92); backdrop-filter:blur(6px); z-index:5;
+    border-bottom:1px solid #dcdcda;
+    position:sticky; top:0; background:rgba(255,255,255,.85); backdrop-filter:blur(6px); z-index:5;
   }
   header h1{ margin:0; font-size:1.1rem; font-weight:600; }
   header p{ margin:4px 0 0; color:var(--gris); font-size:.85rem; }
@@ -56,14 +56,14 @@ window.onerror = function(msg, url, line, col, err) {
   #ecran-login label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
   #ecran-login input{
     width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
-    border:1px solid #333; background:var(--noir-2); color:var(--blanc); font-size:1rem;
+    border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:1rem;
   }
   button{
     width:100%; padding:14px; border-radius:10px; border:none;
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600;
     cursor:pointer;
   }
-  button.secondaire{ background:var(--noir-2); border:1px solid #333; margin-top:10px; }
+  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
   #erreur-login{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 
   #barre-dispo{
@@ -71,8 +71,10 @@ window.onerror = function(msg, url, line, col, err) {
     padding:14px 20px; background:var(--noir-2); margin:16px 20px; border-radius:12px;
   }
   #barre-dispo span{ font-size:.9rem; }
+  #bloc-gains-jour{ display:flex; justify-content:space-between; background:var(--noir-2); border-radius:10px; padding:12px 16px; margin:0 20px 14px; font-size:.85rem; }
+  #bloc-gains-jour b{ color:var(--vert); }
   .switch{
-    width:48px; height:28px; background:#333; border-radius:14px; position:relative; cursor:pointer;
+    width:48px; height:28px; background:#cfcfcd; border-radius:14px; position:relative; cursor:pointer;
   }
   .switch.actif{ background:var(--vert); }
   .switch::after{
@@ -89,7 +91,7 @@ window.onerror = function(msg, url, line, col, err) {
 
   /* Onglets */
   nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:0 20px 14px; }
-  nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #333; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
+  nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
   nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   section{ display:none; }
   section.visible{ display:block; }
@@ -97,7 +99,7 @@ window.onerror = function(msg, url, line, col, err) {
   /* Agenda / calendrier */
   .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin:0 20px 16px; }
   .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #333; border-radius:8px; color:var(--blanc); cursor:pointer; }
+  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); cursor:pointer; }
   .cal-header span{ font-weight:600; text-transform:capitalize; }
   .cal-grille{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
   .cal-jour-nom{ font-size:.7rem; color:var(--gris); padding:4px 0; }
@@ -116,13 +118,13 @@ window.onerror = function(msg, url, line, col, err) {
   #modale-fr-contenu h2{ margin-top:0; font-size:1.1rem; }
   #modale-fr-contenu label{ display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px; }
   #modale-fr-contenu input, #modale-fr-contenu textarea{
-    width:100%; padding:12px; border-radius:8px; border:1px solid #333; background:var(--noir); color:var(--blanc); font-size:.95rem;
+    width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.95rem;
   }
   #modale-fr-contenu textarea{ resize:vertical; min-height:50px; }
-  #avertissement-fr{ font-size:.8rem; color:var(--gris); margin-top:12px; background:#1a1a1a; padding:10px; border-radius:8px; }
+  #avertissement-fr{ font-size:.8rem; color:var(--gris); margin-top:12px; background:#eef0ee; padding:10px; border-radius:8px; }
   #modale-fr-actions{ display:flex; gap:10px; margin-top:16px; }
   #modale-fr-actions button{ flex:1; padding:13px; border-radius:10px; border:none; font-weight:600; }
-  #btn-annuler-fr{ background:#262626; color:var(--blanc); }
+  #btn-annuler-fr{ background:#dcdcda; color:var(--blanc); }
   #btn-valider-fr{ background:var(--rouge); color:#fff; }
   #erreur-fr{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
   .course{
@@ -138,7 +140,7 @@ window.onerror = function(msg, url, line, col, err) {
   .course .trajet b{ color:var(--blanc); }
   .course .statut-label{
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
-    background:#262626; color:var(--gris); margin-bottom:10px;
+    background:#dcdcda; color:var(--gris); margin-bottom:10px;
   }
   .course-actions{ display:flex; gap:8px; }
   .course-actions button{ font-size:.9rem; padding:10px; }
@@ -176,6 +178,11 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="barre-dispo">
     <span id="label-dispo">Disponible / position partagée</span>
     <div class="switch" id="switch-dispo"></div>
+  </div>
+  <div id="bloc-gains-jour">
+    <span>Aujourd'hui : <b id="gains-nb-courses">0</b> course(s)</span>
+    <span>💵 <b id="gains-cash">0,00 €</b></span>
+    <span>💳 <b id="gains-carte">0,00 €</b></span>
   </div>
   <a href="feuille-de-route.html" id="btn-feuille-route" style="text-decoration:none; display:block; text-align:center;">📋 Ma feuille de route du jour</a>
 
@@ -506,6 +513,24 @@ function construireCarteCourse(course) {
 
   const actions = document.createElement("div");
   actions.className = "course-actions";
+
+  if (course.statut === "assignee" || course.statut === "en_cours") {
+    const btnGps = creerBouton("🧭 Itinéraire GPS", () => {
+      const dest = encodeURIComponent(course.adresse_arrivee);
+      const dep = encodeURIComponent(course.adresse_depart);
+      window.open(`https://www.google.com/maps/dir/?api=1&origin=${dep}&destination=${dest}&travelmode=driving`, "_blank");
+    });
+    btnGps.style.background = "#3b82c4";
+    actions.appendChild(btnGps);
+
+    if (course.client_telephone) {
+      const btnAppel = creerBouton("📞 Appeler le client", () => {
+        window.location.href = `tel:${course.client_telephone.replace(/\s/g, "")}`;
+      });
+      btnAppel.style.background = "#dcdcda";
+      actions.appendChild(btnAppel);
+    }
+  }
 
   if (course.statut === "assignee") {
     actions.appendChild(creerBouton("Démarrer la course", () => changerStatut(course.id, "en_cours")));

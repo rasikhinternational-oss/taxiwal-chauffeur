@@ -14,7 +14,7 @@ window.onerror = function(msg, url, line, col, err) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Taxi Wal — Admin</title>
 <link rel="manifest" href="manifest-admin.json">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#f7f7f5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Taxi Wal Admin">
@@ -22,17 +22,17 @@ window.onerror = function(msg, url, line, col, err) {
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{
-    --noir:#0d0d0d; --noir-2:#161616; --rouge:#c81e2c; --vert:#1f8a4c;
-    --gris:#8a8a8a; --blanc:#f5f5f3; --bleu:#3b82c4;
+    --noir:#f7f7f5; --noir-2:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c;
+    --gris:#6b6b6b; --blanc:#1c1c1c; --bleu:#3b82c4;
   }
   *{box-sizing:border-box;}
   body{ margin:0;
     background:
-      linear-gradient(rgba(13,13,13,.90), rgba(13,13,13,.97)),
+      linear-gradient(rgba(255,255,255,.90), rgba(255,255,255,.94)),
       url('fond-flotte.jpg') center/cover no-repeat fixed;
     color:var(--blanc);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:60px; }
-  header{ padding:20px; border-bottom:1px solid #262626; position:sticky; top:0; background:rgba(13,13,13,.92); backdrop-filter:blur(6px); z-index:10; }
+  header{ padding:20px; border-bottom:1px solid #dcdcda; position:sticky; top:0; background:rgba(255,255,255,.85); backdrop-filter:blur(6px); z-index:10; }
   header h1{ margin:0; font-size:1.1rem; }
   @keyframes logo-pulse{
     0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(200,30,44,0)); }
@@ -40,7 +40,7 @@ window.onerror = function(msg, url, line, col, err) {
   }
   header img{ animation:logo-pulse 3.5s ease-in-out infinite; }
   nav{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:14px; }
-  nav button{ padding:16px 8px; border-radius:12px; border:1px solid #333; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
+  nav button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
   nav button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
 
   section{ display:none; padding:20px; }
@@ -49,7 +49,7 @@ window.onerror = function(msg, url, line, col, err) {
   /* Agenda / calendrier */
   .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; }
   .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #333; border-radius:8px; color:var(--blanc); cursor:pointer; }
+  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); cursor:pointer; }
   .cal-header span{ font-weight:600; text-transform:capitalize; }
   .cal-grille{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
   .cal-jour-nom{ font-size:.7rem; color:var(--gris); padding:4px 0; }
@@ -72,20 +72,27 @@ window.onerror = function(msg, url, line, col, err) {
   .course.confirmee{ border-left-color:var(--vert); }
   .course.en_cours{ border-left-color:var(--rouge); }
   .course.terminee{ border-left-color:var(--vert); }
-  .course.annulee{ border-left-color:#444; opacity:.5; }
+  .course.annulee{ border-left-color:#c7c7c5; opacity:.5; }
   .course h3{ margin:0 0 4px; font-size:1rem; }
   .course .heure{ color:var(--gris); font-size:.85rem; margin-bottom:8px; }
   .course .trajet{ font-size:.9rem; line-height:1.5; margin-bottom:10px; }
-  .course select{ width:100%; padding:10px; border-radius:8px; background:#0d0d0d; color:#fff; border:1px solid #333; margin-bottom:8px; }
+  .course select{ width:100%; padding:10px; border-radius:8px; background:#f7f7f5; color:#fff; border:1px solid #cfcfcd; margin-bottom:8px; }
   .course .ligne-actions{ display:flex; gap:8px; }
-  .course .ligne-actions button{ flex:1; padding:9px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:var(--blanc); font-size:.85rem; cursor:pointer; }
-  .statut-label{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#262626; color:var(--gris); margin-bottom:8px; }
+  .course .ligne-actions button{ flex:1; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
+  .statut-label{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#dcdcda; color:var(--gris); margin-bottom:8px; }
 
   .bloc-prix-admin{ display:flex; gap:8px; margin-bottom:8px; }
-  .bloc-prix-admin input{ flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; }
+  .bloc-prix-admin input{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:#fff; }
   .bloc-prix-admin button{ width:auto; padding:10px 14px; font-size:.85rem; background:var(--vert); border:none; border-radius:8px; color:#fff; cursor:pointer; }
   .alerte-acompte{ background:rgba(59,130,196,.15); border:1px solid var(--bleu); border-radius:8px; padding:10px; margin-bottom:8px; font-size:.85rem; }
   .alerte-acompte button{ width:100%; margin-top:8px; padding:10px; border:none; border-radius:8px; background:var(--vert); color:#fff; font-weight:600; cursor:pointer; }
+
+  .form-modif-course{ background:#f7f7f5; border-radius:10px; padding:12px; margin-top:8px; }
+  .form-modif-course label{ display:block; font-size:.75rem; color:var(--gris); margin:8px 0 3px; }
+  .form-modif-course input, .form-modif-course textarea{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir-2); color:#fff; font-size:.85rem; }
+  .form-modif-course textarea{ resize:vertical; min-height:44px; }
+  .form-modif-course .btn-enregistrer-modif{ width:100%; margin-top:12px; padding:11px; border:none; border-radius:8px; background:var(--vert); color:#fff; font-weight:600; cursor:pointer; }
+  .form-modif-course .btn-supprimer-course{ width:100%; margin-top:8px; padding:11px; border:1px solid var(--rouge); border-radius:8px; background:transparent; color:var(--rouge); font-weight:600; cursor:pointer; }
 
   /* Carte */
   #carte{ height:45vh; border-radius:12px; }
@@ -101,41 +108,41 @@ window.onerror = function(msg, url, line, col, err) {
   #outil-calcul h3{ margin:0 0 4px; font-size:.95rem; }
   #outil-calcul p{ margin:0 0 12px; color:var(--gris); font-size:.8rem; }
   #outil-calcul label{ display:block; font-size:.78rem; color:var(--gris); margin:8px 0 4px; }
-  #outil-calcul select, #outil-calcul input{ width:100%; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; font-size:.9rem; }
+  #outil-calcul select, #outil-calcul input{ width:100%; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:#fff; font-size:.9rem; }
   #btn-calculer-trajet{ width:100%; padding:12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-top:12px; cursor:pointer; }
-  #calc-resultat{ margin-top:12px; font-size:.9rem; padding:10px; border-radius:8px; background:#0d0d0d; display:none; }
+  #calc-resultat{ margin-top:12px; font-size:.9rem; padding:10px; border-radius:8px; background:#f7f7f5; display:none; }
   #calc-resultat.visible{ display:block; }
-  #calc-adresse-centrale-bloc{ margin-top:14px; padding-top:12px; border-top:1px solid #262626; }
+  #calc-adresse-centrale-bloc{ margin-top:14px; padding-top:12px; border-top:1px solid #dcdcda; }
 
   /* Caisse */
   .caisse-chauffeur{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:12px; }
   .caisse-chauffeur h3{ margin:0 0 10px; font-size:1rem; }
   .caisse-ligne{ display:flex; justify-content:space-between; font-size:.9rem; margin-bottom:6px; color:var(--gris); }
   .caisse-ligne b{ color:var(--blanc); }
-  .caisse-total{ font-size:1.1rem; font-weight:700; margin-top:10px; padding-top:10px; border-top:1px solid #262626; display:flex; justify-content:space-between; }
+  .caisse-total{ font-size:1.1rem; font-weight:700; margin-top:10px; padding-top:10px; border-top:1px solid #dcdcda; display:flex; justify-content:space-between; }
   .caisse-fond{ display:flex; gap:8px; margin-top:12px; align-items:center; }
-  .caisse-fond input{ flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; }
+  .caisse-fond input{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:#fff; }
   .caisse-fond button{ width:auto; padding:10px 14px; font-size:.85rem; }
 
   /* Feuilles de route (admin) */
   #feuilles-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:16px; }
-  #feuilles-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; }
-  #feuilles-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:var(--blanc); cursor:pointer; font-size:.85rem; }
+  #feuilles-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:#fff; }
+  #feuilles-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; font-size:.85rem; }
   .feuille-admin{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:14px; border-left:4px solid var(--gris); }
   .feuille-admin.verrouillee-fa{ border-left-color:var(--vert); }
   .feuille-admin h3{ margin:0 0 4px; font-size:1rem; }
   .feuille-admin .sous{ color:var(--gris); font-size:.82rem; margin-bottom:10px; }
   .feuille-admin .grille3-fa{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:8px; }
   .feuille-admin label{ display:block; font-size:.72rem; color:var(--gris); margin-bottom:3px; }
-  .feuille-admin input{ width:100%; padding:9px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:#fff; font-size:.85rem; }
+  .feuille-admin input{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:#fff; font-size:.85rem; }
   .feuille-admin .mini-titre{ font-size:.7rem; color:var(--gris); text-transform:uppercase; margin:10px 0 4px; }
-  .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #333; background:#0d0d0d; color:var(--blanc); font-size:.8rem; cursor:pointer; float:right; }
-  .ligne-admin{ background:#101010; border-radius:10px; padding:10px; margin-bottom:8px; border:1px solid #262626; }
+  .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.8rem; cursor:pointer; float:right; }
+  .ligne-admin{ background:#f0f1ee; border-radius:10px; padding:10px; margin-bottom:8px; border:1px solid #dcdcda; }
   .ligne-admin .num-ligne{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
   .ligne-admin .num-ligne span{ color:var(--gris); font-size:.75rem; }
-  .ligne-admin .num-ligne button{ width:auto; padding:5px 10px; font-size:.72rem; border-radius:6px; border:1px solid #333; background:#1a0d0d; color:#e07070; cursor:pointer; }
+  .ligne-admin .num-ligne button{ width:auto; padding:5px 10px; font-size:.72rem; border-radius:6px; border:1px solid #cfcfcd; background:#fbe2e2; color:#b83232; cursor:pointer; }
   .ligne-admin .grille3-fa > div{ margin-bottom:6px; }
-  #btn-ajouter-ligne-admin{ width:100%; padding:10px; border-radius:8px; border:1px dashed #444; background:transparent; color:var(--blanc); font-size:.85rem; margin-top:4px; cursor:pointer; }
+  #btn-ajouter-ligne-admin{ width:100%; padding:10px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.85rem; margin-top:4px; cursor:pointer; }
   #feuilles-vide{ color:var(--gris); text-align:center; padding:30px 0; }
 
   /* Modale nouvelle course */
@@ -145,12 +152,12 @@ window.onerror = function(msg, url, line, col, err) {
   #modale-contenu h2{ margin-top:0; font-size:1.1rem; }
   #modale-contenu label{ display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px; }
   #modale-contenu input, #modale-contenu select, #modale-contenu textarea{
-    width:100%; padding:12px; border-radius:8px; border:1px solid #333; background:var(--noir); color:var(--blanc); font-size:.95rem;
+    width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.95rem;
   }
   #modale-contenu textarea{ resize:vertical; min-height:50px; }
   #modale-actions{ display:flex; gap:10px; margin-top:18px; }
   #modale-actions button{ flex:1; padding:13px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
-  #btn-annuler-modale{ background:#262626; color:var(--blanc); }
+  #btn-annuler-modale{ background:#dcdcda; color:var(--blanc); }
   #btn-creer-course{ background:var(--rouge); color:#fff; }
   #erreur-modale{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 
@@ -159,13 +166,13 @@ window.onerror = function(msg, url, line, col, err) {
   #ecran-login-admin label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
   #ecran-login-admin input{
     width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
-    border:1px solid #333; background:var(--noir-2); color:var(--blanc); font-size:1rem;
+    border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:1rem;
   }
   #ecran-login-admin button{
     width:100%; padding:14px; border-radius:10px; border:none;
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
   }
-  #ecran-login-admin button.secondaire{ background:var(--noir-2); border:1px solid #333; margin-top:10px; }
+  #ecran-login-admin button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
   #erreur-login-admin{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 </style>
 </head>
@@ -689,6 +696,73 @@ function construireCarteAdmin(course) {
     }));
   }
   if (actions.children.length > 0) div.appendChild(actions);
+
+  // Navigation GPS en un clic (ouvre l'app Plans du téléphone avec l'itinéraire)
+  const actionsNav = document.createElement("div");
+  actionsNav.className = "ligne-actions";
+  const btnGps = document.createElement("button");
+  btnGps.textContent = "🧭 Itinéraire GPS";
+  btnGps.style.background = "#3b82c4";
+  btnGps.addEventListener("click", () => {
+    const dest = encodeURIComponent(course.adresse_arrivee);
+    const dep = encodeURIComponent(course.adresse_depart);
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${dep}&destination=${dest}&travelmode=driving`, "_blank");
+  });
+  actionsNav.appendChild(btnGps);
+  if (course.client_telephone) {
+    const btnAppel = document.createElement("button");
+    btnAppel.textContent = "📞 Appeler le client";
+    btnAppel.style.background = "#dcdcda";
+    btnAppel.addEventListener("click", () => { window.location.href = `tel:${course.client_telephone.replace(/\s/g, "")}`; });
+    actionsNav.appendChild(btnAppel);
+  }
+  div.appendChild(actionsNav);
+
+  // Modifier tous les détails de la course
+  const btnModifier = document.createElement("button");
+  btnModifier.textContent = "✏️ Modifier la course";
+  btnModifier.style.marginTop = "8px";
+  const formModif = document.createElement("div");
+  formModif.className = "form-modif-course";
+  formModif.style.display = "none";
+  formModif.innerHTML = `
+    <label>Nom du client</label><input type="text" data-champ="client_nom" value="${course.client_nom || ""}">
+    <label>Téléphone client</label><input type="text" data-champ="client_telephone" value="${course.client_telephone || ""}">
+    <label>Adresse de départ</label><input type="text" data-champ="adresse_depart" value="${course.adresse_depart || ""}">
+    <label>Adresse d'arrivée</label><input type="text" data-champ="adresse_arrivee" value="${course.adresse_arrivee || ""}">
+    <label>Date et heure</label><input type="datetime-local" data-champ="date_heure" value="${course.date_heure ? new Date(course.date_heure).toISOString().slice(0,16) : ""}">
+    <label>Passagers</label><input type="number" data-champ="passagers" value="${course.passagers ?? 1}" min="1">
+    <label>Bagages</label><input type="number" data-champ="bagages" value="${course.bagages ?? 0}" min="0">
+    <label>Prix (€)</label><input type="number" step="0.5" data-champ="prix" value="${course.prix ?? ""}">
+    <label>Notes</label><textarea data-champ="notes">${course.notes || ""}</textarea>
+    <button type="button" class="btn-enregistrer-modif">Enregistrer les modifications</button>
+    <button type="button" class="btn-supprimer-course">🗑️ Supprimer définitivement cette course</button>
+  `;
+  btnModifier.addEventListener("click", () => {
+    formModif.style.display = formModif.style.display === "none" ? "block" : "none";
+  });
+  formModif.querySelector(".btn-enregistrer-modif").addEventListener("click", async () => {
+    const maj = {};
+    formModif.querySelectorAll("[data-champ]").forEach(input => {
+      const champ = input.dataset.champ;
+      let val = input.value;
+      if (champ === "date_heure") { maj[champ] = val ? new Date(val).toISOString() : null; return; }
+      if (champ === "passagers" || champ === "bagages") { maj[champ] = val ? parseInt(val) : null; return; }
+      if (champ === "prix") { maj[champ] = val ? parseFloat(val) : null; return; }
+      maj[champ] = val || null;
+    });
+    const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    chargerCoursesAdmin();
+  });
+  formModif.querySelector(".btn-supprimer-course").addEventListener("click", async () => {
+    if (!confirm("Supprimer définitivement cette course ? Cette action est irréversible.")) return;
+    const { error } = await supabase.from("courses").delete().eq("id", course.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    chargerCoursesAdmin();
+  });
+  div.appendChild(btnModifier);
+  div.appendChild(formModif);
 
   return div;
 }

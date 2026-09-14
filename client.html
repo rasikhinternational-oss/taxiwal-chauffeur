@@ -14,20 +14,20 @@ window.onerror = function(msg, url, line, col, err) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Taxi Wal — Réserver</title>
 <link rel="manifest" href="manifest-client.json">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#f7f7f5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Taxi Wal">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
-    --noir:#0d0d0d; --noir-2:#161616; --rouge:#c81e2c; --vert:#1f8a4c;
-    --gris:#8a8a8a; --blanc:#f5f5f3; --bleu:#3b82c4;
+    --noir:#f7f7f5; --noir-2:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c;
+    --gris:#6b6b6b; --blanc:#1c1c1c; --bleu:#3b82c4;
   }
   *{box-sizing:border-box;}
   body{
     margin:0; background:
-      linear-gradient(rgba(13,13,13,.90), rgba(13,13,13,.97)),
+      linear-gradient(rgba(255,255,255,.90), rgba(255,255,255,.94)),
       url('fond-flotte.jpg') center/cover no-repeat fixed;
     color:var(--blanc);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -36,7 +36,7 @@ window.onerror = function(msg, url, line, col, err) {
   header{
     padding:20px 20px 16px; border-bottom:3px solid transparent;
     border-image:linear-gradient(90deg, var(--rouge), var(--vert)) 1;
-    position:sticky; top:0; background:rgba(13,13,13,.92); backdrop-filter:blur(6px); z-index:5;
+    position:sticky; top:0; background:rgba(255,255,255,.85); backdrop-filter:blur(6px); z-index:5;
     display:flex; align-items:center; gap:12px;
   }
   @keyframes logo-pulse{
@@ -56,26 +56,26 @@ window.onerror = function(msg, url, line, col, err) {
   #ecran-login label, #ecran-profil-setup label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
   #ecran-login input, #ecran-profil-setup input{
     width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
-    border:1px solid #333; background:var(--noir-2); color:var(--blanc); font-size:1rem;
+    border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:1rem;
   }
   button{
     width:100%; padding:14px; border-radius:10px; border:none;
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
   }
-  button.secondaire{ background:var(--noir-2); border:1px solid #333; margin-top:10px; }
+  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
   button.vert{ background:var(--vert); }
   #erreur-login, #erreur-profil, #erreur-reservation{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 
   #ecran-profil-setup{ padding:40px 20px; max-width:360px; margin:0 auto; }
 
   nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px 0; }
-  nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #333; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; }
+  nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; }
   nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
 
   /* Agenda / calendrier */
   .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; }
   .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #333; border-radius:8px; color:var(--blanc); cursor:pointer; }
+  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); cursor:pointer; }
   .cal-header span{ font-weight:600; text-transform:capitalize; }
   .cal-grille{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
   .cal-jour-nom{ font-size:.7rem; color:var(--gris); padding:4px 0; }
@@ -93,7 +93,7 @@ window.onerror = function(msg, url, line, col, err) {
   .champ{ margin-bottom:14px; }
   .champ label{ display:block; font-size:.8rem; color:var(--gris); margin-bottom:5px; }
   .champ input, .champ textarea{
-    width:100%; padding:12px; border-radius:8px; border:1px solid #333;
+    width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd;
     background:var(--noir-2); color:var(--blanc); font-size:.95rem;
   }
   .champ textarea{ resize:vertical; min-height:50px; }
@@ -112,24 +112,24 @@ window.onerror = function(msg, url, line, col, err) {
   .course.assignee{ border-left-color:var(--bleu); }
   .course.en_cours{ border-left-color:var(--rouge); }
   .course.terminee{ border-left-color:var(--vert); opacity:.75; }
-  .course.annulee{ border-left-color:#444; opacity:.5; }
+  .course.annulee{ border-left-color:#c7c7c5; opacity:.5; }
   .course h3{ margin:0 0 6px; font-size:1rem; }
   .course .heure{ color:var(--gris); font-size:.85rem; margin-bottom:10px; }
   .course .trajet{ font-size:.9rem; line-height:1.5; margin-bottom:10px; }
   .course .trajet b{ color:var(--blanc); }
   .statut-label{
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
-    background:#262626; color:var(--gris); margin-bottom:10px;
+    background:#dcdcda; color:var(--gris); margin-bottom:10px;
   }
-  .statut-label.en_attente{ background:#333; color:#ccc; }
-  .statut-label.prix_envoye{ background:rgba(200,150,30,.2); color:#e0b040; }
-  .statut-label.attente_acompte{ background:rgba(200,150,30,.2); color:#e0b040; }
+  .statut-label.en_attente{ background:#cfcfcd; color:#c7c7c5444; }
+  .statut-label.prix_envoye{ background:rgba(200,150,30,.2); color:#8a6d1e; }
+  .statut-label.attente_acompte{ background:rgba(200,150,30,.2); color:#8a6d1e; }
   .statut-label.acompte_declare{ background:rgba(59,130,196,.2); color:var(--bleu); }
   .statut-label.confirmee{ background:rgba(31,138,76,.2); color:var(--vert); }
   .statut-label.assignee{ background:rgba(59,130,196,.2); color:var(--bleu); }
   .statut-label.en_cours{ background:rgba(200,30,44,.2); color:var(--rouge); }
   .statut-label.terminee{ background:rgba(31,138,76,.2); color:var(--vert); }
-  .statut-label.annulee{ background:#262626; color:var(--gris); }
+  .statut-label.annulee{ background:#dcdcda; color:var(--gris); }
   #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
 
   /* Info process de réservation */
@@ -138,16 +138,16 @@ window.onerror = function(msg, url, line, col, err) {
   #info-process ol{ margin:6px 0 0; padding-left:18px; }
 
   /* Bloc prix proposé (à accepter) */
-  .bloc-prix-propose{ background:#161616; border:1px solid #c8961e; border-radius:10px; padding:12px; margin-top:6px; }
-  .bloc-prix-propose .montant{ font-size:1.3rem; font-weight:700; color:#e0b040; margin-bottom:8px; }
+  .bloc-prix-propose{ background:#ffffff; border:1px solid #c8961e; border-radius:10px; padding:12px; margin-top:6px; }
+  .bloc-prix-propose .montant{ font-size:1.3rem; font-weight:700; color:#8a6d1e; margin-bottom:8px; }
 
   /* Bloc paiement acompte (QR + IBAN) */
-  .bloc-paiement{ background:#0d0d0d; border-radius:10px; padding:14px; margin-top:8px; text-align:center; }
+  .bloc-paiement{ background:#f7f7f5; border-radius:10px; padding:14px; margin-top:8px; text-align:center; }
   .bloc-paiement img{ width:180px; height:180px; border-radius:8px; background:#fff; padding:6px; margin:8px auto; display:block; }
   .bloc-paiement .ligne-info{ text-align:left; font-size:.85rem; margin:6px 0; color:var(--gris); }
   .bloc-paiement .ligne-info b{ color:var(--blanc); user-select:all; }
-  .bloc-paiement .note-instant{ font-size:.78rem; color:#e0b040; margin-top:8px; text-align:left; }
-  #btn-copier-iban{ background:#262626; margin-top:10px; font-size:.85rem; padding:10px; }
+  .bloc-paiement .note-instant{ font-size:.78rem; color:#8a6d1e; margin-top:8px; text-align:left; }
+  #btn-copier-iban{ background:#dcdcda; margin-top:10px; font-size:.85rem; padding:10px; }
   .bloc-verif{ background:rgba(59,130,196,.12); border-radius:10px; padding:12px; margin-top:6px; font-size:.85rem; color:var(--bleu); }
 
   .badge-marque{
