@@ -286,7 +286,7 @@ async function chargerLignes() {
 function afficherLignes() {
   const conteneur = document.getElementById("liste-lignes");
   conteneur.innerHTML = "";
-  lignesActuelles.forEach(ligne => conteneur.appendChild(construireLigneHtml(ligne)));
+  lignesActuelles.forEach((ligne, index) => conteneur.appendChild(construireLigneHtml(ligne, index + 1)));
 }
 
 const champsLigne = [
@@ -301,7 +301,7 @@ const champsLigne = [
   ["sommes_percues", "Sommes perçues (€)", "number"]
 ];
 
-function construireLigneHtml(ligne) {
+function construireLigneHtml(ligne, numeroAffiche) {
   const div = document.createElement("div");
   div.className = "ligne-course";
 
@@ -312,17 +312,19 @@ function construireLigneHtml(ligne) {
   let badge = "";
   if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
 
-  // Résumé affiché sur la ligne repliée : lieu de départ → lieu d'arrivée + heure
+  // Résumé affiché sur la ligne : lieu de départ → lieu d'arrivée + heure
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
   const heureResume = ligne.embarquement_heure ? " · " + ligne.embarquement_heure : "";
 
   const entete = document.createElement("div");
   entete.className = "num";
-  entete.innerHTML = `<span>Course n° ${ligne.n_ordre} · ${resume}${heureResume}${badge}</span><span class="chevron-ligne">▾</span>`;
+  // Numéro toujours séquentiel (1, 2, 3, 4, 5…) selon la position affichée, pas selon n_ordre en base
+  entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${resume}${heureResume}${badge}</span><span class="chevron-ligne">▴</span>`;
   div.appendChild(entete);
 
   const corps = document.createElement("div");
-  corps.style.display = "none";
+  // Détails visibles directement à l'ouverture de la page, pas besoin de cliquer
+  corps.style.display = "block";
 
   const etat = document.createElement("div");
   etat.className = "etat-sauvegarde";
