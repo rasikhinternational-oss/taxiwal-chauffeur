@@ -1542,7 +1542,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   const entete = document.createElement("div");
   entete.className = "num-ligne";
   // Numéro toujours séquentiel (1, 2, 3, 4, 5…) selon la position affichée, pas selon n_ordre en base
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${resume}${heureResume}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""} <span class="chevron-ligne">▴</span></span>`;
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${resume}${heureResume}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""} <span class="chevron-ligne">▾</span></span>`;
 
   // Accès total : si la ligne est liée à une vraie course, la supprimer supprime la course elle-même
   // (et donc la ligne, via le trigger côté base) ; sinon elle supprime juste la ligne manuelle
@@ -1566,7 +1566,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
 
   const grille = document.createElement("div");
   grille.className = "grille3-fa";
-  // Détails visibles directement, comme côté chauffeur — pas besoin de cliquer
+  grille.style.display = "none"; // repliée par défaut, comme sur l'app chauffeur — plus facile à parcourir
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const wrap = document.createElement("div");
