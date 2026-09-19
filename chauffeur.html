@@ -348,26 +348,46 @@ let idsCoursesConnues = null; // null = pas encore initialisé
 function jouerSonAlerte() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.25].forEach(delai => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + delai);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delai + 0.2);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + delai);
-      osc.stop(ctx.currentTime + delai + 0.2);
-    });
+    // Sonnerie façon "appel téléphonique" : deux tonalités alternées, fortes, répétées plusieurs fois
+    const frequences = [988, 1319]; // la-do aigu, comme une sonnerie classique
+    const nbSonneries = 4;
+    const dureeNote = 0.35;
+    const pauseEntreNotes = 0.12;
+    const pauseEntreSonneries = 0.5;
+    let t = ctx.currentTime;
+
+    for (let s = 0; s < nbSonneries; s++) {
+      frequences.forEach(freq => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square"; // son plus perçant qu'une sinusoïde, se remarque mieux
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02); // volume fort
+        gain.gain.setValueAtTime(0.9, t + dureeNote - 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dureeNote);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + dureeNote);
+        t += dureeNote + pauseEntreNotes;
+      });
+      t += pauseEntreSonneries;
+    }
   } catch (e) { console.error("Son impossible :", e); }
+
+  // Vibration façon appel entrant, en plus du son (si le téléphone le permet)
+  if ("vibrate" in navigator) {
+    try { navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch (e) {}
+  }
 }
 
 function notifierNouvelleCourse(course) {
   jouerSonAlerte();
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("Nouvelle course Taxi Wal 🚕", {
+    new Notification("🚕 Nouvelle course Taxi Wal — vérifie vite !", {
       body: `${course.adresse_depart} → ${course.adresse_arrivee}`,
-      tag: "course-" + course.id
+      tag: "course-" + course.id,
+      requireInteraction: true // reste affichée à l'écran jusqu'à ce que le chauffeur la voie
     });
   }
 }
@@ -547,7 +567,7 @@ function construireCarteCourse(course) {
   }[course.statut] || course.statut;
 
   div.innerHTML = `
-    <span class="statut-label">${labelStatut}</span>
+    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>
     <h3>${course.client_nom || "Client"}</h3>
     <div class="heure">${heure}</div>
     <div class="trajet">
@@ -564,6 +584,12 @@ function construireCarteCourse(course) {
 
   const actions = document.createElement("div");
   actions.className = "course-actions";
+
+  if (course.statut === "assignee" && !course.accepte_chauffeur) {
+    const btnAccepter = creerBouton("✅ Accepter la course", () => accepterCourse(course.id));
+    btnAccepter.style.background = "var(--vert)";
+    actions.appendChild(btnAccepter);
+  }
 
   if (course.statut === "assignee" || course.statut === "en_cours") {
     const btnGps = creerBouton("🧭 Itinéraire GPS", () => {
@@ -583,7 +609,7 @@ function construireCarteCourse(course) {
     }
   }
 
-  if (course.statut === "assignee") {
+  if (course.statut === "assignee" && course.accepte_chauffeur) {
     actions.appendChild(creerBouton("Démarrer la course", () => {
       const ok = window.confirm(
         "Avant de démarrer :\n\n" +
@@ -591,7 +617,7 @@ function construireCarteCourse(course) {
         "2) Complète ta feuille de route\n\n" +
         "Continuer et démarrer la course ?"
       );
-      if (ok) changerStatut(course.id, "en_cours");
+      if (ok) demarrerCourse(course.id);
     }));
   } else if (course.statut === "en_cours") {
     actions.appendChild(creerBouton("Marquer terminée", () => ouvrirModalePaiement(course.id)));
@@ -615,6 +641,29 @@ async function changerStatut(courseId, nouveauStatut) {
     .eq("id", courseId);
 
   if (error) { alert("Impossible de modifier : " + error.message); return; }
+  chargerCourses();
+}
+
+// Le chauffeur confirme avoir bien reçu/accepté la course — l'admin le voit directement
+// apparaître dans son application (notification + son), sans email
+async function accepterCourse(courseId) {
+  const { error } = await supabase
+    .from("courses")
+    .update({ accepte_chauffeur: true, accepte_a: new Date().toISOString() })
+    .eq("id", courseId);
+
+  if (error) { alert("Impossible d'accepter : " + error.message); return; }
+  chargerCourses();
+}
+
+// Le chauffeur démarre la course — l'admin le voit directement dans son application
+async function demarrerCourse(courseId) {
+  const { error } = await supabase
+    .from("courses")
+    .update({ statut: "en_cours" })
+    .eq("id", courseId);
+
+  if (error) { alert("Impossible de démarrer : " + error.message); return; }
   chargerCourses();
 }
 

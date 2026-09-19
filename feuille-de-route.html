@@ -332,12 +332,15 @@ function construireLigneHtml(ligne, numeroAffiche) {
   corps.appendChild(etat);
 
   champsLigne.forEach(([champ, libelle, type]) => {
+    const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const wrap = document.createElement("div");
+    if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
     const lab = document.createElement("label");
     lab.textContent = libelle;
     const input = document.createElement("input");
     input.type = type;
     if (type === "number") input.step = "0.1";
+    if (estAdresse) input.style.cssText = "font-size:1rem; padding:13px; font-weight:600;";
     input.value = ligne[champ] ?? "";
     input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {

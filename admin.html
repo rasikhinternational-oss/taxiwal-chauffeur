@@ -443,7 +443,12 @@ function demarrerAdmin() {
   chargerCoursesAdmin();
   setInterval(chargerCoursesAdmin, 20000);
   setInterval(() => {
-    if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
+    const zoneFeuilles = document.getElementById("section-feuilles");
+    if (!zoneFeuilles.classList.contains("visible")) return;
+    // Ne jamais reconstruire la liste pendant que l'admin est en train de remplir un champ
+    // (sinon le champ disparaît sous ses doigts et il doit rescroller pour le retrouver)
+    if (zoneFeuilles.contains(document.activeElement) && document.activeElement.tagName !== "BODY") return;
+    chargerFeuillesAdmin();
   }, 15000);
 }
 
@@ -521,18 +526,27 @@ async function chargerCoursesAdmin() {
 
   if (error) { console.error(error); return; }
 
-  // Détecte les nouvelles demandes clients jamais vues, et les paiements tout juste déclarés
+  // Détecte les nouvelles demandes clients jamais vues, les paiements tout juste déclarés,
+  // et maintenant aussi l'acceptation et le démarrage d'une course par le chauffeur
   if (idsCoursesConnusAdmin === null) {
-    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, c.statut]));
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur }]));
   } else {
     (courses || []).forEach(c => {
-      const ancienStatut = idsCoursesConnusAdmin.get(c.id);
-      if (ancienStatut === undefined && c.origine === "client") {
+      const ancien = idsCoursesConnusAdmin.get(c.id);
+      if (ancien === undefined && c.origine === "client") {
         notifierNouvelleCourseAdmin(c);
-      } else if (ancienStatut && ancienStatut !== "acompte_declare" && c.statut === "acompte_declare") {
-        notifierNouvelleCourseAdmin({ ...c, adresse_depart: "💰 Acompte déclaré payé", adresse_arrivee: c.adresse_arrivee });
+      } else if (ancien) {
+        if (ancien.statut !== "acompte_declare" && c.statut === "acompte_declare") {
+          notifierNouvelleCourseAdmin({ ...c, adresse_depart: "💰 Acompte déclaré payé", adresse_arrivee: c.adresse_arrivee });
+        }
+        if (!ancien.accepte && c.accepte_chauffeur) {
+          notifierNouvelleCourseAdmin({ ...c, adresse_depart: "✅ Course acceptée par le chauffeur", adresse_arrivee: c.adresse_arrivee });
+        }
+        if (ancien.statut === "assignee" && c.statut === "en_cours") {
+          notifierNouvelleCourseAdmin({ ...c, adresse_depart: "🚕 Chauffeur en route pour", adresse_arrivee: c.adresse_arrivee });
+        }
       }
-      idsCoursesConnusAdmin.set(c.id, c.statut);
+      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur });
     });
   }
 
@@ -684,7 +698,7 @@ function construireCarteAdmin(course) {
     : "";
 
   div.innerHTML = `
-    <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}</span>
+    <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>
     <h3>${course.client_nom || "Client"} — ${prixAffiche}</h3>
     <div class="heure">${heure} · Chauffeur : ${nomChauffeur}</div>
     <div class="trajet">
@@ -746,7 +760,7 @@ function construireCarteAdmin(course) {
     chauffeursCache.map(c => `<option value="${c.id}" ${c.id === course.chauffeur_id ? "selected" : ""}>${c.nom || c.telephone}</option>`).join("");
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
-    await supabase.from("courses").update({ chauffeur_id: nouveauChauffeurId, statut: "assignee" }).eq("id", course.id);
+    await supabase.from("courses").update({ chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null }).eq("id", course.id);
     if (nouveauChauffeurId) notifierChauffeurParEmail(course.id); // automatique, aucun clic requis
     chargerCoursesAdmin();
   });
@@ -1554,10 +1568,13 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   grille.className = "grille3-fa";
   // Détails visibles directement, comme côté chauffeur — pas besoin de cliquer
   champsLigneFA.forEach(([champ, libelle, type]) => {
+    const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const wrap = document.createElement("div");
+    if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
     const lab = document.createElement("label"); lab.textContent = libelle;
     const input = document.createElement("input");
     input.type = type; if (type === "number") input.step = "0.1";
+    if (estAdresse) input.style.cssText = "font-size:1rem; padding:12px; font-weight:600;";
     input.value = ligne[champ] ?? "";
     input.addEventListener("change", async (e) => {
       await supabase.from("lignes_feuille_route").update({ [champ]: e.target.value || null }).eq("id", ligne.id);
