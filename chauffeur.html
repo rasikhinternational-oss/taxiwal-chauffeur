@@ -183,10 +183,11 @@ window.onerror = function(msg, url, line, col, err) {
     <span id="label-dispo">Disponible / position partagée</span>
     <div class="switch" id="switch-dispo"></div>
   </div>
-  <div id="bloc-gains-jour">
+  <div id="bloc-gains-jour" style="flex-wrap:wrap; row-gap:6px;">
     <span>Aujourd'hui : <b id="gains-nb-courses">0</b> course(s)</span>
     <span>💵 <b id="gains-cash">0,00 €</b></span>
     <span>💳 <b id="gains-carte">0,00 €</b></span>
+    <span>🧾 <b id="gains-facture">0,00 €</b></span>
   </div>
   <a href="feuille-de-route.html" id="btn-feuille-route" style="text-decoration:none; display:block; text-align:center;">📋 Ma feuille de route du jour</a>
 
@@ -218,9 +219,10 @@ window.onerror = function(msg, url, line, col, err) {
 <div id="modale-paiement" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:60; align-items:flex-end;">
   <div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:24px;">
     <h2 style="margin-top:0; font-size:1.1rem;">Comment le client a-t-il payé ?</h2>
-    <div style="display:flex; gap:10px; margin-top:16px;">
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
       <button id="btn-paiement-cash" style="background:var(--vert);">💶 Cash</button>
       <button id="btn-paiement-carte" style="background:var(--bleu, #3b82c4);">💳 Carte</button>
+      <button id="btn-paiement-facture" style="background:#8a5a00;">🧾 Facture</button>
     </div>
     <button id="btn-annuler-paiement" class="secondaire" style="margin-top:12px;">Annuler</button>
   </div>
@@ -681,6 +683,7 @@ document.getElementById("btn-annuler-paiement").addEventListener("click", () => 
 });
 document.getElementById("btn-paiement-cash").addEventListener("click", () => terminerAvecPaiement("cash"));
 document.getElementById("btn-paiement-carte").addEventListener("click", () => terminerAvecPaiement("carte"));
+document.getElementById("btn-paiement-facture").addEventListener("click", () => terminerAvecPaiement("facture"));
 
 async function terminerAvecPaiement(mode) {
   if (!courseEnFinDePaiement) return;

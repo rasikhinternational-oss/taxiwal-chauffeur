@@ -443,6 +443,8 @@ function demarrerAdmin() {
   chargerChauffeurs();
   chargerCoursesAdmin();
   setInterval(chargerCoursesAdmin, 20000);
+  surveillerImpressionsFeuilles(); // premier relevé, sans notifier rétroactivement
+  setInterval(surveillerImpressionsFeuilles, 20000);
   setInterval(() => {
     const zoneFeuilles = document.getElementById("section-feuilles");
     if (!zoneFeuilles.classList.contains("visible")) return;
@@ -451,6 +453,34 @@ function demarrerAdmin() {
     if (zoneFeuilles.contains(document.activeElement) && document.activeElement.tagName !== "BODY") return;
     chargerFeuillesAdmin();
   }, 15000);
+}
+
+// Prévient l'admin (son + notification, comme pour une nouvelle course) dès qu'un chauffeur
+// imprime sa feuille de route — utile pour être sûr que c'est bien fait avant un contrôle.
+let imprimeesConnues = null; // null = pas encore initialisé
+async function surveillerImpressionsFeuilles() {
+  const { data: feuilles, error } = await supabase
+    .from("feuilles_route")
+    .select("id, date_service, imprimee_a, profils:chauffeur_id(nom)")
+    .not("imprimee_a", "is", null);
+  if (error) { console.error(error); return; }
+
+  if (imprimeesConnues === null) {
+    imprimeesConnues = new Map((feuilles || []).map(f => [f.id, f.imprimee_a]));
+    return; // au premier chargement, on note juste l'état actuel sans alerter sur l'historique
+  }
+
+  (feuilles || []).forEach(f => {
+    const ancien = imprimeesConnues.get(f.id);
+    if (ancien !== f.imprimee_a) {
+      notifierNouvelleCourseAdmin({
+        id: "impression-" + f.id,
+        adresse_depart: `🖨️ ${f.profils?.nom || "Un chauffeur"} a imprimé sa feuille de route`,
+        adresse_arrivee: `du ${new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE")}`
+      });
+    }
+    imprimeesConnues.set(f.id, f.imprimee_a);
+  });
 }
 
 // ---------- NAVIGATION ONGLETS ----------
@@ -493,24 +523,45 @@ let idsCoursesConnusAdmin = null; // null = pas encore initialisé
 function jouerSonAlerteAdmin() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.22, 0.44].forEach(delai => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine"; osc.frequency.value = 740;
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + delai);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delai + 0.2);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + delai); osc.stop(ctx.currentTime + delai + 0.2);
-    });
+    // Sonnerie façon "appel téléphonique" : deux tonalités alternées, fortes, répétées plusieurs fois
+    const frequences = [988, 1319]; // la-do aigu, comme une sonnerie classique
+    const nbSonneries = 4;
+    const dureeNote = 0.35;
+    const pauseEntreNotes = 0.12;
+    const pauseEntreSonneries = 0.5;
+    let t = ctx.currentTime;
+
+    for (let s = 0; s < nbSonneries; s++) {
+      frequences.forEach(freq => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square"; // son plus perçant qu'une sinusoïde, se remarque mieux
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02); // volume fort
+        gain.gain.setValueAtTime(0.9, t + dureeNote - 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dureeNote);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + dureeNote);
+        t += dureeNote + pauseEntreNotes;
+      });
+      t += pauseEntreSonneries;
+    }
   } catch (e) { console.error("Son impossible :", e); }
+
+  if ("vibrate" in navigator) {
+    try { navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch (e) {}
+  }
 }
 
 function notifierNouvelleCourseAdmin(course) {
   jouerSonAlerteAdmin();
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("Nouvelle demande de course 🚕", {
+    new Notification("🚕 Nouvelle demande de course — vérifie vite !", {
       body: `${course.client_nom || "Client"} — ${course.adresse_depart} → ${course.adresse_arrivee}`,
-      tag: "admin-course-" + course.id
+      tag: "admin-course-" + course.id,
+      requireInteraction: true
     });
   }
 }
@@ -1289,19 +1340,22 @@ async function chargerCaisse() {
     const montantFond = fond ? parseFloat(fond.montant_initial) : 0;
 
     const coursesChauffeur = (courses || []).filter(c => c.chauffeur_id === ch.id);
-    const totalCash = coursesChauffeur.filter(c => c.mode_paiement === "cash")
-      .reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
-    const totalCarte = coursesChauffeur.filter(c => c.mode_paiement === "carte")
-      .reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
-    const caisseActuelle = montantFond + totalCash;
+    const coursesCash = coursesChauffeur.filter(c => c.mode_paiement === "cash");
+    const coursesCarte = coursesChauffeur.filter(c => c.mode_paiement === "carte");
+    const coursesFacture = coursesChauffeur.filter(c => c.mode_paiement === "facture");
+    const totalCash = coursesCash.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
+    const totalCarte = coursesCarte.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
+    const totalFacture = coursesFacture.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
+    const caisseActuelle = montantFond + totalCash; // seul le cash constitue de l'argent physique en poche
 
     const div = document.createElement("div");
     div.className = "caisse-chauffeur";
     div.innerHTML = `
       <h3>${ch.nom || "Chauffeur"}</h3>
       <div class="caisse-ligne"><span>Fond de caisse du matin</span><b>${montantFond.toFixed(2)} €</b></div>
-      <div class="caisse-ligne"><span>Courses payées cash aujourd'hui</span><b>${totalCash.toFixed(2)} €</b></div>
-      <div class="caisse-ligne"><span>Courses payées carte aujourd'hui</span><b>${totalCarte.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>💵 Cash — ${coursesCash.length} course(s)</span><b>${totalCash.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>💳 Carte — ${coursesCarte.length} course(s)</span><b>${totalCarte.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>🧾 Facture — ${coursesFacture.length} course(s)</span><b>${totalFacture.toFixed(2)} €</b></div>
       <div class="caisse-total"><span>Caisse actuelle (espèces)</span><span>${caisseActuelle.toFixed(2)} €</span></div>
       <div class="caisse-fond">
         <input type="number" step="0.5" placeholder="Nouveau fond (€)" id="input-fond-${ch.id}" value="${montantFond || ""}">
@@ -1362,7 +1416,9 @@ const champsLigneFA = [
   ["debarquement_lieu", "Débarq. — Lieu", "text"],
   ["debarquement_heure", "Débarq. — Heure", "time"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
-  ["sommes_percues", "Sommes perçues (€)", "number"]
+  ["sommes_percues", "Sommes perçues (€)", "number"],
+  ["mode_paiement", "Mode de paiement", "select"],
+  ["numero_dossier", "N° de dossier (assurance)", "text"]
 ];
 
 document.getElementById("fa-date").value = new Date().toISOString().slice(0, 10);
@@ -1622,22 +1678,44 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   const grille = document.createElement("div");
   grille.className = "grille3-fa";
   grille.style.display = "none"; // repliée par défaut, comme sur l'app chauffeur — plus facile à parcourir
+  const wrapsParChampAdmin = {};
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
+    const estPaiement = champ === "mode_paiement";
     const wrap = document.createElement("div");
+    wrapsParChampAdmin[champ] = wrap;
     if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
     const lab = document.createElement("label"); lab.textContent = libelle;
-    const input = document.createElement("input");
-    input.type = type; if (type === "number") input.step = "0.1";
+    const input = estPaiement ? document.createElement("select") : document.createElement("input");
+    if (estPaiement) {
+      input.innerHTML = `
+        <option value="">— Choisir —</option>
+        <option value="cash">💶 Cash</option>
+        <option value="carte">💳 Carte</option>
+        <option value="facture">🧾 Facture</option>
+      `;
+    } else {
+      input.type = type; if (type === "number") input.step = "0.1";
+    }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:12px; font-weight:600;";
     input.value = ligne[champ] ?? "";
     input.addEventListener("change", async (e) => {
       await supabase.from("lignes_feuille_route").update({ [champ]: e.target.value || null }).eq("id", ligne.id);
+      if (estPaiement) appliquerVisibilitePaiementAdmin();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     grille.appendChild(wrap);
   });
   div.appendChild(grille);
+
+  // Facture (assurance) : pas de montant à saisir, mais un n° de dossier — sinon Sommes perçues normal
+  function appliquerVisibilitePaiementAdmin() {
+    const mode = wrapsParChampAdmin["mode_paiement"].querySelector("select").value;
+    const estFacture = mode === "facture";
+    wrapsParChampAdmin["sommes_percues"].style.display = estFacture ? "none" : "";
+    wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
+  }
+  appliquerVisibilitePaiementAdmin();
 
   entete.addEventListener("click", () => {
     const ouvert = grille.style.display !== "none";

@@ -54,6 +54,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <header>
   <a href="chauffeur.html" id="btn-retour">← Retour</a>
+  <button id="btn-imprimer-fr" style="background:#3b82c4; margin-bottom:14px;">🖨️ Imprimer / PDF (contrôle)</button>
   <h1>Feuille de route</h1>
   <p id="sous-titre">Chargement…</p>
 </header>
@@ -298,7 +299,9 @@ const champsLigne = [
   ["debarquement_lieu", "Débarquement — Lieu", "text"],
   ["debarquement_heure", "Débarquement — Heure", "time"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
-  ["sommes_percues", "Sommes perçues (€)", "number"]
+  ["sommes_percues", "Sommes perçues (€)", "number"],
+  ["mode_paiement", "Mode de paiement", "select"],
+  ["numero_dossier", "N° de dossier (assurance)", "text"]
 ];
 
 function construireLigneHtml(ligne, numeroAffiche) {
@@ -331,15 +334,27 @@ function construireLigneHtml(ligne, numeroAffiche) {
   etat.id = `etat-ligne-${ligne.id}`;
   corps.appendChild(etat);
 
+  const wrapsParChamp = {};
   champsLigne.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
+    const estPaiement = champ === "mode_paiement";
     const wrap = document.createElement("div");
+    wrapsParChamp[champ] = wrap;
     if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
     const lab = document.createElement("label");
     lab.textContent = libelle;
-    const input = document.createElement("input");
-    input.type = type;
-    if (type === "number") input.step = "0.1";
+    const input = estPaiement ? document.createElement("select") : document.createElement("input");
+    if (estPaiement) {
+      input.innerHTML = `
+        <option value="">— Choisir —</option>
+        <option value="cash">💶 Cash</option>
+        <option value="carte">💳 Carte</option>
+        <option value="facture">🧾 Facture</option>
+      `;
+    } else {
+      input.type = type;
+      if (type === "number") input.step = "0.1";
+    }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:13px; font-weight:600;";
     input.value = ligne[champ] ?? "";
     input.disabled = ligneVerrouillee;
@@ -357,11 +372,21 @@ function construireLigneHtml(ligne, numeroAffiche) {
         etatEl.className = "etat-sauvegarde ok";
         setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
       }
+      if (estPaiement) appliquerVisibilitePaiement(); // change immédiat, sans attendre le prochain rendu
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     corps.appendChild(wrap);
   });
   div.appendChild(corps);
+
+  // Facture (assurance) : pas de montant à saisir, mais un n° de dossier — sinon Sommes perçues normal
+  function appliquerVisibilitePaiement() {
+    const mode = wrapsParChamp["mode_paiement"].querySelector("select").value;
+    const estFacture = mode === "facture";
+    wrapsParChamp["sommes_percues"].style.display = estFacture ? "none" : "";
+    wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
+  }
+  appliquerVisibilitePaiement();
 
   entete.addEventListener("click", () => {
     const ouvert = corps.style.display !== "none";
@@ -408,6 +433,119 @@ function appliquerVerrouillage() {
   badge.textContent = verrou ? "Signée · verrouillée" : "En cours";
   badge.classList.toggle("verrouillee", verrou);
 }
+
+// ---------- IMPRESSION A4 — pour le contrôle routier, directement depuis le véhicule ----------
+function fmtVal(v) { return (v === null || v === undefined || v === "") ? "" : v; }
+function calcTotal2(debut, fin) {
+  const d = parseFloat(debut), f = parseFloat(fin);
+  return (!isNaN(d) && !isNaN(f)) ? (f - d).toFixed(2) : "";
+}
+function minutesDepuisHeure2(h) {
+  if (!h) return null;
+  const [hh, mm] = h.split(":").map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  return hh * 60 + mm;
+}
+function calcTotalHeures2(debut, fin) {
+  const d = minutesDepuisHeure2(debut), f = minutesDepuisHeure2(fin);
+  if (d === null || f === null) return "";
+  const total = (f - d + 1440) % 1440;
+  return `${Math.floor(total / 60)}h${String(total % 60).padStart(2, "0")}`;
+}
+
+document.getElementById("btn-imprimer-fr").addEventListener("click", async () => {
+  // Trace l'impression pour que l'admin soit prévenu et puisse vérifier que ça a bien été fait
+  const { data: { user } } = await supabase.auth.getUser();
+  await supabase.from("feuilles_route")
+    .update({ imprimee_a: new Date().toISOString(), imprimee_par: user?.id || null })
+    .eq("id", feuilleActuelle.id);
+
+  const f = feuilleActuelle;
+  const lignesHtml = (lignesActuelles.length ? lignesActuelles : new Array(8).fill(null)).map((l, i) => {
+    l = l || {};
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${fmtVal(l.index_depart)}</td>
+      <td>${fmtVal(l.embarquement_index)}</td>
+      <td>${fmtVal(l.embarquement_lieu)}</td>
+      <td>${fmtVal(l.embarquement_heure)}</td>
+      <td>${fmtVal(l.debarquement_index)}</td>
+      <td>${fmtVal(l.debarquement_lieu)}</td>
+      <td>${fmtVal(l.debarquement_heure)}</td>
+      <td>${fmtVal(l.prix_taximetre)}</td>
+      <td>${fmtVal(l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || "")) : l.sommes_percues)}</td>
+    </tr>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+  <title>Feuille de route — ${document.getElementById("identite-chauffeur").textContent} — ${document.getElementById("identite-date").textContent}</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Georgia, 'Times New Roman', serif; color: #000; font-size: 11px; margin: 0; }
+    h1 { text-align: center; text-decoration: underline; font-size: 18px; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    td, th { border: 1px solid #000; padding: 4px 6px; }
+    h2 { font-size: 12px; text-align: center; margin: 8px 0 4px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 0; }
+    .mini { font-size: 9px; color: #444; text-transform: uppercase; }
+    .valeur { font-weight: bold; }
+    .courses-table th { font-size: 9px; }
+    .courses-table td { font-size: 10px; text-align: center; height: 22px; }
+    .signature { margin-top: 16px; }
+    .note-bas { font-size: 8px; margin-top: 4px; }
+    @media print { .btn-print { display: none; } }
+  </style></head>
+  <body>
+    <button class="btn-print" onclick="window.print()" style="margin-bottom:10px;">🖨️ Imprimer</button>
+    <h1>FEUILLE DE ROUTE</h1>
+    <table>
+      <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
+          <td colspan="3" class="valeur">Rasikh international</td></tr>
+      <tr><td><span class="mini">Date</span> <span class="valeur">${document.getElementById("identite-date").textContent}</span></td>
+          <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${document.getElementById("identite-chauffeur").textContent}</span></td></tr>
+      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${document.getElementById("identite-plaque").textContent}</span></td>
+          <td><span class="mini">Véhicule</span><br><span class="valeur">${document.getElementById("identite-vehicule").textContent}</span></td>
+          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${document.getElementById("identite-numid").textContent}</span></td></tr>
+    </table>
+
+    <h2>Service</h2>
+    <table>
+      <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
+      <tr><td>Début</td><td>${fmtVal(f.heure_debut)}</td><td>Interruptions : ${fmtVal(f.interruptions)}</td>
+          <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.taximetre_fin)}</td></tr>
+      <tr><td>Fin</td><td>${fmtVal(f.heure_fin)}</td><td></td>
+          <td>Début</td><td>${fmtVal(f.index_km_debut)}</td><td>${fmtVal(f.taximetre_debut)}</td></tr>
+      <tr><td>Total</td><td>${calcTotalHeures2(f.heure_debut, f.heure_fin)}</td><td></td>
+          <td>Total</td><td>${calcTotal2(f.index_km_debut, f.index_km_fin)}</td><td>${calcTotal2(f.taximetre_debut, f.taximetre_fin)}</td></tr>
+    </table>
+
+    <table>
+      <tr><th></th><th>Prise en charge</th><th>Index Km (Km totaux)</th><th>Km en charge</th><th>Chutes (€)</th><th>Recettes</th></tr>
+      <tr><td>Fin</td><td>${fmtVal(f.prise_en_charge_fin)}</td><td>${fmtVal(f.index_km_totaux_fin)}</td><td>${fmtVal(f.km_en_charge_fin)}</td><td>${fmtVal(f.chutes_fin)}</td><td>${fmtVal(f.recettes_fin)}</td></tr>
+      <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut)}</td></tr>
+      <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin)}</td></tr>
+    </table>
+
+    <h2>Courses</h2>
+    <table class="courses-table">
+      <tr>
+        <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
+        <th colspan="3">Embarquement</th><th colspan="3">Débarquement</th>
+        <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th>
+      </tr>
+      <tr><th>Index</th><th>Lieu</th><th>Heure</th><th>Index</th><th>Lieu</th><th>Heure</th></tr>
+      ${lignesHtml}
+    </table>
+
+    <div class="signature">Signature du chauffeur : ______________________________</div>
+    <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.</div>
+  </body></html>`;
+
+  const fenetre = window.open("", "_blank");
+  if (!fenetre) { alert("Le navigateur a bloqué l'ouverture de la fenêtre d'impression. Autorise les pop-ups pour ce site."); return; }
+  fenetre.document.write(html);
+  fenetre.document.close();
+});
 </script>
 </body>
 </html>
