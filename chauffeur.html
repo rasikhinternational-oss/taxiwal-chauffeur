@@ -321,6 +321,26 @@ async function demarrerEspaceChauffeur() {
   await chargerCourses(); // premier chargement : on note juste les courses existantes, sans sonner
   // Rafraîchit la liste toutes les 30 secondes (nouvelles courses assignées)
   setInterval(chargerCourses, 30000);
+
+  // Localisation activée automatiquement dès l'ouverture de l'app (sans devoir toucher le bouton
+  // "Disponible") — comme ça l'admin voit tout de suite le chauffeur sur la carte dès qu'il ouvre l'app.
+  activerLocalisationAutomatique();
+}
+
+function activerLocalisationAutomatique() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    () => {
+      // Permission déjà accordée (ou vient d'être accordée) : on active "Disponible" tout seul
+      dispoActive = true;
+      switchDispo.classList.add("actif");
+      demarrerPartagePosition();
+    },
+    (err) => {
+      // Permission refusée ou indisponible : le chauffeur pourra toujours l'activer à la main
+      console.error("Localisation automatique impossible :", err);
+    }
+  );
 }
 
 // Garantit qu'une feuille de route (avec identité/véhicule déjà pré-remplis) existe pour aujourd'hui,
