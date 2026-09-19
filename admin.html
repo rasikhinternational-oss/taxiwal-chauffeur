@@ -331,7 +331,7 @@ window.onerror = function(msg, url, line, col, err) {
     <input type="number" id="input-passagers" value="1" min="1">
 
     <label>Prix (€)</label>
-    <input type="number" id="input-prix" step="0.5">
+    <input type="text" id="input-prix" inputmode="decimal" placeholder="ex: 35 ou 35 forfait">
 
     <label>Notes</label>
     <textarea id="input-notes"></textarea>
@@ -512,9 +512,10 @@ async function chargerChauffeurs() {
   chauffeursCache = data || [];
 
   const select = document.getElementById("input-chauffeur");
-  select.innerHTML = chauffeursCache
-    .map(c => `<option value="${c.id}">${c.nom || c.telephone || c.id}</option>`)
-    .join("");
+  select.innerHTML = `<option value="">— Aucun (à attribuer plus tard) —</option>` +
+    chauffeursCache
+      .map(c => `<option value="${c.id}">${c.nom || c.telephone || c.id}</option>`)
+      .join("");
 }
 
 // ---------- NOTIFICATION ADMIN : nouvelle demande client (son + notification navigateur) ----------
@@ -1804,10 +1805,19 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     .courses-table td { font-size: 10px; text-align: center; height: 22px; }
     .signature { margin-top: 16px; }
     .note-bas { font-size: 8px; margin-top: 4px; }
-    @media print { .btn-print { display: none; } }
+    .barre-actions-impression { display: flex; gap: 8px; margin-bottom: 10px; }
+    .barre-actions-impression button {
+      padding: 8px 14px; border-radius: 6px; border: 1px solid #999; background: #f2f2f2;
+      color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
+    }
+    .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
+    @media print { .btn-print, .barre-actions-impression { display: none; } }
   </style></head>
   <body>
-    <button class="btn-print" onclick="window.print()" style="margin-bottom:10px;">🖨️ Imprimer</button>
+    <div class="barre-actions-impression">
+      <button onclick="window.close()">← Retour</button>
+      <button class="btn-imprimer-action" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
     <h1>FEUILLE DE ROUTE</h1>
     <table>
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
