@@ -298,6 +298,8 @@ const champsLigne = [
   ["debarquement_index", "Débarquement — Index", "number"],
   ["debarquement_lieu", "Débarquement — Lieu", "text"],
   ["debarquement_heure", "Débarquement — Heure", "time"],
+  ["type_course", "Type de course", "select_type"],
+  ["aller_retour", "Aller-retour ?", "checkbox"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
   ["sommes_percues", "Sommes perçues (€)", "number"],
   ["mode_paiement", "Mode de paiement", "select"],
@@ -338,12 +340,14 @@ function construireLigneHtml(ligne, numeroAffiche) {
   champsLigne.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
+    const estTypeCourse = champ === "type_course";
+    const estCheckbox = type === "checkbox";
     const wrap = document.createElement("div");
     wrapsParChamp[champ] = wrap;
     if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
     const lab = document.createElement("label");
     lab.textContent = libelle;
-    const input = estPaiement ? document.createElement("select") : document.createElement("input");
+    const input = (estPaiement || estTypeCourse) ? document.createElement("select") : document.createElement("input");
     if (estPaiement) {
       input.innerHTML = `
         <option value="">— Choisir —</option>
@@ -351,15 +355,25 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="carte">💳 Carte</option>
         <option value="facture">🧾 Facture</option>
       `;
+    } else if (estTypeCourse) {
+      input.innerHTML = `
+        <option value="normale">Course normale (taximètre)</option>
+        <option value="forfait">Forfait</option>
+        <option value="navette_aeroport">Navette aéroport</option>
+      `;
+    } else if (estCheckbox) {
+      input.type = "checkbox";
+      input.style.cssText = "width:auto; margin-top:8px;";
     } else {
       input.type = type;
       if (type === "number") input.step = "0.1";
     }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:13px; font-weight:600;";
-    input.value = ligne[champ] ?? "";
+    if (estCheckbox) input.checked = !!ligne[champ];
+    else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {
-      const valeur = e.target.value === "" ? null : e.target.value;
+      const valeur = estCheckbox ? e.target.checked : (e.target.value === "" ? null : e.target.value);
       const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
       if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
       const { error } = await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);

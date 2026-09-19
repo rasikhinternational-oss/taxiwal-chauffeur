@@ -1415,6 +1415,8 @@ const champsLigneFA = [
   ["debarquement_index", "Débarq. — Index", "number"],
   ["debarquement_lieu", "Débarq. — Lieu", "text"],
   ["debarquement_heure", "Débarq. — Heure", "time"],
+  ["type_course", "Type de course", "select_type"],
+  ["aller_retour", "Aller-retour ?", "checkbox"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
   ["sommes_percues", "Sommes perçues (€)", "number"],
   ["mode_paiement", "Mode de paiement", "select"],
@@ -1682,11 +1684,13 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
+    const estTypeCourse = champ === "type_course";
+    const estCheckbox = type === "checkbox";
     const wrap = document.createElement("div");
     wrapsParChampAdmin[champ] = wrap;
     if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
     const lab = document.createElement("label"); lab.textContent = libelle;
-    const input = estPaiement ? document.createElement("select") : document.createElement("input");
+    const input = (estPaiement || estTypeCourse) ? document.createElement("select") : document.createElement("input");
     if (estPaiement) {
       input.innerHTML = `
         <option value="">— Choisir —</option>
@@ -1694,13 +1698,24 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="carte">💳 Carte</option>
         <option value="facture">🧾 Facture</option>
       `;
+    } else if (estTypeCourse) {
+      input.innerHTML = `
+        <option value="normale">Course normale (taximètre)</option>
+        <option value="forfait">Forfait</option>
+        <option value="navette_aeroport">Navette aéroport</option>
+      `;
+    } else if (estCheckbox) {
+      input.type = "checkbox";
+      input.style.cssText = "width:auto; margin-top:8px;";
     } else {
       input.type = type; if (type === "number") input.step = "0.1";
     }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:12px; font-weight:600;";
-    input.value = ligne[champ] ?? "";
+    if (estCheckbox) input.checked = !!ligne[champ];
+    else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.addEventListener("change", async (e) => {
-      await supabase.from("lignes_feuille_route").update({ [champ]: e.target.value || null }).eq("id", ligne.id);
+      const valeur = estCheckbox ? e.target.checked : (e.target.value || null);
+      await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
       if (estPaiement) appliquerVisibilitePaiementAdmin();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
