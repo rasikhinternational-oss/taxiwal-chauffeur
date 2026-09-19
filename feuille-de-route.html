@@ -48,6 +48,11 @@ window.onerror = function(msg, url, line, col, err) {
   .etat-sauvegarde.en-cours{ color:var(--gris); }
   .etat-sauvegarde.ok{ color:var(--vert); font-weight:600; }
   .etat-sauvegarde.erreur{ color:var(--rouge); font-weight:600; }
+  /* Résumé compact affiché une fois la feuille signée, à la place du gros formulaire */
+  #resume-signee{ display:none; }
+  #resume-signee .ligne-resume{ display:flex; justify-content:space-between; font-size:.88rem; margin-bottom:6px; color:var(--gris); }
+  #resume-signee .ligne-resume b{ color:var(--blanc); }
+  #btn-voir-details{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.88rem; font-weight:600; margin-top:10px; }
 </style>
 </head>
 <body>
@@ -61,7 +66,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <div class="bloc" id="bloc-identite">
   <h2>Identité</h2>
-  <p class="identite"><span>Identité de l'exploitant :</span> <b>Rasikh international</b></p>
+  <p class="identite"><span>Identité de l'exploitant :</span> <b id="identite-societe">—</b></p>
   <p class="identite"><span>Date :</span> <b id="identite-date">—</b></p>
   <p class="identite"><span>Nom du chauffeur :</span> <b id="identite-chauffeur">—</b></p>
   <p class="identite"><span>Véhicule :</span> <b id="identite-vehicule">—</b></p>
@@ -69,6 +74,16 @@ window.onerror = function(msg, url, line, col, err) {
   <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
 </div>
 
+<!-- Résumé compact, affiché uniquement une fois la feuille signée -->
+<div class="bloc" id="resume-signee">
+  <h2>Feuille signée <span id="statut-feuille-resume" style="display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#f9d6d6; color:#b83232;">Verrouillée</span></h2>
+  <div class="ligne-resume"><span>Horaires</span><b id="resume-horaires">—</b></div>
+  <div class="ligne-resume"><span>Recettes</span><b id="resume-recettes">—</b></div>
+  <div class="ligne-resume"><span>Nombre de courses</span><b id="resume-nb-courses">—</b></div>
+  <button id="btn-voir-details">▾ Voir le détail de la feuille</button>
+</div>
+
+<div id="details-feuille">
 <div class="bloc" id="bloc-entete">
   <h2>Service <span id="statut-feuille"></span></h2>
   <div class="grille3">
@@ -141,6 +156,7 @@ window.onerror = function(msg, url, line, col, err) {
   <p id="avertissement">Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
   <button id="btn-signer">Signer et clôturer la feuille</button>
 </div>
+</div><!-- fin #details-feuille -->
 
 <p id="erreur"></p>
 
@@ -152,6 +168,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let feuilleActuelle = null; // ligne de feuilles_route en cours
 let lignesActuelles = []; // lignes de course chargées
+let identiteSocieteActuelle = "Rasikh international"; // valeur par défaut, ajustée selon le véhicule
 
 const champsEntete = {
   "heure-debut": "heure_debut", "heure-fin": "heure_fin", "interruptions": "interruptions",
@@ -239,7 +256,10 @@ async function remplirIdentite(user) {
     document.getElementById("identite-vehicule").textContent = vehicule.nom || "—";
     document.getElementById("identite-plaque").textContent = vehicule.plaque || "—";
     document.getElementById("identite-numid").textContent = vehicule.numero_identification || "—";
+    // Société propre au véhicule (ex: "SRL Rasikh" pour la BMW) — sinon la valeur par défaut
+    identiteSocieteActuelle = vehicule.identite_exploitant || "Rasikh international";
   }
+  document.getElementById("identite-societe").textContent = identiteSocieteActuelle;
 }
 
 function remplirEntete() {
@@ -464,6 +484,23 @@ document.getElementById("btn-signer").addEventListener("click", async () => {
   appliquerVerrouillage();
 });
 
+// Remplit le résumé compact (horaires, recettes, nb de courses) affiché à la place du gros formulaire
+function remplirResumeSignee() {
+  const debut = feuilleActuelle.heure_debut || "—", fin = feuilleActuelle.heure_fin || "—";
+  document.getElementById("resume-horaires").textContent = `${debut} → ${fin}`;
+  const rd = parseFloat(feuilleActuelle.recettes_debut), rf = parseFloat(feuilleActuelle.recettes_fin);
+  document.getElementById("resume-recettes").textContent =
+    (!isNaN(rd) && !isNaN(rf)) ? (rf - rd).toFixed(2) + " €" : "—";
+  document.getElementById("resume-nb-courses").textContent = lignesActuelles.length;
+}
+
+let detailsOuvertsMalgreSignature = false;
+document.getElementById("btn-voir-details").addEventListener("click", () => {
+  detailsOuvertsMalgreSignature = !detailsOuvertsMalgreSignature;
+  document.getElementById("details-feuille").style.display = detailsOuvertsMalgreSignature ? "block" : "none";
+  document.getElementById("btn-voir-details").textContent = detailsOuvertsMalgreSignature ? "▴ Masquer le détail" : "▾ Voir le détail de la feuille";
+});
+
 function appliquerVerrouillage() {
   const verrou = feuilleActuelle.verrouillee;
   Object.keys(champsEntete).forEach(id => document.getElementById(id).disabled = verrou);
@@ -473,6 +510,13 @@ function appliquerVerrouillage() {
   const badge = document.getElementById("statut-feuille");
   badge.textContent = verrou ? "Signée · verrouillée" : "En cours";
   badge.classList.toggle("verrouillee", verrou);
+
+  // Une fois signée, on replie tout le détail derrière un résumé compact — le chauffeur
+  // peut toujours le consulter en un tap, mais l'écran n'est plus encombré pour rien.
+  document.getElementById("resume-signee").style.display = verrou ? "block" : "none";
+  document.getElementById("details-feuille").style.display = verrou ? "none" : "block";
+  detailsOuvertsMalgreSignature = false;
+  if (verrou) remplirResumeSignee();
 }
 
 // ---------- IMPRESSION A4 — pour le contrôle routier, directement depuis le véhicule ----------
@@ -540,14 +584,23 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     .courses-table td { font-size: 10px; text-align: center; height: 22px; }
     .signature { margin-top: 16px; }
     .note-bas { font-size: 8px; margin-top: 4px; }
-    @media print { .btn-print { display: none; } }
+    .barre-actions-impression { display: flex; gap: 8px; margin-bottom: 10px; }
+    .barre-actions-impression button {
+      padding: 8px 14px; border-radius: 6px; border: 1px solid #999; background: #f2f2f2;
+      color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
+    }
+    .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
+    @media print { .btn-print, .barre-actions-impression { display: none; } }
   </style></head>
   <body>
-    <button class="btn-print" onclick="window.print()" style="margin-bottom:10px;">🖨️ Imprimer</button>
+    <div class="barre-actions-impression">
+      <button onclick="window.close()">← Retour</button>
+      <button class="btn-imprimer-action" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
     <h1>FEUILLE DE ROUTE</h1>
     <table>
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
-          <td colspan="3" class="valeur">Rasikh international</td></tr>
+          <td colspan="3" class="valeur">${identiteSocieteActuelle}</td></tr>
       <tr><td><span class="mini">Date</span> <span class="valeur">${document.getElementById("identite-date").textContent}</span></td>
           <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${document.getElementById("identite-chauffeur").textContent}</span></td></tr>
       <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${document.getElementById("identite-plaque").textContent}</span></td>
