@@ -141,7 +141,10 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin .btn-nouvelle-course-fa{ width:auto; padding:8px 12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-size:.8rem; cursor:pointer; }
   .feuille-admin .btn-imprimer-fa{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid var(--bleu); background:transparent; color:var(--bleu); font-size:.8rem; cursor:pointer; }
   .feuille-admin .identite-exploitant{ font-size:.75rem; color:var(--gris); margin-bottom:6px; }
-  .feuille-admin .grille3-fa{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:8px; }
+  .feuille-admin .grille3-fa{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; margin-bottom:8px; border:1px solid #cfcfcd; border-radius:6px; overflow:hidden; }
+  .feuille-admin .grille3-fa > div{ padding:6px 8px; border-right:1px solid #dcdcda; }
+  .feuille-admin .grille3-fa > div:last-child{ border-right:none; }
+  .feuille-admin .grille3-fa input{ border:1px solid #dcdcda; }
   .feuille-admin label{ display:block; font-size:.72rem; color:var(--gris); margin-bottom:3px; }
   .feuille-admin input{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; }
   .feuille-admin .mini-titre{ font-size:.7rem; color:var(--gris); text-transform:uppercase; margin:10px 0 4px; }
@@ -1565,7 +1568,7 @@ async function chargerFeuillesAdmin() {
 
   const { data: feuilles, error } = await supabase
     .from("feuilles_route")
-    .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque, numero_identification)")
+    .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
     .eq("date_service", dateChoisie)
     .order("created_at", { ascending: true });
 
@@ -1621,12 +1624,13 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   div.className = "feuille-admin" + (feuille.verrouillee ? " verrouillee-fa" : "");
 
   const entete = document.createElement("div");
+  const identiteFeuille = feuille.vehicules?.identite_exploitant || IDENTITE_EXPLOITANT;
   entete.innerHTML = `
     <div class="entete-fa-titre">
-      <div>
-        <div class="identite-exploitant">${IDENTITE_EXPLOITANT} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
-        <h3>Nom du chauffeur : ${feuille.profils?.nom || "Chauffeur"}</h3>
-        <div class="sous">Véhicule : ${feuille.vehicules ? (feuille.vehicules.nom + (feuille.vehicules.plaque ? " · plaque " + feuille.vehicules.plaque : "") + (feuille.vehicules.numero_identification ? " · n° identification " + feuille.vehicules.numero_identification : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "Signée" : "En cours"}</div>
+      <div class="entete-fa-info" style="cursor:pointer;">
+        <div class="identite-exploitant">${identiteFeuille} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
+        <h3>Nom du chauffeur : ${feuille.profils?.nom || "Chauffeur"} <span class="chevron-ligne">${feuille.verrouillee ? "▾" : "▴"}</span></h3>
+        <div class="sous">Véhicule : ${feuille.vehicules ? (feuille.vehicules.nom + (feuille.vehicules.plaque ? " · plaque " + feuille.vehicules.plaque : "") + (feuille.vehicules.numero_identification ? " · n° identification " + feuille.vehicules.numero_identification : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "Signée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}</div>
       </div>
       <div class="entete-fa-actions">
         <button class="btn-nouvelle-course-fa">+ Course</button>
@@ -1650,6 +1654,16 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
     imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie);
   });
   div.appendChild(entete);
+
+  // Le détail complet est replié par défaut une fois la feuille signée (ça évite une liste
+  // interminable à l'écran) — l'admin clique sur le nom du chauffeur pour l'ouvrir/refermer.
+  const corps = document.createElement("div");
+  corps.style.display = feuille.verrouillee ? "none" : "block";
+  entete.querySelector(".entete-fa-info").addEventListener("click", () => {
+    const ouvert = corps.style.display !== "none";
+    corps.style.display = ouvert ? "none" : "block";
+    entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
+  });
 
   // Heures des prestations (Début / Fin / Interruptions / Total, comme le modèle papier)
   const blocHeures = document.createElement("div");
@@ -1680,7 +1694,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   const dMin = minutesDepuisHeure(feuille.heure_debut), fMin = minutesDepuisHeure(feuille.heure_fin);
   totalHeures.textContent = (dMin !== null && fMin !== null) ? "Total : " + formatDureeMinutes((fMin - dMin + 1440) % 1440) : "";
   blocHeures.appendChild(totalHeures);
-  div.appendChild(blocHeures);
+  corps.appendChild(blocHeures);
 
   // Blocs Km tableau de bord / Taximètre / Prise en charge / Index Km / Km en charge / Chutes / Recettes
   // chacun avec Début, Fin et Total calculé (Fin - Début), comme sur le modèle papier
@@ -1708,7 +1722,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
 
     wrapBloc.appendChild(grille);
     wrapBloc.appendChild(totalDiv);
-    div.appendChild(wrapBloc);
+    corps.appendChild(wrapBloc);
   });
 
   function creerInputEnteteFA(feuille, champ, libelle, type, onChangeExtra) {
@@ -1870,6 +1884,7 @@ function calcTotalHeures(debut, fin) {
 function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
   const dateLisible = new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE");
   const vehicule = feuille.vehicules;
+  const identiteFeuille = vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
 
   const lignesHtml = (lignes.length ? lignes : new Array(8).fill(null)).map((l, i) => {
     l = l || {};
@@ -1921,7 +1936,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     <h1>FEUILLE DE ROUTE</h1>
     <table>
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
-          <td colspan="3" class="valeur">${IDENTITE_EXPLOITANT}</td></tr>
+          <td colspan="3" class="valeur">${identiteFeuille}</td></tr>
       <tr><td><span class="mini">Date</span> <span class="valeur">${dateLisible}</span></td>
           <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${chauffeur.nom || ""}</span></td></tr>
       <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${vehicule?.plaque || "—"}</span></td>
@@ -1996,7 +2011,8 @@ function construireVehiculeAdmin(vehicule) {
     ["nom", "Nom du véhicule", "text"],
     ["plaque", "Plaque d'immatriculation", "text"],
     ["numero_identification", "N° identification", "text"],
-    ["places", "Nombre de places", "number"]
+    ["places", "Nombre de places", "number"],
+    ["identite_exploitant", "Société (feuille de route) — vide = Rasikh international", "text"]
   ];
 
   const grille = document.createElement("div");
