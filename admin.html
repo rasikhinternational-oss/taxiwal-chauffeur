@@ -520,6 +520,11 @@ async function chargerChauffeurs() {
 // ---------- NOTIFICATION ADMIN : nouvelle demande client (son + notification navigateur) ----------
 let idsCoursesConnusAdmin = null; // null = pas encore initialisé
 
+function nomChauffeurPourNotif(course) {
+  const c = chauffeursCache.find(ch => ch.id === course.chauffeur_id);
+  return c?.nom || "Un chauffeur";
+}
+
 function jouerSonAlerteAdmin() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -621,6 +626,9 @@ async function chargerCoursesAdmin() {
         }
         if (ancien.statut === "assignee" && c.statut === "en_cours") {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: "🚕 Chauffeur en route pour", adresse_arrivee: c.adresse_arrivee });
+        }
+        if (ancien.statut !== "terminee" && c.statut === "terminee") {
+          notifierNouvelleCourseAdmin({ ...c, adresse_depart: `✅ ${nomChauffeurPourNotif(c)} a clôturé une course`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
       idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur });

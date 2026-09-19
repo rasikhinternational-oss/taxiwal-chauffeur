@@ -396,19 +396,25 @@ function construireLigneHtml(ligne, numeroAffiche) {
     wrap.appendChild(lab); wrap.appendChild(input);
     corps.appendChild(wrap);
   });
-  // Pour une ligne manuelle (pas de vraie course liée), le chauffeur doit pouvoir la clôturer
-  // lui-même une fois remplie — sinon rien ne la verrouille avant la signature de toute la journée.
-  if (!ligne.course_id && !ligne.cloturee && !feuilleActuelle.verrouillee) {
+  // Le chauffeur doit pouvoir clôturer une course directement depuis la feuille de route —
+  // que ce soit une ligne manuelle, ou une vraie course pas encore marquée terminée par ailleurs.
+  if (!ligneVerrouillee) {
     const btnCloturer = document.createElement("button");
     btnCloturer.textContent = "🔒 Clôturer cette course";
     btnCloturer.style.cssText = "background:var(--rouge); margin-top:6px;";
     btnCloturer.addEventListener("click", async () => {
       if (!confirm("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).")) return;
-      const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: true }).eq("id", ligne.id);
-      if (error) { alert("Erreur : " + error.message); return; }
-      ligne.cloturee = true;
-      lignesActuelles = lignesActuelles.map(l => l.id === ligne.id ? { ...l, cloturee: true } : l);
-      afficherLignes();
+      if (ligne.course_id) {
+        // Vraie course : on la marque terminée, ce qui la verrouille automatiquement partout
+        const { error } = await supabase.from("courses")
+          .update({ statut: "terminee", mode_paiement: ligne.mode_paiement || null })
+          .eq("id", ligne.course_id);
+        if (error) { alert("Erreur : " + error.message); return; }
+      } else {
+        const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: true }).eq("id", ligne.id);
+        if (error) { alert("Erreur : " + error.message); return; }
+      }
+      await chargerLignes();
     });
     corps.appendChild(btnCloturer);
   }
@@ -489,6 +495,12 @@ function calcTotalHeures2(debut, fin) {
 }
 
 document.getElementById("btn-imprimer-fr").addEventListener("click", async () => {
+  // La fenêtre doit s'ouvrir IMMÉDIATEMENT au clic (avant tout await), sinon Safari/Chrome
+  // la considère comme un popup non désiré et la bloque.
+  const fenetre = window.open("", "_blank");
+  if (!fenetre) { alert("Le navigateur a bloqué l'ouverture de la fenêtre d'impression. Autorise les pop-ups pour ce site."); return; }
+  fenetre.document.write("Préparation de la feuille de route…");
+
   // Trace l'impression pour que l'admin soit prévenu et puisse vérifier que ça a bien été fait
   const { data: { user } } = await supabase.auth.getUser();
   await supabase.from("feuilles_route")
@@ -576,10 +588,11 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.</div>
   </body></html>`;
 
-  const fenetre = window.open("", "_blank");
-  if (!fenetre) { alert("Le navigateur a bloqué l'ouverture de la fenêtre d'impression. Autorise les pop-ups pour ce site."); return; }
-  fenetre.document.write(html);
-  fenetre.document.close();
+  const fenetre2 = fenetre.closed ? null : fenetre;
+  if (!fenetre2) { alert("La fenêtre d'impression a été fermée trop tôt."); return; }
+  fenetre2.document.open();
+  fenetre2.document.write(html);
+  fenetre2.document.close();
 });
 </script>
 </body>
