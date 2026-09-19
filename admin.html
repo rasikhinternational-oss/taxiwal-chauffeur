@@ -1606,10 +1606,12 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
     const wrap = document.createElement("div");
     const lab = document.createElement("label"); lab.textContent = libelle;
     const input = document.createElement("input");
-    input.type = type; if (type === "number") input.step = "0.01";
+    if (type === "number") { input.type = "text"; input.inputMode = "decimal"; }
+    else input.type = type;
     input.value = feuille[champ] ?? "";
     input.addEventListener("change", async (e) => {
-      await supabase.from("feuilles_route").update({ [champ]: e.target.value || null }).eq("id", feuille.id);
+      const valeur = type === "number" ? (e.target.value || "").replace(",", ".") || null : (e.target.value || null);
+      await supabase.from("feuilles_route").update({ [champ]: valeur }).eq("id", feuille.id);
       if (onChangeExtra) onChangeExtra();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
@@ -1708,13 +1710,15 @@ function construireLigneAdmin(ligne, numeroAffiche) {
       input.type = "checkbox";
       input.style.cssText = "width:auto; margin-top:8px;";
     } else {
-      input.type = type; if (type === "number") input.step = "0.1";
+      if (type === "number") { input.type = "text"; input.inputMode = "decimal"; }
+      else input.type = type;
     }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:12px; font-weight:600;";
     if (estCheckbox) input.checked = !!ligne[champ];
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.addEventListener("change", async (e) => {
-      const valeur = estCheckbox ? e.target.checked : (e.target.value || null);
+      let valeur = estCheckbox ? e.target.checked : (e.target.value || null);
+      if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
       await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
       if (estPaiement) appliquerVisibilitePaiementAdmin();
     });

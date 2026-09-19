@@ -364,16 +364,20 @@ function construireLigneHtml(ligne, numeroAffiche) {
     } else if (estCheckbox) {
       input.type = "checkbox";
       input.style.cssText = "width:auto; margin-top:8px;";
+    } else if (type === "number") {
+      // Accepte la virgule française (35,5) en plus du point (35.5) — sinon le champ se vide
+      input.type = "text";
+      input.inputMode = "decimal";
     } else {
       input.type = type;
-      if (type === "number") input.step = "0.1";
     }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:13px; font-weight:600;";
     if (estCheckbox) input.checked = !!ligne[champ];
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {
-      const valeur = estCheckbox ? e.target.checked : (e.target.value === "" ? null : e.target.value);
+      let valeur = estCheckbox ? e.target.checked : (e.target.value === "" ? null : e.target.value);
+      if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
       const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
       if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
       const { error } = await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
