@@ -1251,6 +1251,32 @@ adresseCentraleInput.addEventListener("change", () => {
   localStorage.setItem("taxiwal_adresse_centrale", adresseCentraleInput.value.trim());
 });
 
+const cacheAdresseInverse = {}; // "lat,lon" -> adresse lisible (évite de re-demander sans arrêt)
+async function adresseDepuisCoords(lat, lon) {
+  const cle = lat.toFixed(4) + "," + lon.toFixed(4);
+  if (cacheAdresseInverse[cle]) return cacheAdresseInverse[cle];
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const adresse = data?.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    cacheAdresseInverse[cle] = adresse;
+    return adresse;
+  } catch (e) { console.error("Adresse introuvable :", e); return `${lat.toFixed(5)}, ${lon.toFixed(5)}`; }
+}
+
+// Copie l'adresse d'un chauffeur dans le presse-papier (appelée depuis le HTML des popups/cartes)
+window.copierAdresseChauffeur = function (texte) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texte).then(
+      () => alert("Adresse copiée :\n" + texte),
+      () => alert("Impossible de copier automatiquement. Adresse :\n" + texte)
+    );
+  } else {
+    alert("Adresse :\n" + texte);
+  }
+};
+
 // ---------- LISTE DES CHAUFFEURS EN DIRECT (dépose + retour centrale) ----------
 async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
   const conteneur = document.getElementById("carte-liste-chauffeurs");
@@ -1266,6 +1292,8 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
     if (courseActive) {
       div.innerHTML = `<h4>${nom}</h4>
         <div class="cc-ligne">🚕 En route vers <b>${courseActive.adresse_arrivee}</b></div>
+        <div class="cc-ligne">📍 Position actuelle : <span id="cc-adresse-${p.chauffeur_id}">chargement…</span>
+          <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>
         <div class="cc-ligne">⏱️ Dépose du client : <b id="cc-depose-${courseActive.id}">calcul…</b></div>
         <div class="cc-ligne">↩️ Retour centrale ensuite : <b id="cc-retour-${courseActive.id}">calcul…</b></div>`;
       conteneur.appendChild(div);
@@ -1280,9 +1308,16 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
       });
     } else {
       div.innerHTML = `<h4>${nom}</h4>
-        <div class="cc-ligne">${p.disponible ? "✅ Disponible" : "⛔ Hors service"}</div>`;
+        <div class="cc-ligne">${p.disponible ? "✅ Disponible" : "⛔ Hors service"}</div>
+        <div class="cc-ligne">📍 Position actuelle : <span id="cc-adresse-${p.chauffeur_id}">chargement…</span>
+          <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>`;
       conteneur.appendChild(div);
     }
+
+    adresseDepuisCoords(p.latitude, p.longitude).then(adresse => {
+      const el = document.getElementById(`cc-adresse-${p.chauffeur_id}`);
+      if (el) el.textContent = adresse;
+    });
   }
 
   if (!positions || positions.length === 0) {
@@ -1381,10 +1416,10 @@ async function chargerCarte() {
 
     if (courseActive) {
       couleur = "red";
-      popup = `<b>${nom}</b><br>🚕 En course<br>Vers : ${courseActive.adresse_arrivee}<br><span id="eta-${courseActive.id}">Calcul du temps restant…</span>`;
+      popup = `<b>${nom}</b><br>🚕 En course<br>Vers : ${courseActive.adresse_arrivee}<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button><br><span id="eta-${courseActive.id}">Calcul du temps restant…</span>`;
     } else if (p.disponible) {
       couleur = "green";
-      popup = `<b>${nom}</b><br>✅ Disponible`;
+      popup = `<b>${nom}</b><br>✅ Disponible<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button>`;
     }
 
     const icone = L.divIcon({
@@ -1410,6 +1445,13 @@ async function chargerCarte() {
         if (span) span.textContent = eta ? `⏱️ Environ ${eta.texte} avant dépose` : "Temps restant indisponible";
       });
     }
+    // Résout l'adresse lisible en tâche de fond et met à jour la popup (ouverte ou non)
+    adresseDepuisCoords(p.latitude, p.longitude).then(adresse => {
+      const span = document.getElementById(`popup-adr-${p.chauffeur_id}`);
+      if (span) span.textContent = adresse;
+      const popupObj = marqueurs[p.chauffeur_id]?.getPopup();
+      if (popupObj) popupObj.setContent(popupObj.getContent().replace("chargement…", adresse));
+    });
   }
 }
 
