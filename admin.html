@@ -1657,7 +1657,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   const entete = document.createElement("div");
   entete.className = "num-ligne";
   // Numéro toujours séquentiel (1, 2, 3, 4, 5…) selon la position affichée, pas selon n_ordre en base
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${resume}${heureResume}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""} <span class="chevron-ligne">▾</span></span>`;
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${resume}${heureResume}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""} <span class="chevron-ligne">▾</span></span>`;
 
   // Accès total : si la ligne est liée à une vraie course, la supprimer supprime la course elle-même
   // (et donc la ligne, via le trigger côté base) ; sinon elle supprime juste la ligne manuelle

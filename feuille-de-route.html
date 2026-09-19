@@ -312,10 +312,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
 
   const statutCourse = ligne.courses?.statut;
   const ligneTerminee = statutCourse === "terminee" || statutCourse === "annulee";
-  const ligneVerrouillee = feuilleActuelle.verrouillee || ligneTerminee;
+  const ligneVerrouillee = feuilleActuelle.verrouillee || ligneTerminee || ligne.cloturee;
 
   let badge = "";
   if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
+  else if (ligne.cloturee) badge = " · 🔒 clôturée";
 
   // Résumé affiché sur la ligne : lieu de départ → lieu d'arrivée + heure
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
@@ -395,6 +396,22 @@ function construireLigneHtml(ligne, numeroAffiche) {
     wrap.appendChild(lab); wrap.appendChild(input);
     corps.appendChild(wrap);
   });
+  // Pour une ligne manuelle (pas de vraie course liée), le chauffeur doit pouvoir la clôturer
+  // lui-même une fois remplie — sinon rien ne la verrouille avant la signature de toute la journée.
+  if (!ligne.course_id && !ligne.cloturee && !feuilleActuelle.verrouillee) {
+    const btnCloturer = document.createElement("button");
+    btnCloturer.textContent = "🔒 Clôturer cette course";
+    btnCloturer.style.cssText = "background:var(--rouge); margin-top:6px;";
+    btnCloturer.addEventListener("click", async () => {
+      if (!confirm("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).")) return;
+      const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: true }).eq("id", ligne.id);
+      if (error) { alert("Erreur : " + error.message); return; }
+      ligne.cloturee = true;
+      lignesActuelles = lignesActuelles.map(l => l.id === ligne.id ? { ...l, cloturee: true } : l);
+      afficherLignes();
+    });
+    corps.appendChild(btnCloturer);
+  }
   div.appendChild(corps);
 
   // Facture (assurance) : pas de montant à saisir, mais un n° de dossier — sinon Sommes perçues normal
