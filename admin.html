@@ -180,6 +180,11 @@ window.onerror = function(msg, url, line, col, err) {
     width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.95rem;
   }
   #modale-contenu textarea{ resize:vertical; min-height:50px; }
+  .liste-suggestions-adresse{ display:none; background:var(--noir-2); border:1px solid #cfcfcd; border-top:none; border-radius:0 0 8px 8px; max-height:180px; overflow-y:auto; margin-top:-10px; margin-bottom:8px; }
+  .suggestion-adresse{ padding:10px 12px; font-size:.85rem; border-bottom:1px solid #eee; cursor:pointer; color:var(--blanc); }
+  .suggestion-adresse:last-child{ border-bottom:none; }
+  .suggestion-adresse:active{ background:#f0f1ee; }
+  .suggestion-adresse .puce-recente{ color:var(--vert); font-size:.75rem; margin-right:4px; }
   #modale-actions{ display:flex; gap:10px; margin-top:18px; }
   #modale-actions button{ flex:1; padding:13px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
   #btn-annuler-modale{ background:#dcdcda; color:var(--blanc); }
@@ -1053,6 +1058,7 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
 
   if (chauffeurChoisi && nouvelleCourse) notifierChauffeurParEmail(nouvelleCourse.id); // automatique, aucun clic requis
+  invaliderCacheAdresses();
 
   modale.classList.remove("visible");
   document.getElementById("input-client-nom").value = "";
@@ -1064,6 +1070,100 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   chargerCoursesAdmin();
   if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
 });
+
+// ---------- AUTOCOMPLÉTION D'ADRESSES (historique interne + suggestions OpenStreetMap) ----------
+// Se souvient de toutes les adresses déjà utilisées dans l'app, et propose aussi des adresses
+// réelles (rue + numéro) via Photon (moteur gratuit basé sur OpenStreetMap, sans clé API).
+const cacheAdressesRecentes = { chargees: false, liste: [] };
+
+async function chargerAdressesRecentes() {
+  if (cacheAdressesRecentes.chargees) return cacheAdressesRecentes.liste;
+  const { data, error } = await supabase
+    .from("courses")
+    .select("adresse_depart, adresse_arrivee")
+    .order("date_heure", { ascending: false })
+    .limit(300);
+  if (error) { console.error(error); return []; }
+  const set = new Set();
+  (data || []).forEach(c => {
+    if (c.adresse_depart) set.add(c.adresse_depart.trim());
+    if (c.adresse_arrivee) set.add(c.adresse_arrivee.trim());
+  });
+  cacheAdressesRecentes.liste = Array.from(set);
+  cacheAdressesRecentes.chargees = true;
+  return cacheAdressesRecentes.liste;
+}
+// Vide le cache après création d'une course, pour que la toute nouvelle adresse soit proposée la prochaine fois
+function invaliderCacheAdresses() { cacheAdressesRecentes.chargees = false; }
+
+async function suggestionsAdressesReelles(texte) {
+  try {
+    // Centré sur la région de Boussu/Mons pour prioriser les résultats locaux, sans bloquer le reste
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(texte)}&lat=50.43&lon=3.79&limit=6&lang=fr`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return (data.features || [])
+      .filter(f => ["be", "fr"].includes((f.properties.countrycode || "").toLowerCase()))
+      .map(f => {
+        const p = f.properties;
+        const ligne1 = [p.housenumber, p.street || p.name].filter(Boolean).join(" ");
+        const ligne2 = [p.postcode, p.city].filter(Boolean).join(" ");
+        return [ligne1, ligne2].filter(Boolean).join(", ");
+      })
+      .filter((v, i, arr) => v && arr.indexOf(v) === i); // dédoublonne
+  } catch (e) { console.error("Suggestions d'adresses impossibles :", e); return []; }
+}
+
+function configurerAutocompleteAdresse(input) {
+  const liste = document.createElement("div");
+  liste.className = "liste-suggestions-adresse";
+  input.insertAdjacentElement("afterend", liste);
+  let idRequete = 0;
+
+  function fermerListe() { liste.innerHTML = ""; liste.style.display = "none"; }
+
+  function afficherSuggestions(items) {
+    if (!items.length) { fermerListe(); return; }
+    liste.innerHTML = items.map(({ texte, recente }) =>
+      `<div class="suggestion-adresse">${recente ? '<span class="puce-recente">●</span>' : ""}${texte}</div>`
+    ).join("");
+    liste.style.display = "block";
+    liste.querySelectorAll(".suggestion-adresse").forEach((el, i) => {
+      el.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        input.value = items[i].texte;
+        fermerListe();
+      });
+    });
+  }
+
+  input.addEventListener("input", async () => {
+    const texte = input.value.trim();
+    const requeteActuelle = ++idRequete;
+    if (texte.length < 2) { fermerListe(); return; }
+
+    const recentes = (await chargerAdressesRecentes())
+      .filter(a => a.toLowerCase().includes(texte.toLowerCase()))
+      .slice(0, 4);
+    if (requeteActuelle !== idRequete) return; // une saisie plus récente a eu lieu entre-temps
+    afficherSuggestions(recentes.map(t => ({ texte: t, recente: true })));
+
+    // Les suggestions d'adresses réelles arrivent un peu après (petite latence réseau) et se rajoutent
+    const distantes = await suggestionsAdressesReelles(texte);
+    if (requeteActuelle !== idRequete) return;
+    const dejaLa = new Set(recentes);
+    const finales = [
+      ...recentes.map(t => ({ texte: t, recente: true })),
+      ...distantes.filter(a => !dejaLa.has(a)).map(t => ({ texte: t, recente: false }))
+    ].slice(0, 7);
+    afficherSuggestions(finales);
+  });
+
+  input.addEventListener("blur", () => setTimeout(fermerListe, 150));
+}
+
+configurerAutocompleteAdresse(document.getElementById("input-depart"));
+configurerAutocompleteAdresse(document.getElementById("input-arrivee"));
 
 // ---------- CARTE DES CHAUFFEURS (statut + destination + temps restant) ----------
 let carteLeaflet = null;
