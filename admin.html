@@ -1785,11 +1785,11 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
 
   const titreCourses = document.createElement("div");
   titreCourses.className = "mini-titre"; titreCourses.textContent = "Courses";
-  div.appendChild(titreCourses);
+  corps.appendChild(titreCourses);
 
   const conteneurLignes = document.createElement("div");
   lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1)));
-  div.appendChild(conteneurLignes);
+  corps.appendChild(conteneurLignes);
 
   const btnAjouter = document.createElement("button");
   btnAjouter.id = "btn-ajouter-ligne-admin";
@@ -1799,7 +1799,8 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
     await supabase.from("lignes_feuille_route").insert({ feuille_route_id: feuille.id, n_ordre: prochainNumero });
     chargerFeuillesAdmin();
   });
-  div.appendChild(btnAjouter);
+  corps.appendChild(btnAjouter);
+  div.appendChild(corps);
 
   return div;
 }
