@@ -81,6 +81,7 @@ window.onerror = function(msg, url, line, col, err) {
   .course .ligne-actions{ display:flex; gap:8px; }
   .course .ligne-actions button{ flex:1; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
   .statut-label{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#dcdcda; color:var(--gris); margin-bottom:8px; }
+  .badge-ar{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#fde3cc; color:#8a4a00; margin-bottom:8px; margin-left:6px; font-weight:600; }
 
   .bloc-prix-admin{ display:flex; gap:8px; margin-bottom:8px; }
   .bloc-prix-admin input{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
@@ -90,8 +91,11 @@ window.onerror = function(msg, url, line, col, err) {
 
   .form-modif-course{ background:#f7f7f5; border-radius:10px; padding:12px; margin-top:8px; }
   .form-modif-course label{ display:block; font-size:.75rem; color:var(--gris); margin:8px 0 3px; }
-  .form-modif-course input, .form-modif-course textarea{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:.85rem; }
+  .form-modif-course input, .form-modif-course textarea, .form-modif-course select{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:.85rem; }
   .form-modif-course textarea{ resize:vertical; min-height:44px; }
+  .form-modif-course .ligne-checkbox{ display:flex; align-items:center; gap:8px; margin:10px 0 0; }
+  .form-modif-course .ligne-checkbox input{ width:auto; }
+  .form-modif-course .ligne-checkbox label{ margin:0; }
   .form-modif-course .ligne-surprime{ display:flex; gap:8px; align-items:center; }
   .form-modif-course .ligne-surprime input{ flex:1; }
   .form-modif-course .btn-suppr-surprime{ width:auto; padding:9px 12px; border-radius:8px; border:1px solid var(--rouge); background:transparent; color:var(--rouge); font-size:.85rem; cursor:pointer; }
@@ -129,9 +133,19 @@ window.onerror = function(msg, url, line, col, err) {
   .caisse-fond button{ width:auto; padding:10px 14px; font-size:.85rem; }
 
   /* Feuilles de route (admin) */
+  #feuilles-sous-onglets{ display:flex; gap:8px; margin-bottom:14px; }
+  #feuilles-sous-onglets button{ width:auto; padding:9px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
+  #feuilles-sous-onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   #feuilles-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:16px; }
   #feuilles-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
   #feuilles-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; font-size:.85rem; }
+  #vue-historique-fa{ display:none; }
+  #vue-historique-fa select{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.95rem; margin-bottom:14px; }
+  .ligne-historique-fa{ display:flex; justify-content:space-between; align-items:center; background:var(--noir-2); border-radius:10px; padding:12px 14px; margin-bottom:8px; border-left:4px solid var(--gris); cursor:pointer; }
+  .ligne-historique-fa.signee-fa{ border-left-color:var(--vert); }
+  .ligne-historique-fa .lh-date{ font-weight:600; font-size:.9rem; }
+  .ligne-historique-fa .lh-sous{ color:var(--gris); font-size:.78rem; margin-top:2px; }
+  .ligne-historique-fa .lh-fleche{ color:var(--gris); }
   .feuille-admin{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:14px; border-left:4px solid var(--gris); }
   .feuille-admin.verrouillee-fa{ border-left-color:var(--vert); }
   .feuille-admin h3{ margin:0 0 4px; font-size:1rem; }
@@ -189,6 +203,10 @@ window.onerror = function(msg, url, line, col, err) {
   .suggestion-adresse:last-child{ border-bottom:none; }
   .suggestion-adresse:active{ background:#f0f1ee; }
   .suggestion-adresse .puce-recente{ color:var(--vert); font-size:.75rem; margin-right:4px; }
+  #ligne-aller-retour{ display:flex; align-items:center; gap:8px; margin-top:14px; }
+  #ligne-aller-retour input{ width:auto; }
+  #ligne-aller-retour label{ margin:0; color:var(--blanc); font-size:.95rem; }
+  #bloc-type-retour{ display:none; }
   #modale-actions{ display:flex; gap:10px; margin-top:18px; }
   #modale-actions button{ flex:1; padding:13px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
   #btn-annuler-modale{ background:#dcdcda; color:var(--blanc); }
@@ -296,13 +314,25 @@ window.onerror = function(msg, url, line, col, err) {
 </section>
 
 <section id="section-feuilles">
-  <div id="feuilles-date-nav">
-    <button id="fa-prev">‹</button>
-    <input type="date" id="fa-date">
-    <button id="fa-next">›</button>
-    <button id="fa-aujourdhui">Aujourd'hui</button>
+  <div id="feuilles-sous-onglets">
+    <button class="actif" id="btn-vue-jour-fa">📅 Vue du jour</button>
+    <button id="btn-vue-historique-fa">📁 Historique par chauffeur</button>
   </div>
-  <div id="liste-feuilles-admin"></div>
+
+  <div id="vue-jour-fa">
+    <div id="feuilles-date-nav">
+      <button id="fa-prev">‹</button>
+      <input type="date" id="fa-date">
+      <button id="fa-next">›</button>
+      <button id="fa-aujourdhui">Aujourd'hui</button>
+    </div>
+    <div id="liste-feuilles-admin"></div>
+  </div>
+
+  <div id="vue-historique-fa">
+    <select id="select-chauffeur-historique"></select>
+    <div id="liste-historique-fa"></div>
+  </div>
 </section>
 
 <section id="section-vehicules">
@@ -341,6 +371,18 @@ window.onerror = function(msg, url, line, col, err) {
 
     <label>Prix (€)</label>
     <input type="text" id="input-prix" placeholder="ex: 35 ou 35 forfait">
+
+    <div id="ligne-aller-retour">
+      <input type="checkbox" id="input-aller-retour">
+      <label for="input-aller-retour">🔄 Course aller-retour</label>
+    </div>
+    <div id="bloc-type-retour">
+      <label>Type de retour</label>
+      <select id="input-type-retour">
+        <option value="immediat">Retour immédiat (≤15 min d'attente)</option>
+        <option value="attente">Retour avec attente (&gt;15 min)</option>
+      </select>
+    </div>
 
     <label>Notes</label>
     <textarea id="input-notes"></textarea>
@@ -493,6 +535,7 @@ function demarrerAdmin() {
   setInterval(() => {
     const zoneFeuilles = document.getElementById("section-feuilles");
     if (!zoneFeuilles.classList.contains("visible")) return;
+    if (document.getElementById("vue-historique-fa").style.display === "block") return; // ne pas perturber la navigation dans l'historique
     // Ne jamais reconstruire la liste pendant que l'admin est en train de remplir un champ
     // (sinon le champ disparaît sous ses doigts et il doit rescroller pour le retrouver)
     if (zoneFeuilles.contains(document.activeElement) && document.activeElement.tagName !== "BODY") return;
@@ -561,6 +604,13 @@ async function chargerChauffeurs() {
     chauffeursCache
       .map(c => `<option value="${c.id}">${c.nom || c.telephone || c.id}</option>`)
       .join("");
+
+  const selectHisto = document.getElementById("select-chauffeur-historique");
+  if (selectHisto) {
+    selectHisto.innerHTML = chauffeursCache
+      .map(c => `<option value="${c.id}">${c.nom || c.telephone || c.id}</option>`)
+      .join("");
+  }
 }
 
 // ---------- NOTIFICATION ADMIN : nouvelle demande client (son + notification navigateur) ----------
@@ -845,12 +895,15 @@ function construireCarteAdmin(course) {
     ? course.prix + " €" + (course.surprime ? ` (+ ${course.surprime} € surprime)` : "")
     : "";
 
+  const labelTypeRetour = course.type_retour === "immediat" ? " (immédiat, ≤15 min)" : course.type_retour === "attente" ? " (avec attente, >15 min)" : "";
+  const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
+
   const entete = document.createElement("div");
   entete.className = "entete-course-admin";
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>
+      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}
       <h3>${course.client_nom || "Client"} — ${prixAffiche}</h3>
       <div class="heure">${heure} · Chauffeur : ${nomChauffeur} · ${course.adresse_depart} → ${course.adresse_arrivee}</div>
     </div>
@@ -1016,6 +1069,16 @@ function construireCarteAdmin(course) {
       <input type="number" step="0.5" data-champ="surprime" value="${course.surprime ?? ""}" placeholder="ex: 10">
       <button type="button" class="btn-suppr-surprime" title="Supprimer la surprime">🗑️ Supprimer</button>
     </div>
+    <div class="ligne-checkbox">
+      <input type="checkbox" id="modif-ar-${course.id}" data-champ="aller_retour" ${course.aller_retour ? "checked" : ""}>
+      <label for="modif-ar-${course.id}">🔄 Course aller-retour</label>
+    </div>
+    <label>Type de retour</label>
+    <select data-champ="type_retour">
+      <option value="">—</option>
+      <option value="immediat" ${course.type_retour === "immediat" ? "selected" : ""}>Immédiat (≤15 min d'attente)</option>
+      <option value="attente" ${course.type_retour === "attente" ? "selected" : ""}>Avec attente (&gt;15 min)</option>
+    </select>
     <label>Notes</label><textarea data-champ="notes">${course.notes || ""}</textarea>
     <button type="button" class="btn-enregistrer-modif">Enregistrer les modifications</button>
     <button type="button" class="btn-supprimer-course">🗑️ Supprimer définitivement cette course</button>
@@ -1032,6 +1095,7 @@ function construireCarteAdmin(course) {
     const maj = {};
     formModif.querySelectorAll("[data-champ]").forEach(input => {
       const champ = input.dataset.champ;
+      if (input.type === "checkbox") { maj[champ] = input.checked; return; }
       let val = input.value;
       if (champ === "date_heure") { maj[champ] = val ? new Date(val).toISOString() : null; return; }
       if (champ === "passagers" || champ === "bagages") { maj[champ] = val ? parseInt(val) : null; return; }
@@ -1089,6 +1153,10 @@ const modale = document.getElementById("modale");
 document.getElementById("btn-nouvelle-course").addEventListener("click", () => modale.classList.add("visible"));
 document.getElementById("btn-annuler-modale").addEventListener("click", () => modale.classList.remove("visible"));
 
+document.getElementById("input-aller-retour").addEventListener("change", (e) => {
+  document.getElementById("bloc-type-retour").style.display = e.target.checked ? "block" : "none";
+});
+
 document.getElementById("btn-creer-course").addEventListener("click", async () => {
   const erreur = document.getElementById("erreur-modale");
   const depart = document.getElementById("input-depart").value.trim();
@@ -1101,6 +1169,7 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   }
 
   const chauffeurChoisi = document.getElementById("input-chauffeur").value || null;
+  const estAllerRetour = document.getElementById("input-aller-retour").checked;
 
   const { data: nouvelleCourse, error } = await supabase.from("courses").insert({
     chauffeur_id: chauffeurChoisi,
@@ -1112,6 +1181,8 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
     passagers: parseInt(document.getElementById("input-passagers").value) || 1,
     prix: parseFloat(document.getElementById("input-prix").value) || null,
     notes: document.getElementById("input-notes").value.trim(),
+    aller_retour: estAllerRetour,
+    type_retour: estAllerRetour ? document.getElementById("input-type-retour").value : null,
     statut: chauffeurChoisi ? "assignee" : "en_attente"
   }).select().single();
 
@@ -1127,6 +1198,9 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   document.getElementById("input-arrivee").value = "";
   document.getElementById("input-notes").value = "";
   document.getElementById("input-prix").value = "";
+  document.getElementById("input-aller-retour").checked = false;
+  document.getElementById("bloc-type-retour").style.display = "none";
+  document.getElementById("input-type-retour").value = "immediat";
   chargerCoursesAdmin();
   if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
 });
@@ -1228,6 +1302,8 @@ configurerAutocompleteAdresse(document.getElementById("input-arrivee"));
 // ---------- CARTE DES CHAUFFEURS (statut + destination + temps restant) ----------
 let carteLeaflet = null;
 let marqueurs = {};
+let lignesRouteCarte = {}; // chauffeur_id -> polyligne de l'itinéraire en cours
+let marqueursDestinationCarte = {}; // chauffeur_id -> marqueur 🏁 de destination
 const cacheGeocodage = {}; // adresse -> {lat, lon}
 const cacheEta = {}; // course_id -> { minutes, texte, calculeA: timestamp }
 
@@ -1279,6 +1355,66 @@ async function calculerTrajetCoords(depLat, depLon, arrLat, arrLon) {
     }
   } catch (e) { console.error("Calcul de trajet impossible :", e); }
   return null;
+}
+
+// Comme calculerTrajetCoords, mais renvoie aussi le tracé complet de l'itinéraire (pour le dessiner sur la carte)
+const cacheGeometrieRoute = {}; // "depLat,depLon|arrLat,arrLon" -> résultat (30s)
+async function calculerTrajetAvecGeometrie(depLat, depLon, arrLat, arrLon) {
+  const cle = `${depLat.toFixed(4)},${depLon.toFixed(4)}|${arrLat.toFixed(4)},${arrLon.toFixed(4)}`;
+  const cache = cacheGeometrieRoute[cle];
+  if (cache && (Date.now() - cache.calculeA) < 30000) return cache;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${depLon},${depLat};${arrLon},${arrLat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      const resultat = {
+        minutes: Math.round(data.routes[0].duration / 60),
+        km: (data.routes[0].distance / 1000).toFixed(1),
+        coords: data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]),
+        calculeA: Date.now()
+      };
+      cacheGeometrieRoute[cle] = resultat;
+      return resultat;
+    }
+  } catch (e) { console.error("Calcul d'itinéraire impossible :", e); }
+  return null;
+}
+
+// Retire de la carte le tracé et le drapeau de destination d'un chauffeur (ex: course terminée)
+function retirerRouteCarte(chauffeurId) {
+  if (lignesRouteCarte[chauffeurId]) { carteLeaflet.removeLayer(lignesRouteCarte[chauffeurId]); delete lignesRouteCarte[chauffeurId]; }
+  if (marqueursDestinationCarte[chauffeurId]) { carteLeaflet.removeLayer(marqueursDestinationCarte[chauffeurId]); delete marqueursDestinationCarte[chauffeurId]; }
+}
+
+// Trace (ou met à jour) sur la carte l'itinéraire complet du chauffeur vers sa destination,
+// avec un repère 🏁 à l'arrivée — pour voir en un coup d'œil par où il passe et où il va.
+async function tracerRouteVersDestination(chauffeurId, nom, depLat, depLon, adresseArrivee) {
+  const dest = await geocoderAdresse(adresseArrivee);
+  if (!dest) return;
+  const route = await calculerTrajetAvecGeometrie(depLat, depLon, dest.lat, dest.lon);
+  if (!route) return;
+
+  if (lignesRouteCarte[chauffeurId]) {
+    lignesRouteCarte[chauffeurId].setLatLngs(route.coords);
+  } else {
+    lignesRouteCarte[chauffeurId] = L.polyline(route.coords, { color: "#c81e2c", weight: 4, opacity: 0.75 }).addTo(carteLeaflet);
+  }
+
+  const iconeDestination = L.divIcon({
+    className: "",
+    html: `<div style="font-size:24px; line-height:1;">🏁</div>`,
+    iconSize: [26, 26], iconAnchor: [13, 22]
+  });
+  const popupDestination = `<b>${nom}</b><br>🏁 Destination : ${adresseArrivee}`;
+  if (marqueursDestinationCarte[chauffeurId]) {
+    marqueursDestinationCarte[chauffeurId].setLatLng([dest.lat, dest.lon]);
+    marqueursDestinationCarte[chauffeurId].setPopupContent(popupDestination);
+  } else {
+    marqueursDestinationCarte[chauffeurId] = L.marker([dest.lat, dest.lon], { icon: iconeDestination })
+      .addTo(carteLeaflet)
+      .bindPopup(popupDestination);
+  }
 }
 
 const cacheRetourCentrale = {}; // adresse destination -> résultat (60s)
@@ -1464,6 +1600,11 @@ async function chargerCarte() {
   dernieresPositionsCarte = positions || [];
   afficherListeChauffeursCarte(positions, coursesParChauffeur);
 
+  // Retire le tracé de tout chauffeur qui n'est plus en course actuellement
+  Object.keys(lignesRouteCarte).forEach(chauffeurId => {
+    if (!coursesParChauffeur[chauffeurId]) retirerRouteCarte(chauffeurId);
+  });
+
   for (const p of (positions || [])) {
     const nom = p.profils?.nom || "Chauffeur";
     const courseActive = coursesParChauffeur[p.chauffeur_id];
@@ -1495,12 +1636,16 @@ async function chargerCarte() {
         .bindPopup(popup);
     }
 
-    // Calcule le temps restant en tâche de fond et met à jour le popup si ouvert
+    // Calcule le temps restant en tâche de fond et met à jour le popup si ouvert,
+    // et trace l'itinéraire complet + le repère 🏁 de destination sur la carte
     if (courseActive) {
       calculerEta(courseActive.id, p.latitude, p.longitude, courseActive.adresse_arrivee).then(eta => {
         const span = document.getElementById(`eta-${courseActive.id}`);
         if (span) span.textContent = eta ? `⏱️ Environ ${eta.texte} avant dépose` : "Temps restant indisponible";
       });
+      tracerRouteVersDestination(p.chauffeur_id, nom, p.latitude, p.longitude, courseActive.adresse_arrivee);
+    } else {
+      retirerRouteCarte(p.chauffeur_id);
     }
     // Résout l'adresse lisible en tâche de fond et met à jour la popup (ouverte ou non)
     adresseDepuisCoords(p.latitude, p.longitude).then(adresse => {
@@ -1642,6 +1787,78 @@ document.getElementById("fa-aujourdhui").addEventListener("click", () => {
   chargerFeuillesAdmin();
 });
 document.getElementById("fa-date").addEventListener("change", chargerFeuillesAdmin);
+
+// ---------- SOUS-ONGLETS : vue du jour / historique par chauffeur ----------
+document.getElementById("btn-vue-jour-fa").addEventListener("click", () => {
+  document.getElementById("btn-vue-jour-fa").classList.add("actif");
+  document.getElementById("btn-vue-historique-fa").classList.remove("actif");
+  document.getElementById("vue-jour-fa").style.display = "block";
+  document.getElementById("vue-historique-fa").style.display = "none";
+  chargerFeuillesAdmin();
+});
+document.getElementById("btn-vue-historique-fa").addEventListener("click", () => {
+  document.getElementById("btn-vue-historique-fa").classList.add("actif");
+  document.getElementById("btn-vue-jour-fa").classList.remove("actif");
+  document.getElementById("vue-jour-fa").style.display = "none";
+  document.getElementById("vue-historique-fa").style.display = "block";
+  chargerHistoriqueFeuillesChauffeur();
+});
+document.getElementById("select-chauffeur-historique").addEventListener("change", chargerHistoriqueFeuillesChauffeur);
+
+// Liste, pour le chauffeur choisi, toutes ses feuilles des 30 derniers jours (remplies ou non,
+// signées ou non) — chaque ligne cliquable ouvre directement l'aperçu A4 imprimable, sans jamais
+// les faire disparaître une fois clôturées : l'admin garde un accès permanent à l'historique complet.
+async function chargerHistoriqueFeuillesChauffeur() {
+  const conteneur = document.getElementById("liste-historique-fa");
+  const chauffeurId = document.getElementById("select-chauffeur-historique").value;
+  if (!chauffeurId) { conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun chauffeur.</p>'; return; }
+  conteneur.innerHTML = "Chargement…";
+
+  const ilYA30Jours = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const { data: feuilles, error } = await supabase
+    .from("feuilles_route")
+    .select("*, vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
+    .eq("chauffeur_id", chauffeurId)
+    .gte("date_service", ilYA30Jours)
+    .order("date_service", { ascending: false });
+
+  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+  if (!feuilles || feuilles.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune feuille de route dans les 30 derniers jours.</p>';
+    return;
+  }
+
+  const chauffeur = chauffeursCache.find(c => c.id === chauffeurId);
+  conteneur.innerHTML = "";
+  feuilles.forEach(feuille => {
+    const dateLisible = new Date(feuille.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
+    const recettes = (feuille.recettes_fin != null && feuille.recettes_debut != null)
+      ? (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " € de recettes"
+      : "recettes non renseignées";
+    const div = document.createElement("div");
+    div.className = "ligne-historique-fa" + (feuille.verrouillee ? " signee-fa" : "");
+    div.innerHTML = `
+      <div>
+        <div class="lh-date">${dateLisible}</div>
+        <div class="lh-sous">${feuille.verrouillee ? "🔒 Signée" : "En cours"} · ${recettes}</div>
+      </div>
+      <span class="lh-fleche">▸</span>
+    `;
+    div.addEventListener("click", () => ouvrirApercuHistoriqueFeuille(feuille, chauffeur));
+    conteneur.appendChild(div);
+  });
+}
+
+// Ouvre directement l'aperçu A4 imprimable d'une feuille passée, en rechargeant ses lignes à la demande
+async function ouvrirApercuHistoriqueFeuille(feuille, chauffeur) {
+  const { data: lignes, error } = await supabase
+    .from("lignes_feuille_route")
+    .select("*, courses(statut, mode_paiement)")
+    .eq("feuille_route_id", feuille.id)
+    .order("n_ordre", { ascending: true });
+  if (error) { alert("Erreur : " + error.message); return; }
+  imprimerFeuilleDeRoute(feuille, lignes || [], chauffeur || { nom: "" }, feuille.date_service);
+}
 
 function decalerDateFA(jours) {
   const d = new Date(document.getElementById("fa-date").value + "T00:00:00");
@@ -1996,13 +2213,17 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
   const vehicule = feuille.vehicules;
   const identiteFeuille = vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
 
+  // Une ligne par course, avec la mention "aller-retour" quand c'est le cas — pagine automatiquement
+  // sur plusieurs pages A4 grâce à <thead> (répété en haut de chaque page imprimée) et aux règles
+  // "évite de couper une ligne entre deux pages" ci-dessous : pas besoin de tout faire défiler d'un coup.
   const lignesHtml = (lignes.length ? lignes : new Array(8).fill(null)).map((l, i) => {
     l = l || {};
+    const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
     return `<tr>
       <td>${i + 1}</td>
       <td>${fmtNombre(l.index_depart)}</td>
       <td>${fmtNombre(l.embarquement_index)}</td>
-      <td>${fmtNombre(l.embarquement_lieu)}</td>
+      <td>${fmtNombre(l.embarquement_lieu)}${mentionAR}</td>
       <td>${fmtNombre(l.embarquement_heure)}</td>
       <td>${fmtNombre(l.debarquement_index)}</td>
       <td>${fmtNombre(l.debarquement_lieu)}</td>
@@ -2026,8 +2247,10 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     h2 { font-size: 12px; text-align: center; margin: 8px 0 4px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 0; }
     .mini { font-size: 9px; color: #444; text-transform: uppercase; }
     .valeur { font-weight: bold; }
+    .courses-table thead { display: table-header-group; } /* répète l'en-tête du tableau sur chaque page imprimée */
     .courses-table th { font-size: 9px; }
     .courses-table td { font-size: 10px; text-align: center; height: 22px; }
+    .courses-table tr { page-break-inside: avoid; } /* jamais de ligne coupée entre deux pages */
     .signature { margin-top: 16px; }
     .note-bas { font-size: 8px; margin-top: 4px; }
     .barre-actions-impression { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -2074,17 +2297,21 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
 
     <h2>Courses</h2>
     <table class="courses-table">
+      <thead>
       <tr>
         <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
         <th colspan="3">Embarquement</th><th colspan="3">Débarquement</th>
         <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th>
       </tr>
       <tr><th>Index</th><th>Lieu</th><th>Heure</th><th>Index</th><th>Lieu</th><th>Heure</th></tr>
+      </thead>
+      <tbody>
       ${lignesHtml}
+      </tbody>
     </table>
 
     <div class="signature">Signature du chauffeur : ______________________________</div>
-    <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.</div>
+    <div class="note-bas">* Après déduction d'une remise commerciale éventuelle. (A/R) = course aller-retour.</div>
   </body></html>`;
 
   const fenetre = window.open("", "_blank");

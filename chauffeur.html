@@ -146,6 +146,10 @@ window.onerror = function(msg, url, line, col, err) {
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
     background:#dcdcda; color:var(--gris); margin-bottom:10px;
   }
+  .course .badge-ar{
+    display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
+    background:#fde3cc; color:#8a4a00; margin-bottom:10px; margin-left:6px; font-weight:600;
+  }
   .course-actions{ display:flex; gap:8px; }
   .course-actions button{ font-size:.9rem; padding:10px; }
   #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
@@ -648,8 +652,11 @@ function construireCarteCourse(course) {
     en_cours: "En cours", terminee: "Terminée", annulee: "Annulée"
   }[course.statut] || course.statut;
 
+  const labelTypeRetour = course.type_retour === "immediat" ? " (immédiat, ≤15 min)" : course.type_retour === "attente" ? " (avec attente, >15 min)" : "";
+  const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
+
   div.innerHTML = `
-    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>
+    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}
     <h3>${course.client_nom || "Client"}</h3>
     <div class="heure">${heure}</div>
     <div class="trajet">
