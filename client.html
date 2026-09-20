@@ -162,11 +162,15 @@ window.onerror = function(msg, url, line, col, err) {
 </head>
 <body>
 
-<header>
+<header style="position:relative;">
   <img src="icon-192.png" alt="Taxi Wal">
-  <div>
+  <div style="flex:1;">
     <h1>Taxi Wal</h1>
     <p id="sous-titre">Connexion requise</p>
+  </div>
+  <button id="btn-menu-client" style="display:none; width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
+  <div id="menu-client-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+    <button id="btn-deconnexion-menu-client" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
   </div>
 </header>
 <button id="btn-installer-app">📲 Installer l'application</button>
@@ -440,6 +444,7 @@ document.getElementById("btn-creer-profil").addEventListener("click", async () =
 function demarrerEspaceClient() {
   document.getElementById("ecran-principal").style.display = "block";
   document.getElementById("sous-titre").textContent = "Bonjour " + (monProfil.nom || "").split(" ")[0];
+  document.getElementById("btn-menu-client").style.display = "block";
 
   document.getElementById("edit-profil-nom").value = monProfil.nom || "";
   document.getElementById("edit-profil-tel").value = monProfil.telephone || "";
@@ -456,6 +461,21 @@ function demarrerEspaceClient() {
   chargerMesCourses();
   setInterval(chargerMesCourses, 20000);
 }
+
+// ---------- MENU (☰) : déconnexion ----------
+document.getElementById("btn-menu-client").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById("menu-client-deroulant");
+  menu.style.display = menu.style.display === "none" ? "block" : "none";
+});
+document.addEventListener("click", () => {
+  document.getElementById("menu-client-deroulant").style.display = "none";
+});
+document.getElementById("btn-deconnexion-menu-client").addEventListener("click", async () => {
+  if (!confirm("Se déconnecter de Taxi Wal ?")) return;
+  await supabase.auth.signOut();
+  location.reload();
+});
 
 // ---------- NAVIGATION ONGLETS ----------
 document.querySelectorAll("nav.onglets button").forEach(btn => {

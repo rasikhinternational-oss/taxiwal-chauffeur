@@ -157,11 +157,15 @@ window.onerror = function(msg, url, line, col, err) {
 </head>
 <body>
 
-<header style="display:flex; align-items:center; gap:12px;">
+<header style="display:flex; align-items:center; gap:12px; position:relative;">
   <img src="icon-192.png" alt="Taxi Wal" style="width:44px; height:44px; border-radius:12px; flex-shrink:0;">
-  <div>
+  <div style="flex:1;">
     <h1 style="margin:0;">Taxi Wal — Espace Chauffeur</h1>
     <p id="sous-titre" style="margin:2px 0 0;">Connexion requise</p>
+  </div>
+  <button id="btn-menu-chauffeur" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
+  <div id="menu-chauffeur-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+    <button id="btn-deconnexion-chauffeur" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
   </div>
 </header>
 <button id="btn-installer-app" style="display:none; margin:10px 20px 0; background:var(--vert);">📲 Installer l'application</button>
@@ -552,6 +556,22 @@ function mettreAJourGainsJour(courses) {
   document.getElementById("gains-cash").textContent = fmt(totalCash);
   document.getElementById("gains-carte").textContent = fmt(totalCarte);
 }
+
+// ---------- MENU (☰) : déconnexion ----------
+document.getElementById("btn-menu-chauffeur").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById("menu-chauffeur-deroulant");
+  menu.style.display = menu.style.display === "none" ? "block" : "none";
+});
+document.addEventListener("click", () => {
+  document.getElementById("menu-chauffeur-deroulant").style.display = "none";
+});
+document.getElementById("btn-deconnexion-chauffeur").addEventListener("click", async () => {
+  if (!confirm("Se déconnecter de l'application Taxi Wal ?")) return;
+  arreterPartagePosition();
+  await supabase.auth.signOut();
+  location.reload();
+});
 
 // ---------- NAVIGATION PAR ONGLETS ----------
 document.querySelectorAll("nav.onglets button").forEach(btn => {

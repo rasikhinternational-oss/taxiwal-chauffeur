@@ -247,9 +247,13 @@ window.onerror = function(msg, url, line, col, err) {
 <div id="app-admin" style="display:none;">
 
 <header>
-  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px; position:relative;">
     <img src="icon-192.png" alt="Taxi Wal" style="width:40px; height:40px; border-radius:10px; flex-shrink:0;">
-    <h1 style="margin:0;">Taxi Wal — Admin</h1>
+    <h1 style="margin:0; flex:1;">Taxi Wal — Admin</h1>
+    <button id="btn-menu-admin" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
+    <div id="menu-admin-deroulant" style="display:none; position:absolute; top:46px; right:0; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+      <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
+    </div>
   </div>
   <nav>
     <button class="actif" data-onglet="courses">Courses</button>
@@ -583,6 +587,21 @@ async function surveillerImpressionsFeuilles() {
     imprimeesConnues.set(f.id, f.imprimee_a);
   });
 }
+
+// ---------- MENU (☰) : déconnexion ----------
+document.getElementById("btn-menu-admin").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById("menu-admin-deroulant");
+  menu.style.display = menu.style.display === "none" ? "block" : "none";
+});
+document.addEventListener("click", () => {
+  document.getElementById("menu-admin-deroulant").style.display = "none";
+});
+document.getElementById("btn-deconnexion-admin").addEventListener("click", async () => {
+  if (!confirm("Se déconnecter de l'administration Taxi Wal ?")) return;
+  await supabase.auth.signOut();
+  location.reload();
+});
 
 // ---------- NAVIGATION ONGLETS ----------
 document.querySelectorAll("nav button").forEach(btn => {
@@ -1127,6 +1146,17 @@ function construireCarteAdmin(course) {
   });
   corps.appendChild(btnModifier);
   corps.appendChild(formModif);
+
+  // Bouton "Fermer" explicite, en plus du clic sur l'en-tête — pour qu'il soit toujours
+  // évident comment refermer une course qu'on vient d'ouvrir, sans avoir à deviner.
+  const btnFermerCourse = document.createElement("button");
+  btnFermerCourse.textContent = "✕ Fermer";
+  btnFermerCourse.style.cssText = "margin-top:10px; background:#dcdcda; color:var(--blanc);";
+  btnFermerCourse.addEventListener("click", () => {
+    corps.style.display = "none";
+    entete.querySelector(".chevron-ligne").textContent = "▾";
+  });
+  corps.appendChild(btnFermerCourse);
 
   return div;
 }
@@ -1949,6 +1979,9 @@ function formatDureeMinutes(total) {
 }
 
 const feuillesDepliees = new Set(); // ids des feuilles que l'admin a ouvertes manuellement, à ne pas refermer tout seul
+const lignesDepliees = new Set(); // ids des lignes de course que l'admin a ouvertes manuellement — sinon le
+// rafraîchissement automatique toutes les 15s reconstruit la liste et referme silencieusement
+// le détail en cours de lecture, donnant l'impression que la course "disparaît" toute seule.
 
 function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   const div = document.createElement("div");
@@ -2120,7 +2153,8 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   const entete = document.createElement("div");
   entete.className = "num-ligne";
   // Numéro toujours séquentiel (1, 2, 3, 4, 5…) selon la position affichée, pas selon n_ordre en base
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${ligne.courses?.mode_paiement ? " · payé par " + esc(ligne.courses.mode_paiement) : ""} <span class="chevron-ligne">▾</span></span>`;
+  const ligneOuverte = lignesDepliees.has(ligne.id);
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${ligne.courses?.mode_paiement ? " · payé par " + esc(ligne.courses.mode_paiement) : ""} <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
 
   // Accès total : si la ligne est liée à une vraie course, la supprimer supprime la course elle-même
   // (et donc la ligne, via le trigger côté base) ; sinon elle supprime juste la ligne manuelle
@@ -2144,7 +2178,9 @@ function construireLigneAdmin(ligne, numeroAffiche) {
 
   const grille = document.createElement("div");
   grille.className = "grille3-fa";
-  grille.style.display = "none"; // repliée par défaut, comme sur l'app chauffeur — plus facile à parcourir
+  // Repliée par défaut, mais reste ouverte si l'admin l'a ouverte manuellement — sinon le
+  // rafraîchissement automatique la referme toute seule après quelques secondes.
+  grille.style.display = ligneOuverte ? "grid" : "none";
   const wrapsParChampAdmin = {};
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
@@ -2203,7 +2239,19 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const ouvert = grille.style.display !== "none";
     grille.style.display = ouvert ? "none" : "grid";
     entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
+    if (ouvert) lignesDepliees.delete(ligne.id); else lignesDepliees.add(ligne.id);
   });
+
+  // Bouton "Fermer" explicite, en plus du clic sur l'en-tête
+  const btnFermerLigne = document.createElement("button");
+  btnFermerLigne.textContent = "✕ Fermer";
+  btnFermerLigne.style.cssText = "grid-column:1 / -1; margin-top:4px; background:#dcdcda; color:var(--blanc); padding:8px; border-radius:8px; border:none; font-size:.8rem;";
+  btnFermerLigne.addEventListener("click", () => {
+    grille.style.display = "none";
+    entete.querySelector(".chevron-ligne").textContent = "▾";
+    lignesDepliees.delete(ligne.id);
+  });
+  grille.appendChild(btnFermerLigne);
 
   return div;
 }
