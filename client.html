@@ -292,6 +292,19 @@ window.onerror = function(msg, url, line, col, err) {
 const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 
+// Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
+// ou une note tapée par un client (ou un chauffeur) ne soit interprétée comme du code
+// (protection contre l'injection de script / XSS).
+function esc(valeur) {
+  if (valeur === null || valeur === undefined) return "";
+  return String(valeur)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ---------- COORDONNÉES BANCAIRES (acompte de réservation) ----------
 const COMPTE_BENEFICIAIRE = "Rasikh International";
 const COMPTE_IBAN = "BE61 0019 7821 9717"; // affiché avec espaces
@@ -647,12 +660,12 @@ function construireCarteCourseClient(course) {
   }[course.statut] || course.statut;
 
   div.innerHTML = `
-    <span class="statut-label ${course.statut}">${labelStatut}</span>
-    <div class="heure">${heure}</div>
+    <span class="statut-label ${course.statut}">${esc(labelStatut)}</span>
+    <div class="heure">${esc(heure)}</div>
     <div class="trajet">
-      <b>Départ :</b> ${course.adresse_depart}<br>
-      <b>Arrivée :</b> ${course.adresse_arrivee}
-      ${course.prix ? `<br><b>Prix :</b> ${course.prix} €` : ""}
+      <b>Départ :</b> ${esc(course.adresse_depart)}<br>
+      <b>Arrivée :</b> ${esc(course.adresse_arrivee)}
+      ${course.prix ? `<br><b>Prix :</b> ${esc(course.prix)} €` : ""}
     </div>
   `;
 
@@ -661,7 +674,7 @@ function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-prix-propose";
     bloc.innerHTML = `
-      <div class="montant">${course.prix} € — acompte de ${course.acompte_montant} €</div>
+      <div class="montant">${esc(course.prix)} € — acompte de ${esc(course.acompte_montant)} €</div>
       <button type="button">✅ Accepter ce prix</button>
     `;
     bloc.querySelector("button").addEventListener("click", async () => {
@@ -677,11 +690,11 @@ function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-paiement";
     bloc.innerHTML = `
-      <div style="font-weight:700; margin-bottom:4px;">Acompte à payer : ${course.acompte_montant} €</div>
+      <div style="font-weight:700; margin-bottom:4px;">Acompte à payer : ${esc(course.acompte_montant)} €</div>
       <img src="${urlQrPaiement({ montant: course.acompte_montant, communication })}" alt="QR code de paiement">
-      <div class="ligne-info">Bénéficiaire<br><b>${COMPTE_BENEFICIAIRE}</b></div>
-      <div class="ligne-info">IBAN<br><b>${COMPTE_IBAN}</b></div>
-      <div class="ligne-info">Communication (important)<br><b>${communication}</b></div>
+      <div class="ligne-info">Bénéficiaire<br><b>${esc(COMPTE_BENEFICIAIRE)}</b></div>
+      <div class="ligne-info">IBAN<br><b>${esc(COMPTE_IBAN)}</b></div>
+      <div class="ligne-info">Communication (important)<br><b>${esc(communication)}</b></div>
       <button type="button" id="btn-copier-iban">📋 Copier l'IBAN</button>
       <div class="note-instant">⚡ Merci de faire un virement instantané si ta banque le propose : on reçoit la confirmation en quelques secondes et on peut valider ta course tout de suite.</div>
       <div class="note-instant" style="color:var(--gris);">Scanne ce QR code avec l'appareil photo ou l'app de ta banque : le montant et la communication se remplissent automatiquement.</div>

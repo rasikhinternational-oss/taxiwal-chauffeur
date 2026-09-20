@@ -431,6 +431,19 @@ try {
     'Erreur au démarrage : ' + e.message + '</div>');
 }
 
+// Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
+// ou une note tapée par un client ou un chauffeur ne soit interprétée comme du code
+// (protection contre l'injection de script / XSS), y compris dans les fenêtres d'impression.
+function esc(valeur) {
+  if (valeur === null || valeur === undefined) return "";
+  return String(valeur)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ---------- CONNEXION ADMIN (OTP email + vérification du rôle) ----------
 document.getElementById("btn-envoyer-code-admin").addEventListener("click", async () => {
   const btn = document.getElementById("btn-envoyer-code-admin");
@@ -904,8 +917,8 @@ function construireCarteAdmin(course) {
   entete.innerHTML = `
     <div style="flex:1;">
       <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}
-      <h3>${course.client_nom || "Client"} — ${prixAffiche}</h3>
-      <div class="heure">${heure} · Chauffeur : ${nomChauffeur} · ${course.adresse_depart} → ${course.adresse_arrivee}</div>
+      <h3>${esc(course.client_nom) || "Client"} — ${esc(prixAffiche)}</h3>
+      <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
     <span class="chevron-ligne" style="color:var(--gris); flex-shrink:0;">▾</span>
   `;
@@ -928,9 +941,9 @@ function construireCarteAdmin(course) {
   corps.style.display = "none"; // repliée par défaut — clique sur la carte pour voir/modifier les détails
   corps.innerHTML = `
     <div class="trajet">
-      <b>Départ :</b> ${course.adresse_depart}<br>
-      <b>Arrivée :</b> ${course.adresse_arrivee}
-      ${course.notes ? `<br><b>Note :</b> ${course.notes}` : ""}
+      <b>Départ :</b> ${esc(course.adresse_depart)}<br>
+      <b>Arrivée :</b> ${esc(course.adresse_arrivee)}
+      ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
   `;
   div.appendChild(corps);
@@ -1056,10 +1069,10 @@ function construireCarteAdmin(course) {
   formModif.className = "form-modif-course";
   formModif.style.display = "none";
   formModif.innerHTML = `
-    <label>Nom du client</label><input type="text" data-champ="client_nom" value="${course.client_nom || ""}">
-    <label>Téléphone client</label><input type="text" data-champ="client_telephone" value="${course.client_telephone || ""}">
-    <label>Adresse de départ</label><input type="text" data-champ="adresse_depart" value="${course.adresse_depart || ""}">
-    <label>Adresse d'arrivée</label><input type="text" data-champ="adresse_arrivee" value="${course.adresse_arrivee || ""}">
+    <label>Nom du client</label><input type="text" data-champ="client_nom" value="${esc(course.client_nom) || ""}">
+    <label>Téléphone client</label><input type="text" data-champ="client_telephone" value="${esc(course.client_telephone) || ""}">
+    <label>Adresse de départ</label><input type="text" data-champ="adresse_depart" value="${esc(course.adresse_depart) || ""}">
+    <label>Adresse d'arrivée</label><input type="text" data-champ="adresse_arrivee" value="${esc(course.adresse_arrivee) || ""}">
     <label>Date et heure</label><input type="datetime-local" data-champ="date_heure" value="${course.date_heure ? new Date(course.date_heure).toISOString().slice(0,16) : ""}">
     <label>Passagers</label><input type="number" data-champ="passagers" value="${course.passagers ?? 1}" min="1">
     <label>Bagages</label><input type="number" data-champ="bagages" value="${course.bagages ?? 0}" min="0">
@@ -1079,7 +1092,7 @@ function construireCarteAdmin(course) {
       <option value="immediat" ${course.type_retour === "immediat" ? "selected" : ""}>Immédiat (≤15 min d'attente)</option>
       <option value="attente" ${course.type_retour === "attente" ? "selected" : ""}>Avec attente (&gt;15 min)</option>
     </select>
-    <label>Notes</label><textarea data-champ="notes">${course.notes || ""}</textarea>
+    <label>Notes</label><textarea data-champ="notes">${esc(course.notes) || ""}</textarea>
     <button type="button" class="btn-enregistrer-modif">Enregistrer les modifications</button>
     <button type="button" class="btn-supprimer-course">🗑️ Supprimer définitivement cette course</button>
   `;
@@ -2107,7 +2120,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   const entete = document.createElement("div");
   entete.className = "num-ligne";
   // Numéro toujours séquentiel (1, 2, 3, 4, 5…) selon la position affichée, pas selon n_ordre en base
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${resume}${heureResume}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + labelStatutLigne : ""}${ligne.courses?.mode_paiement ? " · payé par " + ligne.courses.mode_paiement : ""} <span class="chevron-ligne">▾</span></span>`;
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${ligne.courses?.mode_paiement ? " · payé par " + esc(ligne.courses.mode_paiement) : ""} <span class="chevron-ligne">▾</span></span>`;
 
   // Accès total : si la ligne est liée à une vraie course, la supprimer supprime la course elle-même
   // (et donc la ligne, via le trigger côté base) ; sinon elle supprime juste la ligne manuelle
@@ -2197,7 +2210,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
 
 // ---------- IMPRESSION A4 — réplique exacte du modèle papier ----------
 function fmtNombre(v) {
-  return (v === null || v === undefined || v === "") ? "" : v;
+  return (v === null || v === undefined || v === "") ? "" : esc(v);
 }
 function calcTotalBloc(debut, fin) {
   const d = parseFloat(debut), f = parseFloat(fin);
@@ -2234,7 +2247,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
   }).join("");
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <title>Feuille de route — ${chauffeur.nom || ""} — ${dateLisible}</title>
+  <title>Feuille de route — ${esc(chauffeur.nom) || ""} — ${esc(dateLisible)}</title>
   <style>
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
@@ -2269,12 +2282,12 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     <h1>FEUILLE DE ROUTE</h1>
     <table>
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
-          <td colspan="3" class="valeur">${identiteFeuille}</td></tr>
-      <tr><td><span class="mini">Date</span> <span class="valeur">${dateLisible}</span></td>
-          <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${chauffeur.nom || ""}</span></td></tr>
-      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${vehicule?.plaque || "—"}</span></td>
-          <td><span class="mini">Véhicule</span><br><span class="valeur">${vehicule?.nom || "—"}</span></td>
-          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${vehicule?.numero_identification || "—"}</span></td></tr>
+          <td colspan="3" class="valeur">${esc(identiteFeuille)}</td></tr>
+      <tr><td><span class="mini">Date</span> <span class="valeur">${esc(dateLisible)}</span></td>
+          <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${esc(chauffeur.nom) || ""}</span></td></tr>
+      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(vehicule?.plaque) || "—"}</span></td>
+          <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(vehicule?.nom) || "—"}</span></td>
+          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(vehicule?.numero_identification) || "—"}</span></td></tr>
     </table>
 
     <h2>Service</h2>

@@ -271,6 +271,18 @@ try {
     'Erreur au démarrage : ' + e.message + '</div>');
 }
 
+// Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
+// ou une note tapée par un client ne soit interprétée comme du code (protection XSS).
+function esc(valeur) {
+  if (valeur === null || valeur === undefined) return "";
+  return String(valeur)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 let positionInterval = null;
 
 // ---------- CONNEXION (OTP email, même principe que l'app Client) ----------
@@ -657,13 +669,13 @@ function construireCarteCourse(course) {
 
   div.innerHTML = `
     <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}
-    <h3>${course.client_nom || "Client"}</h3>
-    <div class="heure">${heure}</div>
+    <h3>${esc(course.client_nom) || "Client"}</h3>
+    <div class="heure">${esc(heure)}</div>
     <div class="trajet">
-      <b>Départ :</b> ${course.adresse_depart}<br>
-      <b>Arrivée :</b> ${course.adresse_arrivee}<br>
-      ${course.passagers ? `<b>Passagers :</b> ${course.passagers}` : ""}
-      ${course.notes ? `<br><b>Note :</b> ${course.notes}` : ""}
+      <b>Départ :</b> ${esc(course.adresse_depart)}<br>
+      <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
+      ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
+      ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
     ${course.statut === "assignee" ? `
     <div class="rappel-avant-depart">

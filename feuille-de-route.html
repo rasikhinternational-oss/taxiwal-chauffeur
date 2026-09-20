@@ -48,7 +48,6 @@ window.onerror = function(msg, url, line, col, err) {
   .etat-sauvegarde.en-cours{ color:var(--gris); }
   .etat-sauvegarde.ok{ color:var(--vert); font-weight:600; }
   .etat-sauvegarde.erreur{ color:var(--rouge); font-weight:600; }
-  /* Résumé compact affiché une fois la feuille signée, à la place du gros formulaire */
   #resume-signee{ display:none; }
   #resume-signee .ligne-resume{ display:flex; justify-content:space-between; font-size:.88rem; margin-bottom:6px; color:var(--gris); }
   #resume-signee .ligne-resume b{ color:var(--blanc); }
@@ -74,7 +73,6 @@ window.onerror = function(msg, url, line, col, err) {
   <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
 </div>
 
-<!-- Résumé compact, affiché uniquement une fois la feuille signée -->
 <div class="bloc" id="resume-signee">
   <h2>Feuille signée <span id="statut-feuille-resume" style="display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#f9d6d6; color:#b83232;">Verrouillée</span></h2>
   <div class="ligne-resume"><span>Horaires</span><b id="resume-horaires">—</b></div>
@@ -156,7 +154,7 @@ window.onerror = function(msg, url, line, col, err) {
   <p id="avertissement">Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
   <button id="btn-signer">Signer et clôturer la feuille</button>
 </div>
-</div><!-- fin #details-feuille -->
+</div>
 
 <p id="erreur"></p>
 
@@ -166,9 +164,19 @@ const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let feuilleActuelle = null; // ligne de feuilles_route en cours
-let lignesActuelles = []; // lignes de course chargées
-let identiteSocieteActuelle = "Rasikh international"; // valeur par défaut, ajustée selon le véhicule
+function esc(valeur) {
+  if (valeur === null || valeur === undefined) return "";
+  return String(valeur)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+let feuilleActuelle = null;
+let lignesActuelles = [];
+let identiteSocieteActuelle = "Rasikh international";
 
 const champsEntete = {
   "heure-debut": "heure_debut", "heure-fin": "heure_fin", "interruptions": "interruptions",
@@ -181,7 +189,6 @@ const champsEntete = {
   "recettes-debut": "recettes_debut", "recettes-fin": "recettes_fin"
 };
 
-// Paires Début/Fin -> case Total en lecture seule, calculée automatiquement
 const pairesTotal = [
   ["km-debut", "km-fin", "km-total"],
   ["taxi-debut", "taxi-fin", "taxi-total"],
@@ -201,7 +208,6 @@ function calculerTotaux() {
   });
 }
 
-// ---------- INIT : récupère ou crée la feuille du jour ----------
 (async () => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { document.getElementById("erreur").textContent = "Connecte-toi d'abord depuis l'app chauffeur."; return; }
@@ -239,7 +245,6 @@ async function remplirIdentite(user) {
   const { data: profil } = await supabase.from("profils").select("nom").eq("id", user.id).maybeSingle();
   if (profil?.nom) document.getElementById("identite-chauffeur").textContent = profil.nom;
 
-  // Véhicule déjà lié à la feuille, sinon celui actuellement assigné à ce chauffeur
   let vehiculeId = feuilleActuelle.vehicule_id;
   let vehicule = null;
   if (vehiculeId) {
@@ -256,7 +261,6 @@ async function remplirIdentite(user) {
     document.getElementById("identite-vehicule").textContent = vehicule.nom || "—";
     document.getElementById("identite-plaque").textContent = vehicule.plaque || "—";
     document.getElementById("identite-numid").textContent = vehicule.numero_identification || "—";
-    // Société propre au véhicule (ex: "SRL Rasikh" pour la BMW) — sinon la valeur par défaut
     identiteSocieteActuelle = vehicule.identite_exploitant || "Rasikh international";
   }
   document.getElementById("identite-societe").textContent = identiteSocieteActuelle;
@@ -272,7 +276,6 @@ function remplirEntete() {
   badge.classList.toggle("verrouillee", feuilleActuelle.verrouillee);
 }
 
-// Sauvegarde l'en-tête à chaque modification d'un champ (auto-save) + recalcul des totaux
 Object.keys(champsEntete).forEach(idHtml => {
   document.getElementById(idHtml).addEventListener("change", async (e) => {
     const champBdd = champsEntete[idHtml];
@@ -288,11 +291,7 @@ Object.keys(champsEntete).forEach(idHtml => {
   });
 });
 
-// ---------- LIGNES DE COURSES ----------
 async function chargerLignes() {
-  // On récupère aussi le statut de la course liée à chaque ligne (pour verrouiller
-  // automatiquement une ligne dont la course est déjà terminée/annulée, comme le fait
-  // déjà la base de données côté sécurité — l'écran doit refléter la même règle).
   const { data, error } = await supabase
     .from("lignes_feuille_route")
     .select("*, courses(statut)")
@@ -338,18 +337,15 @@ function construireLigneHtml(ligne, numeroAffiche) {
   if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
   else if (ligne.cloturee) badge = " · 🔒 clôturée";
 
-  // Résumé affiché sur la ligne : lieu de départ → lieu d'arrivée + heure
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
   const heureResume = ligne.embarquement_heure ? " · " + ligne.embarquement_heure : "";
 
   const entete = document.createElement("div");
   entete.className = "num";
-  // Numéro toujours séquentiel (1, 2, 3, 4, 5…) selon la position affichée, pas selon n_ordre en base
-  entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${resume}${heureResume}${badge}</span><span class="chevron-ligne">▴</span>`;
+  entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${esc(resume)}${esc(heureResume)}${esc(badge)}</span><span class="chevron-ligne">▴</span>`;
   div.appendChild(entete);
 
   const corps = document.createElement("div");
-  // Détails visibles directement à l'ouverture de la page, pas besoin de cliquer
   corps.style.display = "block";
 
   const etat = document.createElement("div");
@@ -365,7 +361,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const estCheckbox = type === "checkbox";
     const wrap = document.createElement("div");
     wrapsParChamp[champ] = wrap;
-    if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
+    if (estAdresse) wrap.style.gridColumn = "1 / -1";
     const lab = document.createElement("label");
     lab.textContent = libelle;
     const input = (estPaiement || estTypeCourse) ? document.createElement("select") : document.createElement("input");
@@ -386,7 +382,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
       input.type = "checkbox";
       input.style.cssText = "width:auto; margin-top:8px;";
     } else if (type === "number") {
-      // Accepte la virgule française (35,5) en plus du point (35.5) — sinon le champ se vide
       input.type = "text";
       input.inputMode = "decimal";
     } else {
@@ -411,13 +406,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
         etatEl.className = "etat-sauvegarde ok";
         setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
       }
-      if (estPaiement) appliquerVisibilitePaiement(); // change immédiat, sans attendre le prochain rendu
+      if (estPaiement) appliquerVisibilitePaiement();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     corps.appendChild(wrap);
   });
-  // Le chauffeur doit pouvoir clôturer une course directement depuis la feuille de route —
-  // que ce soit une ligne manuelle, ou une vraie course pas encore marquée terminée par ailleurs.
   if (!ligneVerrouillee) {
     const btnCloturer = document.createElement("button");
     btnCloturer.textContent = "🔒 Clôturer cette course";
@@ -425,7 +418,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
     btnCloturer.addEventListener("click", async () => {
       if (!confirm("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).")) return;
       if (ligne.course_id) {
-        // Vraie course : on la marque terminée, ce qui la verrouille automatiquement partout
         const { error } = await supabase.from("courses")
           .update({ statut: "terminee", mode_paiement: ligne.mode_paiement || null })
           .eq("id", ligne.course_id);
@@ -440,7 +432,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
   }
   div.appendChild(corps);
 
-  // Facture (assurance) : pas de montant à saisir, mais un n° de dossier — sinon Sommes perçues normal
   function appliquerVisibilitePaiement() {
     const mode = wrapsParChamp["mode_paiement"].querySelector("select").value;
     const estFacture = mode === "facture";
@@ -472,7 +463,6 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
   afficherLignes();
 });
 
-// ---------- SIGNATURE / CLÔTURE ----------
 document.getElementById("btn-signer").addEventListener("click", async () => {
   if (!confirm("Confirmer la signature ? La feuille sera verrouillée et ne pourra plus être modifiée.")) return;
 
@@ -484,7 +474,6 @@ document.getElementById("btn-signer").addEventListener("click", async () => {
   appliquerVerrouillage();
 });
 
-// Remplit le résumé compact (horaires, recettes, nb de courses) affiché à la place du gros formulaire
 function remplirResumeSignee() {
   const debut = feuilleActuelle.heure_debut || "—", fin = feuilleActuelle.heure_fin || "—";
   document.getElementById("resume-horaires").textContent = `${debut} → ${fin}`;
@@ -511,16 +500,13 @@ function appliquerVerrouillage() {
   badge.textContent = verrou ? "Signée · verrouillée" : "En cours";
   badge.classList.toggle("verrouillee", verrou);
 
-  // Une fois signée, on replie tout le détail derrière un résumé compact — le chauffeur
-  // peut toujours le consulter en un tap, mais l'écran n'est plus encombré pour rien.
   document.getElementById("resume-signee").style.display = verrou ? "block" : "none";
   document.getElementById("details-feuille").style.display = verrou ? "none" : "block";
   detailsOuvertsMalgreSignature = false;
   if (verrou) remplirResumeSignee();
 }
 
-// ---------- IMPRESSION A4 — pour le contrôle routier, directement depuis le véhicule ----------
-function fmtVal(v) { return (v === null || v === undefined || v === "") ? "" : v; }
+function fmtVal(v) { return (v === null || v === undefined || v === "") ? "" : esc(v); }
 function calcTotal2(debut, fin) {
   const d = parseFloat(debut), f = parseFloat(fin);
   return (!isNaN(d) && !isNaN(f)) ? (f - d).toFixed(2) : "";
@@ -539,13 +525,10 @@ function calcTotalHeures2(debut, fin) {
 }
 
 document.getElementById("btn-imprimer-fr").addEventListener("click", async () => {
-  // La fenêtre doit s'ouvrir IMMÉDIATEMENT au clic (avant tout await), sinon Safari/Chrome
-  // la considère comme un popup non désiré et la bloque.
   const fenetre = window.open("", "_blank");
   if (!fenetre) { alert("Le navigateur a bloqué l'ouverture de la fenêtre d'impression. Autorise les pop-ups pour ce site."); return; }
   fenetre.document.write("Préparation de la feuille de route…");
 
-  // Trace l'impression pour que l'admin soit prévenu et puisse vérifier que ça a bien été fait
   const { data: { user } } = await supabase.auth.getUser();
   await supabase.from("feuilles_route")
     .update({ imprimee_a: new Date().toISOString(), imprimee_par: user?.id || null })
@@ -569,7 +552,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   }).join("");
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <title>Feuille de route — ${document.getElementById("identite-chauffeur").textContent} — ${document.getElementById("identite-date").textContent}</title>
+  <title>Feuille de route — ${esc(document.getElementById("identite-chauffeur").textContent)} — ${esc(document.getElementById("identite-date").textContent)}</title>
   <style>
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
@@ -600,12 +583,12 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     <h1>FEUILLE DE ROUTE</h1>
     <table>
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
-          <td colspan="3" class="valeur">${identiteSocieteActuelle}</td></tr>
-      <tr><td><span class="mini">Date</span> <span class="valeur">${document.getElementById("identite-date").textContent}</span></td>
-          <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${document.getElementById("identite-chauffeur").textContent}</span></td></tr>
-      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${document.getElementById("identite-plaque").textContent}</span></td>
-          <td><span class="mini">Véhicule</span><br><span class="valeur">${document.getElementById("identite-vehicule").textContent}</span></td>
-          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${document.getElementById("identite-numid").textContent}</span></td></tr>
+          <td colspan="3" class="valeur">${esc(identiteSocieteActuelle)}</td></tr>
+      <tr><td><span class="mini">Date</span> <span class="valeur">${esc(document.getElementById("identite-date").textContent)}</span></td>
+          <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${esc(document.getElementById("identite-chauffeur").textContent)}</span></td></tr>
+      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(document.getElementById("identite-plaque").textContent)}</span></td>
+          <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(document.getElementById("identite-vehicule").textContent)}</span></td>
+          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(document.getElementById("identite-numid").textContent)}</span></td></tr>
     </table>
 
     <h2>Service</h2>
