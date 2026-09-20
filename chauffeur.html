@@ -306,6 +306,41 @@ document.getElementById("btn-valider-code").addEventListener("click", async () =
   demarrerEspaceChauffeur();
 });
 
+// ---------- NOTIFICATIONS PUSH RÉELLES (fonctionnent même app fermée / téléphone verrouillé) ----------
+const VAPID_PUBLIC_KEY = "BKmh8bflfEHbDKreLbxYj0GBmw0TVYhNyN0N1YzYO5SdKoVlj2Q3MJJN3KR5EbTifJNQf-2WB2VeevO60nzurGg";
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+async function activerNotificationsPushReelles() {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (Notification.permission !== "granted") {
+      const resultat = await Notification.requestPermission();
+      if (resultat !== "granted") return;
+    }
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const json = subscription.toJSON();
+    await supabase.from("push_subscriptions").upsert({
+      user_id: user.id,
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth
+    }, { onConflict: "endpoint" });
+  } catch (e) { console.error("Abonnement notifications push impossible :", e); }
+}
+
 // ---------- DÉMARRAGE ESPACE CHAUFFEUR ----------
 async function demarrerEspaceChauffeur() {
   document.getElementById("ecran-login").style.display = "none";
@@ -316,10 +351,11 @@ async function demarrerEspaceChauffeur() {
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
   }
+  activerNotificationsPushReelles();
 
   await creerFeuilleDuJourSiAbsente(); // toujours une feuille de route prête, dès l'ouverture de l'app
   await chargerCourses(); // premier chargement : on note juste les courses existantes, sans sonner
-  // Rafraîchit la liste toutes les 30 secondes (nouvelles courses assignées)
+  // Rafraîchit la liste toutes les 30 secondes (nouvelles courses assignées + rappels 30 min)
   setInterval(chargerCourses, 30000);
 
   // Localisation activée automatiquement dès l'ouverture de l'app (sans devoir toucher le bouton
@@ -414,6 +450,28 @@ function notifierNouvelleCourse(course) {
   }
 }
 
+// ---------- RAPPEL 30 MINUTES AVANT CHAQUE COURSE ----------
+const rappelsEnvoyesChauffeur = new Set(); // ids de courses déjà rappelées, pour ne prévenir qu'une fois
+function verifierRappels30MinChauffeur(courses) {
+  const maintenant = Date.now();
+  (courses || []).forEach(c => {
+    if (["terminee", "annulee"].includes(c.statut)) return;
+    if (rappelsEnvoyesChauffeur.has(c.id)) return;
+    const minutesRestantes = (new Date(c.date_heure).getTime() - maintenant) / 60000;
+    if (minutesRestantes > 0 && minutesRestantes <= 30) {
+      rappelsEnvoyesChauffeur.add(c.id);
+      jouerSonAlerte();
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("⏰ Rappel : course dans ~30 minutes", {
+          body: `${c.adresse_depart} → ${c.adresse_arrivee}`,
+          tag: "rappel-" + c.id,
+          requireInteraction: true
+        });
+      }
+    }
+  });
+}
+
 // ---------- CHARGER LES COURSES DU CHAUFFEUR CONNECTÉ ----------
 async function chargerCourses() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -438,6 +496,8 @@ async function chargerCourses() {
       idsCoursesConnues.add(c.id);
     });
   }
+
+  verifierRappels30MinChauffeur(courses);
 
   const conteneur = document.getElementById("liste-courses");
   const videMsg = document.getElementById("vide");
