@@ -376,6 +376,12 @@ window.onerror = function(msg, url, line, col, err) {
     <label>Prix (€)</label>
     <input type="text" id="input-prix" placeholder="ex: 35 ou 35 forfait">
 
+    <label>Mode de tarification</label>
+    <select id="input-mode-tarification">
+      <option value="forfait">💶 Forfait (prix fixe convenu)</option>
+      <option value="taximetre">🔢 Taximètre (le chauffeur allume le compteur)</option>
+    </select>
+
     <div id="ligne-aller-retour">
       <input type="checkbox" id="input-aller-retour">
       <label for="input-aller-retour">🔄 Course aller-retour</label>
@@ -384,8 +390,17 @@ window.onerror = function(msg, url, line, col, err) {
       <label>Type de retour</label>
       <select id="input-type-retour">
         <option value="immediat">Retour immédiat (≤15 min d'attente)</option>
-        <option value="attente">Retour avec attente (&gt;15 min)</option>
+        <option value="attente">Retour avec attente (&gt;15 min, durée approximative)</option>
+        <option value="heure_precise">Retour à une heure précise</option>
       </select>
+      <div id="bloc-attente-estimee" style="display:none;">
+        <label>Durée d'attente estimée</label>
+        <input type="text" id="input-duree-attente" placeholder="ex: 10 à 20 minutes">
+      </div>
+      <div id="bloc-heure-retour" style="display:none;">
+        <label>Heure de retour prévue</label>
+        <input type="datetime-local" id="input-heure-retour">
+      </div>
     </div>
 
     <label>Notes</label>
@@ -438,6 +453,17 @@ try {
 // Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
 // ou une note tapée par un client ou un chauffeur ne soit interprétée comme du code
 // (protection contre l'injection de script / XSS), y compris dans les fenêtres d'impression.
+function versDatetimeLocal(dateStr) {
+  // Convertit une date ISO (UTC, telle que stockée en base) vers le format
+  // "YYYY-MM-DDTHH:mm" attendu par un champ <input type="datetime-local">,
+  // en tenant compte du fuseau horaire local (sinon l'heure affichée est décalée).
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const decalageMs = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - decalageMs).toISOString().slice(0, 16);
+}
+
 function esc(valeur) {
   if (valeur === null || valeur === undefined) return "";
   return String(valeur)
@@ -936,8 +962,15 @@ function construireCarteAdmin(course) {
     ? course.prix + " €" + (course.surprime ? ` (+ ${course.surprime} € surprime)` : "")
     : "";
 
-  const labelTypeRetour = course.type_retour === "immediat" ? " (immédiat, ≤15 min)" : course.type_retour === "attente" ? " (avec attente, >15 min)" : "";
+  const heureRetourAffichee = course.heure_retour_prevue
+    ? new Date(course.heure_retour_prevue).toLocaleString("fr-BE", { hour: "2-digit", minute: "2-digit" })
+    : "";
+  const labelTypeRetour = course.type_retour === "immediat" ? " (immédiat, ≤15 min)"
+    : course.type_retour === "attente" ? ` (attente${course.duree_attente_estimee ? " ~" + esc(course.duree_attente_estimee) : " >15 min"})`
+    : course.type_retour === "heure_precise" ? ` (retour à ${heureRetourAffichee})`
+    : "";
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
+  const badgeTaximetre = course.mode_tarification === "taximetre" ? `<span class="badge-ar">🔢 Taximètre</span>` : "";
 
   const dejaOuverte = coursesOuvertes.has(course.id);
 
@@ -946,7 +979,7 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}
+      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}${badgeTaximetre}
       <h3>${esc(course.client_nom) || "Client"} — ${esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
@@ -1038,7 +1071,7 @@ function construireCarteAdmin(course) {
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
     await supabase.from("courses").update({ chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null }).eq("id", course.id);
-    if (nouveauChauffeurId) notifierChauffeurParEmail(course.id); // automatique, aucun clic requis
+    if (nouveauChauffeurId) { notifierChauffeurParEmail(course.id); notifierChauffeurParPush(course.id); } // automatique, aucun clic requis
     chargerCoursesAdmin();
   });
   corps.appendChild(selectChauffeur);
@@ -1104,7 +1137,7 @@ function construireCarteAdmin(course) {
     <label>Téléphone client</label><input type="text" data-champ="client_telephone" value="${esc(course.client_telephone) || ""}">
     <label>Adresse de départ</label><input type="text" data-champ="adresse_depart" value="${esc(course.adresse_depart) || ""}">
     <label>Adresse d'arrivée</label><input type="text" data-champ="adresse_arrivee" value="${esc(course.adresse_arrivee) || ""}">
-    <label>Date et heure</label><input type="datetime-local" data-champ="date_heure" value="${course.date_heure ? new Date(course.date_heure).toISOString().slice(0,16) : ""}">
+    <label>Date et heure</label><input type="datetime-local" data-champ="date_heure" value="${versDatetimeLocal(course.date_heure)}">
     <label>Passagers</label><input type="number" data-champ="passagers" value="${course.passagers ?? 1}" min="1">
     <label>Bagages</label><input type="number" data-champ="bagages" value="${course.bagages ?? 0}" min="0">
     <label>Prix (€)</label><input type="number" step="0.5" data-champ="prix" value="${course.prix ?? ""}">
@@ -1117,18 +1150,36 @@ function construireCarteAdmin(course) {
       <input type="checkbox" id="modif-ar-${course.id}" data-champ="aller_retour" ${course.aller_retour ? "checked" : ""}>
       <label for="modif-ar-${course.id}">🔄 Course aller-retour</label>
     </div>
+    <label>Mode de tarification</label>
+    <select data-champ="mode_tarification">
+      <option value="forfait" ${course.mode_tarification !== "taximetre" ? "selected" : ""}>💶 Forfait (prix fixe convenu)</option>
+      <option value="taximetre" ${course.mode_tarification === "taximetre" ? "selected" : ""}>🔢 Taximètre (le chauffeur allume le compteur)</option>
+    </select>
     <label>Type de retour</label>
-    <select data-champ="type_retour">
+    <select data-champ="type_retour" class="modif-type-retour">
       <option value="">—</option>
       <option value="immediat" ${course.type_retour === "immediat" ? "selected" : ""}>Immédiat (≤15 min d'attente)</option>
-      <option value="attente" ${course.type_retour === "attente" ? "selected" : ""}>Avec attente (&gt;15 min)</option>
+      <option value="attente" ${course.type_retour === "attente" ? "selected" : ""}>Avec attente (&gt;15 min, durée approximative)</option>
+      <option value="heure_precise" ${course.type_retour === "heure_precise" ? "selected" : ""}>Retour à une heure précise</option>
     </select>
+    <div class="modif-bloc-attente" style="display:${course.type_retour === "attente" ? "block" : "none"};">
+      <label>Durée d'attente estimée</label>
+      <input type="text" data-champ="duree_attente_estimee" value="${esc(course.duree_attente_estimee) || ""}" placeholder="ex: 10 à 20 minutes">
+    </div>
+    <div class="modif-bloc-heure-retour" style="display:${course.type_retour === "heure_precise" ? "block" : "none"};">
+      <label>Heure de retour prévue</label>
+      <input type="datetime-local" data-champ="heure_retour_prevue" value="${versDatetimeLocal(course.heure_retour_prevue)}">
+    </div>
     <label>Notes</label><textarea data-champ="notes">${esc(course.notes) || ""}</textarea>
     <button type="button" class="btn-enregistrer-modif">Enregistrer les modifications</button>
     <button type="button" class="btn-supprimer-course">🗑️ Supprimer définitivement cette course</button>
   `;
   btnModifier.addEventListener("click", () => {
     formModif.style.display = formModif.style.display === "none" ? "block" : "none";
+  });
+  formModif.querySelector(".modif-type-retour").addEventListener("change", (e) => {
+    formModif.querySelector(".modif-bloc-attente").style.display = e.target.value === "attente" ? "block" : "none";
+    formModif.querySelector(".modif-bloc-heure-retour").style.display = e.target.value === "heure_precise" ? "block" : "none";
   });
   formModif.querySelector(".btn-suppr-surprime").addEventListener("click", async () => {
     formModif.querySelector('[data-champ="surprime"]').value = "";
@@ -1137,15 +1188,22 @@ function construireCarteAdmin(course) {
   });
   formModif.querySelector(".btn-enregistrer-modif").addEventListener("click", async () => {
     const maj = {};
+    const estAllerRetourModif = formModif.querySelector('[data-champ="aller_retour"]').checked;
+    const typeRetourChoisi = estAllerRetourModif ? formModif.querySelector('[data-champ="type_retour"]').value : "";
     formModif.querySelectorAll("[data-champ]").forEach(input => {
       const champ = input.dataset.champ;
       if (input.type === "checkbox") { maj[champ] = input.checked; return; }
       let val = input.value;
-      if (champ === "date_heure") { maj[champ] = val ? new Date(val).toISOString() : null; return; }
+      if (champ === "date_heure" || champ === "heure_retour_prevue") { maj[champ] = val ? new Date(val).toISOString() : null; return; }
       if (champ === "passagers" || champ === "bagages") { maj[champ] = val ? parseInt(val) : null; return; }
       if (champ === "prix" || champ === "surprime") { maj[champ] = val ? parseFloat(val) : null; return; }
       maj[champ] = val || null;
     });
+    // Si la course n'est plus "aller-retour", on efface tout ce qui concerne le retour
+    if (!estAllerRetourModif) { maj.type_retour = null; maj.duree_attente_estimee = null; maj.heure_retour_prevue = null; }
+    // Ne garde la durée d'attente que si "attente" est sélectionné, et l'heure de retour que si "heure_precise" est sélectionné
+    if (typeRetourChoisi !== "attente") maj.duree_attente_estimee = null;
+    if (typeRetourChoisi !== "heure_precise") maj.heure_retour_prevue = null;
     const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
     if (error) { alert("Erreur : " + error.message); return; }
     chargerCoursesAdmin();
@@ -1199,6 +1257,13 @@ async function notifierChauffeurParEmail(courseId) {
   } catch (e) { console.error("Notification chauffeur non envoyée :", e); }
 }
 
+async function notifierChauffeurParPush(courseId) {
+  try {
+    const { error } = await supabase.functions.invoke("notifier-chauffeur-push", { body: { courseId } });
+    if (error) console.error("Notification push chauffeur non envoyée :", error);
+  } catch (e) { console.error("Notification push chauffeur non envoyée :", e); }
+}
+
 // La synchronisation course -> feuille de route du chauffeur (création/mise à jour/suppression
 // de la ligne) est désormais entièrement gérée côté base de données par un trigger automatique
 // (fonction gerer_ligne_feuille_route), qui se déclenche à chaque création ou modification de
@@ -1211,6 +1276,10 @@ document.getElementById("btn-annuler-modale").addEventListener("click", () => mo
 
 document.getElementById("input-aller-retour").addEventListener("change", (e) => {
   document.getElementById("bloc-type-retour").style.display = e.target.checked ? "block" : "none";
+});
+document.getElementById("input-type-retour").addEventListener("change", (e) => {
+  document.getElementById("bloc-attente-estimee").style.display = e.target.value === "attente" ? "block" : "none";
+  document.getElementById("bloc-heure-retour").style.display = e.target.value === "heure_precise" ? "block" : "none";
 });
 
 document.getElementById("btn-creer-course").addEventListener("click", async () => {
@@ -1236,15 +1305,20 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
     date_heure: new Date(date).toISOString(),
     passagers: parseInt(document.getElementById("input-passagers").value) || 1,
     prix: parseFloat(document.getElementById("input-prix").value) || null,
+    mode_tarification: document.getElementById("input-mode-tarification").value,
     notes: document.getElementById("input-notes").value.trim(),
     aller_retour: estAllerRetour,
     type_retour: estAllerRetour ? document.getElementById("input-type-retour").value : null,
+    duree_attente_estimee: (estAllerRetour && document.getElementById("input-type-retour").value === "attente")
+      ? document.getElementById("input-duree-attente").value.trim() || null : null,
+    heure_retour_prevue: (estAllerRetour && document.getElementById("input-type-retour").value === "heure_precise" && document.getElementById("input-heure-retour").value)
+      ? new Date(document.getElementById("input-heure-retour").value).toISOString() : null,
     statut: chauffeurChoisi ? "assignee" : "en_attente"
   }).select().single();
 
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
 
-  if (chauffeurChoisi && nouvelleCourse) notifierChauffeurParEmail(nouvelleCourse.id); // automatique, aucun clic requis
+  if (chauffeurChoisi && nouvelleCourse) { notifierChauffeurParEmail(nouvelleCourse.id); notifierChauffeurParPush(nouvelleCourse.id); } // automatique, aucun clic requis
   invaliderCacheAdresses();
 
   modale.classList.remove("visible");
@@ -1254,9 +1328,14 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   document.getElementById("input-arrivee").value = "";
   document.getElementById("input-notes").value = "";
   document.getElementById("input-prix").value = "";
+  document.getElementById("input-mode-tarification").value = "forfait";
   document.getElementById("input-aller-retour").checked = false;
   document.getElementById("bloc-type-retour").style.display = "none";
   document.getElementById("input-type-retour").value = "immediat";
+  document.getElementById("input-duree-attente").value = "";
+  document.getElementById("input-heure-retour").value = "";
+  document.getElementById("bloc-attente-estimee").style.display = "none";
+  document.getElementById("bloc-heure-retour").style.display = "none";
   chargerCoursesAdmin();
   if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
 });

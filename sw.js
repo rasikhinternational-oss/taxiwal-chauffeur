@@ -19,19 +19,28 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// Réception d'une vraie notification push envoyée par le serveur (rappel 30 minutes avant une course).
+// Réception d'une vraie notification push envoyée par le serveur (nouvelle course assignée,
+// ou rappel 30 minutes avant une course).
 self.addEventListener("push", (event) => {
   let donnees = { titre: "Taxi Wal", corps: "Nouvelle notification" };
   try { donnees = event.data.json(); } catch (e) {}
 
   event.waitUntil(
-    self.registration.showNotification(donnees.titre || "Taxi Wal", {
-      body: donnees.corps || "",
-      icon: "icon-192.png",
-      badge: "icon-192.png",
-      requireInteraction: true,
-      tag: "rappel-taxiwal-" + Date.now()
-    })
+    (async () => {
+      await self.registration.showNotification(donnees.titre || "Taxi Wal", {
+        body: donnees.corps || "",
+        icon: "icon-192.png",
+        badge: "icon-192.png",
+        requireInteraction: true,
+        tag: "rappel-taxiwal-" + Date.now()
+      });
+      // Prévient toutes les pages Taxi Wal déjà ouvertes (même en arrière-plan) qu'il faut
+      // recharger les courses tout de suite, sans attendre le prochain cycle automatique.
+      const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of clientList) {
+        client.postMessage({ type: donnees.type || "nouvelle-course" });
+      }
+    })()
   );
 });
 

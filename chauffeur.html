@@ -361,6 +361,18 @@ async function activerNotificationsPushReelles() {
   } catch (e) { console.error("Abonnement notifications push impossible :", e); }
 }
 
+// Réception d'une notification push par le service worker : si l'application est déjà ouverte
+// (même en arrière-plan), on force un rechargement immédiat au lieu d'attendre le prochain
+// cycle de 30 secondes — c'est ce qui corrigeait le délai entre "le téléphone sonne" et
+// "la course s'affiche enfin".
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "nouvelle-course") {
+      chargerCourses();
+    }
+  });
+}
+
 // ---------- DÉMARRAGE ESPACE CHAUFFEUR ----------
 async function demarrerEspaceChauffeur() {
   document.getElementById("ecran-login").style.display = "none";
@@ -375,12 +387,28 @@ async function demarrerEspaceChauffeur() {
 
   await creerFeuilleDuJourSiAbsente(); // toujours une feuille de route prête, dès l'ouverture de l'app
   await chargerCourses(); // premier chargement : on note juste les courses existantes, sans sonner
-  // Rafraîchit la liste toutes les 30 secondes (nouvelles courses assignées + rappels 30 min)
+  // Rafraîchit la liste toutes les 30 secondes (filet de sécurité + rappels 30 min)
   setInterval(chargerCourses, 30000);
+  // Abonnement temps réel : dès qu'une course de ce chauffeur change côté serveur (nouvelle
+  // course, réassignation, modification d'horaire...), la liste se recharge immédiatement au
+  // lieu d'attendre le prochain cycle de 30 secondes — tant que l'app reste ouverte.
+  activerTempsReelCourses();
 
   // Localisation activée automatiquement dès l'ouverture de l'app (sans devoir toucher le bouton
   // "Disponible") — comme ça l'admin voit tout de suite le chauffeur sur la carte dès qu'il ouvre l'app.
   activerLocalisationAutomatique();
+}
+
+async function activerTempsReelCourses() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  supabase
+    .channel("courses-chauffeur-" + user.id)
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: "courses", filter: `chauffeur_id=eq.${user.id}` },
+      () => chargerCourses()
+    )
+    .subscribe();
 }
 
 function activerLocalisationAutomatique() {
@@ -684,11 +712,19 @@ function construireCarteCourse(course) {
     en_cours: "En cours", terminee: "Terminée", annulee: "Annulée"
   }[course.statut] || course.statut;
 
-  const labelTypeRetour = course.type_retour === "immediat" ? " (immédiat, ≤15 min)" : course.type_retour === "attente" ? " (avec attente, >15 min)" : "";
+  const heureRetourAffichee = course.heure_retour_prevue
+    ? new Date(course.heure_retour_prevue).toLocaleString("fr-BE", { hour: "2-digit", minute: "2-digit" })
+    : "";
+  const labelTypeRetour = course.type_retour === "immediat" ? " (immédiat, ≤15 min)"
+    : course.type_retour === "attente" ? ` (attente${course.duree_attente_estimee ? " ~" + esc(course.duree_attente_estimee) : " >15 min"})`
+    : course.type_retour === "heure_precise" ? ` (retour à ${heureRetourAffichee})`
+    : "";
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
+  const estTaximetre = course.mode_tarification === "taximetre";
+  const badgeTarification = `<span class="badge-ar">${estTaximetre ? "🔢 Taximètre" : "💶 Forfait" + (course.prix ? " " + course.prix + " €" : "")}</span>`;
 
   div.innerHTML = `
-    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}
+    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}
     <h3>${esc(course.client_nom) || "Client"}</h3>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
@@ -699,7 +735,10 @@ function construireCarteCourse(course) {
     </div>
     ${course.statut === "assignee" ? `
     <div class="rappel-avant-depart">
-      ⚠️ Avant de démarrer : imprime le ticket du taximètre et complète ta feuille de route.
+      ${estTaximetre
+        ? "🔢 Course au taximètre : allume le compteur au moment où le client monte à bord."
+        : "💶 Course au forfait" + (course.prix ? ` (${course.prix} €)` : "") + " : pas besoin d'allumer le taximètre."}
+      <br>⚠️ N'oublie pas de compléter ta feuille de route.
     </div>` : ""}
   `;
 
@@ -734,8 +773,8 @@ function construireCarteCourse(course) {
     actions.appendChild(creerBouton("Démarrer la course", () => {
       const ok = window.confirm(
         "Avant de démarrer :\n\n" +
-        "1) Imprime le ticket du taximètre\n" +
-        "2) Complète ta feuille de route\n\n" +
+        (estTaximetre ? "1) Allume le taximètre\n2) Imprime le ticket à la fin\n" : "1) Course au forfait, pas besoin du taximètre\n") +
+        "3) Complète ta feuille de route\n\n" +
         "Continuer et démarrer la course ?"
       );
       if (ok) demarrerCourse(course.id);
