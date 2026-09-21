@@ -546,7 +546,7 @@ function demarrerAdmin() {
   activerNotificationsPushReelles();
   chargerChauffeurs();
   chargerCoursesAdmin();
-  setInterval(chargerCoursesAdmin, 20000);
+  setInterval(() => chargerCoursesAdmin(true), 20000);
   surveillerImpressionsFeuilles(); // premier relevé, sans notifier rétroactivement
   setInterval(surveillerImpressionsFeuilles, 20000);
   setInterval(() => {
@@ -621,6 +621,7 @@ document.querySelectorAll("nav button").forEach(btn => {
 // ---------- CHARGER LA LISTE DES CHAUFFEURS (pour le menu déroulant) ----------
 let chauffeursCache = [];
 let dernieresCoursesAdmin = [];
+const coursesOuvertes = new Set(); // ids des courses dont le détail est ouvert, pour ne pas les refermer tout seul au rafraîchissement automatique
 async function chargerChauffeurs() {
   const { data, error } = await supabase
     .from("profils")
@@ -728,7 +729,7 @@ function afficherListeCoursesAdmin() {
   coursesAffichees.forEach(c => conteneur.appendChild(construireCarteAdmin(c)));
 }
 
-async function chargerCoursesAdmin() {
+async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   const { data: courses, error } = await supabase
     .from("courses")
     .select("*, profils:chauffeur_id(nom)")
@@ -766,7 +767,15 @@ async function chargerCoursesAdmin() {
   dernieresCoursesAdmin = courses || [];
 
   verifierRappels30MinAdmin(dernieresCoursesAdmin);
-  afficherListeCoursesAdmin();
+
+  // Pendant un rafraîchissement automatique, ne jamais reconstruire la liste si l'admin est
+  // en train de saisir un champ (modification d'une course) : sinon le formulaire se ferme
+  // tout seul sous ses doigts avant qu'il ait fini de taper.
+  const zoneCourses = document.getElementById("liste-courses-admin");
+  const enTrainDeSaisir = depuisAutoRafraichissement && zoneCourses.contains(document.activeElement) && document.activeElement.tagName !== "BODY";
+  if (!enTrainDeSaisir) {
+    afficherListeCoursesAdmin();
+  }
 
   if (document.getElementById("section-agenda").classList.contains("visible")) {
     rendreCalendrierAdmin();
@@ -930,6 +939,8 @@ function construireCarteAdmin(course) {
   const labelTypeRetour = course.type_retour === "immediat" ? " (immédiat, ≤15 min)" : course.type_retour === "attente" ? " (avec attente, >15 min)" : "";
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
 
+  const dejaOuverte = coursesOuvertes.has(course.id);
+
   const entete = document.createElement("div");
   entete.className = "entete-course-admin";
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
@@ -939,7 +950,7 @@ function construireCarteAdmin(course) {
       <h3>${esc(course.client_nom) || "Client"} — ${esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
-    <span class="chevron-ligne" style="color:var(--gris); flex-shrink:0;">▾</span>
+    <span class="chevron-ligne" style="color:var(--gris); flex-shrink:0;">${dejaOuverte ? "▴" : "▾"}</span>
   `;
   const btnSupprimerRapide = document.createElement("button");
   btnSupprimerRapide.textContent = "🗑️";
@@ -957,7 +968,7 @@ function construireCarteAdmin(course) {
 
   const corps = document.createElement("div");
   corps.className = "corps-course-admin";
-  corps.style.display = "none"; // repliée par défaut — clique sur la carte pour voir/modifier les détails
+  corps.style.display = dejaOuverte ? "block" : "none"; // repliée par défaut — reste ouverte si l'admin l'avait déjà ouverte
   corps.innerHTML = `
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
@@ -971,6 +982,7 @@ function construireCarteAdmin(course) {
     const ouvert = corps.style.display !== "none";
     corps.style.display = ouvert ? "none" : "block";
     entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
+    if (ouvert) coursesOuvertes.delete(course.id); else coursesOuvertes.add(course.id);
   });
 
   // Demande client sans prix encore envoyé : formulaire pour proposer un prix
@@ -1155,6 +1167,7 @@ function construireCarteAdmin(course) {
   btnFermerCourse.addEventListener("click", () => {
     corps.style.display = "none";
     entete.querySelector(".chevron-ligne").textContent = "▾";
+    coursesOuvertes.delete(course.id);
   });
   corps.appendChild(btnFermerCourse);
 
