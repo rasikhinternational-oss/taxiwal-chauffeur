@@ -191,6 +191,32 @@ window.onerror = function(msg, url, line, col, err) {
   /* Modale nouvelle course */
   #modale{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:50; align-items:flex-end; }
   #modale.visible{ display:flex; }
+  #modale-partenaire{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:50; align-items:flex-end; }
+  #modale-partenaire.visible{ display:flex; }
+  #modale-partenaire-contenu{ background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:20px; max-height:90vh; overflow-y:auto; }
+  #modale-partenaire-contenu h2{ margin-top:0; font-size:1.1rem; }
+  #modale-partenaire-contenu label{ display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px; }
+  #modale-partenaire-contenu input{
+    width:100%; box-sizing:border-box; padding:11px; border-radius:8px; border:1px solid #cfcfcd; font-size:.95rem;
+  }
+  #recherche-client{
+    width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #cfcfcd; font-size:.95rem; margin-bottom:14px;
+  }
+  .client-admin{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:10px; }
+  .client-admin .client-nom{ font-weight:700; font-size:1.05rem; }
+  .client-admin .client-coords{ color:var(--gris); font-size:.85rem; margin:2px 0 8px; }
+  .client-admin .client-stats{ display:flex; gap:14px; font-size:.85rem; margin-bottom:8px; }
+  .client-admin .client-stats b{ display:block; font-size:1rem; }
+  .client-admin .btn-appeler-client{ background:var(--vert); color:#fff; border:none; border-radius:8px; padding:8px 12px; font-weight:600; margin-right:8px; }
+  .client-admin .btn-historique-client{ background:var(--noir); color:var(--blanc); border:1px solid #cfcfcd; border-radius:8px; padding:8px 12px; font-weight:600; }
+  .historique-client-lignes{ margin-top:10px; border-top:1px solid #e2e2df; padding-top:10px; }
+  .historique-client-lignes .ligne-histo{ font-size:.82rem; color:var(--gris); padding:4px 0; border-bottom:1px dashed #e2e2df; }
+  .lead-site{ background:#fff9e6; border:1px solid #e8d488; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .lead-site .lead-site-titre{ font-weight:700; font-size:.8rem; color:#8a6d1e; margin-bottom:6px; }
+  .lead-site .lead-site-nom{ font-weight:700; }
+  .lead-site .lead-site-detail{ font-size:.85rem; color:var(--gris); margin:2px 0; }
+  .lead-site .btn-appeler-lead{ background:var(--vert); color:#fff; border:none; border-radius:8px; padding:8px 12px; font-weight:600; margin-top:8px; margin-right:8px; }
+  .lead-site .btn-traite-lead{ background:var(--noir); color:var(--blanc); border:1px solid #cfcfcd; border-radius:8px; padding:8px 12px; font-weight:600; margin-top:8px; }
   #modale-contenu{ background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:20px; max-height:90vh; overflow-y:auto; }
   #modale-contenu h2{ margin-top:0; font-size:1.1rem; }
   #modale-contenu label{ display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px; }
@@ -262,6 +288,8 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
+    <button data-onglet="partenaires">🤝 Sous-traitants</button>
+    <button data-onglet="clients">👥 Clients</button>
   </nav>
   <button id="btn-installer-app" style="display:none; margin-top:10px; background:var(--vert); border:none; border-radius:8px; color:#fff; padding:10px; font-weight:600; cursor:pointer;">📲 Installer l'application</button>
 </header>
@@ -347,6 +375,39 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-caisse">
   <div id="liste-caisse"></div>
 </section>
+
+<section id="section-clients">
+  <div id="bloc-leads-site"></div>
+  <input type="text" id="recherche-client" placeholder="🔍 Rechercher un client (nom ou téléphone)">
+  <div id="liste-clients-admin"></div>
+</section>
+
+<section id="section-partenaires">
+  <button id="btn-ajouter-partenaire">+ Ajouter un sous-traitant</button>
+  <div id="liste-partenaires-admin"></div>
+</section>
+
+<!-- Modale création sous-traitant -->
+<div id="modale-partenaire">
+  <div id="modale-partenaire-contenu">
+    <h2>Nouveau sous-traitant</h2>
+    <label>Nom du chauffeur ou de la société</label>
+    <input type="text" id="input-partenaire-nom" placeholder="ex: Jean Dupont ou Taxi XYZ">
+    <label>Société (optionnel)</label>
+    <input type="text" id="input-partenaire-societe">
+    <label>Email (pour se connecter à l'application)</label>
+    <input type="email" id="input-partenaire-email">
+    <label>Téléphone</label>
+    <input type="text" id="input-partenaire-telephone">
+    <label>Taux de commission (%)</label>
+    <input type="number" id="input-partenaire-commission" placeholder="ex: 15" min="0" max="100" step="0.5">
+    <p id="erreur-partenaire"></p>
+    <div class="modale-actions">
+      <button id="btn-annuler-partenaire" class="secondaire">Annuler</button>
+      <button id="btn-creer-partenaire">Créer le sous-traitant</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modale création course -->
 <div id="modale">
@@ -641,13 +702,32 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "caisse") chargerCaisse();
     if (btn.dataset.onglet === "feuilles") chargerFeuillesAdmin();
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
+    if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
+    if (btn.dataset.onglet === "clients") chargerClientsAdmin();
   });
 });
 
 // ---------- CHARGER LA LISTE DES CHAUFFEURS (pour le menu déroulant) ----------
 let chauffeursCache = [];
+let partenairesCache = [];
 let dernieresCoursesAdmin = [];
 const coursesOuvertes = new Set(); // ids des courses dont le détail est ouvert, pour ne pas les refermer tout seul au rafraîchissement automatique
+
+function optionsChauffeursEtPartenaires(idSelectionne) {
+  let html = `<option value="">— Aucun (à attribuer plus tard) —</option>`;
+  if (chauffeursCache.length) {
+    html += `<optgroup label="Chauffeurs">` +
+      chauffeursCache.map(c => `<option value="${c.id}" ${c.id === idSelectionne ? "selected" : ""}>${c.nom || c.telephone || c.id}</option>`).join("") +
+      `</optgroup>`;
+  }
+  if (partenairesCache.length) {
+    html += `<optgroup label="🤝 Sous-traitants">` +
+      partenairesCache.map(p => `<option value="${p.id}" ${p.id === idSelectionne ? "selected" : ""}>${p.nom}${p.societe ? " (" + p.societe + ")" : ""}</option>`).join("") +
+      `</optgroup>`;
+  }
+  return html;
+}
+
 async function chargerChauffeurs() {
   const { data, error } = await supabase
     .from("profils")
@@ -658,17 +738,19 @@ async function chargerChauffeurs() {
   if (error) { console.error(error); return; }
   chauffeursCache = data || [];
 
+  const { data: partenaires } = await supabase
+    .from("profils")
+    .select("id, nom, societe")
+    .eq("role", "partenaire")
+    .eq("actif", true);
+  partenairesCache = partenaires || [];
+
   const select = document.getElementById("input-chauffeur");
-  select.innerHTML = `<option value="">— Aucun (à attribuer plus tard) —</option>` +
-    chauffeursCache
-      .map(c => `<option value="${c.id}">${c.nom || c.telephone || c.id}</option>`)
-      .join("");
+  select.innerHTML = optionsChauffeursEtPartenaires(null);
 
   const selectHisto = document.getElementById("select-chauffeur-historique");
   if (selectHisto) {
-    selectHisto.innerHTML = chauffeursCache
-      .map(c => `<option value="${c.id}">${c.nom || c.telephone || c.id}</option>`)
-      .join("");
+    selectHisto.innerHTML = optionsChauffeursEtPartenaires(null).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
   }
 }
 
@@ -758,9 +840,8 @@ function afficherListeCoursesAdmin() {
 async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   const { data: courses, error } = await supabase
     .from("courses")
-    .select("*, profils:chauffeur_id(nom)")
+    .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom)")
     .order("date_heure", { ascending: true });
-
   if (error) { console.error(error); return; }
 
   // Détecte les nouvelles demandes clients jamais vues, les paiements tout juste déclarés,
@@ -971,6 +1052,12 @@ function construireCarteAdmin(course) {
     : "";
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
   const badgeTaximetre = course.mode_tarification === "taximetre" ? `<span class="badge-ar">🔢 Taximètre</span>` : "";
+  const labelVehiculeSouhaite = { berline: "🚗 Berline souhaitée", van: "🚐 Van souhaité", pmr: "♿ PMR souhaité" }[course.vehicule_souhaite] || "";
+  const badgeVehiculeSouhaite = labelVehiculeSouhaite ? `<span class="badge-ar">${labelVehiculeSouhaite}</span>` : "";
+  const badgeChauffeurPrefere = course.chauffeur_prefere?.nom ? `<span class="badge-ar">⭐ Préfère ${esc(course.chauffeur_prefere.nom)}</span>` : "";
+  const badgeNoteClient = course.note_client ? `<span class="badge-ar">${"★".repeat(course.note_client)}${"☆".repeat(5 - course.note_client)}</span>` : "";
+  const badgeSousTraitant = course.profils?.role === "partenaire" ? `<span class="badge-ar">🤝 Sous-traitant${course.montant_commission ? ` (${Number(course.montant_commission).toFixed(2)} € commission)` : ""}</span>` : "";
+  const badgeMarcheOuvert = course.ouverte_marche ? `<span class="badge-ar">📢 Ouverte aux chauffeurs</span>` : "";
 
   const dejaOuverte = coursesOuvertes.has(course.id);
 
@@ -979,7 +1066,7 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}${badgeTaximetre}
+      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}${badgeTaximetre}${badgeVehiculeSouhaite}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}
       <h3>${esc(course.client_nom) || "Client"} — ${esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
@@ -1066,8 +1153,7 @@ function construireCarteAdmin(course) {
 
   // Réassignation
   const selectChauffeur = document.createElement("select");
-  selectChauffeur.innerHTML = `<option value="">— Réassigner à —</option>` +
-    chauffeursCache.map(c => `<option value="${c.id}" ${c.id === course.chauffeur_id ? "selected" : ""}>${c.nom || c.telephone}</option>`).join("");
+  selectChauffeur.innerHTML = `<option value="">— Réassigner à —</option>` + optionsChauffeursEtPartenaires(course.chauffeur_id).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
     await supabase.from("courses").update({ chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null }).eq("id", course.id);
@@ -2557,6 +2643,268 @@ function construireVehiculeAdmin(vehicule) {
   actions.appendChild(btnSupprimer);
 
   div.appendChild(actions);
+  return div;
+}
+
+// ---------- SOUS-TRAITANTS (partenaires) ----------
+async function chargerPartenairesAdmin() {
+  const conteneur = document.getElementById("liste-partenaires-admin");
+  conteneur.innerHTML = "Chargement…";
+
+  const { data: partenaires, error } = await supabase
+    .from("profils")
+    .select("*")
+    .eq("role", "partenaire")
+    .order("created_at", { ascending: true });
+
+  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+
+  conteneur.innerHTML = "";
+  if (!partenaires || partenaires.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun sous-traitant pour l\'instant. Ils reçoivent des courses exactement comme tes chauffeurs internes, avec une commission automatique.</p>';
+    return;
+  }
+  for (const p of partenaires) conteneur.appendChild(await construireCartePartenaire(p));
+}
+
+async function construireCartePartenaire(partenaire) {
+  const div = document.createElement("div");
+  div.className = "vehicule-admin" + (partenaire.actif ? "" : " inactif");
+
+  const { data: coursesNonPayees } = await supabase
+    .from("courses")
+    .select("id, date_heure, adresse_depart, adresse_arrivee, prix, montant_commission")
+    .eq("chauffeur_id", partenaire.id)
+    .eq("statut", "terminee")
+    .eq("commission_payee", false)
+    .order("date_heure", { ascending: true });
+
+  const totalDu = (coursesNonPayees || []).reduce((s, c) => s + (Number(c.montant_commission) || 0), 0);
+
+  const entete = document.createElement("div");
+  entete.innerHTML = `
+    <h3 style="margin:0 0 4px;">${esc(partenaire.nom)}${partenaire.societe ? ` — ${esc(partenaire.societe)}` : ""}</h3>
+    <div style="color:var(--gris); font-size:.85rem; margin-bottom:8px;">${esc(partenaire.telephone) || ""} · Commission : <b>${partenaire.taux_commission ?? 0}%</b></div>
+  `;
+  div.appendChild(entete);
+
+  const wrapCommission = document.createElement("div");
+  const labCommission = document.createElement("label"); labCommission.textContent = "Taux de commission (%)";
+  const inputCommission = document.createElement("input");
+  inputCommission.type = "number"; inputCommission.min = "0"; inputCommission.max = "100"; inputCommission.step = "0.5";
+  inputCommission.value = partenaire.taux_commission ?? "";
+  inputCommission.addEventListener("change", async (e) => {
+    await supabase.from("profils").update({ taux_commission: e.target.value ? parseFloat(e.target.value) : null }).eq("id", partenaire.id);
+  });
+  wrapCommission.appendChild(labCommission); wrapCommission.appendChild(inputCommission);
+  div.appendChild(wrapCommission);
+
+  const blocFacturation = document.createElement("div");
+  blocFacturation.style.cssText = "background:#fff; border-radius:10px; padding:10px; margin-top:10px;";
+  if (!coursesNonPayees || coursesNonPayees.length === 0) {
+    blocFacturation.innerHTML = `<p style="color:var(--gris); margin:0;">Aucune commission en attente. ✅</p>`;
+  } else {
+    blocFacturation.innerHTML = `
+      <div style="font-weight:700; margin-bottom:6px;">💰 ${totalDu.toFixed(2)} € dus (${coursesNonPayees.length} course${coursesNonPayees.length > 1 ? "s" : ""})</div>
+      ${coursesNonPayees.map(c => {
+        const h = new Date(c.date_heure).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" });
+        return `<div style="font-size:.8rem; color:var(--gris); margin-bottom:2px;">${h} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} : ${c.prix ?? "?"} € (commission ${Number(c.montant_commission || 0).toFixed(2)} €)</div>`;
+      }).join("")}
+      <button type="button" class="btn-marquer-commission-payee" style="margin-top:8px; width:100%; background:var(--vert); color:#fff; border:none; border-radius:8px; padding:10px; font-weight:600;">✅ Marquer ces commissions comme payées</button>
+    `;
+    blocFacturation.querySelector(".btn-marquer-commission-payee").addEventListener("click", async () => {
+      if (!confirm(`Confirmer que ${partenaire.nom} a bien réglé ${totalDu.toFixed(2)} € ?`)) return;
+      const ids = coursesNonPayees.map(c => c.id);
+      await supabase.from("courses").update({ commission_payee: true }).in("id", ids);
+      chargerPartenairesAdmin();
+    });
+  }
+  div.appendChild(blocFacturation);
+
+  const actions = document.createElement("div");
+  actions.className = "ligne-actions-veh";
+  const btnActif = document.createElement("button");
+  btnActif.className = "btn-actif-veh" + (partenaire.actif ? " actif" : "");
+  btnActif.textContent = partenaire.actif ? "✅ Actif" : "⛔ Désactivé";
+  btnActif.addEventListener("click", async () => {
+    await supabase.from("profils").update({ actif: !partenaire.actif }).eq("id", partenaire.id);
+    chargerPartenairesAdmin();
+  });
+  actions.appendChild(btnActif);
+  div.appendChild(actions);
+
+  return div;
+}
+
+document.getElementById("btn-ajouter-partenaire").addEventListener("click", () => {
+  document.getElementById("input-partenaire-nom").value = "";
+  document.getElementById("input-partenaire-societe").value = "";
+  document.getElementById("input-partenaire-email").value = "";
+  document.getElementById("input-partenaire-telephone").value = "";
+  document.getElementById("input-partenaire-commission").value = "";
+  document.getElementById("erreur-partenaire").textContent = "";
+  document.getElementById("modale-partenaire").classList.add("visible");
+});
+document.getElementById("btn-annuler-partenaire").addEventListener("click", () => {
+  document.getElementById("modale-partenaire").classList.remove("visible");
+});
+document.getElementById("btn-creer-partenaire").addEventListener("click", async () => {
+  const erreur = document.getElementById("erreur-partenaire");
+  const nom = document.getElementById("input-partenaire-nom").value.trim();
+  const email = document.getElementById("input-partenaire-email").value.trim();
+  const taux = document.getElementById("input-partenaire-commission").value;
+  if (!nom || !email || taux === "") {
+    erreur.textContent = "Nom, email et taux de commission sont obligatoires.";
+    return;
+  }
+  erreur.textContent = "Création en cours…";
+  const { data, error } = await supabase.functions.invoke("creer-partenaire", {
+    body: {
+      nom, email,
+      telephone: document.getElementById("input-partenaire-telephone").value.trim() || null,
+      societe: document.getElementById("input-partenaire-societe").value.trim() || null,
+      taux_commission: parseFloat(taux)
+    }
+  });
+  if (error || data?.error) { erreur.textContent = "Erreur : " + (data?.error || error.message); return; }
+  document.getElementById("modale-partenaire").classList.remove("visible");
+  chargerPartenairesAdmin();
+});
+
+// ---------- CLIENTS ----------
+let clientsCache = [];
+async function chargerLeadsSite() {
+  const conteneur = document.getElementById("bloc-leads-site");
+  const { data: leads, error } = await supabase
+    .from("leads_site")
+    .select("*")
+    .eq("traite", false)
+    .order("created_at", { ascending: false });
+
+  if (error || !leads || leads.length === 0) { conteneur.innerHTML = ""; return; }
+
+  conteneur.innerHTML = `<h3 style="margin:0 0 8px;">📨 ${leads.length} demande${leads.length > 1 ? "s" : ""} reçue${leads.length > 1 ? "s" : ""} depuis le site web</h3>` +
+    leads.map(l => `
+      <div class="lead-site" data-id="${l.id}">
+        <div class="lead-site-titre">${esc(l.site_origine) || "Site web"} · ${new Date(l.created_at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
+        <div class="lead-site-nom">${esc(l.nom) || "Nom non renseigné"}</div>
+        <div class="lead-site-detail">${esc(l.telephone) || ""} ${l.email ? "· " + esc(l.email) : ""}</div>
+        ${l.adresse_depart ? `<div class="lead-site-detail">${esc(l.adresse_depart)} → ${esc(l.adresse_arrivee) || "?"}</div>` : ""}
+        ${l.date_heure ? `<div class="lead-site-detail">Souhaité : ${esc(l.date_heure)}</div>` : ""}
+        ${l.message ? `<div class="lead-site-detail">"${esc(l.message)}"</div>` : ""}
+        ${l.telephone ? `<button type="button" class="btn-appeler-lead">📞 Appeler</button>` : ""}
+        <button type="button" class="btn-traite-lead">✅ Marquer traité</button>
+      </div>
+    `).join("");
+
+  conteneur.querySelectorAll(".btn-appeler-lead").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tel = btn.closest(".lead-site").querySelector(".lead-site-detail").textContent.trim();
+      window.location.href = `tel:${tel.replace(/\s/g, "")}`;
+    });
+  });
+  conteneur.querySelectorAll(".btn-traite-lead").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.closest(".lead-site").dataset.id;
+      await supabase.from("leads_site").update({ traite: true }).eq("id", id);
+      chargerLeadsSite();
+    });
+  });
+}
+
+async function chargerClientsAdmin() {
+  await chargerLeadsSite();
+  const conteneur = document.getElementById("liste-clients-admin");
+  conteneur.innerHTML = "Chargement…";
+
+  const { data: clients, error } = await supabase
+    .from("profils")
+    .select("*")
+    .eq("role", "client")
+    .order("created_at", { ascending: false });
+
+  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+
+  const { data: toutesLesCourses } = await supabase
+    .from("courses")
+    .select("id, client_id, date_heure, adresse_depart, adresse_arrivee, prix, statut")
+    .not("client_id", "is", null)
+    .order("date_heure", { ascending: false });
+
+  const coursesParClient = new Map();
+  (toutesLesCourses || []).forEach(c => {
+    if (!coursesParClient.has(c.client_id)) coursesParClient.set(c.client_id, []);
+    coursesParClient.get(c.client_id).push(c);
+  });
+
+  clientsCache = (clients || []).map(cl => ({ ...cl, courses: coursesParClient.get(cl.id) || [] }));
+  afficherClientsFiltres(document.getElementById("recherche-client").value.trim().toLowerCase());
+}
+
+function afficherClientsFiltres(recherche) {
+  const conteneur = document.getElementById("liste-clients-admin");
+  conteneur.innerHTML = "";
+
+  const filtres = !recherche ? clientsCache : clientsCache.filter(c =>
+    (c.nom || "").toLowerCase().includes(recherche) || (c.telephone || "").toLowerCase().includes(recherche)
+  );
+
+  if (filtres.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun client trouvé.</p>';
+    return;
+  }
+  filtres.forEach(cl => conteneur.appendChild(construireCarteClientAdmin(cl)));
+}
+
+document.getElementById("recherche-client").addEventListener("input", (e) => {
+  afficherClientsFiltres(e.target.value.trim().toLowerCase());
+});
+
+function construireCarteClientAdmin(client) {
+  const div = document.createElement("div");
+  div.className = "client-admin";
+
+  const coursesTerminees = client.courses.filter(c => c.statut === "terminee");
+  const totalDepense = coursesTerminees.reduce((s, c) => s + (Number(c.prix) || 0), 0);
+  const derniereCourse = client.courses[0];
+  const derniereCourseTxt = derniereCourse
+    ? new Date(derniereCourse.date_heure).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric" })
+    : "—";
+
+  div.innerHTML = `
+    <div class="client-nom">${esc(client.nom) || "Client sans nom"}</div>
+    <div class="client-coords">${esc(client.telephone) || "Pas de téléphone"}</div>
+    <div class="client-stats">
+      <div>Courses<b>${client.courses.length}</b></div>
+      <div>Dépensé<b>${totalDepense.toFixed(2)} €</b></div>
+      <div>Dernière course<b>${derniereCourseTxt}</b></div>
+    </div>
+    ${client.telephone ? `<button type="button" class="btn-appeler-client">📞 Appeler</button>` : ""}
+    ${client.courses.length > 0 ? `<button type="button" class="btn-historique-client">📜 Historique complet</button>` : ""}
+    <div class="historique-client-lignes" style="display:none;"></div>
+  `;
+
+  const btnAppel = div.querySelector(".btn-appeler-client");
+  if (btnAppel) btnAppel.addEventListener("click", () => { window.location.href = `tel:${client.telephone.replace(/\s/g, "")}`; });
+
+  const btnHisto = div.querySelector(".btn-historique-client");
+  if (btnHisto) {
+    const blocHisto = div.querySelector(".historique-client-lignes");
+    btnHisto.addEventListener("click", () => {
+      if (blocHisto.style.display === "none") {
+        blocHisto.innerHTML = client.courses.map(c => {
+          const d = new Date(c.date_heure).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric" });
+          return `<div class="ligne-histo">${d} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} — ${c.prix ? c.prix + " €" : "?"} (${esc(c.statut)})</div>`;
+        }).join("");
+        blocHisto.style.display = "block";
+        btnHisto.textContent = "📜 Masquer l'historique";
+      } else {
+        blocHisto.style.display = "none";
+        btnHisto.textContent = "📜 Historique complet";
+      }
+    });
+  }
+
   return div;
 }
 
