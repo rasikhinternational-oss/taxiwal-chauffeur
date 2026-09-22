@@ -1920,6 +1920,7 @@ async function chargerCaisse() {
     const coursesCash = coursesChauffeur.filter(c => c.mode_paiement === "cash");
     const coursesCarte = coursesChauffeur.filter(c => c.mode_paiement === "carte");
     const coursesFacture = coursesChauffeur.filter(c => c.mode_paiement === "facture");
+    const coursesUber = coursesChauffeur.filter(c => c.mode_paiement === "uber");
     const totalCash = coursesCash.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
     const totalCarte = coursesCarte.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
     const totalFacture = coursesFacture.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
@@ -1933,6 +1934,7 @@ async function chargerCaisse() {
       <div class="caisse-ligne"><span>💵 Cash — ${coursesCash.length} course(s)</span><b>${totalCash.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>💳 Carte — ${coursesCarte.length} course(s)</span><b>${totalCarte.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>🧾 Facture — ${coursesFacture.length} course(s)</span><b>${totalFacture.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>🚕 Uber (payé sur Uber, hors caisse) — ${coursesUber.length} course(s)</span><b>—</b></div>
       <div class="caisse-total"><span>Caisse actuelle (espèces)</span><span>${caisseActuelle.toFixed(2)} €</span></div>
       <div class="caisse-fond">
         <input type="number" step="0.5" placeholder="Nouveau fond (€)" id="input-fond-${ch.id}" value="${montantFond || ""}">
@@ -2376,6 +2378,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="cash">💶 Cash</option>
         <option value="carte">💳 Carte</option>
         <option value="facture">🧾 Facture</option>
+        <option value="uber">🚕 Uber (payé sur Uber)</option>
       `;
     } else if (estTypeCourse) {
       input.innerHTML = `

@@ -93,6 +93,11 @@ window.onerror = function(msg, url, line, col, err) {
   nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:0 20px 14px; }
   nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
   nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
+  .explication-demandes{ font-size:.82rem; color:var(--gris); margin-bottom:10px; }
+  .form-proposition{ margin-top:10px; background:#f7f7f5; border-radius:10px; padding:10px; }
+  .form-proposition label{ display:block; font-size:.78rem; color:var(--gris); margin:6px 0 3px; }
+  .form-proposition input{ width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid #cfcfcd; }
+  .form-proposition .btn-envoyer-proposition{ margin-top:8px; width:100%; background:var(--vert); color:#fff; border:none; border-radius:8px; padding:10px; font-weight:600; }
   section{ display:none; }
   section.visible{ display:block; }
 
@@ -142,6 +147,11 @@ window.onerror = function(msg, url, line, col, err) {
     background:#fdf3e0; color:#8a5a00; border:1px solid #f0d9a6;
     border-radius:8px; padding:8px 10px; font-size:.8rem; margin-bottom:10px;
   }
+  .code-verification-chauffeur{
+    background:#f7f7f5; border:1px solid #1f8a4c; border-radius:8px;
+    padding:8px 10px; font-size:.85rem; margin-bottom:10px;
+  }
+  .code-verification-chauffeur b{ font-size:1.1rem; letter-spacing:2px; color:#c81e2c; }
   .course .statut-label{
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
     background:#dcdcda; color:var(--gris); margin-bottom:10px;
@@ -196,17 +206,25 @@ window.onerror = function(msg, url, line, col, err) {
     <span>💵 <b id="gains-cash">0,00 €</b></span>
     <span>💳 <b id="gains-carte">0,00 €</b></span>
     <span>🧾 <b id="gains-facture">0,00 €</b></span>
+    <span>🚕 Uber : <b id="gains-uber">0</b></span>
   </div>
   <a href="feuille-de-route.html" id="btn-feuille-route" style="text-decoration:none; display:block; text-align:center;">📋 Ma feuille de route du jour</a>
 
   <nav class="onglets">
     <button class="actif" data-onglet="mes-courses">Mes courses</button>
+    <button data-onglet="demandes-ouvertes">📢 Demandes ouvertes</button>
     <button data-onglet="agenda">Agenda</button>
   </nav>
 
   <section id="section-mes-courses" class="visible">
     <div id="liste-courses"></div>
     <div id="vide" style="display:none;">Aucune course pour le moment.</div>
+  </section>
+
+  <section id="section-demandes-ouvertes">
+    <p class="explication-demandes">Ces demandes viennent directement de clients qui cherchent un chauffeur disponible. Propose ton prix — le client choisit qui il veut.</p>
+    <div id="liste-demandes-ouvertes"></div>
+    <div id="vide-demandes" style="display:none;">Aucune demande ouverte pour le moment.</div>
   </section>
 
   <section id="section-agenda">
@@ -231,6 +249,7 @@ window.onerror = function(msg, url, line, col, err) {
       <button id="btn-paiement-cash" style="background:var(--vert);">💶 Cash</button>
       <button id="btn-paiement-carte" style="background:var(--bleu, #3b82c4);">💳 Carte</button>
       <button id="btn-paiement-facture" style="background:#8a5a00;">🧾 Facture</button>
+      <button id="btn-paiement-uber" style="background:#1c1c1c;">🚕 Uber (payé sur Uber)</button>
     </div>
     <button id="btn-annuler-paiement" class="secondaire" style="margin-top:12px;">Annuler</button>
   </div>
@@ -572,17 +591,22 @@ function mettreAJourGainsJour(courses) {
     c.statut === "terminee" && c.date_heure && c.date_heure.slice(0, 10) === aujourdHui
   );
 
-  let totalCash = 0, totalCarte = 0;
+  let totalCash = 0, totalCarte = 0, totalFacture = 0, nbUber = 0;
   coursesDuJourTerminees.forEach(c => {
     const prix = Number(c.prix) || 0;
     if (c.mode_paiement === "cash") totalCash += prix;
     else if (c.mode_paiement === "carte") totalCarte += prix;
+    else if (c.mode_paiement === "facture") totalFacture += prix;
+    else if (c.mode_paiement === "uber") nbUber++;
   });
 
   const fmt = (n) => n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
   document.getElementById("gains-nb-courses").textContent = coursesDuJourTerminees.length;
   document.getElementById("gains-cash").textContent = fmt(totalCash);
   document.getElementById("gains-carte").textContent = fmt(totalCarte);
+  document.getElementById("gains-facture").textContent = fmt(totalFacture);
+  const elUber = document.getElementById("gains-uber");
+  if (elUber) elUber.textContent = nbUber;
 }
 
 // ---------- MENU (☰) : déconnexion ----------
@@ -608,6 +632,7 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
     btn.classList.add("actif");
     document.querySelectorAll("#ecran-principal section").forEach(s => s.classList.remove("visible"));
     document.getElementById("section-" + btn.dataset.onglet).classList.add("visible");
+    if (btn.dataset.onglet === "demandes-ouvertes") chargerDemandesOuvertes();
   });
 });
 
@@ -733,6 +758,8 @@ function construireCarteCourse(course) {
       ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
       ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
+    ${course.code_verification && (course.statut === "assignee" || course.statut === "en_cours") ? `
+    <div class="code-verification-chauffeur">🔒 Code client : <b>${esc(course.code_verification)}</b><br><small>Demande ce code au passager avant de démarrer, pour confirmer qu'il s'agit bien de ta course.</small></div>` : ""}
     ${course.statut === "assignee" ? `
     <div class="rappel-avant-depart">
       ${estTaximetre
@@ -794,6 +821,79 @@ function creerBouton(texte, onClick) {
   return btn;
 }
 
+// ---------- DEMANDES OUVERTES (marché "à la GetTransfer") ----------
+async function chargerDemandesOuvertes() {
+  const conteneur = document.getElementById("liste-demandes-ouvertes");
+  const videMsg = document.getElementById("vide-demandes");
+  conteneur.innerHTML = "Chargement…";
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: demandes, error } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("ouverte_marche", true)
+    .eq("statut", "en_attente")
+    .is("chauffeur_id", null)
+    .order("date_heure", { ascending: true });
+
+  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+  conteneur.innerHTML = "";
+
+  if (!demandes || demandes.length === 0) {
+    videMsg.style.display = "block";
+    return;
+  }
+  videMsg.style.display = "none";
+
+  const { data: mesPropositions } = await supabase
+    .from("propositions_courses")
+    .select("*")
+    .eq("chauffeur_id", user.id)
+    .in("course_id", demandes.map(d => d.id));
+  const propositionParCourse = new Map((mesPropositions || []).map(p => [p.course_id, p]));
+
+  demandes.forEach(d => conteneur.appendChild(construireCarteDemandeOuverte(d, propositionParCourse.get(d.id))));
+}
+
+function construireCarteDemandeOuverte(course, maProposition) {
+  const div = document.createElement("div");
+  div.className = "course en_attente";
+  const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
+    weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+  });
+  div.innerHTML = `
+    <div class="heure">${esc(heure)}</div>
+    <div class="trajet">
+      <b>Départ :</b> ${esc(course.adresse_depart)}<br>
+      <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
+      ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
+      ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
+    </div>
+    <div class="form-proposition">
+      <label>Ton prix proposé (€)</label>
+      <input type="number" step="0.5" class="input-prix-proposition" value="${maProposition?.prix_propose ?? ""}">
+      <label>Message (optionnel)</label>
+      <input type="text" class="input-message-proposition" value="${esc(maProposition?.message) || ""}" placeholder="ex: Je peux être là dans 10 min">
+      <button type="button" class="btn-envoyer-proposition">${maProposition ? "✏️ Modifier ma proposition" : "📤 Envoyer ma proposition"}</button>
+    </div>
+  `;
+  div.querySelector(".btn-envoyer-proposition").addEventListener("click", async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const prix = div.querySelector(".input-prix-proposition").value;
+    const message = div.querySelector(".input-message-proposition").value.trim();
+    const { error } = await supabase.from("propositions_courses").upsert({
+      course_id: course.id,
+      chauffeur_id: user.id,
+      prix_propose: prix ? parseFloat(prix) : null,
+      message: message || null
+    }, { onConflict: "course_id,chauffeur_id" });
+    if (error) { alert("Erreur : " + error.message); return; }
+    alert("Proposition envoyée ! Le client va la voir et pourra te choisir.");
+    chargerDemandesOuvertes();
+  });
+  return div;
+}
+
 async function changerStatut(courseId, nouveauStatut) {
   const { error } = await supabase
     .from("courses")
@@ -842,6 +942,7 @@ document.getElementById("btn-annuler-paiement").addEventListener("click", () => 
 document.getElementById("btn-paiement-cash").addEventListener("click", () => terminerAvecPaiement("cash"));
 document.getElementById("btn-paiement-carte").addEventListener("click", () => terminerAvecPaiement("carte"));
 document.getElementById("btn-paiement-facture").addEventListener("click", () => terminerAvecPaiement("facture"));
+document.getElementById("btn-paiement-uber").addEventListener("click", () => terminerAvecPaiement("uber"));
 
 async function terminerAvecPaiement(mode) {
   if (!courseEnFinDePaiement) return;
