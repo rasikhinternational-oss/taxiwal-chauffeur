@@ -1181,6 +1181,15 @@ function construireCarteAdmin(course) {
       await supabase.from("courses").update({ statut: "en_cours", verrouillee: false }).eq("id", course.id);
       chargerCoursesAdmin();
     }));
+    if (course.client_id && !course.facture_envoyee) {
+      actions.appendChild(creerBoutonAdmin("📧 Envoyer la facture au client", async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true; btn.textContent = "Envoi en cours…";
+        const { error } = await supabase.functions.invoke("envoyer-facture-client", { body: { courseId: course.id } });
+        if (error) { alert("Erreur : " + error.message); btn.disabled = false; btn.textContent = "📧 Envoyer la facture au client"; return; }
+        chargerCoursesAdmin();
+      }));
+    }
   }
   if (course.statut !== "annulee") {
     actions.appendChild(creerBoutonAdmin("Annuler la course", async () => {
@@ -2378,6 +2387,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="cash">💶 Cash</option>
         <option value="carte">💳 Carte</option>
         <option value="facture">🧾 Facture</option>
+        <option value="cheque_social">🎫 Chèque social/communal</option>
         <option value="uber">🚕 Uber (payé sur Uber)</option>
       `;
     } else if (estTypeCourse) {

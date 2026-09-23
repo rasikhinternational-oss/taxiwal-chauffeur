@@ -249,6 +249,7 @@ window.onerror = function(msg, url, line, col, err) {
       <button id="btn-paiement-cash" style="background:var(--vert);">💶 Cash</button>
       <button id="btn-paiement-carte" style="background:var(--bleu, #3b82c4);">💳 Carte</button>
       <button id="btn-paiement-facture" style="background:#8a5a00;">🧾 Facture</button>
+      <button id="btn-paiement-cheque" style="background:#6a4fa0;">🎫 Chèque social/communal</button>
       <button id="btn-paiement-uber" style="background:#1c1c1c;">🚕 Uber (payé sur Uber)</button>
     </div>
     <button id="btn-annuler-paiement" class="secondaire" style="margin-top:12px;">Annuler</button>
@@ -943,6 +944,7 @@ document.getElementById("btn-paiement-cash").addEventListener("click", () => ter
 document.getElementById("btn-paiement-carte").addEventListener("click", () => terminerAvecPaiement("carte"));
 document.getElementById("btn-paiement-facture").addEventListener("click", () => terminerAvecPaiement("facture"));
 document.getElementById("btn-paiement-uber").addEventListener("click", () => terminerAvecPaiement("uber"));
+document.getElementById("btn-paiement-cheque").addEventListener("click", () => terminerAvecPaiement("cheque_social"));
 
 async function terminerAvecPaiement(mode) {
   if (!courseEnFinDePaiement) return;
