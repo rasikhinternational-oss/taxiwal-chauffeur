@@ -576,13 +576,17 @@ async function chargerCourses() {
   afficherCoursesDuJour(calJourSelectionne);
   mettreAJourGainsJour(dernieresCoursesChauffeur);
 
-  if (!courses || courses.length === 0) {
+  // Une course annulée n'a plus rien à faire dans la liste active — elle reste seulement
+  // consultable dans l'agenda (historique par date) pour garder une trace.
+  const coursesActives = (courses || []).filter(c => c.statut !== "annulee");
+
+  if (coursesActives.length === 0) {
     videMsg.style.display = "block";
     return;
   }
   videMsg.style.display = "none";
 
-  courses.forEach(c => conteneur.appendChild(construireCarteCourse(c)));
+  coursesActives.forEach(c => conteneur.appendChild(construireCarteCourse(c)));
 }
 
 // ---------- GAINS DU JOUR (caisse) ----------

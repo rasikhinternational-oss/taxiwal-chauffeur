@@ -634,6 +634,9 @@ function demarrerAdmin() {
   chargerChauffeurs();
   chargerCoursesAdmin();
   setInterval(() => chargerCoursesAdmin(true), 20000);
+  setInterval(() => {
+    if (document.getElementById("section-caisse").classList.contains("visible")) chargerCaisse();
+  }, 20000);
   surveillerImpressionsFeuilles(); // premier relevé, sans notifier rétroactivement
   setInterval(surveillerImpressionsFeuilles, 20000);
   setInterval(() => {
