@@ -63,7 +63,7 @@ window.onerror = function(msg, url, line, col, err) {
     width:100%; padding:14px; border-radius:10px; border:none;
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
   }
-  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
+  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; color:var(--blanc); }
   button.vert{ background:var(--vert); }
   #btn-visiter-site{
     width:100%; padding:14px; border-radius:10px; text-align:center; box-sizing:border-box;
@@ -99,19 +99,19 @@ window.onerror = function(msg, url, line, col, err) {
   .champ label{ display:block; font-size:.8rem; color:var(--gris); margin-bottom:5px; }
   .favoris-rapides{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
   .favoris-rapides button{
-    background:#fff; border:1px solid var(--rouge); color:var(--rouge); border-radius:20px;
+    width:auto; background:#fff; border:1px solid var(--rouge); color:var(--rouge); border-radius:20px;
     padding:5px 12px; font-size:.78rem; font-weight:600;
   }
-  .lien-favoris{ background:none; border:none; color:var(--rouge); font-size:.8rem; font-weight:600; padding:6px 0; text-decoration:underline; }
+  .lien-favoris{ width:auto; background:none; border:none; color:var(--rouge); font-size:.8rem; font-weight:600; padding:6px 0; text-decoration:underline; }
   #panneau-favoris{ background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px; margin-top:8px; }
   #liste-favoris .ligne-favori{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #e2e2df; font-size:.85rem; }
-  #liste-favoris .ligne-favori button{ background:none; border:none; color:var(--gris); font-size:1rem; }
+  #liste-favoris .ligne-favori button{ width:auto; background:none; border:none; color:var(--gris); font-size:1rem; }
   .ligne-ajout-favori{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
   .ligne-ajout-favori input{ padding:9px; border-radius:8px; border:1px solid #cfcfcd; }
   .ligne-ajout-favori button{ background:var(--vert); color:#fff; border:none; border-radius:8px; padding:9px; font-weight:600; }
   .ligne-checkbox-marche{ display:flex; align-items:flex-start; gap:8px; font-size:.82rem; color:var(--blanc) !important; background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px; }
   .ligne-checkbox-marche input{ width:auto; margin-top:2px; }
-  .champ input, .champ textarea{
+  .champ input, .champ textarea, .champ select{
     width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd;
     background:var(--noir-2); color:var(--blanc); font-size:.95rem;
   }
@@ -140,7 +140,7 @@ window.onerror = function(msg, url, line, col, err) {
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
     background:#dcdcda; color:var(--gris); margin-bottom:10px;
   }
-  .statut-label.en_attente{ background:#cfcfcd; color:#c7c7c5444; }
+  .statut-label.en_attente{ background:#e6e6e4; color:#555; }
   .statut-label.prix_envoye{ background:rgba(200,150,30,.2); color:#8a6d1e; }
   .statut-label.attente_acompte{ background:rgba(200,150,30,.2); color:#8a6d1e; }
   .statut-label.acompte_declare{ background:rgba(59,130,196,.2); color:var(--bleu); }
@@ -194,13 +194,21 @@ window.onerror = function(msg, url, line, col, err) {
   .bloc-paiement .ligne-info{ text-align:left; font-size:.85rem; margin:6px 0; color:var(--gris); }
   .bloc-paiement .ligne-info b{ color:var(--blanc); user-select:all; }
   .bloc-paiement .note-instant{ font-size:.78rem; color:#8a6d1e; margin-top:8px; text-align:left; }
-  #btn-copier-iban{ background:#dcdcda; margin-top:10px; font-size:.85rem; padding:10px; }
+  .btn-copier-iban{ background:#dcdcda; color:var(--blanc); margin-top:10px; font-size:.85rem; padding:10px; }
   .bloc-verif{ background:rgba(59,130,196,.12); border-radius:10px; padding:12px; margin-top:6px; font-size:.85rem; color:var(--bleu); }
 
   .badge-marque{
     display:inline-block; padding:2px 10px; border-radius:20px; font-size:.7rem; font-weight:700;
     background:linear-gradient(90deg, var(--rouge), var(--vert)); color:#fff; margin-bottom:4px;
   }
+
+  /* Profil : confidentialité + suppression du compte */
+  #lien-confidentialite{ display:block; text-align:center; margin:18px 0 0; color:var(--gris); font-size:.85rem; }
+  .zone-danger{ margin-top:28px; padding:14px; border:1px solid #f0c4c4; border-radius:12px; background:#fff; }
+  .zone-danger h3{ margin:0 0 6px; font-size:.95rem; color:var(--rouge); }
+  .zone-danger p{ margin:0 0 12px; font-size:.82rem; color:var(--gris); line-height:1.5; }
+  #btn-supprimer-compte{ background:#fff; color:var(--rouge); border:1px solid var(--rouge); }
+  #erreur-suppression{ color:var(--rouge); font-size:.85rem; margin:8px 0 0; min-height:1em; }
 </style>
 </head>
 <body>
@@ -287,8 +295,8 @@ window.onerror = function(msg, url, line, col, err) {
       <label>Type de véhicule souhaité (optionnel)</label>
       <select id="input-vehicule-souhaite">
         <option value="">Peu importe</option>
-        <option value="berline">🚗 Berline</option>
-        <option value="van">🚐 Van / grand groupe</option>
+        <option value="berline">🚗 Berline (4 places)</option>
+        <option value="van">🚐 Van / grand groupe (7 places)</option>
         <option value="pmr">♿ Véhicule adapté PMR</option>
       </select>
     </div>
@@ -360,6 +368,15 @@ window.onerror = function(msg, url, line, col, err) {
     <button id="btn-sauver-profil" class="vert">Enregistrer</button>
     <a href="https://taxiwal.com" target="_blank" id="btn-visiter-site" style="text-decoration:none; display:block;">🌐 Visiter le site Taxi Wal</a>
     <button id="btn-deconnexion" class="secondaire">Se déconnecter</button>
+    <a href="https://taxiwal.com/confidentialite.html" target="_blank" id="lien-confidentialite">Politique de confidentialité</a>
+
+    <div class="zone-danger">
+      <h3>Supprimer mon compte</h3>
+      <p>Ton profil, tes adresses favorites et tes notifications seront effacés, et tes demandes de course à venir seront annulées.
+         Tes courses passées restent dans notre comptabilité (obligation légale), sans ton numéro de téléphone. Cette action est définitive.</p>
+      <button id="btn-supprimer-compte">🗑️ Supprimer mon compte</button>
+      <p id="erreur-suppression"></p>
+    </div>
   </section>
 </div>
 
@@ -372,9 +389,7 @@ window.onerror = function(msg, url, line, col, err) {
 const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 
-// Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
-// ou une note tapée par un client (ou un chauffeur) ne soit interprétée comme du code
-// (protection contre l'injection de script / XSS).
+// Échappe tout texte avant de l'insérer dans du HTML (protection contre l'injection de script / XSS).
 function esc(valeur) {
   if (valeur === null || valeur === undefined) return "";
   return String(valeur)
@@ -529,10 +544,11 @@ function demarrerEspaceClient() {
     Notification.requestPermission();
   }
 
-  // Pré-remplit la date avec "maintenant + 1h" par confort
+  // Pré-remplit la date avec "maintenant + 1h" (heure locale) par confort
   const dansUneHeure = new Date(Date.now() + 60 * 60000);
-  dansUneHeure.setMinutes(0);
-  document.getElementById("input-date").value = dansUneHeure.toISOString().slice(0, 16);
+  dansUneHeure.setMinutes(0, 0, 0);
+  const decalage = dansUneHeure.getTimezoneOffset() * 60000;
+  document.getElementById("input-date").value = new Date(dansUneHeure.getTime() - decalage).toISOString().slice(0, 16);
 
   chargerMesCourses();
   setInterval(chargerMesCourses, 20000);
@@ -709,7 +725,6 @@ async function chargerMesCourses() {
 
   if (error) { console.error(error); return; }
 
-  // Détecte les changements de statut depuis le dernier chargement
   if (idsEtStatutsConnus === null) {
     idsEtStatutsConnus = new Map((courses || []).map(c => [c.id, c.statut]));
   } else {
@@ -846,13 +861,17 @@ async function construireCarteCourseClient(course) {
     en_cours: "Course en cours", terminee: "Terminée", annulee: "Annulée"
   }[course.statut] || course.statut;
 
+  const vehiculesReservation = course.nb_vehicules > 1
+    ? `<br><b>Véhicules :</b> ${esc(course.nb_vehicules)} véhicules réservés (véhicule ${esc(course.rang_vehicule || "?")} ci-dessous)` : "";
+
   div.innerHTML = `
     <span class="statut-label ${course.statut}">${esc(labelStatut)}</span>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}
-      ${course.prix ? `<br><b>Prix :</b> ${esc(course.prix)} €` : ""}
+      ${course.prix && course.mode_paiement !== "uber" ? `<br><b>Prix :</b> ${esc(course.prix)} €` : ""}
+      ${vehiculesReservation}
     </div>
   `;
 
@@ -895,7 +914,7 @@ async function construireCarteCourseClient(course) {
         if (!confirm("Confirmer ce chauffeur pour votre course ?")) return;
         const { error } = await supabase.rpc("client_accepte_proposition", { p_proposition_id: ligne.dataset.id });
         if (error) { alert("Erreur : " + error.message); return; }
-        // Notification désormais gérée automatiquement par la base (trigger + file d'attente unifiée)
+        // Notification gérée automatiquement par la base (trigger + file d'attente unifiée)
         chargerMesCourses();
       });
     });
@@ -906,7 +925,7 @@ async function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-chauffeur-assigne";
     bloc.innerHTML = `
-      <div class="ligne-chauffeur">🚕 <b>${esc(course.profils.nom) || "Votre chauffeur"}</b>${course.vehicules ? ` — ${esc(course.vehicules.nom) || ""} ${esc(course.vehicules.plaque) ? "(" + esc(course.vehicules.plaque) + ")" : ""}` : ""}</div>
+      <div class="ligne-chauffeur">🚕 <b>${esc(course.profils.nom) || "Votre chauffeur"}</b>${course.vehicules ? ` — ${esc(course.vehicules.nom) || ""} ${course.vehicules.plaque ? "(" + esc(course.vehicules.plaque) + ")" : ""}` : ""}</div>
       <div class="mini-carte-chauffeur" id="carte-course-${course.id}"></div>
       ${course.code_verification ? `<div class="code-verification">🔒 Code de vérification : <b>${esc(course.code_verification)}</b><br><small>Donnez ce code au chauffeur pour confirmer qu'il s'agit bien de votre course.</small></div>` : ""}
       ${course.profils.telephone ? `<button type="button" class="btn-appeler-chauffeur">📞 Appeler le chauffeur</button>` : ""}
@@ -947,19 +966,19 @@ async function construireCarteCourseClient(course) {
       <div class="ligne-info">Bénéficiaire<br><b>${esc(COMPTE_BENEFICIAIRE)}</b></div>
       <div class="ligne-info">IBAN<br><b>${esc(COMPTE_IBAN)}</b></div>
       <div class="ligne-info">Communication (important)<br><b>${esc(communication)}</b></div>
-      <button type="button" id="btn-copier-iban">📋 Copier l'IBAN</button>
+      <button type="button" class="btn-copier-iban">📋 Copier l'IBAN</button>
       <div class="note-instant">⚡ Merci de faire un virement instantané si ta banque le propose : on reçoit la confirmation en quelques secondes et on peut valider ta course tout de suite.</div>
       <div class="note-instant" style="color:var(--gris);">Scanne ce QR code avec l'appareil photo ou l'app de ta banque : le montant et la communication se remplissent automatiquement.</div>
-      <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">J'ai payé l'acompte</button>
+      <button type="button" class="vert btn-jai-paye" style="margin-top:10px;">J'ai payé l'acompte</button>
     `;
-    bloc.querySelector("#btn-copier-iban").addEventListener("click", async (e) => {
+    bloc.querySelector(".btn-copier-iban").addEventListener("click", async (e) => {
       try {
         await navigator.clipboard.writeText(COMPTE_IBAN_BRUT);
         e.target.textContent = "✅ IBAN copié";
         setTimeout(() => { e.target.textContent = "📋 Copier l'IBAN"; }, 2000);
       } catch (err) { alert("IBAN : " + COMPTE_IBAN); }
     });
-    bloc.querySelector("#btn-jai-paye").addEventListener("click", async () => {
+    bloc.querySelector(".btn-jai-paye").addEventListener("click", async () => {
       if (!confirm("Confirmes-tu avoir déjà envoyé le virement de " + course.acompte_montant + " € ?")) return;
       await supabase.from("courses").update({
         statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
@@ -985,8 +1004,8 @@ async function construireCarteCourseClient(course) {
     div.appendChild(bloc);
   }
 
-  // --- Course terminée : recevoir sa facture/reçu par email (idée reprise de Victor Cab) ---
-  if (course.statut === "terminee") {
+  // --- Course terminée : recevoir sa facture/reçu par email (pas pour une course payée sur Uber) ---
+  if (course.statut === "terminee" && course.mode_paiement !== "uber") {
     const blocFacture = document.createElement("div");
     blocFacture.className = "bloc-facture";
     if (course.facture_envoyee) {
@@ -1121,7 +1140,7 @@ document.getElementById("btn-sauver-profil").addEventListener("click", async () 
   const { data: { user } } = await supabase.auth.getUser();
   const { error } = await supabase.from("profils").update({ nom, telephone: tel }).eq("id", user.id);
 
-  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+  if (error) { erreur.style.color = "var(--rouge)"; erreur.textContent = "Erreur : " + error.message; return; }
   monProfil.nom = nom; monProfil.telephone = tel;
   document.getElementById("sous-titre").textContent = "Bonjour " + nom.split(" ")[0];
   erreur.style.color = "var(--vert)"; erreur.textContent = "Profil enregistré ✓";
@@ -1130,6 +1149,34 @@ document.getElementById("btn-sauver-profil").addEventListener("click", async () 
 
 document.getElementById("btn-deconnexion").addEventListener("click", async () => {
   await supabase.auth.signOut();
+  location.reload();
+});
+
+// ---------- SUPPRESSION DU COMPTE (exigée par Apple et Google) ----------
+// Double confirmation, puis suppression côté serveur (fonction sécurisée supprimer_mon_compte) :
+// profil, adresses favorites et notifications effacés, demandes à venir annulées.
+document.getElementById("btn-supprimer-compte").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-supprimer-compte");
+  const erreur = document.getElementById("erreur-suppression");
+  erreur.textContent = "";
+
+  if (!confirm("Supprimer définitivement ton compte Taxi Wal ?\n\nTes demandes de course à venir seront annulées. Cette action ne peut pas être annulée.")) return;
+  const saisie = prompt('Pour confirmer, écris SUPPRIMER en majuscules :');
+  if ((saisie || "").trim() !== "SUPPRIMER") {
+    erreur.textContent = "Suppression annulée : le mot de confirmation ne correspond pas.";
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = "Suppression en cours…";
+  const { error } = await supabase.rpc("supprimer_mon_compte");
+  if (error) {
+    erreur.textContent = "La suppression n'a pas abouti : " + error.message + " — réessaie ou écris-nous à infotaxiwal@gmail.com.";
+    btn.disabled = false; btn.textContent = "🗑️ Supprimer mon compte";
+    return;
+  }
+
+  try { await supabase.auth.signOut(); } catch (e) {}
+  alert("Ton compte a été supprimé. Merci d'avoir utilisé Taxi Wal.");
   location.reload();
 });
 
