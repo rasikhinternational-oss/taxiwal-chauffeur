@@ -202,6 +202,15 @@ window.onerror = function(msg, url, line, col, err) {
   #recherche-client{
     width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #cfcfcd; font-size:.95rem; margin-bottom:14px;
   }
+  #barre-assignation-groupee{
+    position:sticky; top:0; z-index:10; background:#fff9e6; border:1px solid #e8d488; border-radius:10px;
+    padding:10px 12px; margin-bottom:12px; font-size:.85rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  #barre-assignation-groupee select{ padding:8px; border-radius:8px; border:1px solid #cfcfcd; }
+  #barre-assignation-groupee button{ padding:8px 12px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
+  #btn-assigner-groupe{ background:var(--vert); color:#fff; }
+  #btn-annuler-selection{ background:#fff; color:var(--gris); border:1px solid #cfcfcd !important; }
+  .checkbox-select-course{ float:right; width:20px; height:20px; }
   .client-admin{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:10px; }
   .client-admin .client-nom{ font-weight:700; font-size:1.05rem; }
   .client-admin .client-coords{ color:var(--gris); font-size:.85rem; margin:2px 0 8px; }
@@ -297,6 +306,12 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-courses" class="visible">
   <button id="btn-nouvelle-course">+ Nouvelle course</button>
   <button id="btn-toggle-historique" style="background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
+  <div id="barre-assignation-groupee" style="display:none;">
+    <span id="nb-courses-selectionnees">0</span> course(s) sélectionnée(s) —
+    <select id="select-assignation-groupee"></select>
+    <button id="btn-assigner-groupe">Assigner</button>
+    <button id="btn-annuler-selection" class="secondaire">Annuler la sélection</button>
+  </div>
   <div id="liste-courses-admin"></div>
 </section>
 
@@ -462,6 +477,22 @@ window.onerror = function(msg, url, line, col, err) {
         <label>Heure de retour prévue</label>
         <input type="datetime-local" id="input-heure-retour">
       </div>
+    </div>
+
+    <div id="ligne-recurrence">
+      <input type="checkbox" id="input-recurrence">
+      <label for="input-recurrence">🔁 Créer cette course plusieurs fois (récurrente)</label>
+    </div>
+    <div id="bloc-recurrence" style="display:none;">
+      <label>Répéter</label>
+      <select id="input-frequence-recurrence">
+        <option value="chaque_jour">Chaque jour</option>
+        <option value="jours_semaine" selected>Chaque jour de semaine (lundi à vendredi)</option>
+        <option value="chaque_semaine">Chaque semaine (même jour)</option>
+      </select>
+      <label>Jusqu'au (inclus)</label>
+      <input type="date" id="input-fin-recurrence">
+      <p id="apercu-recurrence" style="font-size:.8rem; color:var(--gris);"></p>
     </div>
 
     <label>Notes</label>
@@ -825,6 +856,45 @@ document.getElementById("btn-toggle-historique").addEventListener("click", () =>
   afficherListeCoursesAdmin();
 });
 
+// ---------- ASSIGNATION GROUPÉE (plusieurs courses "en attente" à la fois) ----------
+const coursesSelectionnees = new Set();
+
+function gererSelectionCourse(e) {
+  const id = e.target.dataset.courseId;
+  if (e.target.checked) coursesSelectionnees.add(id); else coursesSelectionnees.delete(id);
+  mettreAJourBarreAssignationGroupee();
+}
+
+function mettreAJourBarreAssignationGroupee() {
+  const barre = document.getElementById("barre-assignation-groupee");
+  if (coursesSelectionnees.size === 0) { barre.style.display = "none"; return; }
+  barre.style.display = "flex";
+  document.getElementById("nb-courses-selectionnees").textContent = coursesSelectionnees.size;
+  document.getElementById("select-assignation-groupee").innerHTML = optionsChauffeursEtPartenaires(null);
+}
+
+document.getElementById("btn-annuler-selection").addEventListener("click", () => {
+  coursesSelectionnees.clear();
+  document.querySelectorAll(".checkbox-select-course").forEach(cb => cb.checked = false);
+  mettreAJourBarreAssignationGroupee();
+});
+
+document.getElementById("btn-assigner-groupe").addEventListener("click", async () => {
+  const chauffeurId = document.getElementById("select-assignation-groupee").value;
+  if (!chauffeurId) { alert("Choisis d'abord un chauffeur ou sous-traitant."); return; }
+  const btn = document.getElementById("btn-assigner-groupe");
+  btn.disabled = true; btn.textContent = "Assignation en cours…";
+  const ids = Array.from(coursesSelectionnees);
+  const { error } = await supabase.from("courses")
+    .update({ chauffeur_id: chauffeurId, statut: "assignee", accepte_chauffeur: false })
+    .in("id", ids);
+  btn.disabled = false; btn.textContent = "Assigner";
+  if (error) { alert("Erreur : " + error.message); return; }
+  coursesSelectionnees.clear();
+  mettreAJourBarreAssignationGroupee();
+  chargerCoursesAdmin();
+});
+
 function afficherListeCoursesAdmin() {
   const conteneur = document.getElementById("liste-courses-admin");
   conteneur.innerHTML = "";
@@ -1029,6 +1099,15 @@ document.getElementById("btn-ajouter-jour").addEventListener("click", () => {
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
+
+  if (course.statut === "en_attente") {
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "checkbox-select-course";
+    checkbox.dataset.courseId = course.id;
+    checkbox.addEventListener("change", gererSelectionCourse);
+    div.appendChild(checkbox);
+  }
 
   const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
     weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
@@ -1381,6 +1460,41 @@ document.getElementById("input-type-retour").addEventListener("change", (e) => {
   document.getElementById("bloc-heure-retour").style.display = e.target.value === "heure_precise" ? "block" : "none";
 });
 
+function calculerDatesRecurrence(dateDepartIso, frequence, dateFinStr) {
+  const dates = [];
+  const depart = new Date(dateDepartIso);
+  const fin = new Date(dateFinStr + "T23:59:59");
+  let courant = new Date(depart);
+  let garde = 0;
+  while (courant <= fin && garde < 366) {
+    garde++;
+    const jour = courant.getDay(); // 0=dimanche ... 6=samedi
+    if (frequence === "chaque_jour") { dates.push(new Date(courant)); courant.setDate(courant.getDate() + 1); }
+    else if (frequence === "jours_semaine") {
+      if (jour >= 1 && jour <= 5) dates.push(new Date(courant));
+      courant.setDate(courant.getDate() + 1);
+    } else if (frequence === "chaque_semaine") { dates.push(new Date(courant)); courant.setDate(courant.getDate() + 7); }
+  }
+  return dates;
+}
+
+function mettreAJourApercuRecurrence() {
+  const apercu = document.getElementById("apercu-recurrence");
+  const date = document.getElementById("input-date").value;
+  const fin = document.getElementById("input-fin-recurrence").value;
+  if (!date || !fin) { apercu.textContent = ""; return; }
+  const frequence = document.getElementById("input-frequence-recurrence").value;
+  const dates = calculerDatesRecurrence(date, frequence, fin);
+  apercu.textContent = dates.length > 0 ? `➡️ ${dates.length} course(s) seront créées.` : "Aucune date dans cette période avec cette fréquence.";
+}
+document.getElementById("input-recurrence").addEventListener("change", (e) => {
+  document.getElementById("bloc-recurrence").style.display = e.target.checked ? "block" : "none";
+  mettreAJourApercuRecurrence();
+});
+document.getElementById("input-frequence-recurrence").addEventListener("change", mettreAJourApercuRecurrence);
+document.getElementById("input-fin-recurrence").addEventListener("change", mettreAJourApercuRecurrence);
+document.getElementById("input-date").addEventListener("change", mettreAJourApercuRecurrence);
+
 document.getElementById("btn-creer-course").addEventListener("click", async () => {
   const erreur = document.getElementById("erreur-modale");
   const depart = document.getElementById("input-depart").value.trim();
@@ -1394,14 +1508,14 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
 
   const chauffeurChoisi = document.getElementById("input-chauffeur").value || null;
   const estAllerRetour = document.getElementById("input-aller-retour").checked;
+  const estRecurrente = document.getElementById("input-recurrence").checked;
 
-  const { data: nouvelleCourse, error } = await supabase.from("courses").insert({
+  const courseDeBase = {
     chauffeur_id: chauffeurChoisi,
     client_nom: document.getElementById("input-client-nom").value.trim(),
     client_telephone: document.getElementById("input-client-tel").value.trim(),
     adresse_depart: depart,
     adresse_arrivee: arrivee,
-    date_heure: new Date(date).toISOString(),
     passagers: parseInt(document.getElementById("input-passagers").value) || 1,
     prix: parseFloat(document.getElementById("input-prix").value) || null,
     mode_tarification: document.getElementById("input-mode-tarification").value,
@@ -1410,10 +1524,40 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
     type_retour: estAllerRetour ? document.getElementById("input-type-retour").value : null,
     duree_attente_estimee: (estAllerRetour && document.getElementById("input-type-retour").value === "attente")
       ? document.getElementById("input-duree-attente").value.trim() || null : null,
-    heure_retour_prevue: (estAllerRetour && document.getElementById("input-type-retour").value === "heure_precise" && document.getElementById("input-heure-retour").value)
-      ? new Date(document.getElementById("input-heure-retour").value).toISOString() : null,
     statut: chauffeurChoisi ? "assignee" : "en_attente"
-  }).select().single();
+  };
+  // L'heure de retour précise, elle, dépend de la date de chaque occurrence (calculée plus bas si récurrente)
+  const heureRetourInput = document.getElementById("input-heure-retour").value;
+  const estRetourHeurePrecise = estAllerRetour && document.getElementById("input-type-retour").value === "heure_precise" && heureRetourInput;
+
+  let lignesACreer = [];
+  if (estRecurrente) {
+    const frequence = document.getElementById("input-frequence-recurrence").value;
+    const finRecurrence = document.getElementById("input-fin-recurrence").value;
+    if (!finRecurrence) { erreur.textContent = "Choisis une date de fin pour la récurrence."; return; }
+    const dates = calculerDatesRecurrence(date, frequence, finRecurrence);
+    if (dates.length === 0) { erreur.textContent = "Aucune date à créer sur cette période."; return; }
+    if (dates.length > 200) { erreur.textContent = "Trop de courses à créer d'un coup (200 max) — réduis la période."; return; }
+    if (!confirm(`Confirmer la création de ${dates.length} courses ?`)) return;
+    const heureBase = new Date(date);
+    lignesACreer = dates.map(d => {
+      const dt = new Date(d); dt.setHours(heureBase.getHours(), heureBase.getMinutes(), 0, 0);
+      let heureRetour = null;
+      if (estRetourHeurePrecise) {
+        const hr = new Date(heureRetourInput);
+        heureRetour = new Date(d); heureRetour.setHours(hr.getHours(), hr.getMinutes(), 0, 0);
+      }
+      return { ...courseDeBase, date_heure: dt.toISOString(), heure_retour_prevue: heureRetour ? heureRetour.toISOString() : null };
+    });
+  } else {
+    lignesACreer = [{
+      ...courseDeBase,
+      date_heure: new Date(date).toISOString(),
+      heure_retour_prevue: estRetourHeurePrecise ? new Date(heureRetourInput).toISOString() : null
+    }];
+  }
+
+  const { error } = await supabase.from("courses").insert(lignesACreer);
 
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
 
@@ -1435,6 +1579,10 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   document.getElementById("input-heure-retour").value = "";
   document.getElementById("bloc-attente-estimee").style.display = "none";
   document.getElementById("bloc-heure-retour").style.display = "none";
+  document.getElementById("input-recurrence").checked = false;
+  document.getElementById("bloc-recurrence").style.display = "none";
+  document.getElementById("input-fin-recurrence").value = "";
+  document.getElementById("apercu-recurrence").textContent = "";
   chargerCoursesAdmin();
   if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
 });

@@ -97,6 +97,18 @@ window.onerror = function(msg, url, line, col, err) {
 
   .champ{ margin-bottom:14px; }
   .champ label{ display:block; font-size:.8rem; color:var(--gris); margin-bottom:5px; }
+  .favoris-rapides{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .favoris-rapides button{
+    background:#fff; border:1px solid var(--rouge); color:var(--rouge); border-radius:20px;
+    padding:5px 12px; font-size:.78rem; font-weight:600;
+  }
+  .lien-favoris{ background:none; border:none; color:var(--rouge); font-size:.8rem; font-weight:600; padding:6px 0; text-decoration:underline; }
+  #panneau-favoris{ background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px; margin-top:8px; }
+  #liste-favoris .ligne-favori{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #e2e2df; font-size:.85rem; }
+  #liste-favoris .ligne-favori button{ background:none; border:none; color:var(--gris); font-size:1rem; }
+  .ligne-ajout-favori{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .ligne-ajout-favori input{ padding:9px; border-radius:8px; border:1px solid #cfcfcd; }
+  .ligne-ajout-favori button{ background:var(--vert); color:#fff; border:none; border-radius:8px; padding:9px; font-weight:600; }
   .ligne-checkbox-marche{ display:flex; align-items:flex-start; gap:8px; font-size:.82rem; color:var(--blanc) !important; background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px; }
   .ligne-checkbox-marche input{ width:auto; margin-top:2px; }
   .champ input, .champ textarea{
@@ -255,10 +267,21 @@ window.onerror = function(msg, url, line, col, err) {
     <div class="champ">
       <label>Adresse de départ</label>
       <input type="text" id="input-depart" placeholder="Ex : Rue de Boussu 12, Boussu">
+      <div class="favoris-rapides" id="favoris-rapides-depart"></div>
     </div>
     <div class="champ">
       <label>Adresse d'arrivée</label>
       <input type="text" id="input-arrivee" placeholder="Ex : Aéroport de Charleroi">
+      <div class="favoris-rapides" id="favoris-rapides-arrivee"></div>
+      <button type="button" id="btn-gerer-favoris" class="lien-favoris">⭐ Gérer mes adresses favorites</button>
+      <div id="panneau-favoris" style="display:none;">
+        <div id="liste-favoris"></div>
+        <div class="ligne-ajout-favori">
+          <input type="text" id="input-libelle-favori" placeholder="ex: Domicile, Travail">
+          <input type="text" id="input-adresse-favori" placeholder="Adresse complète">
+          <button type="button" id="btn-ajouter-favori">+ Ajouter</button>
+        </div>
+      </div>
     </div>
     <div class="champ">
       <label>Type de véhicule souhaité (optionnel)</label>
@@ -514,7 +537,67 @@ function demarrerEspaceClient() {
   chargerMesCourses();
   setInterval(chargerMesCourses, 20000);
   chargerChauffeursDejaEus();
+  chargerAdressesFavorites();
 }
+
+// ---------- Adresses favorites (domicile, travail...) ----------
+let favorisCache = [];
+async function chargerAdressesFavorites() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data } = await supabase.from("adresses_favorites").select("*").eq("client_id", user.id).order("created_at");
+  favorisCache = data || [];
+  afficherFavorisRapides();
+  afficherListeFavoris();
+}
+
+function afficherFavorisRapides() {
+  const zoneDepart = document.getElementById("favoris-rapides-depart");
+  const zoneArrivee = document.getElementById("favoris-rapides-arrivee");
+  zoneDepart.innerHTML = ""; zoneArrivee.innerHTML = "";
+  favorisCache.forEach(f => {
+    const b1 = document.createElement("button"); b1.type = "button"; b1.textContent = "⭐ " + f.libelle;
+    b1.addEventListener("click", () => { document.getElementById("input-depart").value = f.adresse; });
+    zoneDepart.appendChild(b1);
+    const b2 = document.createElement("button"); b2.type = "button"; b2.textContent = "⭐ " + f.libelle;
+    b2.addEventListener("click", () => { document.getElementById("input-arrivee").value = f.adresse; });
+    zoneArrivee.appendChild(b2);
+  });
+}
+
+function afficherListeFavoris() {
+  const liste = document.getElementById("liste-favoris");
+  if (favorisCache.length === 0) { liste.innerHTML = '<p style="color:var(--gris); font-size:.82rem; margin:0;">Aucune adresse enregistrée.</p>'; return; }
+  liste.innerHTML = favorisCache.map(f => `
+    <div class="ligne-favori" data-id="${f.id}">
+      <span><b>${esc(f.libelle)}</b> — ${esc(f.adresse)}</span>
+      <button type="button" class="btn-suppr-favori">🗑️</button>
+    </div>
+  `).join("");
+  liste.querySelectorAll(".btn-suppr-favori").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.closest(".ligne-favori").dataset.id;
+      await supabase.from("adresses_favorites").delete().eq("id", id);
+      chargerAdressesFavorites();
+    });
+  });
+}
+
+document.getElementById("btn-gerer-favoris").addEventListener("click", () => {
+  const panneau = document.getElementById("panneau-favoris");
+  panneau.style.display = panneau.style.display === "none" ? "block" : "none";
+});
+
+document.getElementById("btn-ajouter-favori").addEventListener("click", async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  const libelle = document.getElementById("input-libelle-favori").value.trim();
+  const adresse = document.getElementById("input-adresse-favori").value.trim();
+  if (!libelle || !adresse) return;
+  await supabase.from("adresses_favorites").insert({ client_id: user.id, libelle, adresse });
+  document.getElementById("input-libelle-favori").value = "";
+  document.getElementById("input-adresse-favori").value = "";
+  chargerAdressesFavorites();
+});
 
 // ---------- Chauffeur préféré : proposé seulement si le client a déjà eu au moins un chauffeur ----------
 async function chargerChauffeursDejaEus() {
