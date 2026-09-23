@@ -199,7 +199,7 @@ window.onerror = function(msg, url, line, col, err) {
   #modale-partenaire-contenu input{
     width:100%; box-sizing:border-box; padding:11px; border-radius:8px; border:1px solid #cfcfcd; font-size:.95rem;
   }
-  #recherche-client{
+  #recherche-client, #recherche-course{
     width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #cfcfcd; font-size:.95rem; margin-bottom:14px;
   }
   #barre-assignation-groupee{
@@ -306,6 +306,7 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-courses" class="visible">
   <button id="btn-nouvelle-course">+ Nouvelle course</button>
   <button id="btn-toggle-historique" style="background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
+  <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse...)">
   <div id="barre-assignation-groupee" style="display:none;">
     <span id="nb-courses-selectionnees">0</span> course(s) sélectionnée(s) —
     <select id="select-assignation-groupee"></select>
@@ -899,16 +900,21 @@ function afficherListeCoursesAdmin() {
   const conteneur = document.getElementById("liste-courses-admin");
   conteneur.innerHTML = "";
   const ilYA30Jours = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recherche = document.getElementById("recherche-course").value.trim().toLowerCase();
 
   const coursesAffichees = dernieresCoursesAdmin.filter(c => {
     const estArchivable = c.statut === "terminee" || c.statut === "annulee";
-    if (!estArchivable) return true; // les courses en attente/assignées/en cours restent toujours visibles
-    if (!afficherHistoriqueCourses) return false; // repliées par défaut pour ne pas encombrer la liste
-    return new Date(c.date_heure).getTime() >= ilYA30Jours; // historique limité à 30 jours (au-delà, à supprimer manuellement)
+    if (estArchivable && !afficherHistoriqueCourses) return false;
+    if (estArchivable && afficherHistoriqueCourses && new Date(c.date_heure).getTime() < ilYA30Jours) return false;
+    if (!recherche) return true;
+    const cible = [c.client_nom, c.client_telephone, c.adresse_depart, c.adresse_arrivee, c.profils?.nom]
+      .filter(Boolean).join(" ").toLowerCase();
+    return cible.includes(recherche);
   });
 
   coursesAffichees.forEach(c => conteneur.appendChild(construireCarteAdmin(c)));
 }
+document.getElementById("recherche-course").addEventListener("input", afficherListeCoursesAdmin);
 
 async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   const { data: courses, error } = await supabase
