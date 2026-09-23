@@ -90,7 +90,7 @@ window.onerror = function(msg, url, line, col, err) {
   #liste-courses{ padding:0 20px; }
 
   /* Onglets */
-  nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:0 20px 14px; }
+  nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px; }
   nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
   nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   .explication-demandes{ font-size:.82rem; color:var(--gris); margin-bottom:10px; }
@@ -116,6 +116,26 @@ window.onerror = function(msg, url, line, col, err) {
   .cal-jour.selectionne .point{ background:#fff; }
   #agenda-jour-titre{ padding:0 20px 8px; color:var(--gris); font-size:.85rem; }
   #agenda-liste-jour{ padding:0 20px; }
+
+  /* Historique des feuilles de route (lecture seule) */
+  #liste-historique-feuilles{ padding:0 20px; }
+  .histo-feuille{ background:var(--noir-2); border-radius:12px; margin-bottom:10px; border-left:4px solid var(--gris); overflow:hidden; }
+  .histo-feuille.cloturee{ border-left-color:var(--vert); }
+  .histo-feuille .histo-entete{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; cursor:pointer; gap:10px; }
+  .histo-feuille .histo-date{ font-weight:600; font-size:.95rem; text-transform:capitalize; }
+  .histo-feuille .histo-sous{ color:var(--gris); font-size:.8rem; margin-top:2px; }
+  .histo-feuille .histo-chevron{ color:var(--gris); flex-shrink:0; }
+  .histo-detail{ padding:0 16px 14px; display:none; }
+  .histo-detail.ouvert{ display:block; }
+  .histo-bloc-titre{ font-size:.75rem; color:var(--gris); margin:12px 0 6px; font-weight:600; }
+  .histo-tableau{ width:100%; border-collapse:collapse; font-size:.82rem; }
+  .histo-tableau td, .histo-tableau th{ border:1px solid #e2e2df; padding:6px 8px; text-align:left; }
+  .histo-tableau th{ background:#f7f7f5; font-weight:600; color:var(--gris); font-size:.75rem; }
+  .histo-course{ background:#f7f7f5; border-radius:8px; padding:10px 12px; margin-bottom:6px; font-size:.85rem; line-height:1.45; }
+  .histo-course b{ color:var(--blanc); }
+  .histo-course .histo-montants{ color:var(--gris); font-size:.8rem; margin-top:3px; }
+  .histo-lien-jour{ display:block; text-align:center; margin-top:10px; padding:11px; border-radius:8px; background:var(--vert); color:#fff; text-decoration:none; font-weight:600; font-size:.9rem; }
+  .histo-note{ font-size:.8rem; color:var(--gris); margin:0 20px 10px; }
 
   #modale-fr{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:50; align-items:flex-end; }
   #modale-fr.visible{ display:flex; }
@@ -214,6 +234,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button class="actif" data-onglet="mes-courses">Mes courses</button>
     <button data-onglet="demandes-ouvertes">📢 Demandes ouvertes</button>
     <button data-onglet="agenda">Agenda</button>
+    <button data-onglet="historique-feuilles">📁 Mes feuilles (30 jours)</button>
   </nav>
 
   <section id="section-mes-courses" class="visible">
@@ -238,6 +259,11 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
     <p id="agenda-jour-titre"></p>
     <div id="agenda-liste-jour"></div>
+  </section>
+
+  <section id="section-historique-feuilles">
+    <p class="histo-note">Tes feuilles de route des 30 derniers jours, en consultation. Touche une date pour voir le détail.</p>
+    <div id="liste-historique-feuilles"></div>
   </section>
 </div>
 
@@ -413,6 +439,9 @@ async function demarrerEspaceChauffeur() {
   // course, réassignation, modification d'horaire...), la liste se recharge immédiatement au
   // lieu d'attendre le prochain cycle de 30 secondes — tant que l'app reste ouverte.
   activerTempsReelCourses();
+  // Même principe pour les feuilles de route : si l'administrateur modifie une feuille,
+  // l'historique affiché se met à jour tout seul, sans message.
+  activerTempsReelFeuilles();
 
   // Localisation activée automatiquement dès l'ouverture de l'app (sans devoir toucher le bouton
   // "Disponible") — comme ça l'admin voit tout de suite le chauffeur sur la carte dès qu'il ouvre l'app.
@@ -427,6 +456,30 @@ async function activerTempsReelCourses() {
     .on("postgres_changes",
       { event: "*", schema: "public", table: "courses", filter: `chauffeur_id=eq.${user.id}` },
       () => chargerCourses()
+    )
+    .subscribe();
+}
+
+// Le serveur ne transmet à chaque chauffeur que ses propres feuilles et lignes (sécurité RLS).
+let minuterieRechargementHisto = null;
+function rechargerHistoriqueSiVisible() {
+  if (!document.getElementById("section-historique-feuilles").classList.contains("visible")) return;
+  // Regroupe plusieurs changements rapprochés (ex: renumérotation) en un seul rechargement
+  clearTimeout(minuterieRechargementHisto);
+  minuterieRechargementHisto = setTimeout(chargerHistoriqueFeuilles, 400);
+}
+async function activerTempsReelFeuilles() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  supabase
+    .channel("feuilles-chauffeur-" + user.id)
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: "feuilles_route", filter: `chauffeur_id=eq.${user.id}` },
+      rechargerHistoriqueSiVisible
+    )
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: "lignes_feuille_route" },
+      rechargerHistoriqueSiVisible
     )
     .subscribe();
 }
@@ -547,7 +600,7 @@ async function chargerCourses() {
 
   const { data: courses, error } = await supabase
     .from("courses")
-    .select("*")
+    .select("*, vehicules:vehicule_id(nom, plaque)")
     .eq("chauffeur_id", user.id)
     .order("date_heure", { ascending: true });
 
@@ -638,8 +691,170 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
     document.querySelectorAll("#ecran-principal section").forEach(s => s.classList.remove("visible"));
     document.getElementById("section-" + btn.dataset.onglet).classList.add("visible");
     if (btn.dataset.onglet === "demandes-ouvertes") chargerDemandesOuvertes();
+    if (btn.dataset.onglet === "historique-feuilles") chargerHistoriqueFeuilles();
   });
 });
+
+// ---------- HISTORIQUE DES FEUILLES DE ROUTE (30 jours, lecture seule) ----------
+// Consultation uniquement : rien n'est modifiable ici. La feuille du jour se remplit
+// toujours via "Ma feuille de route du jour", tant qu'elle n'est pas clôturée.
+const feuillesHistoOuvertes = new Set(); // garde ouvertes les dates que le chauffeur a dépliées
+
+function libellePaiement(mode) {
+  return {
+    cash: "💶 Cash", carte: "💳 Carte", facture: "🧾 Facture",
+    cheque_social: "🎫 Chèque social/communal", uber: "🚕 Uber"
+  }[mode] || "";
+}
+function libelleTypeCourse(type) {
+  return { normale: "Course normale", forfait: "Forfait", navette_aeroport: "Navette aéroport" }[type] || "";
+}
+function valeurOuTiret(v) {
+  return (v === null || v === undefined || v === "") ? "—" : esc(v);
+}
+function totalFinMoinsDebut(debut, fin) {
+  const d = parseFloat(debut), f = parseFloat(fin);
+  return (!isNaN(d) && !isNaN(f)) ? (f - d).toFixed(2) : "—";
+}
+function dureeService(debut, fin) {
+  if (!debut || !fin) return "—";
+  const [hd, md] = debut.split(":").map(Number), [hf, mf] = fin.split(":").map(Number);
+  if ([hd, md, hf, mf].some(Number.isNaN)) return "—";
+  const total = ((hf * 60 + mf) - (hd * 60 + md) + 1440) % 1440;
+  return `${Math.floor(total / 60)}h${String(total % 60).padStart(2, "0")}`;
+}
+
+async function chargerHistoriqueFeuilles() {
+  const conteneur = document.getElementById("liste-historique-feuilles");
+  if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const ilYA30Jours = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const aujourdHui = new Date().toISOString().slice(0, 10);
+
+  const { data: feuilles, error } = await supabase
+    .from("feuilles_route")
+    .select("*, vehicules:vehicule_id(nom, plaque)")
+    .eq("chauffeur_id", user.id)
+    .gte("date_service", ilYA30Jours)
+    .lte("date_service", aujourdHui)
+    .order("date_service", { ascending: false });
+
+  if (error) { conteneur.innerHTML = "Impossible de charger l'historique. Vérifie ta connexion et réessaie."; return; }
+  if (!feuilles || feuilles.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:30px 0;">Aucune feuille de route sur les 30 derniers jours.</p>';
+    return;
+  }
+
+  const ids = feuilles.map(f => f.id);
+  const { data: lignes } = await supabase
+    .from("lignes_feuille_route")
+    .select("*, courses(mode_paiement)")
+    .in("feuille_route_id", ids)
+    .order("n_ordre", { ascending: true });
+
+  conteneur.innerHTML = "";
+  feuilles.forEach(f => {
+    const lignesFeuille = (lignes || []).filter(l => l.feuille_route_id === f.id);
+    conteneur.appendChild(construireFeuilleHistorique(f, lignesFeuille, f.date_service === aujourdHui));
+  });
+}
+
+function construireFeuilleHistorique(feuille, lignes, estAujourdhui) {
+  const div = document.createElement("div");
+  div.className = "histo-feuille" + (feuille.verrouillee ? " cloturee" : "");
+
+  const dateLisible = new Date(feuille.date_service + "T12:00:00").toLocaleDateString("fr-BE", {
+    weekday: "long", day: "2-digit", month: "long"
+  });
+  const etat = feuille.verrouillee ? "🔒 Clôturée" : (estAujourdhui ? "En cours" : "Non clôturée");
+  const ouverte = feuillesHistoOuvertes.has(feuille.id);
+
+  const entete = document.createElement("div");
+  entete.className = "histo-entete";
+  entete.innerHTML = `
+    <div>
+      <div class="histo-date">${esc(dateLisible)}</div>
+      <div class="histo-sous">${etat} · ${lignes.length} course(s)</div>
+    </div>
+    <span class="histo-chevron">${ouverte ? "▴" : "▾"}</span>
+  `;
+  div.appendChild(entete);
+
+  const detail = document.createElement("div");
+  detail.className = "histo-detail" + (ouverte ? " ouvert" : "");
+
+  const vehicule = feuille.vehicules ? `${esc(feuille.vehicules.nom)}${feuille.vehicules.plaque ? " (" + esc(feuille.vehicules.plaque) + ")" : ""}` : "—";
+  const blocs = [
+    ["Km tableau de bord", "index_km_debut", "index_km_fin"],
+    ["Taximètre", "taximetre_debut", "taximetre_fin"],
+    ["Prise en charge", "prise_en_charge_debut", "prise_en_charge_fin"],
+    ["Km totaux", "index_km_totaux_debut", "index_km_totaux_fin"],
+    ["Km en charge", "km_en_charge_debut", "km_en_charge_fin"],
+    ["Chutes", "chutes_debut", "chutes_fin"],
+    ["Recettes", "recettes_debut", "recettes_fin"]
+  ];
+
+  let html = `
+    <div class="histo-bloc-titre">Service</div>
+    <table class="histo-tableau">
+      <tr><th>Véhicule</th><td colspan="3">${vehicule}</td></tr>
+      <tr><th>Début</th><td>${valeurOuTiret(feuille.heure_debut?.slice(0, 5))}</td><th>Fin</th><td>${valeurOuTiret(feuille.heure_fin?.slice(0, 5))}</td></tr>
+      <tr><th>Durée</th><td>${dureeService(feuille.heure_debut, feuille.heure_fin)}</td><th>Interruptions</th><td>${valeurOuTiret(feuille.interruptions)}</td></tr>
+    </table>
+    <div class="histo-bloc-titre">Compteurs</div>
+    <table class="histo-tableau">
+      <tr><th></th><th>Début</th><th>Fin</th><th>Total</th></tr>
+      ${blocs.map(([titre, d, f]) => `<tr><th>${titre}</th><td>${valeurOuTiret(feuille[d])}</td><td>${valeurOuTiret(feuille[f])}</td><td>${totalFinMoinsDebut(feuille[d], feuille[f])}</td></tr>`).join("")}
+    </table>
+    <div class="histo-bloc-titre">Courses</div>
+  `;
+
+  if (lignes.length === 0) {
+    html += `<p style="color:var(--gris); font-size:.85rem;">Aucune course sur cette feuille.</p>`;
+  } else {
+    // Numérotation toujours continue (1, 2, 3…) selon l'ordre affiché
+    html += lignes.map((l, i) => {
+      const mode = l.mode_paiement || l.courses?.mode_paiement || "";
+      const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).map(esc).join(" → ") || "Trajet non renseigné";
+      const heures = [l.embarquement_heure?.slice(0, 5), l.debarquement_heure?.slice(0, 5)].filter(Boolean).join(" → ");
+      let montants;
+      if (mode === "uber") montants = "🚕 Payé sur Uber";
+      else if (mode === "facture") montants = `🧾 Facture${l.numero_dossier ? " · dossier " + esc(l.numero_dossier) : ""}`;
+      else {
+        const parties = [];
+        if (l.prix_taximetre != null && l.prix_taximetre !== "") parties.push(`Taximètre : ${esc(l.prix_taximetre)} €`);
+        if (l.sommes_percues != null && l.sommes_percues !== "") parties.push(`Perçu : ${esc(l.sommes_percues)} €`);
+        if (mode) parties.push(libellePaiement(mode));
+        montants = parties.join(" · ");
+      }
+      const infos = [libelleTypeCourse(l.type_course), l.aller_retour ? "Aller-retour" : ""].filter(Boolean).join(" · ");
+      return `
+        <div class="histo-course">
+          <b>Course n° ${i + 1}</b> · ${trajet}
+          ${heures ? `<div class="histo-montants">${esc(heures)}${infos ? " · " + esc(infos) : ""}</div>` : (infos ? `<div class="histo-montants">${esc(infos)}</div>` : "")}
+          ${montants ? `<div class="histo-montants">${montants}</div>` : ""}
+        </div>`;
+    }).join("");
+  }
+
+  if (estAujourdhui && !feuille.verrouillee) {
+    html += `<a class="histo-lien-jour" href="feuille-de-route.html">📋 Continuer à remplir la feuille du jour</a>`;
+  }
+
+  detail.innerHTML = html;
+  div.appendChild(detail);
+
+  entete.addEventListener("click", () => {
+    const estOuvert = detail.classList.toggle("ouvert");
+    entete.querySelector(".histo-chevron").textContent = estOuvert ? "▴" : "▾";
+    if (estOuvert) feuillesHistoOuvertes.add(feuille.id); else feuillesHistoOuvertes.delete(feuille.id);
+  });
+
+  return div;
+}
 
 // ---------- AGENDA / CALENDRIER ----------
 let dernieresCoursesChauffeur = [];
@@ -752,15 +967,30 @@ function construireCarteCourse(course) {
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
   const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour (aller-retour)</span>` : "";
   const estTaximetre = course.mode_tarification === "taximetre";
-  const badgeTarification = `<span class="badge-ar">${estTaximetre ? "🔢 Taximètre" : "💶 Forfait" + (course.prix ? " " + course.prix + " €" : "")}</span>`;
+  // Course payée sur Uber : l'argent arrive sur le compte Uber, aucun montant à afficher ici
+  const estUber = course.mode_paiement === "uber";
+  const badgeTarification = estUber
+    ? `<span class="badge-ar">🚕 Payé sur Uber</span>`
+    : `<span class="badge-ar">${estTaximetre ? "🔢 Taximètre" : "💶 Forfait" + (course.prix ? " " + course.prix + " €" : "")}</span>`;
+
+  // Réservation de plusieurs véhicules : chaque chauffeur voit quel véhicule il fait
+  const labelTypeVehicule = { berline: "4 places", van: "7 places", pmr: "PMR" }[course.vehicule_souhaite] || "";
+  const badgeGroupe = course.nb_vehicules > 1
+    ? `<span class="badge-ar">🚗 Véhicule ${course.rang_vehicule || "?"}/${course.nb_vehicules}${labelTypeVehicule ? " · " + labelTypeVehicule : ""}</span>`
+    : (labelTypeVehicule ? `<span class="badge-ar">🚗 ${labelTypeVehicule}</span>` : "");
+  const ligneVehicule = course.vehicules?.nom
+    ? `<b>Véhicule :</b> ${esc(course.vehicules.nom)}${course.vehicules.plaque ? " (" + esc(course.vehicules.plaque) + ")" : ""}<br>` : "";
+  const ligneGroupe = course.nb_vehicules > 1
+    ? `<b>Réservation :</b> ${course.nb_vehicules} véhicules pour ce client, les autres sont faits par un autre chauffeur.<br>` : "";
 
   div.innerHTML = `
-    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}
+    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}${badgeGroupe}
     <h3>${esc(course.client_nom) || "Client"}</h3>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
+      ${ligneVehicule}${ligneGroupe}
       ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
       ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
     </div>

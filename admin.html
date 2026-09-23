@@ -78,10 +78,16 @@ window.onerror = function(msg, url, line, col, err) {
   .course .heure{ color:var(--gris); font-size:.85rem; margin-bottom:8px; }
   .course .trajet{ font-size:.9rem; line-height:1.5; margin-bottom:10px; }
   .course select{ width:100%; padding:10px; border-radius:8px; background:#f7f7f5; color:var(--blanc); border:1px solid #cfcfcd; margin-bottom:8px; }
-  .course .ligne-actions{ display:flex; gap:8px; }
+  .course .ligne-actions{ display:flex; gap:8px; flex-wrap:wrap; }
   .course .ligne-actions button{ flex:1; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
   .statut-label{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#dcdcda; color:var(--gris); margin-bottom:8px; }
   .badge-ar{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#fde3cc; color:#8a4a00; margin-bottom:8px; margin-left:6px; font-weight:600; }
+  .badge-groupe{ background:#dbe8f6; color:#1d4f86; }
+  .bloc-vehicule-course{ background:#f7f7f5; border-radius:10px; padding:10px; margin-bottom:8px; }
+  .bloc-vehicule-course label{ display:block; font-size:.75rem; color:var(--gris); margin:4px 0 3px; }
+  .bloc-vehicule-course select{ margin-bottom:6px; background:#fff; }
+  .resume-groupe{ font-size:.82rem; color:#1d4f86; background:#eef4fb; border-radius:8px; padding:8px 10px; margin-bottom:8px; line-height:1.5; }
+  .btn-ajout-vehicule{ width:100%; padding:10px; border-radius:8px; border:1px dashed var(--bleu); background:transparent; color:var(--bleu); font-weight:600; font-size:.85rem; cursor:pointer; margin-bottom:8px; }
 
   .bloc-prix-admin{ display:flex; gap:8px; margin-bottom:8px; }
   .bloc-prix-admin input{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
@@ -150,7 +156,7 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin.verrouillee-fa{ border-left-color:var(--vert); }
   .feuille-admin h3{ margin:0 0 4px; font-size:1rem; }
   .feuille-admin .sous{ color:var(--gris); font-size:.82rem; margin-bottom:10px; }
-  .feuille-admin .entete-fa-titre{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .feuille-admin .entete-fa-titre{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; }
   .feuille-admin .entete-fa-actions{ display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
   .feuille-admin .btn-nouvelle-course-fa{ width:auto; padding:8px 12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-size:.8rem; cursor:pointer; }
   .feuille-admin .btn-details-fa{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.8rem; cursor:pointer; font-weight:600; }
@@ -161,18 +167,21 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin .grille3-fa > div:last-child{ border-right:none; }
   .feuille-admin .grille3-fa input{ border:1px solid #dcdcda; }
   .feuille-admin label{ display:block; font-size:.72rem; color:var(--gris); margin-bottom:3px; }
-  .feuille-admin input{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; }
+  .feuille-admin input, .feuille-admin select{ width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; }
   .feuille-admin .mini-titre{ font-size:.7rem; color:var(--gris); text-transform:uppercase; margin:10px 0 4px; }
   .feuille-admin .bloc-service-fa{ margin-bottom:10px; }
   .feuille-admin .bloc-service-fa .sous-titre-fa{ font-size:.68rem; color:var(--gris); text-transform:uppercase; margin:8px 0 4px; }
   .feuille-admin .total-fa{ font-size:.72rem; color:var(--vert); font-weight:700; margin-top:2px; }
-  .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.8rem; cursor:pointer; flex-shrink:0; }
+  .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:none; font-size:.8rem; font-weight:700; cursor:pointer; flex-shrink:0; }
+  .feuille-admin .btn-verrou.rouvrir{ background:var(--rouge); color:#fff; }
+  .feuille-admin .btn-verrou.cloturer{ background:#1c1c1c; color:#fff; }
   .ligne-admin{ background:#f0f1ee; border-radius:10px; padding:10px; margin-bottom:8px; border:1px solid #dcdcda; }
   .ligne-admin .num-ligne{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; cursor:pointer; gap:8px; }
   .ligne-admin .num-ligne span{ color:var(--blanc); font-size:.82rem; flex:1; }
   .ligne-admin .num-ligne .chevron-ligne{ color:var(--gris); font-size:.75rem; margin-left:6px; flex-shrink:0; }
   .ligne-admin .num-ligne button{ width:auto; padding:5px 10px; font-size:.72rem; border-radius:6px; border:1px solid #cfcfcd; background:#fbe2e2; color:#b83232; cursor:pointer; flex-shrink:0; }
   .ligne-admin .grille3-fa > div{ margin-bottom:6px; }
+  .ligne-admin .mention-uber{ grid-column:1 / -1; font-size:.8rem; color:var(--gris); background:#fff; border:1px solid #dcdcda; border-radius:8px; padding:8px 10px; margin:4px 8px; }
   #btn-ajouter-ligne-admin{ width:100%; padding:10px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.85rem; margin-top:4px; cursor:pointer; }
   #feuilles-vide{ color:var(--gris); text-align:center; padding:30px 0; }
 
@@ -187,6 +196,30 @@ window.onerror = function(msg, url, line, col, err) {
   .vehicule-admin .ligne-actions-veh button{ flex:1; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.82rem; cursor:pointer; }
   .vehicule-admin .btn-suppr-veh{ border-color:var(--rouge); color:var(--rouge); }
   .vehicule-admin .btn-actif-veh.actif{ border-color:var(--vert); color:var(--vert); }
+
+  /* Carnet clients */
+  #btn-nouveau-client-carnet{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:12px; cursor:pointer; font-size:1rem; }
+  #recherche-carnet{ width:100%; padding:13px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; margin-bottom:14px; background:#fff; }
+  .form-carnet{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:14px; border:2px solid var(--vert); }
+  .form-carnet h3{ margin:0 0 6px; font-size:1rem; }
+  .form-carnet label{ display:block; font-size:.78rem; color:var(--gris); margin:10px 0 4px; }
+  .form-carnet input, .form-carnet textarea{ width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; font-size:.95rem; color:var(--blanc); }
+  .form-carnet textarea{ min-height:50px; resize:vertical; }
+  .form-carnet .actions-form-carnet{ display:flex; gap:8px; margin-top:14px; }
+  .form-carnet .actions-form-carnet button{ flex:1; padding:12px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
+  .form-carnet .btn-enregistrer-carnet{ background:var(--vert); color:#fff; }
+  .form-carnet .btn-annuler-carnet{ background:#dcdcda; color:var(--blanc); }
+  #erreur-carnet{ color:var(--rouge); font-size:.85rem; min-height:1em; margin:8px 0 0; }
+  .fiche-carnet{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:10px; }
+  .fiche-carnet .fc-nom{ font-weight:700; font-size:1.05rem; }
+  .fiche-carnet .fc-ligne{ font-size:.88rem; color:var(--gris); margin-top:3px; line-height:1.4; }
+  .fiche-carnet .fc-ligne b{ color:var(--blanc); font-weight:600; }
+  .fiche-carnet .fc-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .fiche-carnet .fc-actions button{ flex:1; min-width:120px; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; font-weight:600; cursor:pointer; }
+  .fiche-carnet .fc-actions .fc-course{ background:var(--vert); color:#fff; border-color:var(--vert); }
+  .fiche-carnet .fc-actions .fc-appel{ background:#eaf5ee; color:var(--vert); border-color:#bfe0cb; }
+  .fiche-carnet .fc-actions .fc-suppr{ color:var(--rouge); border-color:#f0c4c4; background:#fff; flex:0 0 auto; min-width:0; }
+  .compteur-carnet{ font-size:.82rem; color:var(--gris); margin:-6px 0 12px; }
 
   /* Modale nouvelle course */
   #modale{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:50; align-items:flex-end; }
@@ -233,14 +266,27 @@ window.onerror = function(msg, url, line, col, err) {
     width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.95rem;
   }
   #modale-contenu textarea{ resize:vertical; min-height:50px; }
+  #modale-contenu .ligne-case{ display:flex; align-items:center; gap:8px; margin-top:12px; }
+  #modale-contenu .ligne-case input{ width:auto; }
+  #modale-contenu .ligne-case label{ margin:0; color:var(--blanc); font-size:.92rem; }
+  .bloc-recherche-carnet-modale{ background:#eaf5ee; border:1px solid #bfe0cb; border-radius:10px; padding:10px 12px; margin-bottom:6px; }
+  .bloc-recherche-carnet-modale label{ margin-top:0 !important; color:var(--vert) !important; font-weight:600; }
+  #resultats-carnet-modale{ margin-top:4px; }
+  .resultat-carnet{ background:#fff; border:1px solid #cfe5d7; border-radius:8px; padding:9px 11px; margin-top:6px; cursor:pointer; font-size:.88rem; line-height:1.4; }
+  .resultat-carnet b{ font-size:.92rem; }
+  .resultat-carnet .rc-adresse{ color:var(--gris); font-size:.8rem; }
+  .bloc-vehicules-modale{ background:#f3f6fa; border:1px solid #d6e2ef; border-radius:10px; padding:10px 12px; margin-top:12px; }
+  .bloc-vehicules-modale h3{ margin:0 0 4px; font-size:.95rem; }
+  .ligne-vehicule-modale{ background:#fff; border-radius:8px; padding:8px 10px; margin-top:10px; border:1px solid #d6e2ef; }
+  .ligne-vehicule-modale .titre-vehicule{ font-weight:700; font-size:.88rem; color:#1d4f86; }
   .liste-suggestions-adresse{ display:none; background:var(--noir-2); border:1px solid #cfcfcd; border-top:none; border-radius:0 0 8px 8px; max-height:180px; overflow-y:auto; margin-top:-10px; margin-bottom:8px; }
   .suggestion-adresse{ padding:10px 12px; font-size:.85rem; border-bottom:1px solid #eee; cursor:pointer; color:var(--blanc); }
   .suggestion-adresse:last-child{ border-bottom:none; }
   .suggestion-adresse:active{ background:#f0f1ee; }
   .suggestion-adresse .puce-recente{ color:var(--vert); font-size:.75rem; margin-right:4px; }
-  #ligne-aller-retour{ display:flex; align-items:center; gap:8px; margin-top:14px; }
-  #ligne-aller-retour input{ width:auto; }
-  #ligne-aller-retour label{ margin:0; color:var(--blanc); font-size:.95rem; }
+  #ligne-aller-retour, #ligne-recurrence{ display:flex; align-items:center; gap:8px; margin-top:14px; }
+  #ligne-aller-retour input, #ligne-recurrence input{ width:auto; }
+  #ligne-aller-retour label, #ligne-recurrence label{ margin:0; color:var(--blanc); font-size:.95rem; }
   #bloc-type-retour{ display:none; }
   #modale-actions{ display:flex; gap:10px; margin-top:18px; }
   #modale-actions button{ flex:1; padding:13px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
@@ -259,7 +305,7 @@ window.onerror = function(msg, url, line, col, err) {
     width:100%; padding:14px; border-radius:10px; border:none;
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
   }
-  #ecran-login-admin button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
+  #ecran-login-admin button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; color:var(--blanc); }
   #erreur-login-admin{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 </style>
 </head>
@@ -298,14 +344,15 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
     <button data-onglet="partenaires">🤝 Sous-traitants</button>
-    <button data-onglet="clients">👥 Clients</button>
+    <button data-onglet="carnet">📇 Carnet clients</button>
+    <button data-onglet="clients">👥 Comptes clients app</button>
   </nav>
   <button id="btn-installer-app" style="display:none; margin-top:10px; background:var(--vert); border:none; border-radius:8px; color:#fff; padding:10px; font-weight:600; cursor:pointer;">📲 Installer l'application</button>
 </header>
 
 <section id="section-courses" class="visible">
   <button id="btn-nouvelle-course">+ Nouvelle course</button>
-  <button id="btn-toggle-historique" style="background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
+  <button id="btn-toggle-historique" style="width:100%; padding:12px; border-radius:10px; background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
   <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse...)">
   <div id="barre-assignation-groupee" style="display:none;">
     <span id="nb-courses-selectionnees">0</span> course(s) sélectionnée(s) —
@@ -392,6 +439,34 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="liste-caisse"></div>
 </section>
 
+<section id="section-carnet">
+  <button id="btn-nouveau-client-carnet">+ Enregistrer un nouveau client</button>
+  <div id="form-carnet" class="form-carnet" style="display:none;">
+    <h3 id="titre-form-carnet">Nouveau client</h3>
+    <input type="hidden" id="carnet-id">
+    <label for="carnet-nom">Nom (obligatoire)</label>
+    <input type="text" id="carnet-nom" placeholder="ex: Madame Dupont">
+    <label for="carnet-telephone">Téléphone</label>
+    <input type="tel" id="carnet-telephone" placeholder="ex: 0478 39 09 89">
+    <label for="carnet-email">Email</label>
+    <input type="email" id="carnet-email" placeholder="ex: dupont@exemple.be">
+    <label for="carnet-adresse">Adresse principale</label>
+    <input type="text" id="carnet-adresse" placeholder="ex: 73 Rue du Sas, 7330 Saint-Ghislain">
+    <label for="carnet-autre-adresse">Autre adresse (travail, famille…)</label>
+    <input type="text" id="carnet-autre-adresse">
+    <label for="carnet-notes">Notes (habitudes, fauteuil, code porte…)</label>
+    <textarea id="carnet-notes"></textarea>
+    <p id="erreur-carnet"></p>
+    <div class="actions-form-carnet">
+      <button type="button" class="btn-annuler-carnet" id="btn-annuler-carnet">Annuler</button>
+      <button type="button" class="btn-enregistrer-carnet" id="btn-enregistrer-carnet">Enregistrer</button>
+    </div>
+  </div>
+  <input type="text" id="recherche-carnet" placeholder="🔍 Nom, téléphone, email ou adresse">
+  <p class="compteur-carnet" id="compteur-carnet"></p>
+  <div id="liste-carnet"></div>
+</section>
+
 <section id="section-clients">
   <div id="bloc-leads-site"></div>
   <input type="text" id="recherche-client" placeholder="🔍 Rechercher un client (nom ou téléphone)">
@@ -399,7 +474,7 @@ window.onerror = function(msg, url, line, col, err) {
 </section>
 
 <section id="section-partenaires">
-  <button id="btn-ajouter-partenaire">+ Ajouter un sous-traitant</button>
+  <button id="btn-ajouter-partenaire" style="width:100%; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:16px;">+ Ajouter un sous-traitant</button>
   <div id="liste-partenaires-admin"></div>
 </section>
 
@@ -418,9 +493,9 @@ window.onerror = function(msg, url, line, col, err) {
     <label>Taux de commission (%)</label>
     <input type="number" id="input-partenaire-commission" placeholder="ex: 15" min="0" max="100" step="0.5">
     <p id="erreur-partenaire"></p>
-    <div class="modale-actions">
-      <button id="btn-annuler-partenaire" class="secondaire">Annuler</button>
-      <button id="btn-creer-partenaire">Créer le sous-traitant</button>
+    <div class="modale-actions" style="display:flex; gap:10px; margin-top:14px;">
+      <button id="btn-annuler-partenaire" class="secondaire" style="flex:1; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:#dcdcda;">Annuler</button>
+      <button id="btn-creer-partenaire" style="flex:1; padding:12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600;">Créer le sous-traitant</button>
     </div>
   </div>
 </div>
@@ -429,14 +504,21 @@ window.onerror = function(msg, url, line, col, err) {
 <div id="modale">
   <div id="modale-contenu">
     <h2>Nouvelle course</h2>
-    <label>Chauffeur assigné</label>
-    <select id="input-chauffeur"></select>
+
+    <div class="bloc-recherche-carnet-modale">
+      <label for="input-recherche-carnet-modale">📇 Client déjà enregistré ? Cherche-le ici</label>
+      <input type="text" id="input-recherche-carnet-modale" placeholder="Nom, téléphone ou adresse" autocomplete="off">
+      <div id="resultats-carnet-modale"></div>
+    </div>
 
     <label>Nom du client</label>
     <input type="text" id="input-client-nom">
 
     <label>Téléphone client</label>
     <input type="text" id="input-client-tel">
+
+    <label>Email client (optionnel)</label>
+    <input type="email" id="input-client-email">
 
     <label>Adresse de départ</label>
     <input type="text" id="input-depart">
@@ -450,8 +532,21 @@ window.onerror = function(msg, url, line, col, err) {
     <label>Passagers</label>
     <input type="number" id="input-passagers" value="1" min="1">
 
-    <label>Prix (€)</label>
-    <input type="text" id="input-prix" placeholder="ex: 35 ou 35 forfait">
+    <div class="bloc-vehicules-modale">
+      <h3>🚗 Véhicules et chauffeurs</h3>
+      <label for="input-nb-vehicules">Nombre de véhicules pour cette réservation</label>
+      <select id="input-nb-vehicules">
+        <option value="1">1 véhicule</option>
+        <option value="2">2 véhicules</option>
+        <option value="3">3 véhicules</option>
+        <option value="4">4 véhicules</option>
+        <option value="5">5 véhicules</option>
+      </select>
+      <div id="liste-vehicules-modale"></div>
+    </div>
+
+    <label>Prix (€) — par véhicule</label>
+    <input type="text" id="input-prix" placeholder="ex: 35">
 
     <label>Mode de tarification</label>
     <select id="input-mode-tarification">
@@ -499,6 +594,11 @@ window.onerror = function(msg, url, line, col, err) {
     <label>Notes</label>
     <textarea id="input-notes"></textarea>
 
+    <div class="ligne-case">
+      <input type="checkbox" id="input-enregistrer-carnet" checked>
+      <label for="input-enregistrer-carnet">📇 Enregistrer ce client dans le carnet (s'il n'y est pas encore)</label>
+    </div>
+
     <p id="erreur-modale"></p>
     <div id="modale-actions">
       <button id="btn-annuler-modale">Annuler</button>
@@ -543,9 +643,6 @@ try {
     'Erreur au démarrage : ' + e.message + '</div>');
 }
 
-// Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
-// ou une note tapée par un client ou un chauffeur ne soit interprétée comme du code
-// (protection contre l'injection de script / XSS), y compris dans les fenêtres d'impression.
 function versDatetimeLocal(dateStr) {
   // Convertit une date ISO (UTC, telle que stockée en base) vers le format
   // "YYYY-MM-DDTHH:mm" attendu par un champ <input type="datetime-local">,
@@ -557,6 +654,7 @@ function versDatetimeLocal(dateStr) {
   return new Date(d.getTime() - decalageMs).toISOString().slice(0, 16);
 }
 
+// Échappe tout texte avant de l'insérer dans du HTML (protection contre l'injection de script / XSS)
 function esc(valeur) {
   if (valeur === null || valeur === undefined) return "";
   return String(valeur)
@@ -565,6 +663,28 @@ function esc(valeur) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// Identifiant unique pour regrouper les véhicules d'une même réservation
+function nouvelIdGroupe() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+const LIBELLES_TYPE_VEHICULE = { berline: "4 places", van: "7 places", pmr: "PMR" };
+function optionsTypeVehicule(valeur) {
+  return `
+    <option value="" ${!valeur ? "selected" : ""}>Indifférent</option>
+    <option value="berline" ${valeur === "berline" ? "selected" : ""}>🚗 4 places (berline)</option>
+    <option value="van" ${valeur === "van" ? "selected" : ""}>🚐 7 places (van)</option>
+    <option value="pmr" ${valeur === "pmr" ? "selected" : ""}>♿ PMR</option>`;
+}
+function optionsVehiculesFlotte(idSelectionne) {
+  return `<option value="">— Véhicule précis : au choix —</option>` +
+    vehiculesCache.map(v => `<option value="${v.id}" ${v.id === idSelectionne ? "selected" : ""}>${esc(v.nom)}${v.places ? " · " + v.places + " places" : ""}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("");
 }
 
 // ---------- CONNEXION ADMIN (OTP email + vérification du rôle) ----------
@@ -664,6 +784,7 @@ async function activerNotificationsPushReelles() {
 function demarrerAdmin() {
   activerNotificationsPushReelles();
   chargerChauffeurs();
+  chargerCarnet(); // pour la recherche rapide dans la fenêtre "Nouvelle course"
   chargerCoursesAdmin();
   setInterval(() => chargerCoursesAdmin(true), 20000);
   setInterval(() => {
@@ -671,20 +792,35 @@ function demarrerAdmin() {
   }, 20000);
   surveillerImpressionsFeuilles(); // premier relevé, sans notifier rétroactivement
   setInterval(surveillerImpressionsFeuilles, 20000);
-  setInterval(() => {
-    const zoneFeuilles = document.getElementById("section-feuilles");
-    if (!zoneFeuilles.classList.contains("visible")) return;
-    if (document.getElementById("vue-historique-fa").style.display === "block") return; // ne pas perturber la navigation dans l'historique
-    // Ne jamais reconstruire la liste pendant que l'admin est en train de remplir un champ
-    // (sinon le champ disparaît sous ses doigts et il doit rescroller pour le retrouver)
-    if (zoneFeuilles.contains(document.activeElement) && document.activeElement.tagName !== "BODY") return;
-    chargerFeuillesAdmin();
-  }, 15000);
+  setInterval(rafraichirFeuillesSiPossible, 15000);
+  activerTempsReelAdmin();
 }
 
-// Prévient l'admin (son + notification, comme pour une nouvelle course) dès qu'un chauffeur
-// imprime sa feuille de route — utile pour être sûr que c'est bien fait avant un contrôle.
-let imprimeesConnues = null; // null = pas encore initialisé
+// Ne jamais reconstruire la liste des feuilles pendant que l'admin est en train de remplir un champ
+function rafraichirFeuillesSiPossible() {
+  const zoneFeuilles = document.getElementById("section-feuilles");
+  if (!zoneFeuilles.classList.contains("visible")) return;
+  if (document.getElementById("vue-historique-fa").style.display === "block") return;
+  if (zoneFeuilles.contains(document.activeElement) && document.activeElement.tagName !== "BODY") return;
+  chargerFeuillesAdmin();
+}
+
+// Temps réel : une modification faite par un chauffeur (ou depuis un autre appareil) apparaît tout de suite
+let minuterieTempsReelFeuilles = null;
+function activerTempsReelAdmin() {
+  supabase
+    .channel("admin-feuilles")
+    .on("postgres_changes", { event: "*", schema: "public", table: "feuilles_route" }, planifierRafraichissementFeuilles)
+    .on("postgres_changes", { event: "*", schema: "public", table: "lignes_feuille_route" }, planifierRafraichissementFeuilles)
+    .subscribe();
+}
+function planifierRafraichissementFeuilles() {
+  clearTimeout(minuterieTempsReelFeuilles);
+  minuterieTempsReelFeuilles = setTimeout(rafraichirFeuillesSiPossible, 600);
+}
+
+// Prévient l'admin (son + notification) dès qu'un chauffeur imprime sa feuille de route
+let imprimeesConnues = null;
 async function surveillerImpressionsFeuilles() {
   const { data: feuilles, error } = await supabase
     .from("feuilles_route")
@@ -694,7 +830,7 @@ async function surveillerImpressionsFeuilles() {
 
   if (imprimeesConnues === null) {
     imprimeesConnues = new Map((feuilles || []).map(f => [f.id, f.imprimee_a]));
-    return; // au premier chargement, on note juste l'état actuel sans alerter sur l'historique
+    return;
   }
 
   (feuilles || []).forEach(f => {
@@ -739,25 +875,27 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
+    if (btn.dataset.onglet === "carnet") chargerCarnet();
   });
 });
 
-// ---------- CHARGER LA LISTE DES CHAUFFEURS (pour le menu déroulant) ----------
+// ---------- CHARGER LA LISTE DES CHAUFFEURS ET DES VÉHICULES ----------
 let chauffeursCache = [];
 let partenairesCache = [];
+let vehiculesCache = [];
 let dernieresCoursesAdmin = [];
-const coursesOuvertes = new Set(); // ids des courses dont le détail est ouvert, pour ne pas les refermer tout seul au rafraîchissement automatique
+const coursesOuvertes = new Set(); // ids des courses dont le détail est ouvert
 
 function optionsChauffeursEtPartenaires(idSelectionne) {
   let html = `<option value="">— Aucun (à attribuer plus tard) —</option>`;
   if (chauffeursCache.length) {
     html += `<optgroup label="Chauffeurs">` +
-      chauffeursCache.map(c => `<option value="${c.id}" ${c.id === idSelectionne ? "selected" : ""}>${c.nom || c.telephone || c.id}</option>`).join("") +
+      chauffeursCache.map(c => `<option value="${c.id}" ${c.id === idSelectionne ? "selected" : ""}>${esc(c.nom || c.telephone || c.id)}</option>`).join("") +
       `</optgroup>`;
   }
   if (partenairesCache.length) {
     html += `<optgroup label="🤝 Sous-traitants">` +
-      partenairesCache.map(p => `<option value="${p.id}" ${p.id === idSelectionne ? "selected" : ""}>${p.nom}${p.societe ? " (" + p.societe + ")" : ""}</option>`).join("") +
+      partenairesCache.map(p => `<option value="${p.id}" ${p.id === idSelectionne ? "selected" : ""}>${esc(p.nom)}${p.societe ? " (" + esc(p.societe) + ")" : ""}</option>`).join("") +
       `</optgroup>`;
   }
   return html;
@@ -780,8 +918,14 @@ async function chargerChauffeurs() {
     .eq("actif", true);
   partenairesCache = partenaires || [];
 
-  const select = document.getElementById("input-chauffeur");
-  select.innerHTML = optionsChauffeursEtPartenaires(null);
+  const { data: vehicules } = await supabase
+    .from("vehicules")
+    .select("id, nom, plaque, places, chauffeur_id")
+    .eq("actif", true)
+    .order("places", { ascending: true });
+  vehiculesCache = vehicules || [];
+
+  rendreLignesVehiculesModale();
 
   const selectHisto = document.getElementById("select-chauffeur-historique");
   if (selectHisto) {
@@ -790,7 +934,7 @@ async function chargerChauffeurs() {
 }
 
 // ---------- NOTIFICATION ADMIN : nouvelle demande client (son + notification navigateur) ----------
-let idsCoursesConnusAdmin = null; // null = pas encore initialisé
+let idsCoursesConnusAdmin = null;
 
 function nomChauffeurPourNotif(course) {
   const c = chauffeursCache.find(ch => ch.id === course.chauffeur_id);
@@ -800,8 +944,7 @@ function nomChauffeurPourNotif(course) {
 function jouerSonAlerteAdmin() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Sonnerie façon "appel téléphonique" : deux tonalités alternées, fortes, répétées plusieurs fois
-    const frequences = [988, 1319]; // la-do aigu, comme une sonnerie classique
+    const frequences = [988, 1319];
     const nbSonneries = 4;
     const dureeNote = 0.35;
     const pauseEntreNotes = 0.12;
@@ -812,10 +955,10 @@ function jouerSonAlerteAdmin() {
       frequences.forEach(freq => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = "square"; // son plus perçant qu'une sinusoïde, se remarque mieux
+        osc.type = "square";
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02); // volume fort
+        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02);
         gain.gain.setValueAtTime(0.9, t + dureeNote - 0.05);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + dureeNote);
         osc.connect(gain).connect(ctx.destination);
@@ -847,7 +990,7 @@ if ("Notification" in window && Notification.permission === "default") {
 }
 
 // ---------- CHARGER TOUTES LES COURSES ----------
-let afficherHistoriqueCourses = false; // par défaut, ne montre que les courses en attente/en cours
+let afficherHistoriqueCourses = false;
 
 document.getElementById("btn-toggle-historique").addEventListener("click", () => {
   afficherHistoriqueCourses = !afficherHistoriqueCourses;
@@ -919,12 +1062,10 @@ document.getElementById("recherche-course").addEventListener("input", afficherLi
 async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   const { data: courses, error } = await supabase
     .from("courses")
-    .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom)")
+    .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom), vehicules:vehicule_id(nom, plaque, places)")
     .order("date_heure", { ascending: true });
   if (error) { console.error(error); return; }
 
-  // Détecte les nouvelles demandes clients jamais vues, les paiements tout juste déclarés,
-  // et maintenant aussi l'acceptation et le démarrage d'une course par le chauffeur
   if (idsCoursesConnusAdmin === null) {
     idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur }]));
   } else {
@@ -954,9 +1095,6 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
 
   verifierRappels30MinAdmin(dernieresCoursesAdmin);
 
-  // Pendant un rafraîchissement automatique, ne jamais reconstruire la liste si l'admin est
-  // en train de saisir un champ (modification d'une course) : sinon le formulaire se ferme
-  // tout seul sous ses doigts avant qu'il ait fini de taper.
   const zoneCourses = document.getElementById("liste-courses-admin");
   const enTrainDeSaisir = depuisAutoRafraichissement && zoneCourses.contains(document.activeElement) && document.activeElement.tagName !== "BODY";
   if (!enTrainDeSaisir) {
@@ -969,7 +1107,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
 }
 
 // ---------- RAPPEL 30 MINUTES AVANT CHAQUE COURSE ----------
-const rappelsEnvoyesAdmin = new Set(); // ids de courses déjà rappelées, pour ne prévenir qu'une fois
+const rappelsEnvoyesAdmin = new Set();
 function verifierRappels30MinAdmin(courses) {
   const maintenant = Date.now();
   (courses || []).forEach(c => {
@@ -992,6 +1130,7 @@ function numeroWhatsapp(telephone) {
   if (!telephone) return null;
   let n = telephone.replace(/[^\d+]/g, "");
   if (n.startsWith("+")) n = n.slice(1);
+  else if (n.startsWith("00")) n = n.slice(2);
   else if (n.startsWith("0")) n = "32" + n.slice(1); // Belgique par défaut
   return n;
 }
@@ -1004,7 +1143,8 @@ function lienWhatsappCourse(course) {
   const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
     weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
   });
-  const texte = `Nouvelle course Taxi Wal 🚕\n${heure}\nDépart : ${course.adresse_depart}\nArrivée : ${course.adresse_arrivee}\nMerci de vérifier l'application.`;
+  const vehicule = course.nb_vehicules > 1 ? `\nVéhicule ${course.rang_vehicule}/${course.nb_vehicules}${course.vehicules?.nom ? " : " + course.vehicules.nom : ""}` : "";
+  const texte = `Nouvelle course Taxi Wal 🚕\n${heure}\nDépart : ${course.adresse_depart}\nArrivée : ${course.adresse_arrivee}${vehicule}\nMerci de vérifier l'application.`;
   return `https://wa.me/${numero}?text=${encodeURIComponent(texte)}`;
 }
 
@@ -1098,9 +1238,80 @@ document.getElementById("cal-next").addEventListener("click", () => {
 
 // "+ Ajouter" ouvre la même fenêtre de création de course, pré-remplie avec le jour choisi
 document.getElementById("btn-ajouter-jour").addEventListener("click", () => {
-  document.getElementById("input-date").value = calJourSelectionne + "T09:00";
-  modale.classList.add("visible");
+  ouvrirModaleCourse({ date: calJourSelectionne + "T09:00" });
 });
+
+// ---------- RÉSERVATION À PLUSIEURS VÉHICULES ----------
+// Une réservation de N véhicules = N courses liées (même groupe_reservation), une par véhicule,
+// chacune avec son propre chauffeur. Chaque chauffeur reçoit donc sa course et sa ligne de feuille de route.
+function coursesDuGroupe(groupe) {
+  if (!groupe) return [];
+  return dernieresCoursesAdmin
+    .filter(c => c.groupe_reservation === groupe && !c.est_retour)
+    .sort((a, b) => (a.rang_vehicule || 0) - (b.rang_vehicule || 0));
+}
+
+// Renumérote les véhicules d'une réservation (1, 2, 3…) et met à jour le total, après ajout ou suppression
+async function renumeroterGroupe(groupe) {
+  if (!groupe) return;
+  const { data: membres } = await supabase
+    .from("courses")
+    .select("id, rang_vehicule, created_at")
+    .eq("groupe_reservation", groupe)
+    .eq("est_retour", false)
+    .order("rang_vehicule", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+  const liste = membres || [];
+  for (let i = 0; i < liste.length; i++) {
+    await supabase.from("courses")
+      .update({ rang_vehicule: i + 1, nb_vehicules: liste.length })
+      .eq("id", liste[i].id);
+  }
+}
+
+async function ajouterVehiculeAReservation(course) {
+  const groupe = course.groupe_reservation || nouvelIdGroupe();
+  if (!course.groupe_reservation) {
+    const { error } = await supabase.from("courses")
+      .update({ groupe_reservation: groupe, rang_vehicule: 1, nb_vehicules: 1 })
+      .eq("id", course.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+  }
+  const nbActuel = Math.max(course.nb_vehicules || 1, coursesDuGroupe(groupe).length || 1);
+  const { data: nouvelle, error } = await supabase.from("courses").insert({
+    client_nom: course.client_nom,
+    client_telephone: course.client_telephone,
+    client_id: course.client_id,
+    adresse_depart: course.adresse_depart,
+    adresse_arrivee: course.adresse_arrivee,
+    date_heure: course.date_heure,
+    passagers: course.passagers,
+    bagages: course.bagages,
+    prix: course.prix,
+    mode_tarification: course.mode_tarification,
+    notes: course.notes,
+    aller_retour: course.aller_retour,
+    type_retour: course.type_retour,
+    duree_attente_estimee: course.duree_attente_estimee,
+    heure_retour_prevue: course.heure_retour_prevue,
+    statut: "en_attente",
+    groupe_reservation: groupe,
+    rang_vehicule: nbActuel + 1,
+    nb_vehicules: nbActuel + 1
+  }).select("id").single();
+  if (error) { alert("Erreur : " + error.message); return; }
+  await renumeroterGroupe(groupe);
+  coursesOuvertes.add(nouvelle.id); // la nouvelle fiche s'ouvre directement pour choisir véhicule et chauffeur
+  await chargerCoursesAdmin();
+}
+
+async function supprimerCourse(course) {
+  if (!confirm("Supprimer définitivement cette course ? Cette action est irréversible.")) return;
+  const { error } = await supabase.from("courses").delete().eq("id", course.id);
+  if (error) { alert("Erreur : " + error.message); return; }
+  if (course.groupe_reservation) await renumeroterGroupe(course.groupe_reservation);
+  chargerCoursesAdmin();
+}
 
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
@@ -1111,6 +1322,7 @@ function construireCarteAdmin(course) {
     checkbox.type = "checkbox";
     checkbox.className = "checkbox-select-course";
     checkbox.dataset.courseId = course.id;
+    checkbox.checked = coursesSelectionnees.has(course.id);
     checkbox.addEventListener("change", gererSelectionCourse);
     div.appendChild(checkbox);
   }
@@ -1127,9 +1339,10 @@ function construireCarteAdmin(course) {
     en_cours: "En cours", terminee: "Terminée", annulee: "Annulée"
   }[course.statut] || course.statut;
 
-  const prixAffiche = course.prix
+  const estUber = course.mode_paiement === "uber";
+  const prixAffiche = estUber ? "🚕 payé sur Uber" : (course.prix
     ? course.prix + " €" + (course.surprime ? ` (+ ${course.surprime} € surprime)` : "")
-    : "";
+    : "");
 
   const heureRetourAffichee = course.heure_retour_prevue
     ? new Date(course.heure_retour_prevue).toLocaleString("fr-BE", { hour: "2-digit", minute: "2-digit" })
@@ -1140,8 +1353,10 @@ function construireCarteAdmin(course) {
     : "";
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
   const badgeTaximetre = course.mode_tarification === "taximetre" ? `<span class="badge-ar">🔢 Taximètre</span>` : "";
-  const labelVehiculeSouhaite = { berline: "🚗 Berline souhaitée", van: "🚐 Van souhaité", pmr: "♿ PMR souhaité" }[course.vehicule_souhaite] || "";
-  const badgeVehiculeSouhaite = labelVehiculeSouhaite ? `<span class="badge-ar">${labelVehiculeSouhaite}</span>` : "";
+  const labelTypeVeh = LIBELLES_TYPE_VEHICULE[course.vehicule_souhaite] || "";
+  const badgeVehicule = course.nb_vehicules > 1
+    ? `<span class="badge-ar badge-groupe">🚗 Véhicule ${course.rang_vehicule || "?"}/${course.nb_vehicules}${labelTypeVeh ? " · " + labelTypeVeh : ""}${course.vehicules?.nom ? " · " + esc(course.vehicules.nom) : ""}</span>`
+    : ((labelTypeVeh || course.vehicules?.nom) ? `<span class="badge-ar badge-groupe">🚗 ${[labelTypeVeh, course.vehicules?.nom ? esc(course.vehicules.nom) : ""].filter(Boolean).join(" · ")}</span>` : "");
   const badgeChauffeurPrefere = course.chauffeur_prefere?.nom ? `<span class="badge-ar">⭐ Préfère ${esc(course.chauffeur_prefere.nom)}</span>` : "";
   const badgeNoteClient = course.note_client ? `<span class="badge-ar">${"★".repeat(course.note_client)}${"☆".repeat(5 - course.note_client)}</span>` : "";
   const badgeSousTraitant = course.profils?.role === "partenaire" ? `<span class="badge-ar">🤝 Sous-traitant${course.montant_commission ? ` (${Number(course.montant_commission).toFixed(2)} € commission)` : ""}</span>` : "";
@@ -1155,8 +1370,8 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}${badgeTaximetre}${badgeVehiculeSouhaite}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
-      <h3>${esc(course.client_nom) || "Client"} — ${esc(prixAffiche)}</h3>
+      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
+      <h3>${esc(course.client_nom) || "Client"} — ${prixAffiche.startsWith("🚕") ? prixAffiche : esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
     <span class="chevron-ligne" style="color:var(--gris); flex-shrink:0;">${dejaOuverte ? "▴" : "▾"}</span>
@@ -1165,23 +1380,18 @@ function construireCarteAdmin(course) {
   btnSupprimerRapide.textContent = "🗑️";
   btnSupprimerRapide.title = "Supprimer définitivement cette course";
   btnSupprimerRapide.style.cssText = "width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--rouge); background:transparent; color:var(--rouge); flex-shrink:0; align-self:flex-start;";
-  btnSupprimerRapide.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    if (!confirm("Supprimer définitivement cette course ? Cette action est irréversible.")) return;
-    const { error } = await supabase.from("courses").delete().eq("id", course.id);
-    if (error) { alert("Erreur : " + error.message); return; }
-    chargerCoursesAdmin();
-  });
+  btnSupprimerRapide.addEventListener("click", (e) => { e.stopPropagation(); supprimerCourse(course); });
   entete.appendChild(btnSupprimerRapide);
   div.appendChild(entete);
 
   const corps = document.createElement("div");
   corps.className = "corps-course-admin";
-  corps.style.display = dejaOuverte ? "block" : "none"; // repliée par défaut — reste ouverte si l'admin l'avait déjà ouverte
+  corps.style.display = dejaOuverte ? "block" : "none";
   corps.innerHTML = `
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}
+      ${course.passagers ? `<br><b>Passagers :</b> ${esc(course.passagers)}` : ""}
       ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
   `;
@@ -1193,6 +1403,20 @@ function construireCarteAdmin(course) {
     entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
     if (ouvert) coursesOuvertes.delete(course.id); else coursesOuvertes.add(course.id);
   });
+
+  // Résumé de la réservation quand il y a plusieurs véhicules : qui fait quoi
+  const groupe = coursesDuGroupe(course.groupe_reservation);
+  if (groupe.length > 1) {
+    const resume = document.createElement("div");
+    resume.className = "resume-groupe";
+    resume.innerHTML = `<b>Réservation de ${groupe.length} véhicules :</b><br>` + groupe.map(g => {
+      const type = LIBELLES_TYPE_VEHICULE[g.vehicule_souhaite] || "type au choix";
+      const veh = g.vehicules?.nom ? " · " + esc(g.vehicules.nom) : "";
+      const ch = g.profils?.nom ? esc(g.profils.nom) : "⚠️ pas encore de chauffeur";
+      return `${g.id === course.id ? "▶ " : ""}Véhicule ${g.rang_vehicule || "?"} (${type}${veh}) → ${ch}`;
+    }).join("<br>");
+    corps.appendChild(resume);
+  }
 
   // Demande client sans prix encore envoyé : formulaire pour proposer un prix
   if (course.origine === "client" && course.statut === "en_attente" && course.client_id) {
@@ -1213,12 +1437,11 @@ function construireCarteAdmin(course) {
     corps.appendChild(blocPrix);
   }
 
-  // Client a déclaré avoir payé l'acompte : à vérifier puis confirmer
   if (course.statut === "acompte_declare") {
     const blocVerif = document.createElement("div");
     blocVerif.className = "alerte-acompte";
     blocVerif.innerHTML = `
-      💰 Le client indique avoir payé l'acompte de <b>${course.acompte_montant} €</b>.<br>
+      💰 Le client indique avoir payé l'acompte de <b>${esc(course.acompte_montant)} €</b>.<br>
       Vérifie la réception sur le compte avant de confirmer.
       <button type="button">✅ Confirmer la réception de l'acompte</button>
     `;
@@ -1240,16 +1463,58 @@ function construireCarteAdmin(course) {
     corps.appendChild(note);
   }
 
-  // Réassignation
+  // Véhicule : type demandé + véhicule précis de la flotte
+  if (course.statut !== "terminee" && course.statut !== "annulee") {
+    const blocVeh = document.createElement("div");
+    blocVeh.className = "bloc-vehicule-course";
+    blocVeh.innerHTML = `
+      <label>Type de véhicule${course.nb_vehicules > 1 ? ` (véhicule ${course.rang_vehicule}/${course.nb_vehicules})` : ""}</label>
+      <select class="select-type-veh">${optionsTypeVehicule(course.vehicule_souhaite)}</select>
+      <label>Véhicule de la flotte</label>
+      <select class="select-veh-flotte">${optionsVehiculesFlotte(course.vehicule_id)}</select>
+    `;
+    blocVeh.querySelector(".select-type-veh").addEventListener("change", async (e) => {
+      await supabase.from("courses").update({ vehicule_souhaite: e.target.value || null }).eq("id", course.id);
+      chargerCoursesAdmin();
+    });
+    blocVeh.querySelector(".select-veh-flotte").addEventListener("change", async (e) => {
+      const vehId = e.target.value || null;
+      const maj = { vehicule_id: vehId };
+      const veh = vehiculesCache.find(v => v.id === vehId);
+      if (veh && !course.vehicule_souhaite) maj.vehicule_souhaite = (veh.places || 0) >= 7 ? "van" : "berline";
+      await supabase.from("courses").update(maj).eq("id", course.id);
+      chargerCoursesAdmin();
+    });
+    corps.appendChild(blocVeh);
+  }
+
+  // Réassignation (chaque véhicule de la réservation a son propre chauffeur)
   const selectChauffeur = document.createElement("select");
-  selectChauffeur.innerHTML = `<option value="">— Réassigner à —</option>` + optionsChauffeursEtPartenaires(course.chauffeur_id).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
+  selectChauffeur.innerHTML = `<option value="">— ${course.chauffeur_id ? "Réassigner à" : "Assigner à"} —</option>` + optionsChauffeursEtPartenaires(course.chauffeur_id).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
-    await supabase.from("courses").update({ chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null }).eq("id", course.id);
-    // Notification désormais gérée automatiquement par la base (trigger + file d'attente unifiée)
+    const maj = { chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null };
+    // Si ce chauffeur a un véhicule attitré et qu'aucun véhicule n'est encore choisi, on le propose d'office
+    if (!course.vehicule_id) {
+      const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
+      if (vehAttitre) maj.vehicule_id = vehAttitre.id;
+    }
+    await supabase.from("courses").update(maj).eq("id", course.id);
     chargerCoursesAdmin();
   });
   corps.appendChild(selectChauffeur);
+
+  // Ajouter un véhicule à la même réservation (ex : le client veut 2 voitures)
+  if (!course.est_retour && course.statut !== "terminee" && course.statut !== "annulee") {
+    const btnAjoutVeh = document.createElement("button");
+    btnAjoutVeh.className = "btn-ajout-vehicule";
+    btnAjoutVeh.textContent = "➕ Ajouter un véhicule à cette réservation";
+    btnAjoutVeh.addEventListener("click", async () => {
+      btnAjoutVeh.disabled = true; btnAjoutVeh.textContent = "Ajout en cours…";
+      await ajouterVehiculeAReservation(course);
+    });
+    corps.appendChild(btnAjoutVeh);
+  }
 
   // Actions : rouvrir / annuler (admin uniquement, même si verrouillée)
   const actions = document.createElement("div");
@@ -1260,7 +1525,7 @@ function construireCarteAdmin(course) {
     if (lienWA) {
       const btnWA = document.createElement("button");
       btnWA.textContent = "📲 Prévenir par WhatsApp";
-      btnWA.style.background = "#1f8a4c";
+      btnWA.style.cssText = "background:#1f8a4c; color:#fff; border-color:#1f8a4c;";
       btnWA.addEventListener("click", () => window.open(lienWA, "_blank"));
       actions.appendChild(btnWA);
     }
@@ -1270,7 +1535,7 @@ function construireCarteAdmin(course) {
       await supabase.from("courses").update({ statut: "en_cours", verrouillee: false }).eq("id", course.id);
       chargerCoursesAdmin();
     }));
-    if (course.client_id && !course.facture_envoyee) {
+    if (course.client_id && !course.facture_envoyee && !estUber) {
       actions.appendChild(creerBoutonAdmin("📧 Envoyer la facture au client", async (e) => {
         const btn = e.currentTarget;
         btn.disabled = true; btn.textContent = "Envoi en cours…";
@@ -1282,18 +1547,20 @@ function construireCarteAdmin(course) {
   }
   if (course.statut !== "annulee") {
     actions.appendChild(creerBoutonAdmin("Annuler la course", async () => {
+      if (!confirm("Annuler cette course ?")) return;
       await supabase.from("courses").update({ statut: "annulee" }).eq("id", course.id);
       chargerCoursesAdmin();
     }));
   }
   if (actions.children.length > 0) corps.appendChild(actions);
 
-  // Navigation GPS en un clic (ouvre l'app Plans du téléphone avec l'itinéraire)
+  // Navigation GPS en un clic
   const actionsNav = document.createElement("div");
   actionsNav.className = "ligne-actions";
+  actionsNav.style.marginTop = "8px";
   const btnGps = document.createElement("button");
   btnGps.textContent = "🧭 Itinéraire GPS";
-  btnGps.style.background = "#3b82c4";
+  btnGps.style.cssText = "background:#3b82c4; color:#fff; border-color:#3b82c4;";
   btnGps.addEventListener("click", () => {
     const dest = encodeURIComponent(course.adresse_arrivee);
     const dep = encodeURIComponent(course.adresse_depart);
@@ -1312,7 +1579,7 @@ function construireCarteAdmin(course) {
   // Modifier tous les détails de la course
   const btnModifier = document.createElement("button");
   btnModifier.textContent = "✏️ Modifier la course";
-  btnModifier.style.marginTop = "8px";
+  btnModifier.style.cssText = "width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-weight:600;";
   const formModif = document.createElement("div");
   formModif.className = "form-modif-course";
   formModif.style.display = "none";
@@ -1383,29 +1650,20 @@ function construireCarteAdmin(course) {
       if (champ === "prix" || champ === "surprime") { maj[champ] = val ? parseFloat(val) : null; return; }
       maj[champ] = val || null;
     });
-    // Si la course n'est plus "aller-retour", on efface tout ce qui concerne le retour
     if (!estAllerRetourModif) { maj.type_retour = null; maj.duree_attente_estimee = null; maj.heure_retour_prevue = null; }
-    // Ne garde la durée d'attente que si "attente" est sélectionné, et l'heure de retour que si "heure_precise" est sélectionné
     if (typeRetourChoisi !== "attente") maj.duree_attente_estimee = null;
     if (typeRetourChoisi !== "heure_precise") maj.heure_retour_prevue = null;
     const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
     if (error) { alert("Erreur : " + error.message); return; }
     chargerCoursesAdmin();
   });
-  formModif.querySelector(".btn-supprimer-course").addEventListener("click", async () => {
-    if (!confirm("Supprimer définitivement cette course ? Cette action est irréversible.")) return;
-    const { error } = await supabase.from("courses").delete().eq("id", course.id);
-    if (error) { alert("Erreur : " + error.message); return; }
-    chargerCoursesAdmin();
-  });
+  formModif.querySelector(".btn-supprimer-course").addEventListener("click", () => supprimerCourse(course));
   corps.appendChild(btnModifier);
   corps.appendChild(formModif);
 
-  // Bouton "Fermer" explicite, en plus du clic sur l'en-tête — pour qu'il soit toujours
-  // évident comment refermer une course qu'on vient d'ouvrir, sans avoir à deviner.
   const btnFermerCourse = document.createElement("button");
   btnFermerCourse.textContent = "✕ Fermer";
-  btnFermerCourse.style.cssText = "margin-top:10px; background:#dcdcda; color:var(--blanc);";
+  btnFermerCourse.style.cssText = "width:100%; margin-top:10px; padding:10px; border-radius:8px; border:none; background:#dcdcda; color:var(--blanc);";
   btnFermerCourse.addEventListener("click", () => {
     corps.style.display = "none";
     entete.querySelector(".chevron-ligne").textContent = "▾";
@@ -1424,7 +1682,6 @@ function creerBoutonAdmin(texte, onClick) {
 }
 
 // Envoie une notification par email au client via la fonction serveur (Brevo).
-// N'empêche jamais l'action admin de continuer si l'envoi échoue (ex: clé Brevo pas encore configurée).
 async function notifierClientParEmail(courseId, type) {
   try {
     const { error } = await supabase.functions.invoke("notifier-client-email", { body: { courseId, type } });
@@ -1432,30 +1689,107 @@ async function notifierClientParEmail(courseId, type) {
   } catch (e) { console.error("Notification email non envoyée :", e); }
 }
 
-// Prévient automatiquement le chauffeur par email dès qu'une course lui est attribuée
-// (nouvelle course créée avec un chauffeur, ou réassignation) — aucune action manuelle requise.
-async function notifierChauffeurParEmail(courseId) {
-  try {
-    const { error } = await supabase.functions.invoke("notifier-chauffeur-email", { body: { courseId } });
-    if (error) console.error("Notification chauffeur non envoyée :", error);
-  } catch (e) { console.error("Notification chauffeur non envoyée :", e); }
-}
-
-async function notifierChauffeurParPush(courseId) {
-  try {
-    const { error } = await supabase.functions.invoke("notifier-chauffeur-push", { body: { courseId } });
-    if (error) console.error("Notification push chauffeur non envoyée :", error);
-  } catch (e) { console.error("Notification push chauffeur non envoyée :", e); }
-}
-
-// La synchronisation course -> feuille de route du chauffeur (création/mise à jour/suppression
-// de la ligne) est désormais entièrement gérée côté base de données par un trigger automatique
-// (fonction gerer_ligne_feuille_route), qui se déclenche à chaque création ou modification de
-// course. L'application n'a donc plus besoin de dupliquer cette logique ici.
+// La synchronisation course -> feuille de route du chauffeur et les notifications chauffeur
+// sont entièrement gérées côté base de données (triggers + file d'attente unifiée).
 
 // ---------- MODALE NOUVELLE COURSE ----------
 const modale = document.getElementById("modale");
-document.getElementById("btn-nouvelle-course").addEventListener("click", () => modale.classList.add("visible"));
+
+// Lignes "Véhicule 1, Véhicule 2…" : type (4/7 places, PMR), véhicule précis, chauffeur
+function rendreLignesVehiculesModale(valeursForcees) {
+  const conteneur = document.getElementById("liste-vehicules-modale");
+  const nb = parseInt(document.getElementById("input-nb-vehicules").value) || 1;
+  // Garde ce qui était déjà choisi quand on change le nombre de véhicules
+  const anciennes = valeursForcees || Array.from(conteneur.querySelectorAll(".ligne-vehicule-modale")).map(l => ({
+    type: l.querySelector(".mv-type").value,
+    vehicule: l.querySelector(".mv-vehicule").value,
+    chauffeur: l.querySelector(".mv-chauffeur").value
+  }));
+  conteneur.innerHTML = "";
+  for (let i = 0; i < nb; i++) {
+    const v = anciennes[i] || {};
+    const ligne = document.createElement("div");
+    ligne.className = "ligne-vehicule-modale";
+    ligne.innerHTML = `
+      <div class="titre-vehicule">Véhicule ${i + 1}${nb > 1 ? " / " + nb : ""}</div>
+      <label>Type</label>
+      <select class="mv-type">${optionsTypeVehicule(v.type)}</select>
+      <label>Véhicule de la flotte (optionnel)</label>
+      <select class="mv-vehicule">${optionsVehiculesFlotte(v.vehicule)}</select>
+      <label>Chauffeur</label>
+      <select class="mv-chauffeur">${optionsChauffeursEtPartenaires(v.chauffeur || null)}</select>
+    `;
+    const selType = ligne.querySelector(".mv-type");
+    const selVeh = ligne.querySelector(".mv-vehicule");
+    const selCh = ligne.querySelector(".mv-chauffeur");
+    // Choisir un véhicule précis remplit le type et, s'il a un chauffeur attitré, le chauffeur
+    selVeh.addEventListener("change", () => {
+      const veh = vehiculesCache.find(x => x.id === selVeh.value);
+      if (!veh) return;
+      if (!selType.value) selType.value = (veh.places || 0) >= 7 ? "van" : "berline";
+      if (!selCh.value && veh.chauffeur_id) selCh.value = veh.chauffeur_id;
+    });
+    // Choisir un chauffeur propose son véhicule attitré si aucun n'est choisi
+    selCh.addEventListener("change", () => {
+      if (selVeh.value) return;
+      const vehAttitre = vehiculesCache.find(x => x.chauffeur_id === selCh.value);
+      if (vehAttitre) {
+        selVeh.value = vehAttitre.id;
+        if (!selType.value) selType.value = (vehAttitre.places || 0) >= 7 ? "van" : "berline";
+      }
+    });
+    conteneur.appendChild(ligne);
+  }
+  mettreAJourApercuRecurrence();
+}
+document.getElementById("input-nb-vehicules").addEventListener("change", () => rendreLignesVehiculesModale());
+
+function lireLignesVehiculesModale() {
+  return Array.from(document.querySelectorAll("#liste-vehicules-modale .ligne-vehicule-modale")).map(l => ({
+    type: l.querySelector(".mv-type").value || null,
+    vehicule: l.querySelector(".mv-vehicule").value || null,
+    chauffeur: l.querySelector(".mv-chauffeur").value || null
+  }));
+}
+
+function reinitialiserModaleCourse() {
+  ["input-recherche-carnet-modale", "input-client-nom", "input-client-tel", "input-client-email", "input-depart", "input-arrivee",
+   "input-date", "input-notes", "input-prix", "input-duree-attente", "input-heure-retour", "input-fin-recurrence"]
+    .forEach(id => { document.getElementById(id).value = ""; });
+  document.getElementById("resultats-carnet-modale").innerHTML = "";
+  document.getElementById("input-passagers").value = "1";
+  document.getElementById("input-mode-tarification").value = "forfait";
+  document.getElementById("input-aller-retour").checked = false;
+  document.getElementById("bloc-type-retour").style.display = "none";
+  document.getElementById("input-type-retour").value = "immediat";
+  document.getElementById("bloc-attente-estimee").style.display = "none";
+  document.getElementById("bloc-heure-retour").style.display = "none";
+  document.getElementById("input-recurrence").checked = false;
+  document.getElementById("bloc-recurrence").style.display = "none";
+  document.getElementById("apercu-recurrence").textContent = "";
+  document.getElementById("input-enregistrer-carnet").checked = true;
+  document.getElementById("erreur-modale").textContent = "";
+  document.getElementById("input-nb-vehicules").value = "1";
+  rendreLignesVehiculesModale([{}]);
+}
+
+// Ouvre la fenêtre "Nouvelle course", avec éventuellement un chauffeur, une date ou un client déjà choisis
+function ouvrirModaleCourse({ chauffeurId = null, date = null, client = null } = {}) {
+  reinitialiserModaleCourse();
+  if (date) document.getElementById("input-date").value = date;
+  if (chauffeurId) {
+    const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === chauffeurId);
+    rendreLignesVehiculesModale([{
+      chauffeur: chauffeurId,
+      vehicule: vehAttitre?.id || "",
+      type: vehAttitre ? ((vehAttitre.places || 0) >= 7 ? "van" : "berline") : ""
+    }]);
+  }
+  if (client) appliquerClientCarnet(client, client.adresse);
+  modale.classList.add("visible");
+}
+
+document.getElementById("btn-nouvelle-course").addEventListener("click", () => ouvrirModaleCourse());
 document.getElementById("btn-annuler-modale").addEventListener("click", () => modale.classList.remove("visible"));
 
 document.getElementById("input-aller-retour").addEventListener("change", (e) => {
@@ -1466,6 +1800,40 @@ document.getElementById("input-type-retour").addEventListener("change", (e) => {
   document.getElementById("bloc-heure-retour").style.display = e.target.value === "heure_precise" ? "block" : "none";
 });
 
+// Recherche d'un client du carnet directement dans la fenêtre "Nouvelle course"
+function appliquerClientCarnet(client, adresse) {
+  document.getElementById("input-client-nom").value = client.nom || "";
+  document.getElementById("input-client-tel").value = client.telephone || "";
+  document.getElementById("input-client-email").value = client.email || "";
+  if (adresse) document.getElementById("input-depart").value = adresse;
+  document.getElementById("input-recherche-carnet-modale").value = "";
+  document.getElementById("resultats-carnet-modale").innerHTML =
+    `<div class="rc-adresse" style="margin-top:6px;">✅ ${esc(client.nom)} sélectionné — tout reste modifiable ci-dessous.</div>`;
+}
+
+document.getElementById("input-recherche-carnet-modale").addEventListener("input", (e) => {
+  const zone = document.getElementById("resultats-carnet-modale");
+  const texte = e.target.value.trim();
+  if (texte.length < 2) { zone.innerHTML = ""; return; }
+  const resultats = filtrerCarnet(texte).slice(0, 6);
+  if (resultats.length === 0) {
+    zone.innerHTML = `<div class="rc-adresse" style="margin-top:6px;">Aucun client trouvé. Remplis les champs ci-dessous : il sera ajouté au carnet.</div>`;
+    return;
+  }
+  zone.innerHTML = "";
+  resultats.forEach(client => {
+    const adresses = [client.adresse, client.autre_adresse].filter(Boolean);
+    (adresses.length ? adresses : [null]).forEach((adresse, idx) => {
+      const el = document.createElement("div");
+      el.className = "resultat-carnet";
+      el.innerHTML = `<b>${esc(client.nom)}</b>${client.telephone ? " · " + esc(client.telephone) : ""}
+        <div class="rc-adresse">${adresse ? (idx === 1 ? "Autre adresse : " : "📍 ") + esc(adresse) : "Pas d'adresse enregistrée"}</div>`;
+      el.addEventListener("click", () => appliquerClientCarnet(client, adresse));
+      zone.appendChild(el);
+    });
+  });
+});
+
 function calculerDatesRecurrence(dateDepartIso, frequence, dateFinStr) {
   const dates = [];
   const depart = new Date(dateDepartIso);
@@ -1474,7 +1842,7 @@ function calculerDatesRecurrence(dateDepartIso, frequence, dateFinStr) {
   let garde = 0;
   while (courant <= fin && garde < 366) {
     garde++;
-    const jour = courant.getDay(); // 0=dimanche ... 6=samedi
+    const jour = courant.getDay();
     if (frequence === "chaque_jour") { dates.push(new Date(courant)); courant.setDate(courant.getDate() + 1); }
     else if (frequence === "jours_semaine") {
       if (jour >= 1 && jour <= 5) dates.push(new Date(courant));
@@ -1486,12 +1854,16 @@ function calculerDatesRecurrence(dateDepartIso, frequence, dateFinStr) {
 
 function mettreAJourApercuRecurrence() {
   const apercu = document.getElementById("apercu-recurrence");
+  if (!document.getElementById("input-recurrence").checked) { apercu.textContent = ""; return; }
   const date = document.getElementById("input-date").value;
   const fin = document.getElementById("input-fin-recurrence").value;
   if (!date || !fin) { apercu.textContent = ""; return; }
   const frequence = document.getElementById("input-frequence-recurrence").value;
   const dates = calculerDatesRecurrence(date, frequence, fin);
-  apercu.textContent = dates.length > 0 ? `➡️ ${dates.length} course(s) seront créées.` : "Aucune date dans cette période avec cette fréquence.";
+  const nbVeh = parseInt(document.getElementById("input-nb-vehicules").value) || 1;
+  apercu.textContent = dates.length > 0
+    ? `➡️ ${dates.length} date(s)${nbVeh > 1 ? ` × ${nbVeh} véhicules = ${dates.length * nbVeh} courses` : ""} seront créées.`
+    : "Aucune date dans cette période avec cette fréquence.";
 }
 document.getElementById("input-recurrence").addEventListener("change", (e) => {
   document.getElementById("bloc-recurrence").style.display = e.target.checked ? "block" : "none";
@@ -1503,6 +1875,7 @@ document.getElementById("input-date").addEventListener("change", mettreAJourAper
 
 document.getElementById("btn-creer-course").addEventListener("click", async () => {
   const erreur = document.getElementById("erreur-modale");
+  const btnCreer = document.getElementById("btn-creer-course");
   const depart = document.getElementById("input-depart").value.trim();
   const arrivee = document.getElementById("input-arrivee").value.trim();
   const date = document.getElementById("input-date").value;
@@ -1512,29 +1885,47 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
     return;
   }
 
-  const chauffeurChoisi = document.getElementById("input-chauffeur").value || null;
+  const vehiculesDemandes = lireLignesVehiculesModale();
+  const nbVehicules = vehiculesDemandes.length || 1;
   const estAllerRetour = document.getElementById("input-aller-retour").checked;
   const estRecurrente = document.getElementById("input-recurrence").checked;
+  const clientNom = document.getElementById("input-client-nom").value.trim();
+  const clientTel = document.getElementById("input-client-tel").value.trim();
+  const clientEmail = document.getElementById("input-client-email").value.trim();
 
   const courseDeBase = {
-    chauffeur_id: chauffeurChoisi,
-    client_nom: document.getElementById("input-client-nom").value.trim(),
-    client_telephone: document.getElementById("input-client-tel").value.trim(),
+    client_nom: clientNom,
+    client_telephone: clientTel,
     adresse_depart: depart,
     adresse_arrivee: arrivee,
     passagers: parseInt(document.getElementById("input-passagers").value) || 1,
-    prix: parseFloat(document.getElementById("input-prix").value) || null,
+    prix: parseFloat(String(document.getElementById("input-prix").value).replace(",", ".")) || null,
     mode_tarification: document.getElementById("input-mode-tarification").value,
     notes: document.getElementById("input-notes").value.trim(),
     aller_retour: estAllerRetour,
     type_retour: estAllerRetour ? document.getElementById("input-type-retour").value : null,
     duree_attente_estimee: (estAllerRetour && document.getElementById("input-type-retour").value === "attente")
-      ? document.getElementById("input-duree-attente").value.trim() || null : null,
-    statut: chauffeurChoisi ? "assignee" : "en_attente"
+      ? document.getElementById("input-duree-attente").value.trim() || null : null
   };
-  // L'heure de retour précise, elle, dépend de la date de chaque occurrence (calculée plus bas si récurrente)
   const heureRetourInput = document.getElementById("input-heure-retour").value;
   const estRetourHeurePrecise = estAllerRetour && document.getElementById("input-type-retour").value === "heure_precise" && heureRetourInput;
+
+  // Une occurrence (une date) = une réservation ; chaque véhicule = une course avec son chauffeur
+  function coursesPourUneDate(dateHeureIso, heureRetourIso) {
+    const groupe = nbVehicules > 1 ? nouvelIdGroupe() : null;
+    return vehiculesDemandes.map((v, i) => ({
+      ...courseDeBase,
+      date_heure: dateHeureIso,
+      heure_retour_prevue: heureRetourIso,
+      chauffeur_id: v.chauffeur,
+      vehicule_id: v.vehicule,
+      vehicule_souhaite: v.type,
+      statut: v.chauffeur ? "assignee" : "en_attente",
+      groupe_reservation: groupe,
+      rang_vehicule: nbVehicules > 1 ? i + 1 : null,
+      nb_vehicules: nbVehicules > 1 ? nbVehicules : null
+    }));
+  }
 
   let lignesACreer = [];
   if (estRecurrente) {
@@ -1543,59 +1934,44 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
     if (!finRecurrence) { erreur.textContent = "Choisis une date de fin pour la récurrence."; return; }
     const dates = calculerDatesRecurrence(date, frequence, finRecurrence);
     if (dates.length === 0) { erreur.textContent = "Aucune date à créer sur cette période."; return; }
-    if (dates.length > 200) { erreur.textContent = "Trop de courses à créer d'un coup (200 max) — réduis la période."; return; }
-    if (!confirm(`Confirmer la création de ${dates.length} courses ?`)) return;
+    if (dates.length * nbVehicules > 200) { erreur.textContent = "Trop de courses à créer d'un coup (200 max) — réduis la période."; return; }
+    if (!confirm(`Confirmer la création de ${dates.length * nbVehicules} courses ?`)) return;
     const heureBase = new Date(date);
-    lignesACreer = dates.map(d => {
+    dates.forEach(d => {
       const dt = new Date(d); dt.setHours(heureBase.getHours(), heureBase.getMinutes(), 0, 0);
       let heureRetour = null;
       if (estRetourHeurePrecise) {
         const hr = new Date(heureRetourInput);
         heureRetour = new Date(d); heureRetour.setHours(hr.getHours(), hr.getMinutes(), 0, 0);
       }
-      return { ...courseDeBase, date_heure: dt.toISOString(), heure_retour_prevue: heureRetour ? heureRetour.toISOString() : null };
+      lignesACreer.push(...coursesPourUneDate(dt.toISOString(), heureRetour ? heureRetour.toISOString() : null));
     });
   } else {
-    lignesACreer = [{
-      ...courseDeBase,
-      date_heure: new Date(date).toISOString(),
-      heure_retour_prevue: estRetourHeurePrecise ? new Date(heureRetourInput).toISOString() : null
-    }];
+    lignesACreer = coursesPourUneDate(
+      new Date(date).toISOString(),
+      estRetourHeurePrecise ? new Date(heureRetourInput).toISOString() : null
+    );
   }
 
+  btnCreer.disabled = true; btnCreer.textContent = "Création…";
   const { error } = await supabase.from("courses").insert(lignesACreer);
+  btnCreer.disabled = false; btnCreer.textContent = "Créer la course";
 
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
 
-  // Notification désormais gérée automatiquement par la base (trigger + file d'attente unifiée)
-  invaliderCacheAdresses();
+  // Ajoute automatiquement le client au carnet s'il n'y est pas encore
+  if (document.getElementById("input-enregistrer-carnet").checked && clientNom) {
+    await enregistrerClientDepuisCourse({ nom: clientNom, telephone: clientTel, email: clientEmail, adresse: depart });
+  }
 
+  invaliderCacheAdresses();
   modale.classList.remove("visible");
-  document.getElementById("input-client-nom").value = "";
-  document.getElementById("input-client-tel").value = "";
-  document.getElementById("input-depart").value = "";
-  document.getElementById("input-arrivee").value = "";
-  document.getElementById("input-notes").value = "";
-  document.getElementById("input-prix").value = "";
-  document.getElementById("input-mode-tarification").value = "forfait";
-  document.getElementById("input-aller-retour").checked = false;
-  document.getElementById("bloc-type-retour").style.display = "none";
-  document.getElementById("input-type-retour").value = "immediat";
-  document.getElementById("input-duree-attente").value = "";
-  document.getElementById("input-heure-retour").value = "";
-  document.getElementById("bloc-attente-estimee").style.display = "none";
-  document.getElementById("bloc-heure-retour").style.display = "none";
-  document.getElementById("input-recurrence").checked = false;
-  document.getElementById("bloc-recurrence").style.display = "none";
-  document.getElementById("input-fin-recurrence").value = "";
-  document.getElementById("apercu-recurrence").textContent = "";
+  reinitialiserModaleCourse();
   chargerCoursesAdmin();
   if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
 });
 
 // ---------- AUTOCOMPLÉTION D'ADRESSES (historique interne + suggestions OpenStreetMap) ----------
-// Se souvient de toutes les adresses déjà utilisées dans l'app, et propose aussi des adresses
-// réelles (rue + numéro) via Photon (moteur gratuit basé sur OpenStreetMap, sans clé API).
 const cacheAdressesRecentes = { chargees: false, liste: [] };
 
 async function chargerAdressesRecentes() {
@@ -1611,16 +1987,15 @@ async function chargerAdressesRecentes() {
     if (c.adresse_depart) set.add(c.adresse_depart.trim());
     if (c.adresse_arrivee) set.add(c.adresse_arrivee.trim());
   });
+  carnetCache.forEach(c => { if (c.adresse) set.add(c.adresse.trim()); if (c.autre_adresse) set.add(c.autre_adresse.trim()); });
   cacheAdressesRecentes.liste = Array.from(set);
   cacheAdressesRecentes.chargees = true;
   return cacheAdressesRecentes.liste;
 }
-// Vide le cache après création d'une course, pour que la toute nouvelle adresse soit proposée la prochaine fois
 function invaliderCacheAdresses() { cacheAdressesRecentes.chargees = false; }
 
 async function suggestionsAdressesReelles(texte) {
   try {
-    // Centré sur la région de Boussu/Mons pour prioriser les résultats locaux, sans bloquer le reste
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(texte)}&lat=50.43&lon=3.79&limit=6&lang=fr`;
     const res = await fetch(url);
     const data = await res.json();
@@ -1632,7 +2007,7 @@ async function suggestionsAdressesReelles(texte) {
         const ligne2 = [p.postcode, p.city].filter(Boolean).join(" ");
         return [ligne1, ligne2].filter(Boolean).join(", ");
       })
-      .filter((v, i, arr) => v && arr.indexOf(v) === i); // dédoublonne
+      .filter((v, i, arr) => v && arr.indexOf(v) === i);
   } catch (e) { console.error("Suggestions d'adresses impossibles :", e); return []; }
 }
 
@@ -1647,7 +2022,7 @@ function configurerAutocompleteAdresse(input) {
   function afficherSuggestions(items) {
     if (!items.length) { fermerListe(); return; }
     liste.innerHTML = items.map(({ texte, recente }) =>
-      `<div class="suggestion-adresse">${recente ? '<span class="puce-recente">●</span>' : ""}${texte}</div>`
+      `<div class="suggestion-adresse">${recente ? '<span class="puce-recente">●</span>' : ""}${esc(texte)}</div>`
     ).join("");
     liste.style.display = "block";
     liste.querySelectorAll(".suggestion-adresse").forEach((el, i) => {
@@ -1667,10 +2042,9 @@ function configurerAutocompleteAdresse(input) {
     const recentes = (await chargerAdressesRecentes())
       .filter(a => a.toLowerCase().includes(texte.toLowerCase()))
       .slice(0, 4);
-    if (requeteActuelle !== idRequete) return; // une saisie plus récente a eu lieu entre-temps
+    if (requeteActuelle !== idRequete) return;
     afficherSuggestions(recentes.map(t => ({ texte: t, recente: true })));
 
-    // Les suggestions d'adresses réelles arrivent un peu après (petite latence réseau) et se rajoutent
     const distantes = await suggestionsAdressesReelles(texte);
     if (requeteActuelle !== idRequete) return;
     const dejaLa = new Set(recentes);
@@ -1686,14 +2060,16 @@ function configurerAutocompleteAdresse(input) {
 
 configurerAutocompleteAdresse(document.getElementById("input-depart"));
 configurerAutocompleteAdresse(document.getElementById("input-arrivee"));
+configurerAutocompleteAdresse(document.getElementById("carnet-adresse"));
+configurerAutocompleteAdresse(document.getElementById("carnet-autre-adresse"));
 
 // ---------- CARTE DES CHAUFFEURS (statut + destination + temps restant) ----------
 let carteLeaflet = null;
 let marqueurs = {};
-let lignesRouteCarte = {}; // chauffeur_id -> polyligne de l'itinéraire en cours
-let marqueursDestinationCarte = {}; // chauffeur_id -> marqueur 🏁 de destination
-const cacheGeocodage = {}; // adresse -> {lat, lon}
-const cacheEta = {}; // course_id -> { minutes, texte, calculeA: timestamp }
+let lignesRouteCarte = {};
+let marqueursDestinationCarte = {};
+const cacheGeocodage = {};
+const cacheEta = {};
 
 async function geocoderAdresse(adresse) {
   if (cacheGeocodage[adresse]) return cacheGeocodage[adresse];
@@ -1711,7 +2087,6 @@ async function geocoderAdresse(adresse) {
 }
 
 async function calculerEta(courseId, depLat, depLon, adresseArrivee) {
-  // Réutilise un calcul récent (moins de 60s) pour ne pas spammer les services gratuits
   const cache = cacheEta[courseId];
   if (cache && (Date.now() - cache.calculeA) < 60000) return cache;
 
@@ -1732,7 +2107,6 @@ async function calculerEta(courseId, depLat, depLon, adresseArrivee) {
   return null;
 }
 
-// Calcul générique de trajet routier entre deux coordonnées (utilisé par le retour centrale + l'outil manuel)
 async function calculerTrajetCoords(depLat, depLon, arrLat, arrLon) {
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${depLon},${depLat};${arrLon},${arrLat}?overview=false`;
@@ -1745,8 +2119,7 @@ async function calculerTrajetCoords(depLat, depLon, arrLat, arrLon) {
   return null;
 }
 
-// Comme calculerTrajetCoords, mais renvoie aussi le tracé complet de l'itinéraire (pour le dessiner sur la carte)
-const cacheGeometrieRoute = {}; // "depLat,depLon|arrLat,arrLon" -> résultat (30s)
+const cacheGeometrieRoute = {};
 async function calculerTrajetAvecGeometrie(depLat, depLon, arrLat, arrLon) {
   const cle = `${depLat.toFixed(4)},${depLon.toFixed(4)}|${arrLat.toFixed(4)},${arrLon.toFixed(4)}`;
   const cache = cacheGeometrieRoute[cle];
@@ -1769,14 +2142,11 @@ async function calculerTrajetAvecGeometrie(depLat, depLon, arrLat, arrLon) {
   return null;
 }
 
-// Retire de la carte le tracé et le drapeau de destination d'un chauffeur (ex: course terminée)
 function retirerRouteCarte(chauffeurId) {
   if (lignesRouteCarte[chauffeurId]) { carteLeaflet.removeLayer(lignesRouteCarte[chauffeurId]); delete lignesRouteCarte[chauffeurId]; }
   if (marqueursDestinationCarte[chauffeurId]) { carteLeaflet.removeLayer(marqueursDestinationCarte[chauffeurId]); delete marqueursDestinationCarte[chauffeurId]; }
 }
 
-// Trace (ou met à jour) sur la carte l'itinéraire complet du chauffeur vers sa destination,
-// avec un repère 🏁 à l'arrivée — pour voir en un coup d'œil par où il passe et où il va.
 async function tracerRouteVersDestination(chauffeurId, nom, depLat, depLon, adresseArrivee) {
   const dest = await geocoderAdresse(adresseArrivee);
   if (!dest) return;
@@ -1794,7 +2164,7 @@ async function tracerRouteVersDestination(chauffeurId, nom, depLat, depLon, adre
     html: `<div style="font-size:24px; line-height:1;">🏁</div>`,
     iconSize: [26, 26], iconAnchor: [13, 22]
   });
-  const popupDestination = `<b>${nom}</b><br>🏁 Destination : ${adresseArrivee}`;
+  const popupDestination = `<b>${esc(nom)}</b><br>🏁 Destination : ${esc(adresseArrivee)}`;
   if (marqueursDestinationCarte[chauffeurId]) {
     marqueursDestinationCarte[chauffeurId].setLatLng([dest.lat, dest.lon]);
     marqueursDestinationCarte[chauffeurId].setPopupContent(popupDestination);
@@ -1805,7 +2175,7 @@ async function tracerRouteVersDestination(chauffeurId, nom, depLat, depLon, adre
   }
 }
 
-const cacheRetourCentrale = {}; // adresse destination -> résultat (60s)
+const cacheRetourCentrale = {};
 function getAdresseCentrale() {
   return document.getElementById("calc-adresse-centrale").value.trim() || "Boussu, Belgique";
 }
@@ -1825,14 +2195,13 @@ async function calculerRetourCentrale(adresseDepuis) {
   return resultat;
 }
 
-// Adresse centrale : mémorisée localement (sur cet appareil)
 const adresseCentraleInput = document.getElementById("calc-adresse-centrale");
-adresseCentraleInput.value = localStorage.getItem("taxiwal_adresse_centrale") || "Boussu, Belgique";
+adresseCentraleInput.value = stockageSecurise.getItem("taxiwal_adresse_centrale") || "Boussu, Belgique";
 adresseCentraleInput.addEventListener("change", () => {
-  localStorage.setItem("taxiwal_adresse_centrale", adresseCentraleInput.value.trim());
+  stockageSecurise.setItem("taxiwal_adresse_centrale", adresseCentraleInput.value.trim());
 });
 
-const cacheAdresseInverse = {}; // "lat,lon" -> adresse lisible (évite de re-demander sans arrêt)
+const cacheAdresseInverse = {};
 async function adresseDepuisCoords(lat, lon) {
   const cle = lat.toFixed(4) + "," + lon.toFixed(4);
   if (cacheAdresseInverse[cle]) return cacheAdresseInverse[cle];
@@ -1846,7 +2215,6 @@ async function adresseDepuisCoords(lat, lon) {
   } catch (e) { console.error("Adresse introuvable :", e); return `${lat.toFixed(5)}, ${lon.toFixed(5)}`; }
 }
 
-// Copie l'adresse d'un chauffeur dans le presse-papier (appelée depuis le HTML des popups/cartes)
 window.copierAdresseChauffeur = function (texte) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(texte).then(
@@ -1871,8 +2239,8 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
     div.className = "cc-chauffeur " + (courseActive ? "cc-course" : (p.disponible ? "cc-dispo" : ""));
 
     if (courseActive) {
-      div.innerHTML = `<h4>${nom}</h4>
-        <div class="cc-ligne">🚕 En route vers <b>${courseActive.adresse_arrivee}</b></div>
+      div.innerHTML = `<h4>${esc(nom)}</h4>
+        <div class="cc-ligne">🚕 En route vers <b>${esc(courseActive.adresse_arrivee)}</b></div>
         <div class="cc-ligne">📍 Position actuelle : <span id="cc-adresse-${p.chauffeur_id}">chargement…</span>
           <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>
         <div class="cc-ligne">⏱️ Dépose du client : <b id="cc-depose-${courseActive.id}">calcul…</b></div>
@@ -1888,7 +2256,7 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
         if (el) el.textContent = retour ? `environ ${retour.minutes} min (${retour.km} km)` : "indisponible";
       });
     } else {
-      div.innerHTML = `<h4>${nom}</h4>
+      div.innerHTML = `<h4>${esc(nom)}</h4>
         <div class="cc-ligne">${p.disponible ? "✅ Disponible" : "⛔ Hors service"}</div>
         <div class="cc-ligne">📍 Position actuelle : <span id="cc-adresse-${p.chauffeur_id}">chargement…</span>
           <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>`;
@@ -1911,8 +2279,8 @@ function heureDansXMinutes(minutes) {
   return d.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
 }
 
-// ---------- OUTIL : CALCULER UN TRAJET ENTRE DEUX POINTS (adresse ou chauffeur) ----------
-let dernieresPositionsCarte = []; // rafraîchi par chargerCarte()
+// ---------- OUTIL : CALCULER UN TRAJET ENTRE DEUX POINTS ----------
+let dernieresPositionsCarte = [];
 
 document.getElementById("calc-depart-type").addEventListener("change", (e) => {
   const estChauffeur = e.target.value === "chauffeur";
@@ -1924,7 +2292,7 @@ document.getElementById("calc-depart-type").addEventListener("change", (e) => {
 function remplirSelectChauffeursCarte() {
   const select = document.getElementById("calc-depart-chauffeur");
   select.innerHTML = dernieresPositionsCarte.length
-    ? dernieresPositionsCarte.map(p => `<option value="${p.chauffeur_id}">${p.profils?.nom || "Chauffeur"}</option>`).join("")
+    ? dernieresPositionsCarte.map(p => `<option value="${p.chauffeur_id}">${esc(p.profils?.nom || "Chauffeur")}</option>`).join("")
     : `<option value="">Aucun chauffeur avec position partagée</option>`;
 }
 
@@ -1947,25 +2315,25 @@ document.getElementById("btn-calculer-trajet").addEventListener("click", async (
   } else {
     const departTexte = document.getElementById("calc-depart-adresse").value.trim();
     if (!departTexte) { resultatDiv.textContent = "Indique une adresse de départ."; return; }
-    const depart = await geocoderAdresse(departTexte);
-    if (!depart) { resultatDiv.textContent = "Adresse de départ introuvable."; return; }
-    depLat = depart.lat; depLon = depart.lon;
+    const departPt = await geocoderAdresse(departTexte);
+    if (!departPt) { resultatDiv.textContent = "Adresse de départ introuvable."; return; }
+    depLat = departPt.lat; depLon = departPt.lon;
     libelleDepart = departTexte;
   }
 
-  const arrivee = await geocoderAdresse(arriveeTexte);
-  if (!arrivee) { resultatDiv.textContent = "Adresse d'arrivée introuvable."; return; }
+  const arriveePt = await geocoderAdresse(arriveeTexte);
+  if (!arriveePt) { resultatDiv.textContent = "Adresse d'arrivée introuvable."; return; }
 
-  const trajet = await calculerTrajetCoords(depLat, depLon, arrivee.lat, arrivee.lon);
+  const trajet = await calculerTrajetCoords(depLat, depLon, arriveePt.lat, arriveePt.lon);
   if (!trajet) { resultatDiv.textContent = "Calcul impossible pour le moment."; return; }
 
-  resultatDiv.innerHTML = `Entre <b>${libelleDepart}</b> et <b>${arriveeTexte}</b> :<br>
+  resultatDiv.innerHTML = `Entre <b>${esc(libelleDepart)}</b> et <b>${esc(arriveeTexte)}</b> :<br>
     ⏱️ Environ <b>${trajet.minutes} min</b> (${trajet.km} km) — arrivée estimée vers <b>${heureDansXMinutes(trajet.minutes)}</b>.`;
 });
 
 async function chargerCarte() {
   if (!carteLeaflet) {
-    carteLeaflet = L.map("carte").setView([50.45, 4.10], 10); // centré Belgique par défaut
+    carteLeaflet = L.map("carte").setView([50.45, 4.10], 10);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap"
     }).addTo(carteLeaflet);
@@ -1977,7 +2345,6 @@ async function chargerCarte() {
     .select("*, profils:chauffeur_id(nom)");
   if (error) { console.error(error); return; }
 
-  // Courses en cours, pour savoir qui roule vers où
   const { data: coursesEnCours } = await supabase
     .from("courses")
     .select("id, chauffeur_id, adresse_arrivee")
@@ -1988,7 +2355,6 @@ async function chargerCarte() {
   dernieresPositionsCarte = positions || [];
   afficherListeChauffeursCarte(positions, coursesParChauffeur);
 
-  // Retire le tracé de tout chauffeur qui n'est plus en course actuellement
   Object.keys(lignesRouteCarte).forEach(chauffeurId => {
     if (!coursesParChauffeur[chauffeurId]) retirerRouteCarte(chauffeurId);
   });
@@ -1998,14 +2364,14 @@ async function chargerCarte() {
     const courseActive = coursesParChauffeur[p.chauffeur_id];
 
     let couleur = "gray";
-    let popup = `<b>${nom}</b><br>Hors service`;
+    let popup = `<b>${esc(nom)}</b><br>Hors service`;
 
     if (courseActive) {
       couleur = "red";
-      popup = `<b>${nom}</b><br>🚕 En course<br>Vers : ${courseActive.adresse_arrivee}<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button><br><span id="eta-${courseActive.id}">Calcul du temps restant…</span>`;
+      popup = `<b>${esc(nom)}</b><br>🚕 En course<br>Vers : ${esc(courseActive.adresse_arrivee)}<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button><br><span id="eta-${courseActive.id}">Calcul du temps restant…</span>`;
     } else if (p.disponible) {
       couleur = "green";
-      popup = `<b>${nom}</b><br>✅ Disponible<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button>`;
+      popup = `<b>${esc(nom)}</b><br>✅ Disponible<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button>`;
     }
 
     const icone = L.divIcon({
@@ -2024,8 +2390,6 @@ async function chargerCarte() {
         .bindPopup(popup);
     }
 
-    // Calcule le temps restant en tâche de fond et met à jour le popup si ouvert,
-    // et trace l'itinéraire complet + le repère 🏁 de destination sur la carte
     if (courseActive) {
       calculerEta(courseActive.id, p.latitude, p.longitude, courseActive.adresse_arrivee).then(eta => {
         const span = document.getElementById(`eta-${courseActive.id}`);
@@ -2035,17 +2399,15 @@ async function chargerCarte() {
     } else {
       retirerRouteCarte(p.chauffeur_id);
     }
-    // Résout l'adresse lisible en tâche de fond et met à jour la popup (ouverte ou non)
     adresseDepuisCoords(p.latitude, p.longitude).then(adresse => {
       const span = document.getElementById(`popup-adr-${p.chauffeur_id}`);
       if (span) span.textContent = adresse;
       const popupObj = marqueurs[p.chauffeur_id]?.getPopup();
-      if (popupObj) popupObj.setContent(popupObj.getContent().replace("chargement…", adresse));
+      if (popupObj) popupObj.setContent(popupObj.getContent().replace("chargement…", esc(adresse)));
     });
   }
 }
 
-// Rafraîchit la carte toutes les 20 secondes si l'onglet est ouvert
 setInterval(() => {
   if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
 }, 20000);
@@ -2053,21 +2415,18 @@ setInterval(() => {
 // ---------- CAISSE (fond du matin + suivi cash/carte) ----------
 async function chargerCaisse() {
   const conteneur = document.getElementById("liste-caisse");
-  conteneur.innerHTML = "Chargement…";
+  if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
 
-  const aujourdHui = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const aujourdHui = new Date().toISOString().slice(0, 10);
 
-  // Chauffeurs actifs
   const { data: chauffeurs } = await supabase
     .from("profils").select("id, nom").eq("role", "chauffeur").eq("actif", true);
 
-  // Fonds de caisse du jour
   const { data: fonds } = await supabase
     .from("fonds_de_caisse").select("*").eq("date", aujourdHui);
   const fondParChauffeur = {};
   (fonds || []).forEach(f => { fondParChauffeur[f.chauffeur_id] = f; });
 
-  // Courses terminées aujourd'hui, avec mode de paiement
   const debutJour = aujourdHui + "T00:00:00";
   const finJour = aujourdHui + "T23:59:59";
   const { data: courses } = await supabase
@@ -2077,6 +2436,8 @@ async function chargerCaisse() {
     .gte("date_heure", debutJour)
     .lte("date_heure", finJour);
 
+  // Ne pas écraser un montant de fond en cours de saisie
+  if (conteneur.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
   conteneur.innerHTML = "";
 
   (chauffeurs || []).forEach(ch => {
@@ -2084,23 +2445,24 @@ async function chargerCaisse() {
     const montantFond = fond ? parseFloat(fond.montant_initial) : 0;
 
     const coursesChauffeur = (courses || []).filter(c => c.chauffeur_id === ch.id);
+    const somme = (liste) => liste.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
     const coursesCash = coursesChauffeur.filter(c => c.mode_paiement === "cash");
     const coursesCarte = coursesChauffeur.filter(c => c.mode_paiement === "carte");
     const coursesFacture = coursesChauffeur.filter(c => c.mode_paiement === "facture");
+    const coursesCheque = coursesChauffeur.filter(c => c.mode_paiement === "cheque_social");
     const coursesUber = coursesChauffeur.filter(c => c.mode_paiement === "uber");
-    const totalCash = coursesCash.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
-    const totalCarte = coursesCarte.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
-    const totalFacture = coursesFacture.reduce((s, c) => s + (parseFloat(c.prix) || 0), 0);
+    const totalCash = somme(coursesCash);
     const caisseActuelle = montantFond + totalCash; // seul le cash constitue de l'argent physique en poche
 
     const div = document.createElement("div");
     div.className = "caisse-chauffeur";
     div.innerHTML = `
-      <h3>${ch.nom || "Chauffeur"}</h3>
+      <h3>${esc(ch.nom || "Chauffeur")}</h3>
       <div class="caisse-ligne"><span>Fond de caisse du matin</span><b>${montantFond.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>💵 Cash — ${coursesCash.length} course(s)</span><b>${totalCash.toFixed(2)} €</b></div>
-      <div class="caisse-ligne"><span>💳 Carte — ${coursesCarte.length} course(s)</span><b>${totalCarte.toFixed(2)} €</b></div>
-      <div class="caisse-ligne"><span>🧾 Facture — ${coursesFacture.length} course(s)</span><b>${totalFacture.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>💳 Carte — ${coursesCarte.length} course(s)</span><b>${somme(coursesCarte).toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>🧾 Facture — ${coursesFacture.length} course(s)</span><b>${somme(coursesFacture).toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>🎫 Chèque social — ${coursesCheque.length} course(s)</span><b>${somme(coursesCheque).toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>🚕 Uber (payé sur Uber, hors caisse) — ${coursesUber.length} course(s)</span><b>—</b></div>
       <div class="caisse-total"><span>Caisse actuelle (espèces)</span><span>${caisseActuelle.toFixed(2)} €</span></div>
       <div class="caisse-fond">
@@ -2124,6 +2486,7 @@ async function chargerCaisse() {
         created_by: user?.id || null
       }, { onConflict: "chauffeur_id,date" });
 
+      document.activeElement?.blur();
       chargerCaisse();
     });
   });
@@ -2142,7 +2505,6 @@ const champsEnteteFA = {
   "chutes_debut": ["Chutes — début", "number"], "chutes_fin": ["Chutes — fin", "number"],
   "recettes_debut": ["Recettes — début", "number"], "recettes_fin": ["Recettes — fin", "number"]
 };
-// Regroupement des champs par bloc, dans l'ordre du modèle papier, avec calcul automatique du "Total" (Fin - Début)
 const blocsEnteteFA = [
   { titre: "Km tableau de bord", debut: "index_km_debut", fin: "index_km_fin" },
   { titre: "Taximètre", debut: "taximetre_debut", fin: "taximetre_fin" },
@@ -2176,9 +2538,8 @@ document.getElementById("fa-aujourdhui").addEventListener("click", () => {
   document.getElementById("fa-date").value = new Date().toISOString().slice(0, 10);
   chargerFeuillesAdmin();
 });
-document.getElementById("fa-date").addEventListener("change", chargerFeuillesAdmin);
+document.getElementById("fa-date").addEventListener("change", () => chargerFeuillesAdmin());
 
-// ---------- SOUS-ONGLETS : vue du jour / historique par chauffeur ----------
 document.getElementById("btn-vue-jour-fa").addEventListener("click", () => {
   document.getElementById("btn-vue-jour-fa").classList.add("actif");
   document.getElementById("btn-vue-historique-fa").classList.remove("actif");
@@ -2195,9 +2556,7 @@ document.getElementById("btn-vue-historique-fa").addEventListener("click", () =>
 });
 document.getElementById("select-chauffeur-historique").addEventListener("change", chargerHistoriqueFeuillesChauffeur);
 
-// Liste, pour le chauffeur choisi, toutes ses feuilles des 30 derniers jours (remplies ou non,
-// signées ou non) — chaque ligne cliquable ouvre directement l'aperçu A4 imprimable, sans jamais
-// les faire disparaître une fois clôturées : l'admin garde un accès permanent à l'historique complet.
+// Historique d'un chauffeur sur 30 jours : un clic ouvre la feuille du jour (modifiable), ou l'aperçu A4
 async function chargerHistoriqueFeuillesChauffeur() {
   const conteneur = document.getElementById("liste-historique-fa");
   const chauffeurId = document.getElementById("select-chauffeur-historique").value;
@@ -2212,13 +2571,13 @@ async function chargerHistoriqueFeuillesChauffeur() {
     .gte("date_service", ilYA30Jours)
     .order("date_service", { ascending: false });
 
-  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+  if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
   if (!feuilles || feuilles.length === 0) {
     conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune feuille de route dans les 30 derniers jours.</p>';
     return;
   }
 
-  const chauffeur = chauffeursCache.find(c => c.id === chauffeurId);
+  const chauffeur = chauffeursCache.find(c => c.id === chauffeurId) || partenairesCache.find(p => p.id === chauffeurId);
   conteneur.innerHTML = "";
   feuilles.forEach(feuille => {
     const dateLisible = new Date(feuille.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
@@ -2229,17 +2588,28 @@ async function chargerHistoriqueFeuillesChauffeur() {
     div.className = "ligne-historique-fa" + (feuille.verrouillee ? " signee-fa" : "");
     div.innerHTML = `
       <div>
-        <div class="lh-date">${dateLisible}</div>
-        <div class="lh-sous">${feuille.verrouillee ? "🔒 Signée" : "En cours"} · ${recettes}</div>
+        <div class="lh-date">${esc(dateLisible)}</div>
+        <div class="lh-sous">${feuille.verrouillee ? "🔒 Clôturée" : "En cours"} · ${recettes}</div>
       </div>
-      <span class="lh-fleche">▸</span>
+      <div style="display:flex; gap:6px; flex-shrink:0;">
+        <button type="button" class="btn-ouvrir-jour" style="padding:7px 10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; font-size:.78rem;">✏️ Ouvrir</button>
+        <button type="button" class="btn-apercu" style="padding:7px 10px; border-radius:8px; border:1px solid var(--bleu); background:transparent; color:var(--bleu); font-size:.78rem;">🖨️ A4</button>
+      </div>
     `;
-    div.addEventListener("click", () => ouvrirApercuHistoriqueFeuille(feuille, chauffeur));
+    div.querySelector(".btn-ouvrir-jour").addEventListener("click", (e) => {
+      e.stopPropagation();
+      feuillesDepliees.add(feuille.id);
+      document.getElementById("fa-date").value = feuille.date_service;
+      document.getElementById("btn-vue-jour-fa").click();
+    });
+    div.querySelector(".btn-apercu").addEventListener("click", (e) => {
+      e.stopPropagation();
+      ouvrirApercuHistoriqueFeuille(feuille, chauffeur);
+    });
     conteneur.appendChild(div);
   });
 }
 
-// Ouvre directement l'aperçu A4 imprimable d'une feuille passée, en rechargeant ses lignes à la demande
 async function ouvrirApercuHistoriqueFeuille(feuille, chauffeur) {
   const { data: lignes, error } = await supabase
     .from("lignes_feuille_route")
@@ -2257,12 +2627,22 @@ function decalerDateFA(jours) {
   chargerFeuillesAdmin();
 }
 
-async function chargerFeuillesAdmin() {
+let chargementFeuillesEnCours = false;
+async function chargerFeuillesAdmin(dejaCreees = false) {
+  if (chargementFeuillesEnCours && !dejaCreees) return;
+  chargementFeuillesEnCours = true;
+  try {
+    await chargerFeuillesAdminInterne(dejaCreees);
+  } finally {
+    chargementFeuillesEnCours = false;
+  }
+}
+
+async function chargerFeuillesAdminInterne(dejaCreees) {
   const conteneur = document.getElementById("liste-feuilles-admin");
   const dateChoisie = document.getElementById("fa-date").value;
-  conteneur.innerHTML = "Chargement…";
+  if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
 
-  // Tous les chauffeurs actifs, pour toujours tous les afficher — même sans feuille créée aujourd'hui
   const { data: chauffeurs, error: erreurChauffeurs } = await supabase
     .from("profils")
     .select("id, nom")
@@ -2270,7 +2650,7 @@ async function chargerFeuillesAdmin() {
     .eq("actif", true)
     .order("nom", { ascending: true });
 
-  if (erreurChauffeurs) { conteneur.innerHTML = "Erreur : " + erreurChauffeurs.message; return; }
+  if (erreurChauffeurs) { conteneur.innerHTML = "Erreur : " + esc(erreurChauffeurs.message); return; }
 
   const { data: feuilles, error } = await supabase
     .from("feuilles_route")
@@ -2278,28 +2658,28 @@ async function chargerFeuillesAdmin() {
     .eq("date_service", dateChoisie)
     .order("created_at", { ascending: true });
 
-  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+  if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
 
   if (!chauffeurs || chauffeurs.length === 0) {
     conteneur.innerHTML = '<p id="feuilles-vide">Aucun chauffeur actif enregistré.</p>';
     return;
   }
 
-  // Crée automatiquement (et silencieusement) la feuille du jour pour tout chauffeur qui n'en a pas encore
+  // Crée automatiquement la feuille du jour pour tout chauffeur qui n'en a pas encore (une seule tentative,
+  // pour ne jamais tourner en boucle sur "Chargement…" si une création échoue)
   const chauffeursSansFeuille = chauffeurs.filter(ch => !(feuilles || []).some(f => f.chauffeur_id === ch.id));
-  if (chauffeursSansFeuille.length > 0) {
+  if (chauffeursSansFeuille.length > 0 && !dejaCreees) {
     for (const chauffeur of chauffeursSansFeuille) {
       const { data: vehicule } = await supabase
-        .from("vehicules").select("id").eq("chauffeur_id", chauffeur.id).eq("actif", true).maybeSingle();
+        .from("vehicules").select("id").eq("chauffeur_id", chauffeur.id).eq("actif", true).limit(1).maybeSingle();
       await supabase.from("feuilles_route").insert({
         chauffeur_id: chauffeur.id, date_service: dateChoisie, vehicule_id: vehicule?.id || null
       });
     }
-    // Recharge maintenant que toutes les feuilles existent
-    return chargerFeuillesAdmin();
+    return chargerFeuillesAdminInterne(true);
   }
 
-  const feuilleIds = feuilles.map(f => f.id);
+  const feuilleIds = (feuilles || []).map(f => f.id);
   const { data: toutesLignes } = feuilleIds.length
     ? await supabase.from("lignes_feuille_route").select("*, courses(statut, mode_paiement)").in("feuille_route_id", feuilleIds).order("n_ordre", { ascending: true })
     : { data: [] };
@@ -2307,12 +2687,12 @@ async function chargerFeuillesAdmin() {
   conteneur.innerHTML = "";
   chauffeurs.forEach(chauffeur => {
     const feuille = (feuilles || []).find(f => f.chauffeur_id === chauffeur.id);
+    if (!feuille) return;
     const lignes = (toutesLignes || []).filter(l => l.feuille_route_id === feuille.id);
     conteneur.appendChild(construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur));
   });
 }
 
-// Convertit "HH:MM" en minutes depuis minuit ; renvoie null si vide/invalide
 function minutesDepuisHeure(heureStr) {
   if (!heureStr) return null;
   const [h, m] = heureStr.split(":").map(Number);
@@ -2325,10 +2705,8 @@ function formatDureeMinutes(total) {
   return `${h}h${String(m).padStart(2, "0")}`;
 }
 
-const feuillesDepliees = new Set(); // ids des feuilles que l'admin a ouvertes manuellement, à ne pas refermer tout seul
-const lignesDepliees = new Set(); // ids des lignes de course que l'admin a ouvertes manuellement — sinon le
-// rafraîchissement automatique toutes les 15s reconstruit la liste et referme silencieusement
-// le détail en cours de lecture, donnant l'impression que la course "disparaît" toute seule.
+const feuillesDepliees = new Set();
+const lignesDepliees = new Set();
 
 function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   const div = document.createElement("div");
@@ -2339,36 +2717,43 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   entete.innerHTML = `
     <div class="entete-fa-titre">
       <div class="entete-fa-info" style="cursor:pointer;">
-        <div class="identite-exploitant">${identiteFeuille} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
-        <h3>Nom du chauffeur : ${feuille.profils?.nom || "Chauffeur"} <span class="chevron-ligne">${feuille.verrouillee ? "▾" : "▴"}</span></h3>
-        <div class="sous">Véhicule : ${feuille.vehicules ? (feuille.vehicules.nom + (feuille.vehicules.plaque ? " · plaque " + feuille.vehicules.plaque : "") + (feuille.vehicules.numero_identification ? " · n° identification " + feuille.vehicules.numero_identification : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "Signée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}</div>
+        <div class="identite-exploitant">${esc(identiteFeuille)} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
+        <h3>Nom du chauffeur : ${esc(feuille.profils?.nom || "Chauffeur")} <span class="chevron-ligne">▾</span></h3>
+        <div class="sous">Véhicule : ${feuille.vehicules ? (esc(feuille.vehicules.nom) + (feuille.vehicules.plaque ? " · plaque " + esc(feuille.vehicules.plaque) : "") + (feuille.vehicules.numero_identification ? " · n° identification " + esc(feuille.vehicules.numero_identification) : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}</div>
       </div>
       <div class="entete-fa-actions">
-        <button class="btn-details-fa">${feuille.verrouillee ? "▾ Détails" : "▴ Masquer"}</button>
+        <button class="btn-verrou ${feuille.verrouillee ? "rouvrir" : "cloturer"}">${feuille.verrouillee ? "🔓 Rouvrir pour le chauffeur" : "🔒 Signer / clôturer"}</button>
+        <button class="btn-details-fa">▾ Détails</button>
         <button class="btn-nouvelle-course-fa">+ Course</button>
         <button class="btn-imprimer-fa">🖨️ Imprimer / PDF</button>
-        <button class="btn-verrou">${feuille.verrouillee ? "🔓 Déverrouiller" : "🔒 Verrouiller"}</button>
       </div>
     </div>
   `;
-  entete.querySelector(".btn-verrou").addEventListener("click", async () => {
-    const nouvelEtat = !feuille.verrouillee;
-    await supabase.from("feuilles_route").update({ verrouillee: nouvelEtat, signee: nouvelEtat }).eq("id", feuille.id);
+  entete.querySelector(".btn-verrou").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const nom = feuille.profils?.nom || "ce chauffeur";
+    if (feuille.verrouillee) {
+      if (!confirm(`Rouvrir la feuille de ${nom} ?\n\nElle redevient modifiable et réapparaît normalement dans son application.`)) return;
+      btn.disabled = true; btn.textContent = "Réouverture…";
+      const { error } = await supabase.rpc("admin_deverrouiller_feuille", { p_feuille_id: feuille.id });
+      if (error) { alert("Erreur : " + error.message); btn.disabled = false; return; }
+    } else {
+      if (!confirm(`Signer et clôturer la feuille de ${nom} ?\n\nLe chauffeur ne pourra plus la modifier (tu pourras toujours la rouvrir).`)) return;
+      btn.disabled = true; btn.textContent = "Clôture…";
+      const { error } = await supabase.from("feuilles_route").update({ verrouillee: true, signee: true }).eq("id", feuille.id);
+      if (error) { alert("Erreur : " + error.message); btn.disabled = false; return; }
+    }
     chargerFeuillesAdmin();
   });
-  // Accès total : créer directement une vraie course pour ce chauffeur, à cette date, depuis la feuille
   entete.querySelector(".btn-nouvelle-course-fa").addEventListener("click", () => {
-    document.getElementById("input-chauffeur").value = chauffeur.id;
-    document.getElementById("input-date").value = dateChoisie + "T09:00";
-    modale.classList.add("visible");
+    ouvrirModaleCourse({ chauffeurId: chauffeur.id, date: dateChoisie + "T09:00" });
   });
   entete.querySelector(".btn-imprimer-fa").addEventListener("click", () => {
     imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie);
   });
   div.appendChild(entete);
 
-  // Le détail complet est replié par défaut une fois la feuille signée (ça évite une liste
-  // interminable à l'écran) — l'admin clique sur le nom du chauffeur pour l'ouvrir/refermer.
+  // Le détail est replié par défaut une fois la feuille signée
   const corps = document.createElement("div");
   const ouvertParDefaut = feuillesDepliees.has(feuille.id) || !feuille.verrouillee;
   corps.style.display = ouvertParDefaut ? "block" : "none";
@@ -2384,18 +2769,20 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   entete.querySelector(".entete-fa-info").addEventListener("click", toggleCorps);
   entete.querySelector(".btn-details-fa").addEventListener("click", (e) => { e.stopPropagation(); toggleCorps(); });
 
-  // Heures des prestations (Début / Fin / Interruptions / Total, comme le modèle papier)
+  // Heures des prestations
   const blocHeures = document.createElement("div");
   blocHeures.className = "bloc-service-fa";
   blocHeures.innerHTML = `<div class="sous-titre-fa">Heures des prestations</div>`;
   const grilleHeures = document.createElement("div");
   grilleHeures.className = "grille3-fa";
+  const totalHeures = document.createElement("div");
+  totalHeures.className = "total-fa";
   [["heure_debut", "Début", "time"], ["heure_fin", "Fin", "time"], ["interruptions", "Interruptions", "text"]].forEach(([champ, libelle, type]) => {
     const wrap = document.createElement("div");
     const lab = document.createElement("label"); lab.textContent = libelle;
     const input = document.createElement("input");
     input.type = type;
-    input.value = feuille[champ] ?? "";
+    input.value = feuille[champ] ? (type === "time" ? String(feuille[champ]).slice(0, 5) : feuille[champ]) : "";
     input.dataset.champHeure = champ;
     input.addEventListener("change", async (e) => {
       await supabase.from("feuilles_route").update({ [champ]: e.target.value || null }).eq("id", feuille.id);
@@ -2408,43 +2795,12 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
     grilleHeures.appendChild(wrap);
   });
   blocHeures.appendChild(grilleHeures);
-  const totalHeures = document.createElement("div");
-  totalHeures.className = "total-fa";
   const dMin = minutesDepuisHeure(feuille.heure_debut), fMin = minutesDepuisHeure(feuille.heure_fin);
   totalHeures.textContent = (dMin !== null && fMin !== null) ? "Total : " + formatDureeMinutes((fMin - dMin + 1440) % 1440) : "";
   blocHeures.appendChild(totalHeures);
   corps.appendChild(blocHeures);
 
-  // Blocs Km tableau de bord / Taximètre / Prise en charge / Index Km / Km en charge / Chutes / Recettes
-  // chacun avec Début, Fin et Total calculé (Fin - Début), comme sur le modèle papier
-  blocsEnteteFA.forEach(bloc => {
-    const wrapBloc = document.createElement("div");
-    wrapBloc.className = "bloc-service-fa";
-    wrapBloc.innerHTML = `<div class="sous-titre-fa">${bloc.titre}</div>`;
-    const grille = document.createElement("div");
-    grille.className = "grille3-fa";
-
-    const inputDebut = creerInputEnteteFA(feuille, bloc.debut, champsEnteteFA[bloc.debut][0], champsEnteteFA[bloc.debut][1], majTotalBloc);
-    const inputFin = creerInputEnteteFA(feuille, bloc.fin, champsEnteteFA[bloc.fin][0], champsEnteteFA[bloc.fin][1], majTotalBloc);
-    grille.appendChild(inputDebut.wrap);
-    grille.appendChild(inputFin.wrap);
-
-    const totalDiv = document.createElement("div");
-    totalDiv.className = "total-fa";
-    function calculerTotalBloc() {
-      const vd = parseFloat(inputDebut.input.value), vf = parseFloat(inputFin.input.value);
-      if (!isNaN(vd) && !isNaN(vf)) totalDiv.textContent = "Total : " + (vf - vd).toFixed(2);
-      else totalDiv.textContent = "";
-    }
-    function majTotalBloc() { calculerTotalBloc(); }
-    calculerTotalBloc();
-
-    wrapBloc.appendChild(grille);
-    wrapBloc.appendChild(totalDiv);
-    corps.appendChild(wrapBloc);
-  });
-
-  function creerInputEnteteFA(feuille, champ, libelle, type, onChangeExtra) {
+  function creerInputEnteteFA(champ, libelle, type, onChangeExtra) {
     const wrap = document.createElement("div");
     const lab = document.createElement("label"); lab.textContent = libelle;
     const input = document.createElement("input");
@@ -2460,6 +2816,31 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
     return { wrap, input };
   }
 
+  blocsEnteteFA.forEach(bloc => {
+    const wrapBloc = document.createElement("div");
+    wrapBloc.className = "bloc-service-fa";
+    wrapBloc.innerHTML = `<div class="sous-titre-fa">${bloc.titre}</div>`;
+    const grille = document.createElement("div");
+    grille.className = "grille3-fa";
+    const totalDiv = document.createElement("div");
+    totalDiv.className = "total-fa";
+
+    const inputDebut = creerInputEnteteFA(bloc.debut, champsEnteteFA[bloc.debut][0], champsEnteteFA[bloc.debut][1], calculerTotalBloc);
+    const inputFin = creerInputEnteteFA(bloc.fin, champsEnteteFA[bloc.fin][0], champsEnteteFA[bloc.fin][1], calculerTotalBloc);
+    grille.appendChild(inputDebut.wrap);
+    grille.appendChild(inputFin.wrap);
+
+    function calculerTotalBloc() {
+      const vd = parseFloat(String(inputDebut.input.value).replace(",", ".")), vf = parseFloat(String(inputFin.input.value).replace(",", "."));
+      totalDiv.textContent = (!isNaN(vd) && !isNaN(vf)) ? "Total : " + (vf - vd).toFixed(2) : "";
+    }
+    calculerTotalBloc();
+
+    wrapBloc.appendChild(grille);
+    wrapBloc.appendChild(totalDiv);
+    corps.appendChild(wrapBloc);
+  });
+
   const titreCourses = document.createElement("div");
   titreCourses.className = "mini-titre"; titreCourses.textContent = "Courses";
   corps.appendChild(titreCourses);
@@ -2472,8 +2853,9 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   btnAjouter.id = "btn-ajouter-ligne-admin";
   btnAjouter.textContent = "+ Ajouter une ligne manuelle";
   btnAjouter.addEventListener("click", async () => {
-    const prochainNumero = lignes.length > 0 ? Math.max(...lignes.map(l => l.n_ordre)) + 1 : 1;
+    const prochainNumero = lignes.length > 0 ? Math.max(...lignes.map(l => l.n_ordre || 0)) + 1 : 1;
     await supabase.from("lignes_feuille_route").insert({ feuille_route_id: feuille.id, n_ordre: prochainNumero });
+    feuillesDepliees.add(feuille.id);
     chargerFeuillesAdmin();
   });
   corps.appendChild(btnAjouter);
@@ -2492,19 +2874,17 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     acompte_declare: "paiement à vérifier", confirmee: "confirmée", assignee: "assignée",
     en_cours: "🚕 en cours", terminee: "✅ terminée", annulee: "❌ annulée"
   }[statutCourse];
+  const estUberLigne = ligne.type_course === "uber" || ligne.mode_paiement === "uber";
+  const modeAffiche = ligne.mode_paiement || ligne.courses?.mode_paiement;
 
-  // Résumé affiché sur la ligne : lieu de départ → lieu d'arrivée + heure
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
-  const heureResume = ligne.embarquement_heure ? " · " + ligne.embarquement_heure : "";
+  const heureResume = ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "";
 
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  // Numéro toujours séquentiel (1, 2, 3, 4, 5…) selon la position affichée, pas selon n_ordre en base
   const ligneOuverte = lignesDepliees.has(ligne.id);
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${ligne.courses?.mode_paiement ? " · payé par " + esc(ligne.courses.mode_paiement) : ""} <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")} <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
 
-  // Accès total : si la ligne est liée à une vraie course, la supprimer supprime la course elle-même
-  // (et donc la ligne, via le trigger côté base) ; sinon elle supprime juste la ligne manuelle
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
   btnSupprimer.addEventListener("click", async (e) => {
@@ -2525,10 +2905,9 @@ function construireLigneAdmin(ligne, numeroAffiche) {
 
   const grille = document.createElement("div");
   grille.className = "grille3-fa";
-  // Repliée par défaut, mais reste ouverte si l'admin l'a ouverte manuellement — sinon le
-  // rafraîchissement automatique la referme toute seule après quelques secondes.
   grille.style.display = ligneOuverte ? "grid" : "none";
   const wrapsParChampAdmin = {};
+  const inputsParChampAdmin = {};
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
@@ -2536,9 +2915,10 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const estCheckbox = type === "checkbox";
     const wrap = document.createElement("div");
     wrapsParChampAdmin[champ] = wrap;
-    if (estAdresse) wrap.style.gridColumn = "1 / -1"; // pleine largeur, bien visible pour le contrôle
+    if (estAdresse) wrap.style.gridColumn = "1 / -1";
     const lab = document.createElement("label"); lab.textContent = libelle;
     const input = (estPaiement || estTypeCourse) ? document.createElement("select") : document.createElement("input");
+    inputsParChampAdmin[champ] = input;
     if (estPaiement) {
       input.innerHTML = `
         <option value="">— Choisir —</option>
@@ -2553,6 +2933,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="normale">Course normale (taximètre)</option>
         <option value="forfait">Forfait</option>
         <option value="navette_aeroport">Navette aéroport</option>
+        <option value="uber">🚕 Course Uber</option>
       `;
     } else if (estCheckbox) {
       input.type = "checkbox";
@@ -2563,24 +2944,42 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:12px; font-weight:600;";
     if (estCheckbox) input.checked = !!ligne[champ];
+    else if (type === "time" && ligne[champ]) input.value = String(ligne[champ]).slice(0, 5);
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.addEventListener("change", async (e) => {
       let valeur = estCheckbox ? e.target.checked : (e.target.value || null);
       if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
-      await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
-      if (estPaiement) appliquerVisibilitePaiementAdmin();
+      const { data: ligneServeur, error } = await supabase
+        .from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id).select("*").maybeSingle();
+      if (error) { alert("Erreur : " + error.message); return; }
+      if (ligneServeur) {
+        // Le serveur harmonise type Uber ⇄ paiement Uber et vide les montants d'une course Uber
+        Object.assign(ligne, ligneServeur);
+        inputsParChampAdmin["type_course"].value = ligne.type_course || "normale";
+        inputsParChampAdmin["mode_paiement"].value = ligne.mode_paiement || "";
+        inputsParChampAdmin["prix_taximetre"].value = ligne.prix_taximetre ?? "";
+        inputsParChampAdmin["sommes_percues"].value = ligne.sommes_percues ?? "";
+      }
+      if (estPaiement || estTypeCourse) appliquerVisibilitePaiementAdmin();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     grille.appendChild(wrap);
   });
+
+  const mentionUber = document.createElement("div");
+  mentionUber.className = "mention-uber";
+  mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
+  grille.insertBefore(mentionUber, wrapsParChampAdmin["mode_paiement"]);
   div.appendChild(grille);
 
-  // Facture (assurance) : pas de montant à saisir, mais un n° de dossier — sinon Sommes perçues normal
   function appliquerVisibilitePaiementAdmin() {
-    const mode = wrapsParChampAdmin["mode_paiement"].querySelector("select").value;
+    const mode = inputsParChampAdmin["mode_paiement"].value;
+    const estUber = mode === "uber" || inputsParChampAdmin["type_course"].value === "uber";
     const estFacture = mode === "facture";
-    wrapsParChampAdmin["sommes_percues"].style.display = estFacture ? "none" : "";
+    wrapsParChampAdmin["prix_taximetre"].style.display = estUber ? "none" : "";
+    wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber) ? "none" : "";
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
+    mentionUber.style.display = estUber ? "" : "none";
   }
   appliquerVisibilitePaiementAdmin();
 
@@ -2591,10 +2990,9 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     if (ouvert) lignesDepliees.delete(ligne.id); else lignesDepliees.add(ligne.id);
   });
 
-  // Bouton "Fermer" explicite, en plus du clic sur l'en-tête
   const btnFermerLigne = document.createElement("button");
   btnFermerLigne.textContent = "✕ Fermer";
-  btnFermerLigne.style.cssText = "grid-column:1 / -1; margin-top:4px; background:#dcdcda; color:var(--blanc); padding:8px; border-radius:8px; border:none; font-size:.8rem;";
+  btnFermerLigne.style.cssText = "grid-column:1 / -1; margin:4px 8px; background:#dcdcda; color:var(--blanc); padding:8px; border-radius:8px; border:none; font-size:.8rem;";
   btnFermerLigne.addEventListener("click", () => {
     grille.style.display = "none";
     entete.querySelector(".chevron-ligne").textContent = "▾";
@@ -2623,23 +3021,23 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
   const vehicule = feuille.vehicules;
   const identiteFeuille = vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
 
-  // Une ligne par course, avec la mention "aller-retour" quand c'est le cas — pagine automatiquement
-  // sur plusieurs pages A4 grâce à <thead> (répété en haut de chaque page imprimée) et aux règles
-  // "évite de couper une ligne entre deux pages" ci-dessous : pas besoin de tout faire défiler d'un coup.
   const lignesHtml = (lignes.length ? lignes : new Array(8).fill(null)).map((l, i) => {
     l = l || {};
     const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
+    const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
+    const sommes = l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+      : estUber ? "Payé sur Uber" : l.sommes_percues;
     return `<tr>
       <td>${i + 1}</td>
       <td>${fmtNombre(l.index_depart)}</td>
       <td>${fmtNombre(l.embarquement_index)}</td>
       <td>${fmtNombre(l.embarquement_lieu)}${mentionAR}</td>
-      <td>${fmtNombre(l.embarquement_heure)}</td>
+      <td>${fmtNombre(l.embarquement_heure ? String(l.embarquement_heure).slice(0, 5) : "")}</td>
       <td>${fmtNombre(l.debarquement_index)}</td>
       <td>${fmtNombre(l.debarquement_lieu)}</td>
-      <td>${fmtNombre(l.debarquement_heure)}</td>
-      <td>${fmtNombre(l.prix_taximetre)}</td>
-      <td>${fmtNombre(l.sommes_percues)}</td>
+      <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
+      <td>${estUber ? "Uber" : fmtNombre(l.prix_taximetre)}</td>
+      <td>${fmtNombre(sommes)}</td>
     </tr>`;
   }).join("");
 
@@ -2652,15 +3050,13 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     h1 { text-align: center; text-decoration: underline; font-size: 18px; margin: 0 0 12px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
     td, th { border: 1px solid #000; padding: 4px 6px; }
-    .case-id { padding: 8px; margin-bottom: 8px; }
-    .case-id .ligne { display: flex; justify-content: space-between; }
     h2 { font-size: 12px; text-align: center; margin: 8px 0 4px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 0; }
     .mini { font-size: 9px; color: #444; text-transform: uppercase; }
     .valeur { font-weight: bold; }
-    .courses-table thead { display: table-header-group; } /* répète l'en-tête du tableau sur chaque page imprimée */
+    .courses-table thead { display: table-header-group; }
     .courses-table th { font-size: 9px; }
     .courses-table td { font-size: 10px; text-align: center; height: 22px; }
-    .courses-table tr { page-break-inside: avoid; } /* jamais de ligne coupée entre deux pages */
+    .courses-table tr { page-break-inside: avoid; }
     .signature { margin-top: 16px; }
     .note-bas { font-size: 8px; margin-top: 4px; }
     .barre-actions-impression { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -2669,7 +3065,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
     }
     .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
-    @media print { .btn-print, .barre-actions-impression { display: none; } }
+    @media print { .barre-actions-impression { display: none; } }
   </style></head>
   <body>
     <div class="barre-actions-impression">
@@ -2740,7 +3136,7 @@ async function chargerVehiculesAdmin() {
     .select("*")
     .order("created_at", { ascending: true });
 
-  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+  if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
 
   conteneur.innerHTML = "";
   if (!vehicules || vehicules.length === 0) {
@@ -2772,6 +3168,7 @@ function construireVehiculeAdmin(vehicule) {
     input.addEventListener("change", async (e) => {
       const val = type === "number" ? (e.target.value ? parseInt(e.target.value) : null) : (e.target.value || null);
       await supabase.from("vehicules").update({ [champ]: val }).eq("id", vehicule.id);
+      chargerChauffeurs();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     grille.appendChild(wrap);
@@ -2779,12 +3176,13 @@ function construireVehiculeAdmin(vehicule) {
   div.appendChild(grille);
 
   const wrapChauffeur = document.createElement("div");
-  const labChauffeur = document.createElement("label"); labChauffeur.textContent = "Chauffeur assigné";
+  const labChauffeur = document.createElement("label"); labChauffeur.textContent = "Chauffeur attitré";
   const selectChauffeur = document.createElement("select");
   selectChauffeur.innerHTML = `<option value="">— Aucun —</option>` +
-    chauffeursCache.map(c => `<option value="${c.id}" ${c.id === vehicule.chauffeur_id ? "selected" : ""}>${c.nom || c.telephone}</option>`).join("");
+    chauffeursCache.map(c => `<option value="${c.id}" ${c.id === vehicule.chauffeur_id ? "selected" : ""}>${esc(c.nom || c.telephone)}</option>`).join("");
   selectChauffeur.addEventListener("change", async (e) => {
     await supabase.from("vehicules").update({ chauffeur_id: e.target.value || null }).eq("id", vehicule.id);
+    await chargerChauffeurs();
     chargerVehiculesAdmin();
   });
   wrapChauffeur.appendChild(labChauffeur); wrapChauffeur.appendChild(selectChauffeur);
@@ -2798,6 +3196,7 @@ function construireVehiculeAdmin(vehicule) {
   btnActif.textContent = vehicule.actif ? "✅ En service" : "⛔ Hors service";
   btnActif.addEventListener("click", async () => {
     await supabase.from("vehicules").update({ actif: !vehicule.actif }).eq("id", vehicule.id);
+    await chargerChauffeurs();
     chargerVehiculesAdmin();
   });
   actions.appendChild(btnActif);
@@ -2809,6 +3208,7 @@ function construireVehiculeAdmin(vehicule) {
     if (!confirm(`Supprimer définitivement le véhicule "${vehicule.nom}" ?`)) return;
     const { error } = await supabase.from("vehicules").delete().eq("id", vehicule.id);
     if (error) { alert("Erreur : " + error.message); return; }
+    await chargerChauffeurs();
     chargerVehiculesAdmin();
   });
   actions.appendChild(btnSupprimer);
@@ -2816,6 +3216,16 @@ function construireVehiculeAdmin(vehicule) {
   div.appendChild(actions);
   return div;
 }
+
+document.getElementById("btn-ajouter-vehicule").addEventListener("click", async () => {
+  const nom = prompt("Nom du véhicule (ex: Toyota Corolla) :");
+  if (!nom) return;
+  const places = parseInt(prompt("Nombre de places (ex: 4 ou 7) :", "4")) || 4;
+  const { error } = await supabase.from("vehicules").insert({ nom, places, actif: true });
+  if (error) { alert("Erreur : " + error.message); return; }
+  await chargerChauffeurs();
+  chargerVehiculesAdmin();
+});
 
 // ---------- SOUS-TRAITANTS (partenaires) ----------
 async function chargerPartenairesAdmin() {
@@ -2828,7 +3238,7 @@ async function chargerPartenairesAdmin() {
     .eq("role", "partenaire")
     .order("created_at", { ascending: true });
 
-  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+  if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
 
   conteneur.innerHTML = "";
   if (!partenaires || partenaires.length === 0) {
@@ -2855,7 +3265,7 @@ async function construireCartePartenaire(partenaire) {
   const entete = document.createElement("div");
   entete.innerHTML = `
     <h3 style="margin:0 0 4px;">${esc(partenaire.nom)}${partenaire.societe ? ` — ${esc(partenaire.societe)}` : ""}</h3>
-    <div style="color:var(--gris); font-size:.85rem; margin-bottom:8px;">${esc(partenaire.telephone) || ""} · Commission : <b>${partenaire.taux_commission ?? 0}%</b></div>
+    <div style="color:var(--gris); font-size:.85rem; margin-bottom:8px;">${esc(partenaire.telephone) || ""} · Commission : <b>${esc(partenaire.taux_commission ?? 0)}%</b></div>
   `;
   div.appendChild(entete);
 
@@ -2879,7 +3289,7 @@ async function construireCartePartenaire(partenaire) {
       <div style="font-weight:700; margin-bottom:6px;">💰 ${totalDu.toFixed(2)} € dus (${coursesNonPayees.length} course${coursesNonPayees.length > 1 ? "s" : ""})</div>
       ${coursesNonPayees.map(c => {
         const h = new Date(c.date_heure).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" });
-        return `<div style="font-size:.8rem; color:var(--gris); margin-bottom:2px;">${h} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} : ${c.prix ?? "?"} € (commission ${Number(c.montant_commission || 0).toFixed(2)} €)</div>`;
+        return `<div style="font-size:.8rem; color:var(--gris); margin-bottom:2px;">${h} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} : ${esc(c.prix ?? "?")} € (commission ${Number(c.montant_commission || 0).toFixed(2)} €)</div>`;
       }).join("")}
       <button type="button" class="btn-marquer-commission-payee" style="margin-top:8px; width:100%; background:var(--vert); color:#fff; border:none; border-radius:8px; padding:10px; font-weight:600;">✅ Marquer ces commissions comme payées</button>
     `;
@@ -2899,6 +3309,7 @@ async function construireCartePartenaire(partenaire) {
   btnActif.textContent = partenaire.actif ? "✅ Actif" : "⛔ Désactivé";
   btnActif.addEventListener("click", async () => {
     await supabase.from("profils").update({ actif: !partenaire.actif }).eq("id", partenaire.id);
+    await chargerChauffeurs();
     chargerPartenairesAdmin();
   });
   actions.appendChild(btnActif);
@@ -2908,11 +3319,8 @@ async function construireCartePartenaire(partenaire) {
 }
 
 document.getElementById("btn-ajouter-partenaire").addEventListener("click", () => {
-  document.getElementById("input-partenaire-nom").value = "";
-  document.getElementById("input-partenaire-societe").value = "";
-  document.getElementById("input-partenaire-email").value = "";
-  document.getElementById("input-partenaire-telephone").value = "";
-  document.getElementById("input-partenaire-commission").value = "";
+  ["input-partenaire-nom", "input-partenaire-societe", "input-partenaire-email", "input-partenaire-telephone", "input-partenaire-commission"]
+    .forEach(id => { document.getElementById(id).value = ""; });
   document.getElementById("erreur-partenaire").textContent = "";
   document.getElementById("modale-partenaire").classList.add("visible");
 });
@@ -2939,10 +3347,163 @@ document.getElementById("btn-creer-partenaire").addEventListener("click", async 
   });
   if (error || data?.error) { erreur.textContent = "Erreur : " + (data?.error || error.message); return; }
   document.getElementById("modale-partenaire").classList.remove("visible");
+  await chargerChauffeurs();
   chargerPartenairesAdmin();
 });
 
-// ---------- CLIENTS ----------
+// ---------- CARNET CLIENTS (répertoire géré par l'admin) ----------
+let carnetCache = [];
+
+// Garde seulement les chiffres d'un numéro, sans indicatif belge, pour comparer "0478 39 09 89" et "+32478390989"
+function chiffresTelephone(tel) {
+  let n = String(tel || "").replace(/\D/g, "");
+  if (n.startsWith("0032")) n = n.slice(4);
+  else if (n.startsWith("32") && n.length > 9) n = n.slice(2);
+  else if (n.startsWith("0")) n = n.slice(1);
+  return n;
+}
+
+function filtrerCarnet(texte) {
+  const t = texte.trim().toLowerCase();
+  if (!t) return carnetCache;
+  const chiffres = chiffresTelephone(t);
+  return carnetCache.filter(c => {
+    const texteFiche = [c.nom, c.email, c.adresse, c.autre_adresse, c.notes].filter(Boolean).join(" ").toLowerCase();
+    if (texteFiche.includes(t)) return true;
+    return chiffres.length >= 3 && chiffresTelephone(c.telephone).includes(chiffres);
+  });
+}
+
+async function chargerCarnet() {
+  const { data, error } = await supabase
+    .from("carnet_clients")
+    .select("*")
+    .order("nom", { ascending: true });
+  if (error) {
+    document.getElementById("liste-carnet").innerHTML = "Impossible de charger le carnet : " + esc(error.message);
+    return;
+  }
+  carnetCache = data || [];
+  invaliderCacheAdresses();
+  afficherCarnet();
+}
+
+function afficherCarnet() {
+  const conteneur = document.getElementById("liste-carnet");
+  const recherche = document.getElementById("recherche-carnet").value;
+  const resultats = filtrerCarnet(recherche);
+  document.getElementById("compteur-carnet").textContent = carnetCache.length
+    ? (recherche.trim() ? `${resultats.length} résultat(s) sur ${carnetCache.length} clients` : `${carnetCache.length} client(s) enregistré(s)`)
+    : "";
+  conteneur.innerHTML = "";
+  if (carnetCache.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Le carnet est vide. Enregistre ton premier client avec le bouton vert, ou il s\'ajoutera tout seul à ta prochaine course.</p>';
+    return;
+  }
+  if (resultats.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun client ne correspond. Vérifie l\'orthographe ou cherche par numéro de téléphone.</p>';
+    return;
+  }
+  resultats.forEach(c => conteneur.appendChild(construireFicheCarnet(c)));
+}
+document.getElementById("recherche-carnet").addEventListener("input", afficherCarnet);
+
+function construireFicheCarnet(client) {
+  const div = document.createElement("div");
+  div.className = "fiche-carnet";
+  div.innerHTML = `
+    <div class="fc-nom">${esc(client.nom)}</div>
+    ${client.telephone ? `<div class="fc-ligne">📞 <b>${esc(client.telephone)}</b></div>` : ""}
+    ${client.email ? `<div class="fc-ligne">✉️ ${esc(client.email)}</div>` : ""}
+    ${client.adresse ? `<div class="fc-ligne">📍 ${esc(client.adresse)}</div>` : ""}
+    ${client.autre_adresse ? `<div class="fc-ligne">📍 Autre : ${esc(client.autre_adresse)}</div>` : ""}
+    ${client.notes ? `<div class="fc-ligne">📝 ${esc(client.notes)}</div>` : ""}
+    <div class="fc-actions">
+      <button type="button" class="fc-course">🚕 Nouvelle course</button>
+      ${client.telephone ? `<button type="button" class="fc-appel">📞 Appeler</button>` : ""}
+      <button type="button" class="fc-modifier">✏️ Modifier</button>
+      <button type="button" class="fc-suppr" title="Supprimer ce client">🗑️</button>
+    </div>
+  `;
+  div.querySelector(".fc-course").addEventListener("click", () => ouvrirModaleCourse({ client }));
+  const btnAppel = div.querySelector(".fc-appel");
+  if (btnAppel) btnAppel.addEventListener("click", () => { window.location.href = `tel:${client.telephone.replace(/\s/g, "")}`; });
+  div.querySelector(".fc-modifier").addEventListener("click", () => ouvrirFormCarnet(client));
+  div.querySelector(".fc-suppr").addEventListener("click", async () => {
+    if (!confirm(`Supprimer ${client.nom} du carnet ? Ses courses passées ne sont pas supprimées.`)) return;
+    const { error } = await supabase.from("carnet_clients").delete().eq("id", client.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    chargerCarnet();
+  });
+  return div;
+}
+
+function ouvrirFormCarnet(client) {
+  const form = document.getElementById("form-carnet");
+  document.getElementById("titre-form-carnet").textContent = client ? `Modifier ${client.nom}` : "Nouveau client";
+  document.getElementById("carnet-id").value = client?.id || "";
+  document.getElementById("carnet-nom").value = client?.nom || "";
+  document.getElementById("carnet-telephone").value = client?.telephone || "";
+  document.getElementById("carnet-email").value = client?.email || "";
+  document.getElementById("carnet-adresse").value = client?.adresse || "";
+  document.getElementById("carnet-autre-adresse").value = client?.autre_adresse || "";
+  document.getElementById("carnet-notes").value = client?.notes || "";
+  document.getElementById("erreur-carnet").textContent = "";
+  form.style.display = "block";
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("carnet-nom").focus();
+}
+function fermerFormCarnet() { document.getElementById("form-carnet").style.display = "none"; }
+
+document.getElementById("btn-nouveau-client-carnet").addEventListener("click", () => ouvrirFormCarnet(null));
+document.getElementById("btn-annuler-carnet").addEventListener("click", fermerFormCarnet);
+document.getElementById("btn-enregistrer-carnet").addEventListener("click", async () => {
+  const erreur = document.getElementById("erreur-carnet");
+  const id = document.getElementById("carnet-id").value;
+  const fiche = {
+    nom: document.getElementById("carnet-nom").value.trim(),
+    telephone: document.getElementById("carnet-telephone").value.trim() || null,
+    email: document.getElementById("carnet-email").value.trim() || null,
+    adresse: document.getElementById("carnet-adresse").value.trim() || null,
+    autre_adresse: document.getElementById("carnet-autre-adresse").value.trim() || null,
+    notes: document.getElementById("carnet-notes").value.trim() || null
+  };
+  if (!fiche.nom) { erreur.textContent = "Le nom est obligatoire."; return; }
+  if (!id && fiche.telephone) {
+    const doublon = carnetCache.find(c => chiffresTelephone(c.telephone) && chiffresTelephone(c.telephone) === chiffresTelephone(fiche.telephone));
+    if (doublon && !confirm(`${doublon.nom} a déjà ce numéro dans le carnet. Enregistrer quand même un nouveau client ?`)) return;
+  }
+  const { error } = id
+    ? await supabase.from("carnet_clients").update(fiche).eq("id", id)
+    : await supabase.from("carnet_clients").insert(fiche);
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+  fermerFormCarnet();
+  chargerCarnet();
+});
+
+// Appelé à la création d'une course : ajoute le client s'il n'existe pas déjà (même téléphone ou même nom)
+async function enregistrerClientDepuisCourse({ nom, telephone, email, adresse }) {
+  const chiffres = chiffresTelephone(telephone);
+  const existant = carnetCache.find(c =>
+    (chiffres && chiffresTelephone(c.telephone) === chiffres) ||
+    (!chiffres && (c.nom || "").trim().toLowerCase() === nom.trim().toLowerCase())
+  );
+  if (existant) {
+    // Complète seulement les informations manquantes, sans rien écraser
+    const complement = {};
+    if (!existant.telephone && telephone) complement.telephone = telephone;
+    if (!existant.email && email) complement.email = email;
+    if (!existant.adresse && adresse) complement.adresse = adresse;
+    if (Object.keys(complement).length) await supabase.from("carnet_clients").update(complement).eq("id", existant.id);
+  } else {
+    await supabase.from("carnet_clients").insert({
+      nom, telephone: telephone || null, email: email || null, adresse: adresse || null
+    });
+  }
+  chargerCarnet();
+}
+
+// ---------- COMPTES CLIENTS DE L'APPLICATION ----------
 let clientsCache = [];
 async function chargerLeadsSite() {
   const conteneur = document.getElementById("bloc-leads-site");
@@ -2956,7 +3517,7 @@ async function chargerLeadsSite() {
 
   conteneur.innerHTML = `<h3 style="margin:0 0 8px;">📨 ${leads.length} demande${leads.length > 1 ? "s" : ""} reçue${leads.length > 1 ? "s" : ""} depuis le site web</h3>` +
     leads.map(l => `
-      <div class="lead-site" data-id="${l.id}">
+      <div class="lead-site" data-id="${l.id}" data-tel="${esc(l.telephone || "")}">
         <div class="lead-site-titre">${esc(l.site_origine) || "Site web"} · ${new Date(l.created_at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
         <div class="lead-site-nom">${esc(l.nom) || "Nom non renseigné"}</div>
         <div class="lead-site-detail">${esc(l.telephone) || ""} ${l.email ? "· " + esc(l.email) : ""}</div>
@@ -2970,7 +3531,7 @@ async function chargerLeadsSite() {
 
   conteneur.querySelectorAll(".btn-appeler-lead").forEach(btn => {
     btn.addEventListener("click", () => {
-      const tel = btn.closest(".lead-site").querySelector(".lead-site-detail").textContent.trim();
+      const tel = btn.closest(".lead-site").dataset.tel;
       window.location.href = `tel:${tel.replace(/\s/g, "")}`;
     });
   });
@@ -2994,7 +3555,7 @@ async function chargerClientsAdmin() {
     .eq("role", "client")
     .order("created_at", { ascending: false });
 
-  if (error) { conteneur.innerHTML = "Erreur : " + error.message; return; }
+  if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
 
   const { data: toutesLesCourses } = await supabase
     .from("courses")
@@ -3021,7 +3582,7 @@ function afficherClientsFiltres(recherche) {
   );
 
   if (filtres.length === 0) {
-    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun client trouvé.</p>';
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun compte client trouvé.</p>';
     return;
   }
   filtres.forEach(cl => conteneur.appendChild(construireCarteClientAdmin(cl)));
@@ -3065,7 +3626,7 @@ function construireCarteClientAdmin(client) {
       if (blocHisto.style.display === "none") {
         blocHisto.innerHTML = client.courses.map(c => {
           const d = new Date(c.date_heure).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric" });
-          return `<div class="ligne-histo">${d} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} — ${c.prix ? c.prix + " €" : "?"} (${esc(c.statut)})</div>`;
+          return `<div class="ligne-histo">${d} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} — ${c.prix ? esc(c.prix) + " €" : "?"} (${esc(c.statut)})</div>`;
         }).join("");
         blocHisto.style.display = "block";
         btnHisto.textContent = "📜 Masquer l'historique";
@@ -3078,14 +3639,6 @@ function construireCarteClientAdmin(client) {
 
   return div;
 }
-
-document.getElementById("btn-ajouter-vehicule").addEventListener("click", async () => {
-  const nom = prompt("Nom du véhicule (ex: Toyota Corolla) :");
-  if (!nom) return;
-  const { error } = await supabase.from("vehicules").insert({ nom, places: 4, actif: true });
-  if (error) { alert("Erreur : " + error.message); return; }
-  chargerVehiculesAdmin();
-});
 
 // ---------- INSTALLATION APP (Android / ordinateur) ----------
 if ("serviceWorker" in navigator) {
@@ -3106,8 +3659,8 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
   document.getElementById("btn-installer-app").style.display = "none";
 });
 
-// ---------- INIT ----------
-// (le chargement des données se fait dans demarrerAdmin(), après connexion vérifiée)
+// Première construction des lignes "Véhicule" de la fenêtre Nouvelle course (avant même la connexion)
+rendreLignesVehiculesModale([{}]);
 </script>
 </body>
 </html>

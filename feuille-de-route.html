@@ -21,21 +21,24 @@ window.onerror = function(msg, url, line, col, err) {
   header{ padding:calc(20px + env(safe-area-inset-top)) 20px 20px; border-bottom:1px solid #dcdcda; position:sticky; top:0; background:var(--noir); z-index:5; display:flex; flex-direction:column; }
   header h1{ margin:0; font-size:1.05rem; }
   header p{ margin:4px 0 0; color:var(--gris); font-size:.8rem; }
+  button{ font-family:inherit; cursor:pointer; }
   .bloc{ margin:16px 20px; background:var(--noir-2); border-radius:12px; padding:16px; }
   .bloc h2{ margin:0 0 12px; font-size:.9rem; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
   .grille2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   label{ display:block; font-size:.78rem; color:var(--gris); margin-bottom:4px; }
-  input{ width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.9rem; margin-bottom:10px; }
-  input:disabled{ opacity:.5; }
+  input, select{ width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.9rem; margin-bottom:10px; }
+  input:disabled, select:disabled{ opacity:.6; }
   .grille3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
   .total-ro{ background:#e6e6e4 !important; color:var(--gris) !important; font-weight:600; }
   .identite{ font-size:.85rem; margin:2px 0; }
   .identite b{ color:var(--blanc); }
   .identite span{ color:var(--gris); }
-  #btn-ouvrir-service{ display:block; width:calc(100% - 40px); margin:16px 20px; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; }
+  #btn-imprimer-fr{ width:100%; padding:12px; border-radius:10px; border:none; background:#3b82c4; color:#fff; font-weight:600; font-size:.95rem; margin-bottom:14px; }
   .ligne-course{ background:#f0f1ee; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #dcdcda; }
   .ligne-course .num{ color:var(--blanc); font-size:.82rem; margin-bottom:6px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .ligne-course .num .chevron-ligne{ color:var(--gris); font-size:.75rem; flex-shrink:0; }
+  .ligne-course .mention-uber{ font-size:.82rem; color:var(--gris); background:#fff; border:1px solid #dcdcda; border-radius:8px; padding:9px 11px; margin-bottom:10px; }
+  .btn-cloturer-course{ width:100%; padding:12px; border-radius:8px; border:none; background:var(--rouge); color:#fff; font-weight:600; font-size:.9rem; margin-top:6px; }
   .sous-titre-mini{ font-size:.72rem; color:var(--gris); margin:8px 0 4px; }
   #btn-ajouter-ligne{ width:100%; padding:12px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.9rem; margin-top:6px; }
   #btn-signer{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-weight:600; margin-top:10px; }
@@ -58,7 +61,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <header>
   <a href="chauffeur.html" id="btn-retour">← Retour</a>
-  <button id="btn-imprimer-fr" style="background:#3b82c4; margin-bottom:14px;">🖨️ Imprimer / PDF (contrôle)</button>
+  <button id="btn-imprimer-fr">🖨️ Imprimer / PDF (contrôle)</button>
   <h1>Feuille de route</h1>
   <p id="sous-titre">Chargement…</p>
 </header>
@@ -177,6 +180,7 @@ function esc(valeur) {
 let feuilleActuelle = null;
 let lignesActuelles = [];
 let identiteSocieteActuelle = "Rasikh international";
+const lignesRepliees = new Set(); // lignes que le chauffeur a refermées, à garder refermées lors des mises à jour
 
 const champsEntete = {
   "heure-debut": "heure_debut", "heure-fin": "heure_fin", "interruptions": "interruptions",
@@ -239,7 +243,64 @@ function calculerTotaux() {
   calculerTotaux();
   await chargerLignes();
   appliquerVerrouillage();
+  activerMiseAJourEnDirect(user.id);
 })();
+
+// ---------- MISE À JOUR EN DIRECT (silencieuse) ----------
+// Quand la direction modifie la feuille (valeurs, courses, suppression, renumérotation,
+// verrouillage ou réouverture), l'écran se met à jour tout seul, sans message.
+// Si le chauffeur est en train de taper dans un champ, on attend qu'il ait fini.
+let minuterieRecharge = null;
+let rechargeEnAttente = false;
+
+function planifierRechargement() {
+  clearTimeout(minuterieRecharge);
+  minuterieRecharge = setTimeout(rechargerSilencieusement, 400);
+}
+
+function chauffeurEnTrainDeSaisir() {
+  const actif = document.activeElement;
+  return actif && ["INPUT", "SELECT", "TEXTAREA"].includes(actif.tagName);
+}
+
+async function rechargerSilencieusement() {
+  if (!feuilleActuelle) return;
+  if (chauffeurEnTrainDeSaisir()) { rechargeEnAttente = true; return; }
+  rechargeEnAttente = false;
+
+  const { data: feuille, error } = await supabase
+    .from("feuilles_route").select("*").eq("id", feuilleActuelle.id).maybeSingle();
+  if (error || !feuille) return;
+
+  const verrouChange = feuille.verrouillee !== feuilleActuelle.verrouillee;
+  feuilleActuelle = feuille;
+  remplirEntete();
+  calculerTotaux();
+  await chargerLignes();
+  if (verrouChange) appliquerVerrouillage();
+  else if (feuilleActuelle.verrouillee) remplirResumeSignee();
+}
+
+document.addEventListener("focusout", () => {
+  setTimeout(() => { if (rechargeEnAttente && !chauffeurEnTrainDeSaisir()) rechargerSilencieusement(); }, 300);
+});
+
+function activerMiseAJourEnDirect(userId) {
+  const id = feuilleActuelle.id;
+  supabase
+    .channel("feuille-route-" + id)
+    .on("postgres_changes", { event: "*", schema: "public", table: "feuilles_route", filter: `id=eq.${id}` }, planifierRechargement)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "lignes_feuille_route", filter: `feuille_route_id=eq.${id}` }, planifierRechargement)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lignes_feuille_route", filter: `feuille_route_id=eq.${id}` }, planifierRechargement)
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "lignes_feuille_route" }, planifierRechargement)
+    .on("postgres_changes", { event: "*", schema: "public", table: "courses", filter: `chauffeur_id=eq.${userId}` }, planifierRechargement)
+    .subscribe();
+
+  // Filet de sécurité : si l'écran revient au premier plan, on relit la feuille
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") planifierRechargement();
+  });
+}
 
 async function remplirIdentite(user) {
   const { data: profil } = await supabase.from("profils").select("nom").eq("id", user.id).maybeSingle();
@@ -269,7 +330,9 @@ async function remplirIdentite(user) {
 function remplirEntete() {
   Object.entries(champsEntete).forEach(([idHtml, champBdd]) => {
     const val = feuilleActuelle[champBdd];
-    if (val !== null && val !== undefined) document.getElementById(idHtml).value = val;
+    let affiche = (val !== null && val !== undefined) ? String(val) : "";
+    if (champBdd.startsWith("heure_") && affiche) affiche = affiche.slice(0, 5);
+    document.getElementById(idHtml).value = affiche; // vide aussi un champ effacé par la direction
   });
   const badge = document.getElementById("statut-feuille");
   badge.textContent = feuilleActuelle.verrouillee ? "Signée · verrouillée" : "En cours";
@@ -284,6 +347,7 @@ Object.keys(champsEntete).forEach(idHtml => {
     const { error } = await supabase.from("feuilles_route")
       .update({ [champBdd]: valeur }).eq("id", feuilleActuelle.id);
     if (error) { erreurEl.textContent = "⚠️ Non enregistré : " + error.message; erreurEl.style.color = "var(--rouge)"; return; }
+    feuilleActuelle[champBdd] = valeur;
     erreurEl.style.color = "var(--vert)";
     erreurEl.textContent = "✓ Enregistré";
     setTimeout(() => { if (erreurEl.textContent === "✓ Enregistré") erreurEl.textContent = ""; }, 2000);
@@ -336,17 +400,19 @@ function construireLigneHtml(ligne, numeroAffiche) {
   let badge = "";
   if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
   else if (ligne.cloturee) badge = " · 🔒 clôturée";
+  if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
 
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
-  const heureResume = ligne.embarquement_heure ? " · " + ligne.embarquement_heure : "";
+  const heureResume = ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "";
+  const ouverte = !lignesRepliees.has(ligne.id);
 
   const entete = document.createElement("div");
   entete.className = "num";
-  entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${esc(resume)}${esc(heureResume)}${esc(badge)}</span><span class="chevron-ligne">▴</span>`;
+  entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${esc(resume)}${esc(heureResume)}${esc(badge)}</span><span class="chevron-ligne">${ouverte ? "▴" : "▾"}</span>`;
   div.appendChild(entete);
 
   const corps = document.createElement("div");
-  corps.style.display = "block";
+  corps.style.display = ouverte ? "block" : "none";
 
   const etat = document.createElement("div");
   etat.className = "etat-sauvegarde";
@@ -354,6 +420,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   corps.appendChild(etat);
 
   const wrapsParChamp = {};
+  const inputsParChamp = {};
   champsLigne.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
@@ -365,6 +432,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const lab = document.createElement("label");
     lab.textContent = libelle;
     const input = (estPaiement || estTypeCourse) ? document.createElement("select") : document.createElement("input");
+    inputsParChamp[champ] = input;
     if (estPaiement) {
       input.innerHTML = `
         <option value="">— Choisir —</option>
@@ -379,6 +447,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="normale">Course normale (taximètre)</option>
         <option value="forfait">Forfait</option>
         <option value="navette_aeroport">Navette aéroport</option>
+        <option value="uber">🚕 Course Uber</option>
       `;
     } else if (estCheckbox) {
       input.type = "checkbox";
@@ -391,6 +460,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     }
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:13px; font-weight:600;";
     if (estCheckbox) input.checked = !!ligne[champ];
+    else if (type === "time" && ligne[champ]) input.value = String(ligne[champ]).slice(0, 5);
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {
@@ -398,25 +468,40 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
       const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
       if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
-      const { error } = await supabase.from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id);
-      if (!etatEl) return;
-      if (error) {
-        etatEl.textContent = "⚠️ Non enregistré (course déjà terminée ou verrouillée)";
-        etatEl.className = "etat-sauvegarde erreur";
-      } else {
-        etatEl.textContent = "✓ Enregistré";
-        etatEl.className = "etat-sauvegarde ok";
-        setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
+      const { data: ligneServeur, error } = await supabase
+        .from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id)
+        .select("*").maybeSingle();
+      if (!error && ligneServeur) {
+        // Le serveur peut ajuster d'autres champs (ex : type Uber ⇄ paiement Uber, montants vidés)
+        Object.assign(ligne, ligneServeur);
+        synchroniserChampsUber();
       }
-      if (estPaiement) appliquerVisibilitePaiement();
+      if (etatEl) {
+        if (error) {
+          etatEl.textContent = "⚠️ Non enregistré (course déjà terminée ou verrouillée)";
+          etatEl.className = "etat-sauvegarde erreur";
+        } else {
+          etatEl.textContent = "✓ Enregistré";
+          etatEl.className = "etat-sauvegarde ok";
+          setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
+        }
+      }
+      if (estPaiement || estTypeCourse) appliquerVisibilitePaiement();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     corps.appendChild(wrap);
   });
+
+  // Course Uber : pas de montant à saisir, l'argent arrive sur le compte Uber
+  const mentionUber = document.createElement("div");
+  mentionUber.className = "mention-uber";
+  mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
+  corps.insertBefore(mentionUber, wrapsParChamp["mode_paiement"]);
+
   if (!ligneVerrouillee) {
     const btnCloturer = document.createElement("button");
+    btnCloturer.className = "btn-cloturer-course";
     btnCloturer.textContent = "🔒 Clôturer cette course";
-    btnCloturer.style.cssText = "background:var(--rouge); margin-top:6px;";
     btnCloturer.addEventListener("click", async () => {
       if (!confirm("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).")) return;
       if (ligne.course_id) {
@@ -434,11 +519,22 @@ function construireLigneHtml(ligne, numeroAffiche) {
   }
   div.appendChild(corps);
 
+  function synchroniserChampsUber() {
+    inputsParChamp["type_course"].value = ligne.type_course || "normale";
+    inputsParChamp["mode_paiement"].value = ligne.mode_paiement || "";
+    inputsParChamp["prix_taximetre"].value = ligne.prix_taximetre ?? "";
+    inputsParChamp["sommes_percues"].value = ligne.sommes_percues ?? "";
+  }
+
   function appliquerVisibilitePaiement() {
-    const mode = wrapsParChamp["mode_paiement"].querySelector("select").value;
+    const mode = inputsParChamp["mode_paiement"].value;
+    const typeCourse = inputsParChamp["type_course"].value;
+    const estUber = mode === "uber" || typeCourse === "uber";
     const estFacture = mode === "facture";
-    wrapsParChamp["sommes_percues"].style.display = (estFacture || mode === "uber") ? "none" : "";
+    wrapsParChamp["prix_taximetre"].style.display = estUber ? "none" : "";
+    wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
+    mentionUber.style.display = estUber ? "" : "none";
   }
   appliquerVisibilitePaiement();
 
@@ -446,6 +542,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const ouvert = corps.style.display !== "none";
     corps.style.display = ouvert ? "none" : "block";
     entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
+    if (ouvert) lignesRepliees.add(ligne.id); else lignesRepliees.delete(ligne.id);
   });
 
   return div;
@@ -453,7 +550,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
 
 document.getElementById("btn-ajouter-ligne").addEventListener("click", async () => {
   const prochainNumero = lignesActuelles.length > 0
-    ? Math.max(...lignesActuelles.map(l => l.n_ordre)) + 1 : 1;
+    ? Math.max(...lignesActuelles.map(l => l.n_ordre || 0)) + 1 : 1;
 
   const { data, error } = await supabase
     .from("lignes_feuille_route")
@@ -473,11 +570,14 @@ document.getElementById("btn-signer").addEventListener("click", async () => {
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
   feuilleActuelle.verrouillee = true;
+  feuilleActuelle.signee = true;
+  afficherLignes();
   appliquerVerrouillage();
 });
 
 function remplirResumeSignee() {
-  const debut = feuilleActuelle.heure_debut || "—", fin = feuilleActuelle.heure_fin || "—";
+  const debut = feuilleActuelle.heure_debut ? String(feuilleActuelle.heure_debut).slice(0, 5) : "—";
+  const fin = feuilleActuelle.heure_fin ? String(feuilleActuelle.heure_fin).slice(0, 5) : "—";
   document.getElementById("resume-horaires").textContent = `${debut} → ${fin}`;
   const rd = parseFloat(feuilleActuelle.recettes_debut), rf = parseFloat(feuilleActuelle.recettes_fin);
   document.getElementById("resume-recettes").textContent =
@@ -504,6 +604,7 @@ function appliquerVerrouillage() {
 
   document.getElementById("resume-signee").style.display = verrou ? "block" : "none";
   document.getElementById("details-feuille").style.display = verrou ? "none" : "block";
+  document.getElementById("btn-voir-details").textContent = "▾ Voir le détail de la feuille";
   detailsOuvertsMalgreSignature = false;
   if (verrou) remplirResumeSignee();
 }
@@ -539,6 +640,9 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   const f = feuilleActuelle;
   const lignesHtml = (lignesActuelles.length ? lignesActuelles : new Array(8).fill(null)).map((l, i) => {
     l = l || {};
+    const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
+    const sommes = l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+      : estUber ? "Payé sur Uber" : l.sommes_percues;
     return `<tr>
       <td>${i + 1}</td>
       <td>${fmtVal(l.index_depart)}</td>
@@ -548,8 +652,8 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       <td>${fmtVal(l.debarquement_index)}</td>
       <td>${fmtVal(l.debarquement_lieu)}</td>
       <td>${fmtVal(l.debarquement_heure)}</td>
-      <td>${fmtVal(l.prix_taximetre)}</td>
-      <td>${fmtVal(l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || "")) : l.mode_paiement === "uber" ? "Payé sur Uber" : l.sommes_percues)}</td>
+      <td>${estUber ? "Uber" : fmtVal(l.prix_taximetre)}</td>
+      <td>${fmtVal(sommes)}</td>
     </tr>`;
   }).join("");
 
