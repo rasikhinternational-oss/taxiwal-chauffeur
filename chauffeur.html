@@ -750,11 +750,12 @@ function construireCarteCourse(course) {
     : course.type_retour === "heure_precise" ? ` (retour à ${heureRetourAffichee})`
     : "";
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
+  const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour (aller-retour)</span>` : "";
   const estTaximetre = course.mode_tarification === "taximetre";
   const badgeTarification = `<span class="badge-ar">${estTaximetre ? "🔢 Taximètre" : "💶 Forfait" + (course.prix ? " " + course.prix + " €" : "")}</span>`;
 
   div.innerHTML = `
-    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}
+    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}
     <h3>${esc(course.client_nom) || "Client"}</h3>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">

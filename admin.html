@@ -1061,6 +1061,7 @@ function construireCarteAdmin(course) {
   const badgeNoteClient = course.note_client ? `<span class="badge-ar">${"★".repeat(course.note_client)}${"☆".repeat(5 - course.note_client)}</span>` : "";
   const badgeSousTraitant = course.profils?.role === "partenaire" ? `<span class="badge-ar">🤝 Sous-traitant${course.montant_commission ? ` (${Number(course.montant_commission).toFixed(2)} € commission)` : ""}</span>` : "";
   const badgeMarcheOuvert = course.ouverte_marche ? `<span class="badge-ar">📢 Ouverte aux chauffeurs</span>` : "";
+  const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour auto (aller-retour)</span>` : "";
 
   const dejaOuverte = coursesOuvertes.has(course.id);
 
@@ -1069,7 +1070,7 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}${badgeTaximetre}${badgeVehiculeSouhaite}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}
+      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeAllerRetour}${badgeTaximetre}${badgeVehiculeSouhaite}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
       <h3>${esc(course.client_nom) || "Client"} — ${esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
@@ -1160,7 +1161,7 @@ function construireCarteAdmin(course) {
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
     await supabase.from("courses").update({ chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null }).eq("id", course.id);
-    if (nouveauChauffeurId) { notifierChauffeurParEmail(course.id); notifierChauffeurParPush(course.id); } // automatique, aucun clic requis
+    // Notification désormais gérée automatiquement par la base (trigger + file d'attente unifiée)
     chargerCoursesAdmin();
   });
   corps.appendChild(selectChauffeur);
@@ -1416,7 +1417,7 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
 
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
 
-  if (chauffeurChoisi && nouvelleCourse) { notifierChauffeurParEmail(nouvelleCourse.id); notifierChauffeurParPush(nouvelleCourse.id); } // automatique, aucun clic requis
+  // Notification désormais gérée automatiquement par la base (trigger + file d'attente unifiée)
   invaliderCacheAdresses();
 
   modale.classList.remove("visible");

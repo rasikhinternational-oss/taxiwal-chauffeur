@@ -812,8 +812,7 @@ async function construireCarteCourseClient(course) {
         if (!confirm("Confirmer ce chauffeur pour votre course ?")) return;
         const { error } = await supabase.rpc("client_accepte_proposition", { p_proposition_id: ligne.dataset.id });
         if (error) { alert("Erreur : " + error.message); return; }
-        try { await supabase.functions.invoke("notifier-chauffeur-push", { body: { courseId: course.id } }); } catch (e) {}
-        try { await supabase.functions.invoke("notifier-chauffeur-email", { body: { courseId: course.id } }); } catch (e) {}
+        // Notification désormais gérée automatiquement par la base (trigger + file d'attente unifiée)
         chargerMesCourses();
       });
     });
