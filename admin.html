@@ -1576,6 +1576,13 @@ function construireCarteAdmin(course) {
   }
   corps.appendChild(actionsNav);
 
+  // Ajouter (ou retrouver) ce client dans le carnet, que la course ait été créée par l'admin
+  // ou réservée par le client lui-même dans l'application
+  const btnCarnet = creerBoutonCarnetPourClient({
+    nom: course.client_nom, telephone: course.client_telephone, adresse: course.adresse_depart
+  });
+  if (btnCarnet) corps.appendChild(btnCarnet);
+
   // Modifier tous les détails de la course
   const btnModifier = document.createElement("button");
   btnModifier.textContent = "✏️ Modifier la course";
@@ -3354,6 +3361,48 @@ document.getElementById("btn-creer-partenaire").addEventListener("click", async 
 // ---------- CARNET CLIENTS (répertoire géré par l'admin) ----------
 let carnetCache = [];
 
+// Retrouve un client du carnet par numéro de téléphone (tous formats) ou, à défaut, par nom exact
+function trouverDansCarnet(nom, telephone) {
+  const chiffres = chiffresTelephone(telephone);
+  if (chiffres) {
+    const parTel = carnetCache.find(c => chiffresTelephone(c.telephone) === chiffres);
+    if (parTel) return parTel;
+  }
+  const nomNormalise = (nom || "").trim().toLowerCase();
+  if (!nomNormalise) return null;
+  return carnetCache.find(c => (c.nom || "").trim().toLowerCase() === nomNormalise) || null;
+}
+
+// Bouton "📇 Ajouter au carnet" (ou "Voir dans le carnet" s'il y est déjà)
+function creerBoutonCarnetPourClient({ nom, telephone, adresse, email }) {
+  if (!(nom || "").trim() && !(telephone || "").trim()) return null;
+  const existant = trouverDansCarnet(nom, telephone);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.style.cssText = "width:100%; margin-top:8px; padding:10px; border-radius:8px; font-weight:600; font-size:.88rem; cursor:pointer;"
+    + (existant
+      ? "background:#fff; color:var(--vert); border:1px solid #bfe0cb;"
+      : "background:#eaf5ee; color:var(--vert); border:1px solid var(--vert);");
+  btn.textContent = existant ? `📇 Déjà dans le carnet — voir la fiche de ${existant.nom}` : "📇 Ajouter ce client au carnet";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    allerAuCarnet();
+    if (existant) {
+      document.getElementById("recherche-carnet").value = existant.telephone || existant.nom;
+      afficherCarnet();
+    } else {
+      // Fiche pré-remplie : tu vérifies, tu complètes (email, notes…), puis tu enregistres
+      ouvrirFormCarnet({ nom: nom || "", telephone: telephone || "", adresse: adresse || "", email: email || "" });
+    }
+  });
+  return btn;
+}
+
+function allerAuCarnet() {
+  document.querySelector('nav button[data-onglet="carnet"]').click();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 // Garde seulement les chiffres d'un numéro, sans indicatif belge, pour comparer "0478 39 09 89" et "+32478390989"
 function chiffresTelephone(tel) {
   let n = String(tel || "").replace(/\D/g, "");
@@ -3440,7 +3489,7 @@ function construireFicheCarnet(client) {
 
 function ouvrirFormCarnet(client) {
   const form = document.getElementById("form-carnet");
-  document.getElementById("titre-form-carnet").textContent = client ? `Modifier ${client.nom}` : "Nouveau client";
+  document.getElementById("titre-form-carnet").textContent = client?.id ? `Modifier ${client.nom}` : "Nouveau client";
   document.getElementById("carnet-id").value = client?.id || "";
   document.getElementById("carnet-nom").value = client?.nom || "";
   document.getElementById("carnet-telephone").value = client?.telephone || "";
@@ -3478,7 +3527,8 @@ document.getElementById("btn-enregistrer-carnet").addEventListener("click", asyn
     : await supabase.from("carnet_clients").insert(fiche);
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
   fermerFormCarnet();
-  chargerCarnet();
+  await chargerCarnet();
+  afficherListeCoursesAdmin(); // les boutons "Ajouter au carnet" des courses passent à "Déjà dans le carnet"
 });
 
 // Appelé à la création d'une course : ajoute le client s'il n'existe pas déjà (même téléphone ou même nom)
@@ -3618,6 +3668,12 @@ function construireCarteClientAdmin(client) {
 
   const btnAppel = div.querySelector(".btn-appeler-client");
   if (btnAppel) btnAppel.addEventListener("click", () => { window.location.href = `tel:${client.telephone.replace(/\s/g, "")}`; });
+
+  const btnCarnetApp = creerBoutonCarnetPourClient({
+    nom: client.nom, telephone: client.telephone,
+    adresse: client.courses.find(c => c.adresse_depart)?.adresse_depart || ""
+  });
+  if (btnCarnetApp) div.appendChild(btnCarnetApp);
 
   const btnHisto = div.querySelector(".btn-historique-client");
   if (btnHisto) {
