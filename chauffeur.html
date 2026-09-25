@@ -89,7 +89,6 @@ window.onerror = function(msg, url, line, col, err) {
   }
   #liste-courses{ padding:0 20px; }
 
-  /* Onglets */
   nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px; }
   nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
   nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
@@ -101,7 +100,6 @@ window.onerror = function(msg, url, line, col, err) {
   section{ display:none; }
   section.visible{ display:block; }
 
-  /* Agenda / calendrier */
   .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin:0 20px 16px; }
   .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
   .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); cursor:pointer; }
@@ -117,7 +115,6 @@ window.onerror = function(msg, url, line, col, err) {
   #agenda-jour-titre{ padding:0 20px 8px; color:var(--gris); font-size:.85rem; }
   #agenda-liste-jour{ padding:0 20px; }
 
-  /* Historique des feuilles de route (lecture seule) */
   #liste-historique-feuilles{ padding:0 20px; }
   .histo-feuille{ background:var(--noir-2); border-radius:12px; margin-bottom:10px; border-left:4px solid var(--gris); overflow:hidden; }
   .histo-feuille.cloturee{ border-left-color:var(--vert); }
@@ -200,7 +197,6 @@ window.onerror = function(msg, url, line, col, err) {
 </header>
 <button id="btn-installer-app" style="display:none; margin:10px 20px 0; background:var(--vert);">📲 Installer l'application</button>
 
-<!-- ÉCRAN CONNEXION -->
 <div id="ecran-login">
   <label for="email">Adresse email</label>
   <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email">
@@ -215,7 +211,6 @@ window.onerror = function(msg, url, line, col, err) {
   <p id="erreur-login"></p>
 </div>
 
-<!-- ÉCRAN PRINCIPAL (masqué tant que non connecté) -->
 <div id="ecran-principal" style="display:none;">
   <div id="barre-dispo">
     <span id="label-dispo">Disponible / position partagée</span>
@@ -267,7 +262,6 @@ window.onerror = function(msg, url, line, col, err) {
   </section>
 </div>
 
-<!-- MODALE : mode de paiement à la fin d'une course -->
 <div id="modale-paiement" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:60; align-items:flex-end;">
   <div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:24px;">
     <h2 style="margin-top:0; font-size:1.1rem;">Comment le client a-t-il payé ?</h2>
@@ -284,9 +278,6 @@ window.onerror = function(msg, url, line, col, err) {
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script>
-// =====================================================================
-// CONFIGURATION — à compléter avec les identifiants du projet Supabase
-// =====================================================================
 const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 if (!window.supabase) {
@@ -295,9 +286,6 @@ if (!window.supabase) {
     'Problème de connexion internet — recharge la page.</div>');
   throw new Error("supabase-js non chargé (pas de connexion internet ?)");
 }
-// Stockage sécurisé : certains modes de navigation privée bloquent
-// localStorage et font planter toute la page sans message. On bascule
-// automatiquement sur un stockage temporaire en mémoire si besoin.
 const stockageMemoire = {};
 const stockageSecurise = {
   getItem: (cle) => { try { return window.localStorage.getItem(cle); } catch (e) { return stockageMemoire[cle] || null; } },
@@ -309,8 +297,8 @@ let supabase;
 try {
   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
-      persistSession: true,      // garde la connexion même après fermeture de l'app
-      autoRefreshToken: true,    // renouvelle automatiquement, sans redemander de code
+      persistSession: true,
+      autoRefreshToken: true,
       detectSessionInUrl: false,
       storage: stockageSecurise
     }
@@ -321,8 +309,6 @@ try {
     'Erreur au démarrage : ' + e.message + '</div>');
 }
 
-// Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
-// ou une note tapée par un client ne soit interprétée comme du code (protection XSS).
 function esc(valeur) {
   if (valeur === null || valeur === undefined) return "";
   return String(valeur)
@@ -335,7 +321,6 @@ function esc(valeur) {
 
 let positionInterval = null;
 
-// ---------- CONNEXION (OTP email, même principe que l'app Client) ----------
 document.getElementById("btn-envoyer-code").addEventListener("click", async () => {
   const btn = document.getElementById("btn-envoyer-code");
   const email = document.getElementById("email").value.trim();
@@ -372,7 +357,6 @@ document.getElementById("btn-valider-code").addEventListener("click", async () =
   demarrerEspaceChauffeur();
 });
 
-// ---------- NOTIFICATIONS PUSH RÉELLES (fonctionnent même app fermée / téléphone verrouillé) ----------
 const VAPID_PUBLIC_KEY = "BKmh8bflfEHbDKreLbxYj0GBmw0TVYhNyN0N1YzYO5SdKoVlj2Q3MJJN3KR5EbTifJNQf-2WB2VeevO60nzurGg";
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -407,10 +391,6 @@ async function activerNotificationsPushReelles() {
   } catch (e) { console.error("Abonnement notifications push impossible :", e); }
 }
 
-// Réception d'une notification push par le service worker : si l'application est déjà ouverte
-// (même en arrière-plan), on force un rechargement immédiat au lieu d'attendre le prochain
-// cycle de 30 secondes — c'est ce qui corrigeait le délai entre "le téléphone sonne" et
-// "la course s'affiche enfin".
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data && event.data.type === "nouvelle-course") {
@@ -419,32 +399,35 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// ---------- DÉMARRAGE ESPACE CHAUFFEUR ----------
+// CORRECTIF délai Android/iOS : l'app en arrière-plan met en pause le rafraîchissement toutes les
+// 30s et la connexion temps réel, d'où le délai jusqu'à 10 minutes signalé. En forçant un
+// rechargement immédiat dès que l'app redevient visible (le chauffeur regarde son téléphone
+// après avoir entendu la notification), la liste est à jour tout de suite.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && document.getElementById("ecran-principal").style.display !== "none") {
+    chargerCourses();
+  }
+});
+window.addEventListener("focus", () => {
+  if (document.getElementById("ecran-principal").style.display !== "none") chargerCourses();
+});
+
 async function demarrerEspaceChauffeur() {
   document.getElementById("ecran-login").style.display = "none";
   document.getElementById("ecran-principal").style.display = "block";
   document.getElementById("sous-titre").textContent = "Connecté";
 
-  // Demande la permission d'afficher des notifications (une seule fois)
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
   }
   activerNotificationsPushReelles();
 
-  await creerFeuilleDuJourSiAbsente(); // toujours une feuille de route prête, dès l'ouverture de l'app
-  await chargerCourses(); // premier chargement : on note juste les courses existantes, sans sonner
-  // Rafraîchit la liste toutes les 30 secondes (filet de sécurité + rappels 30 min)
+  await creerFeuilleDuJourSiAbsente();
+  await chargerCourses();
   setInterval(chargerCourses, 30000);
-  // Abonnement temps réel : dès qu'une course de ce chauffeur change côté serveur (nouvelle
-  // course, réassignation, modification d'horaire...), la liste se recharge immédiatement au
-  // lieu d'attendre le prochain cycle de 30 secondes — tant que l'app reste ouverte.
   activerTempsReelCourses();
-  // Même principe pour les feuilles de route : si l'administrateur modifie une feuille,
-  // l'historique affiché se met à jour tout seul, sans message.
   activerTempsReelFeuilles();
 
-  // Localisation activée automatiquement dès l'ouverture de l'app (sans devoir toucher le bouton
-  // "Disponible") — comme ça l'admin voit tout de suite le chauffeur sur la carte dès qu'il ouvre l'app.
   activerLocalisationAutomatique();
 }
 
@@ -460,11 +443,9 @@ async function activerTempsReelCourses() {
     .subscribe();
 }
 
-// Le serveur ne transmet à chaque chauffeur que ses propres feuilles et lignes (sécurité RLS).
 let minuterieRechargementHisto = null;
 function rechargerHistoriqueSiVisible() {
   if (!document.getElementById("section-historique-feuilles").classList.contains("visible")) return;
-  // Regroupe plusieurs changements rapprochés (ex: renumérotation) en un seul rechargement
   clearTimeout(minuterieRechargementHisto);
   minuterieRechargementHisto = setTimeout(chargerHistoriqueFeuilles, 400);
 }
@@ -488,20 +469,16 @@ function activerLocalisationAutomatique() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
     () => {
-      // Permission déjà accordée (ou vient d'être accordée) : on active "Disponible" tout seul
       dispoActive = true;
       switchDispo.classList.add("actif");
       demarrerPartagePosition();
     },
     (err) => {
-      // Permission refusée ou indisponible : le chauffeur pourra toujours l'activer à la main
       console.error("Localisation automatique impossible :", err);
     }
   );
 }
 
-// Garantit qu'une feuille de route (avec identité/véhicule déjà pré-remplis) existe pour aujourd'hui,
-// sans attendre que le chauffeur ouvre l'écran dédié ou qu'une course lui soit assignée.
 async function creerFeuilleDuJourSiAbsente() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -521,14 +498,12 @@ async function creerFeuilleDuJourSiAbsente() {
   } catch (e) { console.error("Création feuille du jour :", e); }
 }
 
-// ---------- SON + NOTIFICATION POUR NOUVELLE COURSE ----------
-let idsCoursesConnues = null; // null = pas encore initialisé
+let idsCoursesConnues = null;
 
 function jouerSonAlerte() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Sonnerie façon "appel téléphonique" : deux tonalités alternées, fortes, répétées plusieurs fois
-    const frequences = [988, 1319]; // la-do aigu, comme une sonnerie classique
+    const frequences = [988, 1319];
     const nbSonneries = 4;
     const dureeNote = 0.35;
     const pauseEntreNotes = 0.12;
@@ -539,10 +514,10 @@ function jouerSonAlerte() {
       frequences.forEach(freq => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = "square"; // son plus perçant qu'une sinusoïde, se remarque mieux
+        osc.type = "square";
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02); // volume fort
+        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02);
         gain.gain.setValueAtTime(0.9, t + dureeNote - 0.05);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + dureeNote);
         osc.connect(gain).connect(ctx.destination);
@@ -554,7 +529,6 @@ function jouerSonAlerte() {
     }
   } catch (e) { console.error("Son impossible :", e); }
 
-  // Vibration façon appel entrant, en plus du son (si le téléphone le permet)
   if ("vibrate" in navigator) {
     try { navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch (e) {}
   }
@@ -566,13 +540,12 @@ function notifierNouvelleCourse(course) {
     new Notification("🚕 Nouvelle course Taxi Wal — vérifie vite !", {
       body: `${course.adresse_depart} → ${course.adresse_arrivee}`,
       tag: "course-" + course.id,
-      requireInteraction: true // reste affichée à l'écran jusqu'à ce que le chauffeur la voie
+      requireInteraction: true
     });
   }
 }
 
-// ---------- RAPPEL 30 MINUTES AVANT CHAQUE COURSE ----------
-const rappelsEnvoyesChauffeur = new Set(); // ids de courses déjà rappelées, pour ne prévenir qu'une fois
+const rappelsEnvoyesChauffeur = new Set();
 function verifierRappels30MinChauffeur(courses) {
   const maintenant = Date.now();
   (courses || []).forEach(c => {
@@ -593,7 +566,6 @@ function verifierRappels30MinChauffeur(courses) {
   });
 }
 
-// ---------- CHARGER LES COURSES DU CHAUFFEUR CONNECTÉ ----------
 async function chargerCourses() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
@@ -606,7 +578,6 @@ async function chargerCourses() {
 
   if (error) { console.error(error); return; }
 
-  // Détecte les nouvelles courses (jamais vues) qui ne sont pas déjà terminées/annulées
   if (idsCoursesConnues === null) {
     idsCoursesConnues = new Set((courses || []).map(c => c.id));
   } else {
@@ -629,8 +600,6 @@ async function chargerCourses() {
   afficherCoursesDuJour(calJourSelectionne);
   mettreAJourGainsJour(dernieresCoursesChauffeur);
 
-  // Une course annulée n'a plus rien à faire dans la liste active — elle reste seulement
-  // consultable dans l'agenda (historique par date) pour garder une trace.
   const coursesActives = (courses || []).filter(c => c.statut !== "annulee");
 
   if (coursesActives.length === 0) {
@@ -642,7 +611,6 @@ async function chargerCourses() {
   coursesActives.forEach(c => conteneur.appendChild(construireCarteCourse(c)));
 }
 
-// ---------- GAINS DU JOUR (caisse) ----------
 function mettreAJourGainsJour(courses) {
   const aujourdHui = new Date().toISOString().slice(0, 10);
   const coursesDuJourTerminees = (courses || []).filter(c =>
@@ -667,7 +635,6 @@ function mettreAJourGainsJour(courses) {
   if (elUber) elUber.textContent = nbUber;
 }
 
-// ---------- MENU (☰) : déconnexion ----------
 document.getElementById("btn-menu-chauffeur").addEventListener("click", (e) => {
   e.stopPropagation();
   const menu = document.getElementById("menu-chauffeur-deroulant");
@@ -683,7 +650,6 @@ document.getElementById("btn-deconnexion-chauffeur").addEventListener("click", a
   location.reload();
 });
 
-// ---------- NAVIGATION PAR ONGLETS ----------
 document.querySelectorAll("nav.onglets button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("nav.onglets button").forEach(b => b.classList.remove("actif"));
@@ -695,10 +661,7 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
   });
 });
 
-// ---------- HISTORIQUE DES FEUILLES DE ROUTE (30 jours, lecture seule) ----------
-// Consultation uniquement : rien n'est modifiable ici. La feuille du jour se remplit
-// toujours via "Ma feuille de route du jour", tant qu'elle n'est pas clôturée.
-const feuillesHistoOuvertes = new Set(); // garde ouvertes les dates que le chauffeur a dépliées
+const feuillesHistoOuvertes = new Set();
 
 function libellePaiement(mode) {
   return {
@@ -815,7 +778,6 @@ function construireFeuilleHistorique(feuille, lignes, estAujourdhui) {
   if (lignes.length === 0) {
     html += `<p style="color:var(--gris); font-size:.85rem;">Aucune course sur cette feuille.</p>`;
   } else {
-    // Numérotation toujours continue (1, 2, 3…) selon l'ordre affiché
     html += lignes.map((l, i) => {
       const mode = l.mode_paiement || l.courses?.mode_paiement || "";
       const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).map(esc).join(" → ") || "Trajet non renseigné";
@@ -856,7 +818,6 @@ function construireFeuilleHistorique(feuille, lignes, estAujourdhui) {
   return div;
 }
 
-// ---------- AGENDA / CALENDRIER ----------
 let dernieresCoursesChauffeur = [];
 let calMoisAffiche = new Date();
 calMoisAffiche.setDate(1);
@@ -886,7 +847,7 @@ function rendreCalendrier(courses) {
   const annee = calMoisAffiche.getFullYear(), mois = calMoisAffiche.getMonth();
   titre.textContent = calMoisAffiche.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
 
-  const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7; // lundi = 0
+  const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
   const nbJours = new Date(annee, mois + 1, 0).getDate();
   const map = joursAvecCourses(courses);
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -967,13 +928,11 @@ function construireCarteCourse(course) {
   const badgeAllerRetour = course.aller_retour ? `<span class="badge-ar">🔄 Aller-retour${labelTypeRetour}</span>` : "";
   const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour (aller-retour)</span>` : "";
   const estTaximetre = course.mode_tarification === "taximetre";
-  // Course payée sur Uber : l'argent arrive sur le compte Uber, aucun montant à afficher ici
   const estUber = course.mode_paiement === "uber";
   const badgeTarification = estUber
     ? `<span class="badge-ar">🚕 Payé sur Uber</span>`
     : `<span class="badge-ar">${estTaximetre ? "🔢 Taximètre" : "💶 Forfait" + (course.prix ? " " + course.prix + " €" : "")}</span>`;
 
-  // Réservation de plusieurs véhicules : chaque chauffeur voit quel véhicule il fait
   const labelTypeVehicule = { berline: "4 places", van: "7 places", pmr: "PMR" }[course.vehicule_souhaite] || "";
   const badgeGroupe = course.nb_vehicules > 1
     ? `<span class="badge-ar">🚗 Véhicule ${course.rang_vehicule || "?"}/${course.nb_vehicules}${labelTypeVehicule ? " · " + labelTypeVehicule : ""}</span>`
@@ -1057,7 +1016,6 @@ function creerBouton(texte, onClick) {
   return btn;
 }
 
-// ---------- DEMANDES OUVERTES (marché "à la GetTransfer") ----------
 async function chargerDemandesOuvertes() {
   const conteneur = document.getElementById("liste-demandes-ouvertes");
   const videMsg = document.getElementById("vide-demandes");
@@ -1140,8 +1098,6 @@ async function changerStatut(courseId, nouveauStatut) {
   chargerCourses();
 }
 
-// Le chauffeur confirme avoir bien reçu/accepté la course — l'admin le voit directement
-// apparaître dans son application (notification + son), sans email
 async function accepterCourse(courseId) {
   const { error } = await supabase
     .from("courses")
@@ -1152,7 +1108,6 @@ async function accepterCourse(courseId) {
   chargerCourses();
 }
 
-// Le chauffeur démarre la course — l'admin le voit directement dans son application
 async function demarrerCourse(courseId) {
   const { error } = await supabase
     .from("courses")
@@ -1163,7 +1118,6 @@ async function demarrerCourse(courseId) {
   chargerCourses();
 }
 
-// ---------- MODE DE PAIEMENT (fin de course) ----------
 let courseEnFinDePaiement = null;
 const modalePaiement = document.getElementById("modale-paiement");
 
@@ -1195,7 +1149,6 @@ async function terminerAvecPaiement(mode) {
   chargerCourses();
 }
 
-// ---------- DISPONIBILITÉ + PARTAGE DE POSITION GPS ----------
 const switchDispo = document.getElementById("switch-dispo");
 let dispoActive = false;
 
@@ -1213,8 +1166,8 @@ switchDispo.addEventListener("click", () => {
 function demarrerPartagePosition() {
   if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible sur cet appareil."); return; }
 
-  envoyerPosition(); // premier envoi immédiat
-  positionInterval = setInterval(envoyerPosition, 30000); // toutes les 30s
+  envoyerPosition();
+  positionInterval = setInterval(envoyerPosition, 30000);
 }
 
 function arreterPartagePosition() {
@@ -1245,7 +1198,6 @@ async function metPositionIndisponible() {
     .eq("chauffeur_id", user.id);
 }
 
-// ---------- INSTALLATION APP (Android / ordinateur) ----------
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(e => console.error("Service worker :", e));
 }
@@ -1264,7 +1216,6 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
   document.getElementById("btn-installer-app").style.display = "none";
 });
 
-// ---------- RESTAURER LA SESSION SI DÉJÀ CONNECTÉ ----------
 (async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session) demarrerEspaceChauffeur();

@@ -644,9 +644,6 @@ try {
 }
 
 function versDatetimeLocal(dateStr) {
-  // Convertit une date ISO (UTC, telle que stockée en base) vers le format
-  // "YYYY-MM-DDTHH:mm" attendu par un champ <input type="datetime-local">,
-  // en tenant compte du fuseau horaire local (sinon l'heure affichée est décalée).
   if (!dateStr) return "";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "";
@@ -654,7 +651,6 @@ function versDatetimeLocal(dateStr) {
   return new Date(d.getTime() - decalageMs).toISOString().slice(0, 16);
 }
 
-// Échappe tout texte avant de l'insérer dans du HTML (protection contre l'injection de script / XSS)
 function esc(valeur) {
   if (valeur === null || valeur === undefined) return "";
   return String(valeur)
@@ -665,7 +661,6 @@ function esc(valeur) {
     .replace(/'/g, "&#39;");
 }
 
-// Identifiant unique pour regrouper les véhicules d'une même réservation
 function nouvelIdGroupe() {
   if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
@@ -740,7 +735,6 @@ async function verifierEtDemarrerAdmin() {
   demarrerAdmin();
 }
 
-// Restaure la session si déjà connecté (et toujours re-vérifier le rôle admin)
 (async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session) verifierEtDemarrerAdmin();
@@ -784,19 +778,18 @@ async function activerNotificationsPushReelles() {
 function demarrerAdmin() {
   activerNotificationsPushReelles();
   chargerChauffeurs();
-  chargerCarnet(); // pour la recherche rapide dans la fenêtre "Nouvelle course"
+  chargerCarnet();
   chargerCoursesAdmin();
   setInterval(() => chargerCoursesAdmin(true), 20000);
   setInterval(() => {
     if (document.getElementById("section-caisse").classList.contains("visible")) chargerCaisse();
   }, 20000);
-  surveillerImpressionsFeuilles(); // premier relevé, sans notifier rétroactivement
+  surveillerImpressionsFeuilles();
   setInterval(surveillerImpressionsFeuilles, 20000);
   setInterval(rafraichirFeuillesSiPossible, 15000);
   activerTempsReelAdmin();
 }
 
-// Ne jamais reconstruire la liste des feuilles pendant que l'admin est en train de remplir un champ
 function rafraichirFeuillesSiPossible() {
   const zoneFeuilles = document.getElementById("section-feuilles");
   if (!zoneFeuilles.classList.contains("visible")) return;
@@ -805,7 +798,6 @@ function rafraichirFeuillesSiPossible() {
   chargerFeuillesAdmin();
 }
 
-// Temps réel : une modification faite par un chauffeur (ou depuis un autre appareil) apparaît tout de suite
 let minuterieTempsReelFeuilles = null;
 function activerTempsReelAdmin() {
   supabase
@@ -819,7 +811,6 @@ function planifierRafraichissementFeuilles() {
   minuterieTempsReelFeuilles = setTimeout(rafraichirFeuillesSiPossible, 600);
 }
 
-// Prévient l'admin (son + notification) dès qu'un chauffeur imprime sa feuille de route
 let imprimeesConnues = null;
 async function surveillerImpressionsFeuilles() {
   const { data: feuilles, error } = await supabase
@@ -846,7 +837,6 @@ async function surveillerImpressionsFeuilles() {
   });
 }
 
-// ---------- MENU (☰) : déconnexion ----------
 document.getElementById("btn-menu-admin").addEventListener("click", (e) => {
   e.stopPropagation();
   const menu = document.getElementById("menu-admin-deroulant");
@@ -861,7 +851,6 @@ document.getElementById("btn-deconnexion-admin").addEventListener("click", async
   location.reload();
 });
 
-// ---------- NAVIGATION ONGLETS ----------
 document.querySelectorAll("nav button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("nav button").forEach(b => b.classList.remove("actif"));
@@ -879,12 +868,11 @@ document.querySelectorAll("nav button").forEach(btn => {
   });
 });
 
-// ---------- CHARGER LA LISTE DES CHAUFFEURS ET DES VÉHICULES ----------
 let chauffeursCache = [];
 let partenairesCache = [];
 let vehiculesCache = [];
 let dernieresCoursesAdmin = [];
-const coursesOuvertes = new Set(); // ids des courses dont le détail est ouvert
+const coursesOuvertes = new Set();
 
 function optionsChauffeursEtPartenaires(idSelectionne) {
   let html = `<option value="">— Aucun (à attribuer plus tard) —</option>`;
@@ -933,7 +921,6 @@ async function chargerChauffeurs() {
   }
 }
 
-// ---------- NOTIFICATION ADMIN : nouvelle demande client (son + notification navigateur) ----------
 let idsCoursesConnusAdmin = null;
 
 function nomChauffeurPourNotif(course) {
@@ -989,7 +976,6 @@ if ("Notification" in window && Notification.permission === "default") {
   Notification.requestPermission();
 }
 
-// ---------- CHARGER TOUTES LES COURSES ----------
 let afficherHistoriqueCourses = false;
 
 document.getElementById("btn-toggle-historique").addEventListener("click", () => {
@@ -1000,7 +986,6 @@ document.getElementById("btn-toggle-historique").addEventListener("click", () =>
   afficherListeCoursesAdmin();
 });
 
-// ---------- ASSIGNATION GROUPÉE (plusieurs courses "en attente" à la fois) ----------
 const coursesSelectionnees = new Set();
 
 function gererSelectionCourse(e) {
@@ -1106,7 +1091,6 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   }
 }
 
-// ---------- RAPPEL 30 MINUTES AVANT CHAQUE COURSE ----------
 const rappelsEnvoyesAdmin = new Set();
 function verifierRappels30MinAdmin(courses) {
   const maintenant = Date.now();
@@ -1125,13 +1109,12 @@ function verifierRappels30MinAdmin(courses) {
   });
 }
 
-// ---------- LIEN WHATSAPP PRÉ-REMPLI POUR PRÉVENIR UN CHAUFFEUR ----------
 function numeroWhatsapp(telephone) {
   if (!telephone) return null;
   let n = telephone.replace(/[^\d+]/g, "");
   if (n.startsWith("+")) n = n.slice(1);
   else if (n.startsWith("00")) n = n.slice(2);
-  else if (n.startsWith("0")) n = "32" + n.slice(1); // Belgique par défaut
+  else if (n.startsWith("0")) n = "32" + n.slice(1);
   return n;
 }
 
@@ -1152,7 +1135,6 @@ let calMoisAffiche = new Date();
 calMoisAffiche.setDate(1);
 let calJourSelectionne = new Date().toISOString().slice(0, 10);
 
-// ---------- AGENDA / CALENDRIER (toutes les courses, tous chauffeurs) ----------
 function joursAvecCoursesAdmin(courses) {
   const map = {};
   (courses || []).forEach(c => {
@@ -1236,14 +1218,10 @@ document.getElementById("cal-next").addEventListener("click", () => {
   rendreCalendrierAdmin();
 });
 
-// "+ Ajouter" ouvre la même fenêtre de création de course, pré-remplie avec le jour choisi
 document.getElementById("btn-ajouter-jour").addEventListener("click", () => {
   ouvrirModaleCourse({ date: calJourSelectionne + "T09:00" });
 });
 
-// ---------- RÉSERVATION À PLUSIEURS VÉHICULES ----------
-// Une réservation de N véhicules = N courses liées (même groupe_reservation), une par véhicule,
-// chacune avec son propre chauffeur. Chaque chauffeur reçoit donc sa course et sa ligne de feuille de route.
 function coursesDuGroupe(groupe) {
   if (!groupe) return [];
   return dernieresCoursesAdmin
@@ -1251,7 +1229,6 @@ function coursesDuGroupe(groupe) {
     .sort((a, b) => (a.rang_vehicule || 0) - (b.rang_vehicule || 0));
 }
 
-// Renumérote les véhicules d'une réservation (1, 2, 3…) et met à jour le total, après ajout ou suppression
 async function renumeroterGroupe(groupe) {
   if (!groupe) return;
   const { data: membres } = await supabase
@@ -1301,7 +1278,7 @@ async function ajouterVehiculeAReservation(course) {
   }).select("id").single();
   if (error) { alert("Erreur : " + error.message); return; }
   await renumeroterGroupe(groupe);
-  coursesOuvertes.add(nouvelle.id); // la nouvelle fiche s'ouvre directement pour choisir véhicule et chauffeur
+  coursesOuvertes.add(nouvelle.id);
   await chargerCoursesAdmin();
 }
 
@@ -1404,7 +1381,6 @@ function construireCarteAdmin(course) {
     if (ouvert) coursesOuvertes.delete(course.id); else coursesOuvertes.add(course.id);
   });
 
-  // Résumé de la réservation quand il y a plusieurs véhicules : qui fait quoi
   const groupe = coursesDuGroupe(course.groupe_reservation);
   if (groupe.length > 1) {
     const resume = document.createElement("div");
@@ -1418,7 +1394,6 @@ function construireCarteAdmin(course) {
     corps.appendChild(resume);
   }
 
-  // Demande client sans prix encore envoyé : formulaire pour proposer un prix
   if (course.origine === "client" && course.statut === "en_attente" && course.client_id) {
     const blocPrix = document.createElement("div");
     blocPrix.className = "bloc-prix-admin";
@@ -1463,7 +1438,6 @@ function construireCarteAdmin(course) {
     corps.appendChild(note);
   }
 
-  // Véhicule : type demandé + véhicule précis de la flotte
   if (course.statut !== "terminee" && course.statut !== "annulee") {
     const blocVeh = document.createElement("div");
     blocVeh.className = "bloc-vehicule-course";
@@ -1488,13 +1462,11 @@ function construireCarteAdmin(course) {
     corps.appendChild(blocVeh);
   }
 
-  // Réassignation (chaque véhicule de la réservation a son propre chauffeur)
   const selectChauffeur = document.createElement("select");
   selectChauffeur.innerHTML = `<option value="">— ${course.chauffeur_id ? "Réassigner à" : "Assigner à"} —</option>` + optionsChauffeursEtPartenaires(course.chauffeur_id).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
     const maj = { chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null };
-    // Si ce chauffeur a un véhicule attitré et qu'aucun véhicule n'est encore choisi, on le propose d'office
     if (!course.vehicule_id) {
       const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
       if (vehAttitre) maj.vehicule_id = vehAttitre.id;
@@ -1504,7 +1476,6 @@ function construireCarteAdmin(course) {
   });
   corps.appendChild(selectChauffeur);
 
-  // Ajouter un véhicule à la même réservation (ex : le client veut 2 voitures)
   if (!course.est_retour && course.statut !== "terminee" && course.statut !== "annulee") {
     const btnAjoutVeh = document.createElement("button");
     btnAjoutVeh.className = "btn-ajout-vehicule";
@@ -1516,7 +1487,6 @@ function construireCarteAdmin(course) {
     corps.appendChild(btnAjoutVeh);
   }
 
-  // Actions : rouvrir / annuler (admin uniquement, même si verrouillée)
   const actions = document.createElement("div");
   actions.className = "ligne-actions";
 
@@ -1554,7 +1524,6 @@ function construireCarteAdmin(course) {
   }
   if (actions.children.length > 0) corps.appendChild(actions);
 
-  // Navigation GPS en un clic
   const actionsNav = document.createElement("div");
   actionsNav.className = "ligne-actions";
   actionsNav.style.marginTop = "8px";
@@ -1576,14 +1545,11 @@ function construireCarteAdmin(course) {
   }
   corps.appendChild(actionsNav);
 
-  // Ajouter (ou retrouver) ce client dans le carnet, que la course ait été créée par l'admin
-  // ou réservée par le client lui-même dans l'application
   const btnCarnet = creerBoutonCarnetPourClient({
     nom: course.client_nom, telephone: course.client_telephone, adresse: course.adresse_depart
   });
   if (btnCarnet) corps.appendChild(btnCarnet);
 
-  // Modifier tous les détails de la course
   const btnModifier = document.createElement("button");
   btnModifier.textContent = "✏️ Modifier la course";
   btnModifier.style.cssText = "width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-weight:600;";
@@ -1688,7 +1654,6 @@ function creerBoutonAdmin(texte, onClick) {
   return btn;
 }
 
-// Envoie une notification par email au client via la fonction serveur (Brevo).
 async function notifierClientParEmail(courseId, type) {
   try {
     const { error } = await supabase.functions.invoke("notifier-client-email", { body: { courseId, type } });
@@ -1696,17 +1661,11 @@ async function notifierClientParEmail(courseId, type) {
   } catch (e) { console.error("Notification email non envoyée :", e); }
 }
 
-// La synchronisation course -> feuille de route du chauffeur et les notifications chauffeur
-// sont entièrement gérées côté base de données (triggers + file d'attente unifiée).
-
-// ---------- MODALE NOUVELLE COURSE ----------
 const modale = document.getElementById("modale");
 
-// Lignes "Véhicule 1, Véhicule 2…" : type (4/7 places, PMR), véhicule précis, chauffeur
 function rendreLignesVehiculesModale(valeursForcees) {
   const conteneur = document.getElementById("liste-vehicules-modale");
   const nb = parseInt(document.getElementById("input-nb-vehicules").value) || 1;
-  // Garde ce qui était déjà choisi quand on change le nombre de véhicules
   const anciennes = valeursForcees || Array.from(conteneur.querySelectorAll(".ligne-vehicule-modale")).map(l => ({
     type: l.querySelector(".mv-type").value,
     vehicule: l.querySelector(".mv-vehicule").value,
@@ -1729,14 +1688,12 @@ function rendreLignesVehiculesModale(valeursForcees) {
     const selType = ligne.querySelector(".mv-type");
     const selVeh = ligne.querySelector(".mv-vehicule");
     const selCh = ligne.querySelector(".mv-chauffeur");
-    // Choisir un véhicule précis remplit le type et, s'il a un chauffeur attitré, le chauffeur
     selVeh.addEventListener("change", () => {
       const veh = vehiculesCache.find(x => x.id === selVeh.value);
       if (!veh) return;
       if (!selType.value) selType.value = (veh.places || 0) >= 7 ? "van" : "berline";
       if (!selCh.value && veh.chauffeur_id) selCh.value = veh.chauffeur_id;
     });
-    // Choisir un chauffeur propose son véhicule attitré si aucun n'est choisi
     selCh.addEventListener("change", () => {
       if (selVeh.value) return;
       const vehAttitre = vehiculesCache.find(x => x.chauffeur_id === selCh.value);
@@ -1780,7 +1737,6 @@ function reinitialiserModaleCourse() {
   rendreLignesVehiculesModale([{}]);
 }
 
-// Ouvre la fenêtre "Nouvelle course", avec éventuellement un chauffeur, une date ou un client déjà choisis
 function ouvrirModaleCourse({ chauffeurId = null, date = null, client = null } = {}) {
   reinitialiserModaleCourse();
   if (date) document.getElementById("input-date").value = date;
@@ -1807,7 +1763,6 @@ document.getElementById("input-type-retour").addEventListener("change", (e) => {
   document.getElementById("bloc-heure-retour").style.display = e.target.value === "heure_precise" ? "block" : "none";
 });
 
-// Recherche d'un client du carnet directement dans la fenêtre "Nouvelle course"
 function appliquerClientCarnet(client, adresse) {
   document.getElementById("input-client-nom").value = client.nom || "";
   document.getElementById("input-client-tel").value = client.telephone || "";
@@ -1870,7 +1825,7 @@ function mettreAJourApercuRecurrence() {
   const nbVeh = parseInt(document.getElementById("input-nb-vehicules").value) || 1;
   apercu.textContent = dates.length > 0
     ? `➡️ ${dates.length} date(s)${nbVeh > 1 ? ` × ${nbVeh} véhicules = ${dates.length * nbVeh} courses` : ""} seront créées.`
-    : "Aucune date dans cette période avec cette fréquence.";
+    : "Aucune date à créer sur cette période.";
 }
 document.getElementById("input-recurrence").addEventListener("change", (e) => {
   document.getElementById("bloc-recurrence").style.display = e.target.checked ? "block" : "none";
@@ -1917,7 +1872,6 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   const heureRetourInput = document.getElementById("input-heure-retour").value;
   const estRetourHeurePrecise = estAllerRetour && document.getElementById("input-type-retour").value === "heure_precise" && heureRetourInput;
 
-  // Une occurrence (une date) = une réservation ; chaque véhicule = une course avec son chauffeur
   function coursesPourUneDate(dateHeureIso, heureRetourIso) {
     const groupe = nbVehicules > 1 ? nouvelIdGroupe() : null;
     return vehiculesDemandes.map((v, i) => ({
@@ -1966,7 +1920,6 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
 
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
 
-  // Ajoute automatiquement le client au carnet s'il n'y est pas encore
   if (document.getElementById("input-enregistrer-carnet").checked && clientNom) {
     await enregistrerClientDepuisCourse({ nom: clientNom, telephone: clientTel, email: clientEmail, adresse: depart });
   }
@@ -1978,7 +1931,6 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
 });
 
-// ---------- AUTOCOMPLÉTION D'ADRESSES (historique interne + suggestions OpenStreetMap) ----------
 const cacheAdressesRecentes = { chargees: false, liste: [] };
 
 async function chargerAdressesRecentes() {
@@ -2070,7 +2022,6 @@ configurerAutocompleteAdresse(document.getElementById("input-arrivee"));
 configurerAutocompleteAdresse(document.getElementById("carnet-adresse"));
 configurerAutocompleteAdresse(document.getElementById("carnet-autre-adresse"));
 
-// ---------- CARTE DES CHAUFFEURS (statut + destination + temps restant) ----------
 let carteLeaflet = null;
 let marqueurs = {};
 let lignesRouteCarte = {};
@@ -2233,7 +2184,6 @@ window.copierAdresseChauffeur = function (texte) {
   }
 };
 
-// ---------- LISTE DES CHAUFFEURS EN DIRECT (dépose + retour centrale) ----------
 async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
   const conteneur = document.getElementById("carte-liste-chauffeurs");
   conteneur.innerHTML = "";
@@ -2286,7 +2236,6 @@ function heureDansXMinutes(minutes) {
   return d.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
 }
 
-// ---------- OUTIL : CALCULER UN TRAJET ENTRE DEUX POINTS ----------
 let dernieresPositionsCarte = [];
 
 document.getElementById("calc-depart-type").addEventListener("change", (e) => {
@@ -2419,7 +2368,6 @@ setInterval(() => {
   if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
 }, 20000);
 
-// ---------- CAISSE (fond du matin + suivi cash/carte) ----------
 async function chargerCaisse() {
   const conteneur = document.getElementById("liste-caisse");
   if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
@@ -2443,7 +2391,6 @@ async function chargerCaisse() {
     .gte("date_heure", debutJour)
     .lte("date_heure", finJour);
 
-  // Ne pas écraser un montant de fond en cours de saisie
   if (conteneur.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
   conteneur.innerHTML = "";
 
@@ -2459,7 +2406,7 @@ async function chargerCaisse() {
     const coursesCheque = coursesChauffeur.filter(c => c.mode_paiement === "cheque_social");
     const coursesUber = coursesChauffeur.filter(c => c.mode_paiement === "uber");
     const totalCash = somme(coursesCash);
-    const caisseActuelle = montantFond + totalCash; // seul le cash constitue de l'argent physique en poche
+    const caisseActuelle = montantFond + totalCash;
 
     const div = document.createElement("div");
     div.className = "caisse-chauffeur";
@@ -2499,7 +2446,6 @@ async function chargerCaisse() {
   });
 }
 
-// ---------- FEUILLES DE ROUTE (vue admin, temps réel + édition complète) ----------
 const IDENTITE_EXPLOITANT = "Rasikh international";
 
 const champsEnteteFA = {
@@ -2563,7 +2509,6 @@ document.getElementById("btn-vue-historique-fa").addEventListener("click", () =>
 });
 document.getElementById("select-chauffeur-historique").addEventListener("change", chargerHistoriqueFeuillesChauffeur);
 
-// Historique d'un chauffeur sur 30 jours : un clic ouvre la feuille du jour (modifiable), ou l'aperçu A4
 async function chargerHistoriqueFeuillesChauffeur() {
   const conteneur = document.getElementById("liste-historique-fa");
   const chauffeurId = document.getElementById("select-chauffeur-historique").value;
@@ -2672,8 +2617,6 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
     return;
   }
 
-  // Crée automatiquement la feuille du jour pour tout chauffeur qui n'en a pas encore (une seule tentative,
-  // pour ne jamais tourner en boucle sur "Chargement…" si une création échoue)
   const chauffeursSansFeuille = chauffeurs.filter(ch => !(feuilles || []).some(f => f.chauffeur_id === ch.id));
   if (chauffeursSansFeuille.length > 0 && !dejaCreees) {
     for (const chauffeur of chauffeursSansFeuille) {
@@ -2692,11 +2635,15 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
     : { data: [] };
 
   conteneur.innerHTML = "";
+  // Un chauffeur peut avoir PLUSIEURS feuilles le même jour (changement de véhicule en cours de
+  // journée) : on les affiche toutes, numérotées "Feuille 1/2" s'il y en a plusieurs.
   chauffeurs.forEach(chauffeur => {
-    const feuille = (feuilles || []).find(f => f.chauffeur_id === chauffeur.id);
-    if (!feuille) return;
-    const lignes = (toutesLignes || []).filter(l => l.feuille_route_id === feuille.id);
-    conteneur.appendChild(construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur));
+    const feuillesChauffeur = (feuilles || []).filter(f => f.chauffeur_id === chauffeur.id);
+    if (feuillesChauffeur.length === 0) return;
+    feuillesChauffeur.forEach((feuille, idx) => {
+      const lignes = (toutesLignes || []).filter(l => l.feuille_route_id === feuille.id);
+      conteneur.appendChild(construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, feuillesChauffeur.length > 1 ? idx + 1 : null, feuillesChauffeur.length));
+    });
   });
 }
 
@@ -2714,18 +2661,20 @@ function formatDureeMinutes(total) {
 
 const feuillesDepliees = new Set();
 const lignesDepliees = new Set();
+const etatManuelLignesAdmin = new Map();
 
-function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
+function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroFeuille, totalFeuillesChauffeur) {
   const div = document.createElement("div");
   div.className = "feuille-admin" + (feuille.verrouillee ? " verrouillee-fa" : "");
 
   const entete = document.createElement("div");
   const identiteFeuille = feuille.vehicules?.identite_exploitant || IDENTITE_EXPLOITANT;
+  const labelFeuille = numeroFeuille ? ` — Feuille ${numeroFeuille}/${totalFeuillesChauffeur} (changement de véhicule)` : "";
   entete.innerHTML = `
     <div class="entete-fa-titre">
       <div class="entete-fa-info" style="cursor:pointer;">
         <div class="identite-exploitant">${esc(identiteFeuille)} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
-        <h3>Nom du chauffeur : ${esc(feuille.profils?.nom || "Chauffeur")} <span class="chevron-ligne">▾</span></h3>
+        <h3>Nom du chauffeur : ${esc(feuille.profils?.nom || "Chauffeur")}${esc(labelFeuille)} <span class="chevron-ligne">▾</span></h3>
         <div class="sous">Véhicule : ${feuille.vehicules ? (esc(feuille.vehicules.nom) + (feuille.vehicules.plaque ? " · plaque " + esc(feuille.vehicules.plaque) : "") + (feuille.vehicules.numero_identification ? " · n° identification " + esc(feuille.vehicules.numero_identification) : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}</div>
       </div>
       <div class="entete-fa-actions">
@@ -2760,7 +2709,6 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   });
   div.appendChild(entete);
 
-  // Le détail est replié par défaut une fois la feuille signée
   const corps = document.createElement("div");
   const ouvertParDefaut = feuillesDepliees.has(feuille.id) || !feuille.verrouillee;
   corps.style.display = ouvertParDefaut ? "block" : "none";
@@ -2776,7 +2724,6 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   entete.querySelector(".entete-fa-info").addEventListener("click", toggleCorps);
   entete.querySelector(".btn-details-fa").addEventListener("click", (e) => { e.stopPropagation(); toggleCorps(); });
 
-  // Heures des prestations
   const blocHeures = document.createElement("div");
   blocHeures.className = "bloc-service-fa";
   blocHeures.innerHTML = `<div class="sous-titre-fa">Heures des prestations</div>`;
@@ -2861,7 +2808,13 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur) {
   btnAjouter.textContent = "+ Ajouter une ligne manuelle";
   btnAjouter.addEventListener("click", async () => {
     const prochainNumero = lignes.length > 0 ? Math.max(...lignes.map(l => l.n_ordre || 0)) + 1 : 1;
-    await supabase.from("lignes_feuille_route").insert({ feuille_route_id: feuille.id, n_ordre: prochainNumero });
+    let indexDepartAuto = null;
+    for (let i = lignes.length - 1; i >= 0; i--) {
+      if (lignes[i].debarquement_index !== null && lignes[i].debarquement_index !== undefined) {
+        indexDepartAuto = lignes[i].debarquement_index; break;
+      }
+    }
+    await supabase.from("lignes_feuille_route").insert({ feuille_route_id: feuille.id, n_ordre: prochainNumero, index_depart: indexDepartAuto });
     feuillesDepliees.add(feuille.id);
     chargerFeuillesAdmin();
   });
@@ -2884,12 +2837,17 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   const estUberLigne = ligne.type_course === "uber" || ligne.mode_paiement === "uber";
   const modeAffiche = ligne.mode_paiement || ligne.courses?.mode_paiement;
 
+  // Une course déjà terminée/annulée/clôturée reste fermée par défaut (sinon on doit tout
+  // redéfiler à chaque ouverture de la feuille) ; une course encore active reste ouverte.
+  // Le clic de l'admin garde toujours la priorité sur ce choix automatique.
+  const ligneTermineeOuAnnulee = statutCourse === "terminee" || statutCourse === "annulee" || ligne.cloturee;
+  const ligneOuverte = etatManuelLignesAdmin.has(ligne.id) ? etatManuelLignesAdmin.get(ligne.id) : !ligneTermineeOuAnnulee;
+
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
   const heureResume = ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "";
 
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  const ligneOuverte = lignesDepliees.has(ligne.id);
   entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")} <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
 
   const btnSupprimer = document.createElement("button");
@@ -2960,7 +2918,6 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         .from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id).select("*").maybeSingle();
       if (error) { alert("Erreur : " + error.message); return; }
       if (ligneServeur) {
-        // Le serveur harmonise type Uber ⇄ paiement Uber et vide les montants d'une course Uber
         Object.assign(ligne, ligneServeur);
         inputsParChampAdmin["type_course"].value = ligne.type_course || "normale";
         inputsParChampAdmin["mode_paiement"].value = ligne.mode_paiement || "";
@@ -2994,6 +2951,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const ouvert = grille.style.display !== "none";
     grille.style.display = ouvert ? "none" : "grid";
     entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
+    etatManuelLignesAdmin.set(ligne.id, !ouvert);
     if (ouvert) lignesDepliees.delete(ligne.id); else lignesDepliees.add(ligne.id);
   });
 
@@ -3003,6 +2961,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   btnFermerLigne.addEventListener("click", () => {
     grille.style.display = "none";
     entete.querySelector(".chevron-ligne").textContent = "▾";
+    etatManuelLignesAdmin.set(ligne.id, false);
     lignesDepliees.delete(ligne.id);
   });
   grille.appendChild(btnFermerLigne);
@@ -3010,7 +2969,6 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   return div;
 }
 
-// ---------- IMPRESSION A4 — réplique exacte du modèle papier ----------
 function fmtNombre(v) {
   return (v === null || v === undefined || v === "") ? "" : esc(v);
 }
@@ -3133,7 +3091,6 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
   fenetre.document.close();
 }
 
-// ---------- VÉHICULES (admin) ----------
 async function chargerVehiculesAdmin() {
   const conteneur = document.getElementById("liste-vehicules-admin");
   conteneur.innerHTML = "Chargement…";
@@ -3234,7 +3191,6 @@ document.getElementById("btn-ajouter-vehicule").addEventListener("click", async 
   chargerVehiculesAdmin();
 });
 
-// ---------- SOUS-TRAITANTS (partenaires) ----------
 async function chargerPartenairesAdmin() {
   const conteneur = document.getElementById("liste-partenaires-admin");
   conteneur.innerHTML = "Chargement…";
@@ -3358,10 +3314,8 @@ document.getElementById("btn-creer-partenaire").addEventListener("click", async 
   chargerPartenairesAdmin();
 });
 
-// ---------- CARNET CLIENTS (répertoire géré par l'admin) ----------
 let carnetCache = [];
 
-// Retrouve un client du carnet par numéro de téléphone (tous formats) ou, à défaut, par nom exact
 function trouverDansCarnet(nom, telephone) {
   const chiffres = chiffresTelephone(telephone);
   if (chiffres) {
@@ -3373,7 +3327,6 @@ function trouverDansCarnet(nom, telephone) {
   return carnetCache.find(c => (c.nom || "").trim().toLowerCase() === nomNormalise) || null;
 }
 
-// Bouton "📇 Ajouter au carnet" (ou "Voir dans le carnet" s'il y est déjà)
 function creerBoutonCarnetPourClient({ nom, telephone, adresse, email }) {
   if (!(nom || "").trim() && !(telephone || "").trim()) return null;
   const existant = trouverDansCarnet(nom, telephone);
@@ -3391,7 +3344,6 @@ function creerBoutonCarnetPourClient({ nom, telephone, adresse, email }) {
       document.getElementById("recherche-carnet").value = existant.telephone || existant.nom;
       afficherCarnet();
     } else {
-      // Fiche pré-remplie : tu vérifies, tu complètes (email, notes…), puis tu enregistres
       ouvrirFormCarnet({ nom: nom || "", telephone: telephone || "", adresse: adresse || "", email: email || "" });
     }
   });
@@ -3403,7 +3355,6 @@ function allerAuCarnet() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-// Garde seulement les chiffres d'un numéro, sans indicatif belge, pour comparer "0478 39 09 89" et "+32478390989"
 function chiffresTelephone(tel) {
   let n = String(tel || "").replace(/\D/g, "");
   if (n.startsWith("0032")) n = n.slice(4);
@@ -3528,10 +3479,9 @@ document.getElementById("btn-enregistrer-carnet").addEventListener("click", asyn
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
   fermerFormCarnet();
   await chargerCarnet();
-  afficherListeCoursesAdmin(); // les boutons "Ajouter au carnet" des courses passent à "Déjà dans le carnet"
+  afficherListeCoursesAdmin();
 });
 
-// Appelé à la création d'une course : ajoute le client s'il n'existe pas déjà (même téléphone ou même nom)
 async function enregistrerClientDepuisCourse({ nom, telephone, email, adresse }) {
   const chiffres = chiffresTelephone(telephone);
   const existant = carnetCache.find(c =>
@@ -3539,7 +3489,6 @@ async function enregistrerClientDepuisCourse({ nom, telephone, email, adresse })
     (!chiffres && (c.nom || "").trim().toLowerCase() === nom.trim().toLowerCase())
   );
   if (existant) {
-    // Complète seulement les informations manquantes, sans rien écraser
     const complement = {};
     if (!existant.telephone && telephone) complement.telephone = telephone;
     if (!existant.email && email) complement.email = email;
@@ -3553,7 +3502,6 @@ async function enregistrerClientDepuisCourse({ nom, telephone, email, adresse })
   chargerCarnet();
 }
 
-// ---------- COMPTES CLIENTS DE L'APPLICATION ----------
 let clientsCache = [];
 async function chargerLeadsSite() {
   const conteneur = document.getElementById("bloc-leads-site");
@@ -3696,7 +3644,6 @@ function construireCarteClientAdmin(client) {
   return div;
 }
 
-// ---------- INSTALLATION APP (Android / ordinateur) ----------
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(e => console.error("Service worker :", e));
 }
@@ -3715,7 +3662,6 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
   document.getElementById("btn-installer-app").style.display = "none";
 });
 
-// Première construction des lignes "Véhicule" de la fenêtre Nouvelle course (avant même la connexion)
 rendreLignesVehiculesModale([{}]);
 </script>
 </body>

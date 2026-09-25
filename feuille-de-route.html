@@ -24,6 +24,13 @@ window.onerror = function(msg, url, line, col, err) {
   button{ font-family:inherit; cursor:pointer; }
   .bloc{ margin:16px 20px; background:var(--noir-2); border-radius:12px; padding:16px; }
   .bloc h2{ margin:0 0 12px; font-size:.9rem; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
+  .bloc-repliable{ margin:16px 20px; background:var(--noir-2); border-radius:12px; overflow:hidden; }
+  .bloc-repliable .entete-repliable{ display:flex; justify-content:space-between; align-items:center; padding:16px; cursor:pointer; }
+  .bloc-repliable .entete-repliable h2{ margin:0; font-size:.9rem; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
+  .bloc-repliable .entete-repliable .chevron-repli{ color:var(--gris); font-size:.9rem; flex-shrink:0; margin-left:10px; }
+  .bloc-repliable .contenu-repliable{ display:none; padding:0 16px 16px; }
+  .bloc-repliable .contenu-repliable.ouvert{ display:block; }
+  .bloc-repliable .resume-repli{ padding:0 16px 14px; margin-top:-8px; font-size:.82rem; color:var(--gris); }
   .grille2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   label{ display:block; font-size:.78rem; color:var(--gris); margin-bottom:4px; }
   input, select{ width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.9rem; margin-bottom:10px; }
@@ -85,65 +92,70 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <div id="details-feuille">
-<div class="bloc" id="bloc-entete">
-  <h2>Service <span id="statut-feuille"></span></h2>
-  <div class="grille3">
-    <div><label>Début</label><input type="time" id="heure-debut"></div>
-    <div><label>Fin</label><input type="time" id="heure-fin"></div>
-    <div><label>Interruptions</label><input type="text" id="interruptions" placeholder="ex: 12h30-13h00"></div>
+
+<div class="bloc-repliable" id="bloc-service-repliable">
+  <div class="entete-repliable" id="entete-service-repliable">
+    <h2>Service &amp; compteurs (ticket) <span id="statut-feuille"></span></h2>
+    <span class="chevron-repli" id="chevron-service">▾</span>
   </div>
+  <div class="resume-repli" id="resume-service-replie"></div>
+  <div class="contenu-repliable" id="contenu-service">
+    <div id="bloc-entete-interieur">
+      <div class="grille3">
+        <div><label>Début</label><input type="time" id="heure-debut"></div>
+        <div><label>Fin</label><input type="time" id="heure-fin"></div>
+        <div><label>Interruptions</label><input type="text" id="interruptions" placeholder="ex: 12h30-13h00"></div>
+      </div>
 
-  <div class="sous-titre-mini">INDEX KM — TABLEAU DE BORD</div>
-  <div class="grille3">
-    <div><label>Début</label><input type="number" step="0.1" id="km-debut"></div>
-    <div><label>Fin</label><input type="number" step="0.1" id="km-fin"></div>
-    <div><label>Total</label><input class="total-ro" type="text" id="km-total" disabled></div>
-  </div>
+      <div class="sous-titre-mini">INDEX KM — TABLEAU DE BORD</div>
+      <div class="grille3">
+        <div><label>Début</label><input type="number" step="0.1" id="km-debut"></div>
+        <div><label>Fin</label><input type="number" step="0.1" id="km-fin"></div>
+        <div><label>Total</label><input class="total-ro" type="text" id="km-total" disabled></div>
+      </div>
 
-  <div class="sous-titre-mini">INDEX TAXIMÈTRE</div>
-  <div class="grille3">
-    <div><label>Début</label><input type="number" step="0.1" id="taxi-debut"></div>
-    <div><label>Fin</label><input type="number" step="0.1" id="taxi-fin"></div>
-    <div><label>Total</label><input class="total-ro" type="text" id="taxi-total" disabled></div>
-  </div>
-</div>
+      <div class="sous-titre-mini">INDEX TAXIMÈTRE</div>
+      <div class="grille3">
+        <div><label>Début</label><input type="number" step="0.1" id="taxi-debut"></div>
+        <div><label>Fin</label><input type="number" step="0.1" id="taxi-fin"></div>
+        <div><label>Total</label><input class="total-ro" type="text" id="taxi-total" disabled></div>
+      </div>
+    </div>
 
-<div class="bloc" id="bloc-compteurs">
-  <h2>Prise en charge / Km / Chutes / Recettes</h2>
+    <div class="sous-titre-mini" style="margin-top:16px;">PRISE EN CHARGE</div>
+    <div class="grille3">
+      <div><label>Début</label><input type="number" step="0.1" id="prise-debut"></div>
+      <div><label>Fin</label><input type="number" step="0.1" id="prise-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="prise-total" disabled></div>
+    </div>
 
-  <div class="sous-titre-mini">PRISE EN CHARGE</div>
-  <div class="grille3">
-    <div><label>Début</label><input type="number" step="0.1" id="prise-debut"></div>
-    <div><label>Fin</label><input type="number" step="0.1" id="prise-fin"></div>
-    <div><label>Total</label><input class="total-ro" type="text" id="prise-total" disabled></div>
-  </div>
+    <div class="sous-titre-mini">INDEX KM (KM TOTAUX)</div>
+    <div class="grille3">
+      <div><label>Début</label><input type="number" step="0.1" id="kmtotaux-debut"></div>
+      <div><label>Fin</label><input type="number" step="0.1" id="kmtotaux-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="kmtotaux-total" disabled></div>
+    </div>
 
-  <div class="sous-titre-mini">INDEX KM (KM TOTAUX)</div>
-  <div class="grille3">
-    <div><label>Début</label><input type="number" step="0.1" id="kmtotaux-debut"></div>
-    <div><label>Fin</label><input type="number" step="0.1" id="kmtotaux-fin"></div>
-    <div><label>Total</label><input class="total-ro" type="text" id="kmtotaux-total" disabled></div>
-  </div>
+    <div class="sous-titre-mini">KM EN CHARGE</div>
+    <div class="grille3">
+      <div><label>Début</label><input type="number" step="0.1" id="kmcharge-debut"></div>
+      <div><label>Fin</label><input type="number" step="0.1" id="kmcharge-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="kmcharge-total" disabled></div>
+    </div>
 
-  <div class="sous-titre-mini">KM EN CHARGE</div>
-  <div class="grille3">
-    <div><label>Début</label><input type="number" step="0.1" id="kmcharge-debut"></div>
-    <div><label>Fin</label><input type="number" step="0.1" id="kmcharge-fin"></div>
-    <div><label>Total</label><input class="total-ro" type="text" id="kmcharge-total" disabled></div>
-  </div>
+    <div class="sous-titre-mini">CHUTES (€)</div>
+    <div class="grille3">
+      <div><label>Début</label><input type="number" step="0.01" id="chutes-debut"></div>
+      <div><label>Fin</label><input type="number" step="0.01" id="chutes-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="chutes-total" disabled></div>
+    </div>
 
-  <div class="sous-titre-mini">CHUTES (€)</div>
-  <div class="grille3">
-    <div><label>Début</label><input type="number" step="0.01" id="chutes-debut"></div>
-    <div><label>Fin</label><input type="number" step="0.01" id="chutes-fin"></div>
-    <div><label>Total</label><input class="total-ro" type="text" id="chutes-total" disabled></div>
-  </div>
-
-  <div class="sous-titre-mini">RECETTES (€)</div>
-  <div class="grille3">
-    <div><label>Début</label><input type="number" step="0.01" id="recettes-debut"></div>
-    <div><label>Fin</label><input type="number" step="0.01" id="recettes-fin"></div>
-    <div><label>Total</label><input class="total-ro" type="text" id="recettes-total" disabled></div>
+    <div class="sous-titre-mini">RECETTES (€)</div>
+    <div class="grille3">
+      <div><label>Début</label><input type="number" step="0.01" id="recettes-debut"></div>
+      <div><label>Fin</label><input type="number" step="0.01" id="recettes-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="recettes-total" disabled></div>
+    </div>
   </div>
 </div>
 
@@ -180,7 +192,7 @@ function esc(valeur) {
 let feuilleActuelle = null;
 let lignesActuelles = [];
 let identiteSocieteActuelle = "Rasikh international";
-const lignesRepliees = new Set(); // lignes que le chauffeur a refermées, à garder refermées lors des mises à jour
+const etatManuelLignes = new Map();
 
 const champsEntete = {
   "heure-debut": "heure_debut", "heure-fin": "heure_fin", "interruptions": "interruptions",
@@ -210,7 +222,33 @@ function calculerTotaux() {
     document.getElementById(idTotal).value =
       (!isNaN(debut) && !isNaN(fin)) ? (fin - debut).toFixed(2) : "";
   });
+  mettreAJourResumeServiceReplie();
 }
+
+let serviceDejaInitialise = false;
+function ouvrirFermerService(forcerOuvert) {
+  const contenu = document.getElementById("contenu-service");
+  const chevron = document.getElementById("chevron-service");
+  const doitOuvrir = forcerOuvert !== undefined ? forcerOuvert : !contenu.classList.contains("ouvert");
+  contenu.classList.toggle("ouvert", doitOuvrir);
+  chevron.textContent = doitOuvrir ? "▴" : "▾";
+  document.getElementById("resume-service-replie").style.display = doitOuvrir ? "none" : "block";
+}
+function mettreAJourResumeServiceReplie() {
+  const debut = document.getElementById("heure-debut").value;
+  const fin = document.getElementById("heure-fin").value;
+  const recettes = document.getElementById("recettes-total").value;
+  const morceaux = [];
+  if (debut || fin) morceaux.push(`${debut || "—"} → ${fin || "en cours"}`);
+  if (recettes) morceaux.push(recettes + " € de recettes");
+  document.getElementById("resume-service-replie").textContent = morceaux.length
+    ? morceaux.join(" · ") + " · touche pour voir/modifier"
+    : "Touche pour remplir (index km, taximètre, horaires…)";
+}
+document.getElementById("entete-service-repliable").addEventListener("click", () => ouvrirFermerService());
+
+let toutesLesFeuillesDuJour = [];
+let vehiculesActifsCache = [];
 
 (async () => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -218,38 +256,108 @@ function calculerTotaux() {
 
   const aujourdHui = new Date().toISOString().slice(0, 10);
 
-  let { data: feuille } = await supabase
+  let { data: feuilles } = await supabase
     .from("feuilles_route")
     .select("*")
     .eq("chauffeur_id", user.id)
     .eq("date_service", aujourdHui)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
-  if (!feuille) {
+  if (!feuilles || feuilles.length === 0) {
     const { data: nouvelle, error } = await supabase
       .from("feuilles_route")
       .insert({ chauffeur_id: user.id, date_service: aujourdHui })
       .select().single();
     if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
-    feuille = nouvelle;
+    feuilles = [nouvelle];
   }
 
-  feuilleActuelle = feuille;
+  toutesLesFeuillesDuJour = feuilles;
+  // La feuille active est la dernière non clôturée ; sinon la plus récente (toutes clôturées)
+  feuilleActuelle = feuilles.find(f => !f.verrouillee) || feuilles[feuilles.length - 1];
+
+  const { data: vehicules } = await supabase.from("vehicules").select("*").eq("actif", true);
+  vehiculesActifsCache = vehicules || [];
+
   document.getElementById("sous-titre").textContent = "Feuille du " + aujourdHui;
   document.getElementById("identite-date").textContent = aujourdHui.split("-").reverse().join("/");
 
-  await remplirIdentite(user);
-  remplirEntete();
-  calculerTotaux();
-  await chargerLignes();
-  appliquerVerrouillage();
+  await chargerFeuilleActive(user);
   activerMiseAJourEnDirect(user.id);
 })();
 
-// ---------- MISE À JOUR EN DIRECT (silencieuse) ----------
-// Quand la direction modifie la feuille (valeurs, courses, suppression, renumérotation,
-// verrouillage ou réouverture), l'écran se met à jour tout seul, sans message.
-// Si le chauffeur est en train de taper dans un champ, on attend qu'il ait fini.
+// Affiche l'onglet "Feuille 1/2..." si plusieurs véhicules ont été utilisés ce jour, et le bouton
+// pour en démarrer une nouvelle en cas de changement de véhicule en cours de journée.
+function afficherSelecteurFeuilles() {
+  let barre = document.getElementById("barre-selecteur-feuilles");
+  if (!barre) {
+    barre = document.createElement("div");
+    barre.id = "barre-selecteur-feuilles";
+    barre.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; margin:14px 20px 0;";
+    document.getElementById("bloc-identite").insertAdjacentElement("beforebegin", barre);
+  }
+  barre.innerHTML = "";
+
+  if (toutesLesFeuillesDuJour.length > 1) {
+    toutesLesFeuillesDuJour.forEach((f, i) => {
+      const btn = document.createElement("button");
+      const actif = f.id === feuilleActuelle.id;
+      btn.textContent = `Feuille ${i + 1}/${toutesLesFeuillesDuJour.length}${f.verrouillee ? " 🔒" : ""}`;
+      btn.style.cssText = `width:auto; padding:8px 12px; font-size:.82rem; border-radius:8px; border:1px solid ${actif ? "var(--rouge)" : "#cfcfcd"}; background:${actif ? "var(--rouge)" : "var(--noir-2)"}; color:${actif ? "#fff" : "var(--blanc)"}; font-weight:600;`;
+      btn.addEventListener("click", async () => {
+        if (actif) return;
+        feuilleActuelle = f;
+        const { data: { user } } = await supabase.auth.getUser();
+        await chargerFeuilleActive(user);
+      });
+      barre.appendChild(btn);
+    });
+  }
+
+  const btnChanger = document.createElement("button");
+  btnChanger.textContent = "🚗 Changer de véhicule";
+  btnChanger.style.cssText = "width:auto; padding:8px 12px; font-size:.82rem; border-radius:8px; border:1px dashed var(--vert); background:transparent; color:var(--vert); font-weight:600;";
+  btnChanger.addEventListener("click", ouvrirChangementVehicule);
+  barre.appendChild(btnChanger);
+}
+
+async function ouvrirChangementVehicule() {
+  if (vehiculesActifsCache.length === 0) { alert("Aucun véhicule actif enregistré."); return; }
+  const options = vehiculesActifsCache
+    .map((v, i) => `${i + 1}. ${v.nom}${v.plaque ? " (" + v.plaque + ")" : ""}`)
+    .join("\n");
+  const choix = prompt(
+    "Avec quel véhicule continues-tu maintenant ? Ça va créer une nouvelle feuille de route pour ce véhicule, à partir de maintenant.\n\n" + options
+  );
+  if (!choix) return;
+  const index = parseInt(choix) - 1;
+  const vehiculeChoisi = vehiculesActifsCache[index];
+  if (!vehiculeChoisi) { alert("Choix non reconnu."); return; }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const { data: nouvelleFeuille, error } = await supabase
+    .from("feuilles_route")
+    .insert({ chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehiculeChoisi.id })
+    .select().single();
+  if (error) { alert("Erreur : " + error.message); return; }
+
+  toutesLesFeuillesDuJour.push(nouvelleFeuille);
+  feuilleActuelle = nouvelleFeuille;
+  await chargerFeuilleActive(user);
+}
+
+async function chargerFeuilleActive(user) {
+  afficherSelecteurFeuilles();
+  await remplirIdentite(user);
+  remplirEntete();
+  calculerTotaux();
+  ouvrirFermerService(!feuilleActuelle.heure_debut);
+  await chargerLignes();
+  appliquerVerrouillage();
+  activerMiseAJourEnDirect(user.id);
+}
+
 let minuterieRecharge = null;
 let rechargeEnAttente = false;
 
@@ -285,9 +393,11 @@ document.addEventListener("focusout", () => {
   setTimeout(() => { if (rechargeEnAttente && !chauffeurEnTrainDeSaisir()) rechargerSilencieusement(); }, 300);
 });
 
+let canalTempsReelActuel = null;
 function activerMiseAJourEnDirect(userId) {
+  if (canalTempsReelActuel) supabase.removeChannel(canalTempsReelActuel);
   const id = feuilleActuelle.id;
-  supabase
+  canalTempsReelActuel = supabase
     .channel("feuille-route-" + id)
     .on("postgres_changes", { event: "*", schema: "public", table: "feuilles_route", filter: `id=eq.${id}` }, planifierRechargement)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "lignes_feuille_route", filter: `feuille_route_id=eq.${id}` }, planifierRechargement)
@@ -296,7 +406,6 @@ function activerMiseAJourEnDirect(userId) {
     .on("postgres_changes", { event: "*", schema: "public", table: "courses", filter: `chauffeur_id=eq.${userId}` }, planifierRechargement)
     .subscribe();
 
-  // Filet de sécurité : si l'écran revient au premier plan, on relit la feuille
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") planifierRechargement();
   });
@@ -332,11 +441,12 @@ function remplirEntete() {
     const val = feuilleActuelle[champBdd];
     let affiche = (val !== null && val !== undefined) ? String(val) : "";
     if (champBdd.startsWith("heure_") && affiche) affiche = affiche.slice(0, 5);
-    document.getElementById(idHtml).value = affiche; // vide aussi un champ effacé par la direction
+    document.getElementById(idHtml).value = affiche;
   });
   const badge = document.getElementById("statut-feuille");
   badge.textContent = feuilleActuelle.verrouillee ? "Signée · verrouillée" : "En cours";
   badge.classList.toggle("verrouillee", feuilleActuelle.verrouillee);
+  mettreAJourResumeServiceReplie();
 }
 
 Object.keys(champsEntete).forEach(idHtml => {
@@ -396,6 +506,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
   const statutCourse = ligne.courses?.statut;
   const ligneTerminee = statutCourse === "terminee" || statutCourse === "annulee";
   const ligneVerrouillee = feuilleActuelle.verrouillee || ligneTerminee || ligne.cloturee;
+  const estFermeeParDefaut = ligneVerrouillee;
+  const ouverte = etatManuelLignes.has(ligne.id) ? etatManuelLignes.get(ligne.id) : !estFermeeParDefaut;
 
   let badge = "";
   if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
@@ -404,7 +516,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
 
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
   const heureResume = ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "";
-  const ouverte = !lignesRepliees.has(ligne.id);
 
   const entete = document.createElement("div");
   entete.className = "num";
@@ -472,7 +583,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
         .from("lignes_feuille_route").update({ [champ]: valeur }).eq("id", ligne.id)
         .select("*").maybeSingle();
       if (!error && ligneServeur) {
-        // Le serveur peut ajuster d'autres champs (ex : type Uber ⇄ paiement Uber, montants vidés)
         Object.assign(ligne, ligneServeur);
         synchroniserChampsUber();
       }
@@ -492,7 +602,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
     corps.appendChild(wrap);
   });
 
-  // Course Uber : pas de montant à saisir, l'argent arrive sur le compte Uber
   const mentionUber = document.createElement("div");
   mentionUber.className = "mention-uber";
   mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
@@ -513,6 +622,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: true }).eq("id", ligne.id);
         if (error) { alert("Erreur : " + error.message); return; }
       }
+      etatManuelLignes.delete(ligne.id);
       await chargerLignes();
     });
     corps.appendChild(btnCloturer);
@@ -542,7 +652,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const ouvert = corps.style.display !== "none";
     corps.style.display = ouvert ? "none" : "block";
     entete.querySelector(".chevron-ligne").textContent = ouvert ? "▾" : "▴";
-    if (ouvert) lignesRepliees.add(ligne.id); else lignesRepliees.delete(ligne.id);
+    etatManuelLignes.set(ligne.id, !ouvert);
   });
 
   return div;
@@ -552,13 +662,22 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
   const prochainNumero = lignesActuelles.length > 0
     ? Math.max(...lignesActuelles.map(l => l.n_ordre || 0)) + 1 : 1;
 
+  let indexDepartAuto = null;
+  for (let i = lignesActuelles.length - 1; i >= 0; i--) {
+    if (lignesActuelles[i].debarquement_index !== null && lignesActuelles[i].debarquement_index !== undefined) {
+      indexDepartAuto = lignesActuelles[i].debarquement_index;
+      break;
+    }
+  }
+
   const { data, error } = await supabase
     .from("lignes_feuille_route")
-    .insert({ feuille_route_id: feuilleActuelle.id, n_ordre: prochainNumero })
+    .insert({ feuille_route_id: feuilleActuelle.id, n_ordre: prochainNumero, index_depart: indexDepartAuto })
     .select().single();
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
   lignesActuelles.push(data);
+  etatManuelLignes.set(data.id, true);
   afficherLignes();
 });
 
