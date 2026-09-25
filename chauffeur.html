@@ -989,6 +989,17 @@ function construireCarteCourse(course) {
       btnAppel.style.background = "#dcdcda";
       actions.appendChild(btnAppel);
     }
+
+    const btnAbsent = creerBouton("🚫 Client absent", async () => {
+      if (!confirm("Le client ne s'est pas présenté ? Cette course va être marquée annulée.")) return;
+      const { error } = await supabase.from("courses").update({
+        statut: "annulee", annulee_par: "chauffeur", motif_annulation: "non_presente"
+      }).eq("id", course.id);
+      if (error) { alert("Erreur : " + error.message); return; }
+      chargerCourses();
+    });
+    btnAbsent.style.background = "#8a2020";
+    actions.appendChild(btnAbsent);
   }
 
   if (course.statut === "assignee" && course.accepte_chauffeur) {

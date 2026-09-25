@@ -1347,7 +1347,7 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      <span class="statut-label">${labelStatut}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
+      <span class="statut-label">${labelStatut}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
       <h3>${esc(course.client_nom) || "Client"} — ${prixAffiche.startsWith("🚕") ? prixAffiche : esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
@@ -1516,11 +1516,37 @@ function construireCarteAdmin(course) {
     }
   }
   if (course.statut !== "annulee") {
-    actions.appendChild(creerBoutonAdmin("Annuler la course", async () => {
-      if (!confirm("Annuler cette course ?")) return;
-      await supabase.from("courses").update({ statut: "annulee" }).eq("id", course.id);
+    const btnAnnuler = document.createElement("button");
+    btnAnnuler.textContent = "Annuler la course";
+    const blocMotif = document.createElement("div");
+    blocMotif.style.cssText = "display:none; background:#fbe2e2; border-radius:10px; padding:10px; margin-top:8px;";
+    blocMotif.innerHTML = `
+      <label style="display:block; font-size:.75rem; color:#8a2020; margin-bottom:4px;">Motif de l'annulation</label>
+      <select class="select-motif-annulation" style="width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; margin-bottom:8px;">
+        <option value="client|non_presente">🚫 Client ne s'est pas présenté</option>
+        <option value="client|annulation_client">Annulée par le client</option>
+        <option value="admin|annulation_admin">Annulée par nous (administration)</option>
+        <option value="chauffeur|annulation_chauffeur">Annulée par le chauffeur</option>
+        <option value="uber|annulation_uber">Annulée par Uber</option>
+        <option value="admin|autre">Autre motif</option>
+      </select>
+      <input type="text" class="input-motif-detail" placeholder="Détail (optionnel)" style="width:100%; padding:9px; border-radius:8px; border:1px solid #cfcfcd; margin-bottom:8px;">
+      <button type="button" class="btn-confirmer-annulation" style="background:var(--rouge); color:#fff; border:none;">Confirmer l'annulation</button>
+    `;
+    btnAnnuler.addEventListener("click", () => {
+      blocMotif.style.display = blocMotif.style.display === "none" ? "block" : "none";
+    });
+    blocMotif.querySelector(".btn-confirmer-annulation").addEventListener("click", async () => {
+      const [annuleePar, motif] = blocMotif.querySelector(".select-motif-annulation").value.split("|");
+      const detail = blocMotif.querySelector(".input-motif-detail").value.trim();
+      await supabase.from("courses").update({
+        statut: "annulee", annulee_par: annuleePar,
+        motif_annulation: detail ? `${motif} — ${detail}` : motif
+      }).eq("id", course.id);
       chargerCoursesAdmin();
-    }));
+    });
+    actions.appendChild(btnAnnuler);
+    corps.appendChild(blocMotif);
   }
   if (actions.children.length > 0) corps.appendChild(actions);
 
