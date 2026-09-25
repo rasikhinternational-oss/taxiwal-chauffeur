@@ -62,6 +62,12 @@ window.onerror = function(msg, url, line, col, err) {
   #resume-signee .ligne-resume{ display:flex; justify-content:space-between; font-size:.88rem; margin-bottom:6px; color:var(--gris); }
   #resume-signee .ligne-resume b{ color:var(--blanc); }
   #btn-voir-details{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.88rem; font-weight:600; margin-top:10px; }
+  .section-passee{ margin:16px 20px; background:#eef0ee; border-radius:12px; padding:14px; border-left:4px solid var(--vert); }
+  .section-passee .sp-titre{ font-weight:700; font-size:.92rem; margin-bottom:2px; }
+  .section-passee .sp-sous{ color:var(--gris); font-size:.8rem; margin-bottom:8px; }
+  .section-passee .sp-ligne{ display:flex; justify-content:space-between; font-size:.85rem; padding:3px 0; }
+  .section-passee .sp-course{ font-size:.82rem; color:var(--gris); padding:4px 0; border-top:1px dashed #cfcfcd; margin-top:4px; }
+  #vehicule-actuel-titre{ font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:6px; }
 </style>
 </head>
 <body>
@@ -73,6 +79,9 @@ window.onerror = function(msg, url, line, col, err) {
   <p id="sous-titre">Chargement…</p>
 </header>
 
+<div id="sections-passees"></div>
+
+<p id="vehicule-actuel-titre" style="margin:16px 20px 0;">🚗 Véhicule actuel</p>
 <div class="bloc" id="bloc-identite">
   <h2>Identité</h2>
   <p class="identite"><span>Identité de l'exploitant :</span> <b id="identite-societe">—</b></p>
@@ -81,7 +90,6 @@ window.onerror = function(msg, url, line, col, err) {
   <p class="identite"><span>Véhicule :</span> <b id="identite-vehicule">—</b></p>
   <p class="identite"><span>N° plaque d'immatriculation :</span> <b id="identite-plaque">—</b></p>
   <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
-  <button id="btn-changer-vehicule" type="button" style="margin-top:10px; background:#3b82c4;">🚗 Changer de véhicule (nouvelle feuille)</button>
 </div>
 
 <div class="bloc" id="resume-signee">
@@ -287,8 +295,9 @@ let vehiculesActifsCache = [];
   activerMiseAJourEnDirect(user.id);
 })();
 
-// Affiche l'onglet "Feuille 1/2..." si plusieurs véhicules ont été utilisés ce jour, et le bouton
-// pour en démarrer une nouvelle en cas de changement de véhicule en cours de journée.
+// Affiche uniquement le bouton de changement de véhicule — les véhicules déjà utilisés
+// aujourd'hui restent visibles en lecture seule en haut de la même page (afficherSectionsPassees),
+// plus besoin de cliquer sur un onglet pour les consulter.
 function afficherSelecteurFeuilles() {
   let barre = document.getElementById("barre-selecteur-feuilles");
   if (!barre) {
@@ -298,22 +307,6 @@ function afficherSelecteurFeuilles() {
     document.getElementById("bloc-identite").insertAdjacentElement("beforebegin", barre);
   }
   barre.innerHTML = "";
-
-  if (toutesLesFeuillesDuJour.length > 1) {
-    toutesLesFeuillesDuJour.forEach((f, i) => {
-      const btn = document.createElement("button");
-      const actif = f.id === feuilleActuelle.id;
-      btn.textContent = `Feuille ${i + 1}/${toutesLesFeuillesDuJour.length}${f.verrouillee ? " 🔒" : ""}`;
-      btn.style.cssText = `width:auto; padding:8px 12px; font-size:.82rem; border-radius:8px; border:1px solid ${actif ? "var(--rouge)" : "#cfcfcd"}; background:${actif ? "var(--rouge)" : "var(--noir-2)"}; color:${actif ? "#fff" : "var(--blanc)"}; font-weight:600;`;
-      btn.addEventListener("click", async () => {
-        if (actif) return;
-        feuilleActuelle = f;
-        const { data: { user } } = await supabase.auth.getUser();
-        await chargerFeuilleActive(user);
-      });
-      barre.appendChild(btn);
-    });
-  }
 
   const btnChanger = document.createElement("button");
   btnChanger.textContent = "🚗 Changer de véhicule";
@@ -335,11 +328,22 @@ async function ouvrirChangementVehicule() {
   const vehiculeChoisi = vehiculesActifsCache[index];
   if (!vehiculeChoisi) { alert("Choix non reconnu."); return; }
 
+  if (!confirm(`Passer au véhicule "${vehiculeChoisi.nom}" maintenant ? L'heure de fin du véhicule actuel sera complétée automatiquement si elle est vide.`)) return;
+
   const { data: { user } } = await supabase.auth.getUser();
   const aujourdHui = new Date().toISOString().slice(0, 10);
+  const heureMaintenant = new Date().toTimeString().slice(0, 5);
+
+  // Clôture le segment en cours : complète l'heure de fin si elle n'est pas déjà remplie
+  // manuellement, pour que "de telle heure à telle heure" soit toujours correct.
+  if (!feuilleActuelle.heure_fin) {
+    await supabase.from("feuilles_route").update({ heure_fin: heureMaintenant }).eq("id", feuilleActuelle.id);
+    feuilleActuelle.heure_fin = heureMaintenant;
+  }
+
   const { data: nouvelleFeuille, error } = await supabase
     .from("feuilles_route")
-    .insert({ chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehiculeChoisi.id })
+    .insert({ chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehiculeChoisi.id, heure_debut: heureMaintenant })
     .select().single();
   if (error) { alert("Erreur : " + error.message); return; }
 
@@ -350,6 +354,7 @@ async function ouvrirChangementVehicule() {
 
 async function chargerFeuilleActive(user) {
   afficherSelecteurFeuilles();
+  await afficherSectionsPassees();
   await remplirIdentite(user);
   remplirEntete();
   calculerTotaux();
@@ -357,6 +362,48 @@ async function chargerFeuilleActive(user) {
   await chargerLignes();
   appliquerVerrouillage();
   activerMiseAJourEnDirect(user.id);
+}
+
+// Affiche, en lecture seule et tout en haut de la même page, chaque véhicule déjà utilisé
+// aujourd'hui avant celui en cours — pour voir d'un coup d'œil "de telle heure à telle heure,
+// tel véhicule ; ensuite, tel autre véhicule", sans changer de page.
+async function afficherSectionsPassees() {
+  const zone = document.getElementById("sections-passees");
+  zone.innerHTML = "";
+  const passees = toutesLesFeuillesDuJour.filter(f => f.id !== feuilleActuelle.id);
+  if (passees.length === 0) { document.getElementById("vehicule-actuel-titre").style.display = "none"; return; }
+  document.getElementById("vehicule-actuel-titre").style.display = "block";
+
+  for (const f of passees) {
+    const { data: vehicule } = f.vehicule_id
+      ? await supabase.from("vehicules").select("nom, plaque").eq("id", f.vehicule_id).maybeSingle()
+      : { data: null };
+    const { data: lignes } = await supabase
+      .from("lignes_feuille_route").select("*").eq("feuille_route_id", f.id).order("n_ordre");
+
+    const recettes = (f.recettes_debut != null && f.recettes_fin != null)
+      ? (parseFloat(f.recettes_fin) - parseFloat(f.recettes_debut)).toFixed(2) + " €" : "—";
+    const km = (f.index_km_debut != null && f.index_km_fin != null)
+      ? (parseFloat(f.index_km_fin) - parseFloat(f.index_km_debut)).toFixed(1) + " km" : "—";
+
+    const div = document.createElement("div");
+    div.className = "section-passee";
+    div.innerHTML = `
+      <div class="sp-titre">✅ ${esc(vehicule?.nom) || "Véhicule"}${vehicule?.plaque ? " (" + esc(vehicule.plaque) + ")" : ""}</div>
+      <div class="sp-sous">De ${valeurOuTiret(f.heure_debut?.slice(0,5))} à ${valeurOuTiret(f.heure_fin?.slice(0,5))} · ${(lignes||[]).length} course(s)</div>
+      <div class="sp-ligne"><span>Km parcourus</span><b>${km}</b></div>
+      <div class="sp-ligne"><span>Recettes</span><b>${recettes}</b></div>
+      ${(lignes||[]).map((l, i) => {
+        const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
+        return `<div class="sp-course">Course ${i + 1} · ${esc(trajet)}</div>`;
+      }).join("")}
+    `;
+    zone.appendChild(div);
+  }
+}
+
+function valeurOuTiret(v) {
+  return (v === null || v === undefined || v === "") ? "—" : esc(v);
 }
 
 let minuterieRecharge = null;
@@ -683,14 +730,16 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
 });
 
 document.getElementById("btn-signer").addEventListener("click", async () => {
-  if (!confirm("Confirmer la signature ? La feuille sera verrouillée et ne pourra plus être modifiée.")) return;
+  if (!confirm("Confirmer la signature ? Tous les véhicules utilisés aujourd'hui seront verrouillés et ne pourront plus être modifiés.")) return;
 
+  const idsAVerrouiller = toutesLesFeuillesDuJour.filter(f => !f.verrouillee).map(f => f.id);
   const { error } = await supabase.from("feuilles_route")
-    .update({ signee: true }).eq("id", feuilleActuelle.id);
+    .update({ signee: true }).in("id", idsAVerrouiller);
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
   feuilleActuelle.verrouillee = true;
   feuilleActuelle.signee = true;
+  toutesLesFeuillesDuJour.forEach(f => { f.verrouillee = true; f.signee = true; });
   afficherLignes();
   appliquerVerrouillage();
 });
@@ -757,25 +806,70 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     .update({ imprimee_a: new Date().toISOString(), imprimee_par: user?.id || null })
     .eq("id", feuilleActuelle.id);
 
-  const f = feuilleActuelle;
-  const lignesHtml = (lignesActuelles.length ? lignesActuelles : new Array(8).fill(null)).map((l, i) => {
-    l = l || {};
-    const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-    const sommes = l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
-      : estUber ? "Payé sur Uber" : l.sommes_percues;
-    return `<tr>
-      <td>${i + 1}</td>
-      <td>${fmtVal(l.index_depart)}</td>
-      <td>${fmtVal(l.embarquement_index)}</td>
-      <td>${fmtVal(l.embarquement_lieu)}</td>
-      <td>${fmtVal(l.embarquement_heure)}</td>
-      <td>${fmtVal(l.debarquement_index)}</td>
-      <td>${fmtVal(l.debarquement_lieu)}</td>
-      <td>${fmtVal(l.debarquement_heure)}</td>
-      <td>${estUber ? "Uber" : fmtVal(l.prix_taximetre)}</td>
-      <td>${fmtVal(sommes)}</td>
-    </tr>`;
-  }).join("");
+  // Un bloc "Service + Courses" par véhicule utilisé aujourd'hui, tous à la suite sur le même
+  // document — même s'il y a eu un changement de véhicule en cours de journée.
+  const blocsVehicules = [];
+  for (const f of toutesLesFeuillesDuJour) {
+    const { data: vehicule } = f.vehicule_id
+      ? await supabase.from("vehicules").select("*").eq("id", f.vehicule_id).maybeSingle()
+      : { data: null };
+    const { data: lignesF } = f.id === feuilleActuelle.id
+      ? { data: lignesActuelles }
+      : await supabase.from("lignes_feuille_route").select("*").eq("feuille_route_id", f.id).order("n_ordre");
+
+    const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
+      l = l || {};
+      const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
+      const sommes = l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+        : estUber ? "Payé sur Uber" : l.sommes_percues;
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${fmtVal(l.index_depart)}</td>
+        <td>${fmtVal(l.embarquement_index)}</td>
+        <td>${fmtVal(l.embarquement_lieu)}</td>
+        <td>${fmtVal(l.embarquement_heure)}</td>
+        <td>${fmtVal(l.debarquement_index)}</td>
+        <td>${fmtVal(l.debarquement_lieu)}</td>
+        <td>${fmtVal(l.debarquement_heure)}</td>
+        <td>${estUber ? "Uber" : fmtVal(l.prix_taximetre)}</td>
+        <td>${fmtVal(sommes)}</td>
+      </tr>`;
+    }).join("");
+
+    blocsVehicules.push(`
+      <table>
+        <tr><td style="width:35%"><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(vehicule?.plaque) || "—"}</span></td>
+            <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(vehicule?.nom) || "—"}</span></td>
+            <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(vehicule?.numero_identification) || "—"}</span></td></tr>
+      </table>
+      <h2>Service ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
+      <table>
+        <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
+        <tr><td>Début</td><td>${fmtVal(f.heure_debut)}</td><td>Interruptions : ${fmtVal(f.interruptions)}</td>
+            <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.taximetre_fin)}</td></tr>
+        <tr><td>Fin</td><td>${fmtVal(f.heure_fin)}</td><td></td>
+            <td>Début</td><td>${fmtVal(f.index_km_debut)}</td><td>${fmtVal(f.taximetre_debut)}</td></tr>
+        <tr><td>Total</td><td>${calcTotalHeures2(f.heure_debut, f.heure_fin)}</td><td></td>
+            <td>Total</td><td>${calcTotal2(f.index_km_debut, f.index_km_fin)}</td><td>${calcTotal2(f.taximetre_debut, f.taximetre_fin)}</td></tr>
+      </table>
+      <table>
+        <tr><th></th><th>Prise en charge</th><th>Index Km (Km totaux)</th><th>Km en charge</th><th>Chutes (€)</th><th>Recettes</th></tr>
+        <tr><td>Fin</td><td>${fmtVal(f.prise_en_charge_fin)}</td><td>${fmtVal(f.index_km_totaux_fin)}</td><td>${fmtVal(f.km_en_charge_fin)}</td><td>${fmtVal(f.chutes_fin)}</td><td>${fmtVal(f.recettes_fin)}</td></tr>
+        <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut)}</td></tr>
+        <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin)}</td></tr>
+      </table>
+      <h2>Courses ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
+      <table class="courses-table">
+        <tr>
+          <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
+          <th colspan="3">Embarquement</th><th colspan="3">Débarquement</th>
+          <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th>
+        </tr>
+        <tr><th>Index</th><th>Lieu</th><th>Heure</th><th>Index</th><th>Lieu</th><th>Heure</th></tr>
+        ${lignesHtml}
+      </table>
+    `);
+  }
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
   <title>Feuille de route — ${esc(document.getElementById("identite-chauffeur").textContent)} — ${esc(document.getElementById("identite-date").textContent)}</title>
@@ -812,42 +906,12 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
           <td colspan="3" class="valeur">${esc(identiteSocieteActuelle)}</td></tr>
       <tr><td><span class="mini">Date</span> <span class="valeur">${esc(document.getElementById("identite-date").textContent)}</span></td>
           <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${esc(document.getElementById("identite-chauffeur").textContent)}</span></td></tr>
-      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(document.getElementById("identite-plaque").textContent)}</span></td>
-          <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(document.getElementById("identite-vehicule").textContent)}</span></td>
-          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(document.getElementById("identite-numid").textContent)}</span></td></tr>
     </table>
 
-    <h2>Service</h2>
-    <table>
-      <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
-      <tr><td>Début</td><td>${fmtVal(f.heure_debut)}</td><td>Interruptions : ${fmtVal(f.interruptions)}</td>
-          <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.taximetre_fin)}</td></tr>
-      <tr><td>Fin</td><td>${fmtVal(f.heure_fin)}</td><td></td>
-          <td>Début</td><td>${fmtVal(f.index_km_debut)}</td><td>${fmtVal(f.taximetre_debut)}</td></tr>
-      <tr><td>Total</td><td>${calcTotalHeures2(f.heure_debut, f.heure_fin)}</td><td></td>
-          <td>Total</td><td>${calcTotal2(f.index_km_debut, f.index_km_fin)}</td><td>${calcTotal2(f.taximetre_debut, f.taximetre_fin)}</td></tr>
-    </table>
-
-    <table>
-      <tr><th></th><th>Prise en charge</th><th>Index Km (Km totaux)</th><th>Km en charge</th><th>Chutes (€)</th><th>Recettes</th></tr>
-      <tr><td>Fin</td><td>${fmtVal(f.prise_en_charge_fin)}</td><td>${fmtVal(f.index_km_totaux_fin)}</td><td>${fmtVal(f.km_en_charge_fin)}</td><td>${fmtVal(f.chutes_fin)}</td><td>${fmtVal(f.recettes_fin)}</td></tr>
-      <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut)}</td></tr>
-      <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin)}</td></tr>
-    </table>
-
-    <h2>Courses</h2>
-    <table class="courses-table">
-      <tr>
-        <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
-        <th colspan="3">Embarquement</th><th colspan="3">Débarquement</th>
-        <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th>
-      </tr>
-      <tr><th>Index</th><th>Lieu</th><th>Heure</th><th>Index</th><th>Lieu</th><th>Heure</th></tr>
-      ${lignesHtml}
-    </table>
+    ${blocsVehicules.join("")}
 
     <div class="signature">Signature du chauffeur : ______________________________</div>
-    <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.</div>
+    <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.${toutesLesFeuillesDuJour.length > 1 ? " Journée avec changement de véhicule : un bloc par véhicule utilisé." : ""}</div>
   </body></html>`;
 
   const fenetre2 = fenetre.closed ? null : fenetre;
