@@ -46,6 +46,31 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-course .num .chevron-ligne{ color:var(--gris); font-size:.75rem; flex-shrink:0; }
   .ligne-course .mention-uber{ font-size:.82rem; color:var(--gris); background:#fff; border:1px solid #dcdcda; border-radius:8px; padding:9px 11px; margin-bottom:10px; }
   .btn-cloturer-course{ width:100%; padding:12px; border-radius:8px; border:none; background:var(--rouge); color:#fff; font-weight:600; font-size:.9rem; margin-top:6px; }
+  .btn-maintenant{ width:100%; padding:9px 6px; margin:-4px 0 10px; border-radius:8px; border:1px solid var(--vert); background:#eaf5ee; color:var(--vert); font-weight:700; font-size:.85rem; }
+  input:disabled + .btn-maintenant{ display:none; }
+  .champ-heure-invalide{ border-color:var(--rouge) !important; background:#fdecee !important; }
+  .suggestions-adresse{ display:none; position:absolute; left:0; right:0; top:100%; margin-top:-8px; z-index:30; background:#fff; border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); overflow:hidden; }
+  .suggestion-adresse{ padding:12px; border-bottom:1px solid #eee; font-size:.92rem; cursor:pointer; }
+  .suggestion-adresse:last-child{ border-bottom:none; }
+  .suggestion-adresse small{ display:block; color:var(--gris); font-size:.78rem; margin-top:2px; }
+  .suggestion-adresse:active{ background:#eaf5ee; }
+  .note-chauffeur{ width:100%; min-height:60px; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:#fffbe8; color:var(--blanc); font-size:.9rem; font-family:inherit; margin-bottom:10px; resize:vertical; box-sizing:border-box; }
+  .rendu-monnaie{ background:#fff; border:2px solid var(--vert); border-radius:10px; padding:12px; margin-bottom:10px; }
+  .rendu-monnaie .rm-titre{ font-weight:700; font-size:.9rem; margin-bottom:8px; }
+  .rendu-monnaie .rm-prix{ font-size:.85rem; color:var(--gris); margin-bottom:8px; }
+  .rendu-monnaie .rm-billets{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:8px; }
+  .rendu-monnaie .rm-billets button{ padding:12px 0; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; font-weight:700; font-size:1rem; color:var(--blanc); }
+  .rendu-monnaie .rm-billets button.choisi{ background:var(--vert); color:#fff; border-color:var(--vert); }
+  .rendu-monnaie .rm-resultat{ font-size:1.25rem; font-weight:800; text-align:center; padding:10px; border-radius:8px; background:#eaf5ee; color:var(--vert); }
+  .rendu-monnaie .rm-resultat.manque{ background:#fdecee; color:var(--rouge); }
+  .rendu-monnaie .rm-resultat.vide{ background:#f0f1ee; color:var(--gris); font-size:.9rem; font-weight:600; }
+  #bloc-caisse .caisse-principale{ background:#eaf5ee; border:2px solid var(--vert); border-radius:10px; padding:14px; text-align:center; margin-bottom:12px; }
+  #bloc-caisse .caisse-principale .cp-montant{ font-size:1.8rem; font-weight:800; color:var(--vert); }
+  #bloc-caisse .caisse-principale .cp-label{ font-size:.85rem; color:var(--gris); }
+  #bloc-caisse .caisse-ligne{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid #eee; font-size:.9rem; }
+  #bloc-caisse .caisse-ligne b{ white-space:nowrap; }
+  #bloc-caisse .caisse-total{ font-weight:800; border-bottom:none; }
+  #bloc-caisse .caisse-alerte{ background:#fdecee; color:var(--rouge); border-radius:8px; padding:9px 11px; font-size:.85rem; margin-top:8px; font-weight:600; }
   .sous-titre-mini{ font-size:.72rem; color:var(--gris); margin:8px 0 4px; }
   #btn-ajouter-ligne{ width:100%; padding:12px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.9rem; margin-top:6px; }
   #btn-signer{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-weight:600; margin-top:10px; }
@@ -111,8 +136,8 @@ window.onerror = function(msg, url, line, col, err) {
   <div class="contenu-repliable" id="contenu-service">
     <div id="bloc-entete-interieur">
       <div class="grille3">
-        <div><label>Début</label><input type="time" id="heure-debut"></div>
-        <div><label>Fin</label><input type="time" id="heure-fin"></div>
+        <div><label>Début</label><input type="text" id="heure-debut" inputmode="numeric" placeholder="ex : 0630"></div>
+        <div><label>Fin</label><input type="text" id="heure-fin" inputmode="numeric" placeholder="ex : 1830"></div>
         <div><label>Interruptions</label><input type="text" id="interruptions" placeholder="ex: 12h30-13h00"></div>
       </div>
 
@@ -174,6 +199,11 @@ window.onerror = function(msg, url, line, col, err) {
   <button id="btn-ajouter-ligne">+ Ajouter une course</button>
 </div>
 
+<div class="bloc" id="bloc-caisse">
+  <h2>💰 Caisse du jour</h2>
+  <div id="contenu-caisse">Chargement…</div>
+</div>
+
 <div class="bloc" id="bloc-signature">
   <p id="avertissement">Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
   <button id="btn-signer">Signer et clôturer la feuille</button>
@@ -196,6 +226,134 @@ function esc(valeur) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+
+// ================== HEURES SIMPLIFIÉES ==================
+// Le chauffeur tape juste des chiffres (1430, 930, 14h30, 14:30…) ou touche "Maintenant".
+function normaliserHeure(texte) {
+  const t = String(texte || "").trim().toLowerCase().replace(/\s/g, "");
+  if (!t) return "";
+  let h, m;
+  const avecSep = t.match(/^(\d{1,2})[:h.,](\d{0,2})$/);
+  if (avecSep) { h = +avecSep[1]; m = avecSep[2] ? +avecSep[2] : 0; }
+  else if (/^\d{1,4}$/.test(t)) {
+    if (t.length <= 2) { h = +t; m = 0; }
+    else { h = +t.slice(0, t.length - 2); m = +t.slice(-2); }
+  } else return null;
+  if (h > 23 || m > 59) return null;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+function heureMaintenantTexte() { return new Date().toTimeString().slice(0, 5); }
+
+// À appeler AVANT d'ajouter l'écouteur d'enregistrement : remet l'heure au bon format.
+function attacherNormalisationHeure(input) {
+  input.type = "text";
+  input.inputMode = "numeric";
+  input.autocomplete = "off";
+  if (!input.placeholder) input.placeholder = "ex : 1430";
+  input.addEventListener("focus", () => { input.dataset.avant = input.value; input.classList.remove("champ-heure-invalide"); });
+  input.addEventListener("change", (e) => {
+    const propre = normaliserHeure(input.value);
+    if (propre === null) {
+      e.stopImmediatePropagation();
+      input.value = input.dataset.avant || "";
+      input.classList.add("champ-heure-invalide");
+      alert("Heure non reconnue. Tape par exemple 1430 pour 14h30, ou touche « Maintenant ».");
+      return;
+    }
+    input.value = propre;
+  });
+}
+function creerBoutonMaintenant(input) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn-maintenant";
+  b.textContent = "🕐 Maintenant";
+  b.addEventListener("click", () => {
+    if (input.disabled) return;
+    input.value = heureMaintenantTexte();
+    input.classList.remove("champ-heure-invalide");
+    input.dispatchEvent(new Event("change"));
+  });
+  return b;
+}
+
+// ================== SUGGESTIONS D'ADRESSES ==================
+// Comme sur l'admin : on commence à taper, une liste d'adresses apparaît, on touche la bonne.
+// Service gratuit sans clé (Photon / OpenStreetMap), résultats favorisés autour de Boussu.
+function libelleAdresse(p) {
+  const rue = p.street ? p.street + (p.housenumber ? " " + p.housenumber : "") : "";
+  const ville = [p.postcode, p.city || p.town || p.village].filter(Boolean).join(" ");
+  const morceaux = [];
+  if (p.name && p.name !== p.street && p.name !== (p.city || p.town || p.village)) morceaux.push(p.name);
+  if (rue) morceaux.push(rue);
+  if (ville) morceaux.push(ville);
+  else if (p.name && !morceaux.includes(p.name)) morceaux.push(p.name);
+  if (p.countrycode && p.countrycode !== "BE" && p.country) morceaux.push(p.country);
+  return morceaux.join(", ");
+}
+function attacherSuggestionsAdresse(input, conteneur) {
+  input.autocomplete = "off";
+  input.setAttribute("autocorrect", "off");
+  input.setAttribute("autocapitalize", "words");
+  input.spellcheck = false;
+  input.placeholder = "Commence à taper l'adresse…";
+  conteneur.style.position = "relative";
+  const liste = document.createElement("div");
+  liste.className = "suggestions-adresse";
+  conteneur.appendChild(liste);
+  let minuterie = null, controleur = null;
+  const fermer = () => { liste.innerHTML = ""; liste.style.display = "none"; };
+
+  input.addEventListener("input", () => {
+    clearTimeout(minuterie);
+    const q = input.value.trim();
+    if (q.length < 3) { fermer(); return; }
+    minuterie = setTimeout(() => chercher(q), 300);
+  });
+  input.addEventListener("blur", () => setTimeout(fermer, 250));
+
+  async function chercher(q) {
+    if (controleur) controleur.abort();
+    controleur = new AbortController();
+    try {
+      const url = "https://photon.komoot.io/api/?lang=fr&limit=6&lat=50.43&lon=3.83&q=" + encodeURIComponent(q);
+      const rep = await fetch(url, { signal: controleur.signal });
+      const donnees = await rep.json();
+      const vus = new Set();
+      const resultats = (donnees.features || [])
+        .map(f => libelleAdresse(f.properties || {}))
+        .filter(l => l && !vus.has(l) && vus.add(l));
+      afficher(resultats);
+    } catch (e) { /* hors connexion : le chauffeur peut toujours taper à la main */ }
+  }
+  function afficher(resultats) {
+    liste.innerHTML = "";
+    if (!resultats.length || document.activeElement !== input) { fermer(); return; }
+    resultats.forEach(libelle => {
+      const [principal, ...reste] = libelle.split(", ");
+      const item = document.createElement("div");
+      item.className = "suggestion-adresse";
+      item.innerHTML = `📍 ${esc(principal)}${reste.length ? `<small>${esc(reste.join(", "))}</small>` : ""}`;
+      item.addEventListener("pointerdown", (e) => e.preventDefault());
+      item.addEventListener("click", () => {
+        input.value = libelle;
+        fermer();
+        input.dispatchEvent(new Event("change"));
+        input.blur();
+      });
+      liste.appendChild(item);
+    });
+    liste.style.display = "block";
+  }
+}
+
+function formatEuro(n) { return (Math.round(n * 100) / 100).toFixed(2).replace(".", ",") + " €"; }
+function nombreOuNull(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = parseFloat(String(v).replace(",", "."));
+  return isNaN(n) ? null : n;
 }
 
 let feuilleActuelle = null;
@@ -497,6 +655,12 @@ function remplirEntete() {
   mettreAJourResumeServiceReplie();
 }
 
+["heure-debut", "heure-fin"].forEach(id => {
+  const champ = document.getElementById(id);
+  attacherNormalisationHeure(champ);
+  champ.insertAdjacentElement("afterend", creerBoutonMaintenant(champ));
+});
+
 Object.keys(champsEntete).forEach(idHtml => {
   document.getElementById(idHtml).addEventListener("change", async (e) => {
     const champBdd = champsEntete[idHtml];
@@ -523,6 +687,60 @@ async function chargerLignes() {
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
   lignesActuelles = data || [];
   afficherLignes();
+  planifierCaisse();
+}
+
+// ================== CAISSE DU JOUR ==================
+// Toutes les courses de la journée (tous véhicules), forfaits compris, classées par mode de paiement.
+let minuterieCaisse = null;
+function planifierCaisse() { clearTimeout(minuterieCaisse); minuterieCaisse = setTimeout(afficherCaisse, 300); }
+async function afficherCaisse() {
+  const zone = document.getElementById("contenu-caisse");
+  const ids = toutesLesFeuillesDuJour.map(f => f.id);
+  if (!ids.length) return;
+  const { data: lignes, error } = await supabase
+    .from("lignes_feuille_route").select("*").in("feuille_route_id", ids);
+  if (error) { zone.textContent = "Erreur de calcul de la caisse."; return; }
+
+  const modes = {
+    cash: { nom: "💶 Espèces (dans la caisse)", total: 0, nb: 0 },
+    carte: { nom: "💳 Carte", total: 0, nb: 0 },
+    facture: { nom: "🧾 Facture", total: 0, nb: 0 },
+    cheque_social: { nom: "🎫 Chèque social/communal", total: 0, nb: 0 },
+    uber: { nom: "🚕 Uber (payé sur Uber)", total: 0, nb: 0 }
+  };
+  let sansMode = 0, sansMontant = 0, nbForfaits = 0, totalForfaits = 0;
+  (lignes || []).forEach(l => {
+    const vide = !l.embarquement_lieu && !l.debarquement_lieu && l.sommes_percues == null && l.prix_taximetre == null && !l.mode_paiement;
+    if (vide) return;
+    const somme = nombreOuNull(l.sommes_percues);
+    const montant = (somme !== null && somme > 0) ? somme : (nombreOuNull(l.prix_taximetre) ?? 0);
+    const mode = (l.type_course === "uber") ? "uber" : l.mode_paiement;
+    if (!mode || !modes[mode]) { sansMode++; return; }
+    modes[mode].nb++;
+    if (mode !== "uber") {
+      modes[mode].total += montant;
+      if (!montant) sansMontant++;
+    }
+    if (l.type_course === "forfait") { nbForfaits++; totalForfaits += montant; }
+  });
+  const totalGeneral = Object.entries(modes).filter(([k]) => k !== "uber").reduce((s, [, m]) => s + m.total, 0);
+
+  let html = `
+    <div class="caisse-principale">
+      <div class="cp-label">Argent liquide que tu dois avoir dans la caisse</div>
+      <div class="cp-montant">${formatEuro(modes.cash.total)}</div>
+      <div class="cp-label">${modes.cash.nb} course(s) payée(s) en espèces</div>
+    </div>`;
+  Object.values(modes).forEach(m => {
+    if (!m.nb) return;
+    html += `<div class="caisse-ligne"><span>${m.nom} · ${m.nb}</span><b>${m.nom.startsWith("🚕") ? "—" : formatEuro(m.total)}</b></div>`;
+  });
+  if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
+  html += `<div class="caisse-ligne caisse-total"><span>Total encaissé (tous paiements)</span><b>${formatEuro(totalGeneral)}</b></div>`;
+  if (sansMode) html += `<div class="caisse-alerte">⚠️ ${sansMode} course(s) sans mode de paiement : choisis Cash, Carte… sinon elles ne comptent pas dans la caisse.</div>`;
+  if (sansMontant) html += `<div class="caisse-alerte">⚠️ ${sansMontant} course(s) sans prix rempli.</div>`;
+  zone.innerHTML = html;
 }
 
 function afficherLignes() {
@@ -563,7 +781,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
 
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
-  const heureResume = ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "";
+  const heureResume = (ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "") + (ligne.note_chauffeur ? " · 📝" : "");
 
   const entete = document.createElement("div");
   entete.className = "num";
@@ -614,6 +832,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
     } else if (type === "number") {
       input.type = "text";
       input.inputMode = "decimal";
+    } else if (type === "time") {
+      attacherNormalisationHeure(input);
     } else {
       input.type = type;
     }
@@ -633,6 +853,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (!error && ligneServeur) {
         Object.assign(ligne, ligneServeur);
         synchroniserChampsUber();
+        mettreAJourRenduMonnaie();
+        planifierCaisse();
       }
       if (etatEl) {
         if (error) {
@@ -647,6 +869,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiement();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
+    if (type === "time") wrap.appendChild(creerBoutonMaintenant(input));
+    if (estAdresse && !ligneVerrouillee) attacherSuggestionsAdresse(input, wrap);
     corps.appendChild(wrap);
   });
 
@@ -654,6 +878,88 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionUber.className = "mention-uber";
   mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
   corps.insertBefore(mentionUber, wrapsParChamp["mode_paiement"]);
+
+  // ---- Calculatrice "rendu monnaie" (paiement cash) ----
+  // Reste utilisable tant que la feuille n'est pas signée, même si la course est terminée.
+  const feuilleSignee = feuilleActuelle.verrouillee;
+  const blocMonnaie = document.createElement("div");
+  blocMonnaie.className = "rendu-monnaie";
+  blocMonnaie.innerHTML = `
+    <div class="rm-titre">💶 Rendu monnaie</div>
+    <div class="rm-prix"></div>
+    <label>Billet / montant reçu du client</label>
+    <div class="rm-billets">
+      <button type="button" data-v="10">10</button><button type="button" data-v="20">20</button>
+      <button type="button" data-v="50">50</button><button type="button" data-v="100">100</button>
+    </div>
+    <input type="text" inputmode="decimal" class="rm-recu" placeholder="Autre montant (ex : 35)">
+    <div class="rm-resultat vide"></div>`;
+  const inputRecu = blocMonnaie.querySelector(".rm-recu");
+  const zonePrix = blocMonnaie.querySelector(".rm-prix");
+  const zoneResultat = blocMonnaie.querySelector(".rm-resultat");
+  inputRecu.value = ligne.montant_recu ?? "";
+  inputRecu.disabled = feuilleSignee;
+
+  function prixACalculer() {
+    const somme = nombreOuNull(inputsParChamp["sommes_percues"].value);
+    if (somme !== null && somme > 0) return somme;
+    return nombreOuNull(inputsParChamp["prix_taximetre"].value);
+  }
+  function mettreAJourRenduMonnaie() {
+    const prix = prixACalculer();
+    const recu = nombreOuNull(inputRecu.value);
+    zonePrix.textContent = prix !== null
+      ? "Prix de la course : " + formatEuro(prix)
+      : "⬆️ Remplis d'abord le prix (taximètre ou sommes perçues)";
+    blocMonnaie.querySelectorAll(".rm-billets button").forEach(b =>
+      b.classList.toggle("choisi", recu !== null && +b.dataset.v === recu));
+    zoneResultat.className = "rm-resultat";
+    if (prix === null || recu === null) {
+      zoneResultat.classList.add("vide");
+      zoneResultat.textContent = "Touche le billet reçu pour voir combien rendre";
+    } else if (recu >= prix) {
+      zoneResultat.textContent = "À rendre : " + formatEuro(recu - prix);
+    } else {
+      zoneResultat.classList.add("manque");
+      zoneResultat.textContent = "⚠️ Il manque " + formatEuro(prix - recu);
+    }
+  }
+  async function enregistrerRecu() {
+    const { error } = await supabase.rpc("maj_note_billet_ligne", { p_ligne: ligne.id, p_champ: "montant_recu", p_valeur: inputRecu.value });
+    if (!error) ligne.montant_recu = nombreOuNull(inputRecu.value);
+  }
+  blocMonnaie.querySelectorAll(".rm-billets button").forEach(b => b.addEventListener("click", () => {
+    if (feuilleSignee) return;
+    inputRecu.value = b.dataset.v;
+    mettreAJourRenduMonnaie();
+    enregistrerRecu();
+  }));
+  inputRecu.addEventListener("input", mettreAJourRenduMonnaie);
+  inputRecu.addEventListener("change", enregistrerRecu);
+  ["sommes_percues", "prix_taximetre"].forEach(c => inputsParChamp[c].addEventListener("input", mettreAJourRenduMonnaie));
+  corps.insertBefore(blocMonnaie, wrapsParChamp["numero_dossier"]);
+  mettreAJourRenduMonnaie();
+
+  // ---- Note du chauffeur (modifiable jusqu'à la signature, même course terminée) ----
+  const wrapNote = document.createElement("div");
+  wrapNote.style.gridColumn = "1 / -1";
+  wrapNote.innerHTML = `<label>📝 Note (achat, remarque, problème…)</label>`;
+  const note = document.createElement("textarea");
+  note.className = "note-chauffeur";
+  note.placeholder = "Ex : client a payé 5 € de moins, parking payé 3 €, bagage oublié…";
+  note.value = ligne.note_chauffeur || "";
+  note.disabled = feuilleSignee;
+  note.addEventListener("change", async () => {
+    const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+    const { error } = await supabase.rpc("maj_note_billet_ligne", { p_ligne: ligne.id, p_champ: "note_chauffeur", p_valeur: note.value });
+    if (etatEl) {
+      etatEl.textContent = error ? "⚠️ Note non enregistrée" : "✓ Note enregistrée";
+      etatEl.className = "etat-sauvegarde " + (error ? "erreur" : "ok");
+    }
+    if (!error) ligne.note_chauffeur = note.value.trim() || null;
+  });
+  wrapNote.appendChild(note);
+  corps.appendChild(wrapNote);
 
   if (!ligneVerrouillee) {
     const btnCloturer = document.createElement("button");
@@ -693,6 +999,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
     mentionUber.style.display = estUber ? "" : "none";
+    blocMonnaie.style.display = (!estUber && (mode === "cash" || mode === "")) ? "" : "none";
   }
   appliquerVisibilitePaiement();
 

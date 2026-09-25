@@ -501,36 +501,45 @@ async function creerFeuilleDuJourSiAbsente() {
 let idsCoursesConnues = null;
 
 function jouerSonAlerte() {
+  // Sonnerie douce façon "appel entrant" (notes de marimba, 3 fois), au lieu de l'ancien bip strident.
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const frequences = [988, 1319];
-    const nbSonneries = 4;
-    const dureeNote = 0.35;
-    const pauseEntreNotes = 0.12;
-    const pauseEntreSonneries = 0.5;
-    let t = ctx.currentTime;
+    const volumeGeneral = ctx.createGain();
+    volumeGeneral.gain.value = 0.8;
+    volumeGeneral.connect(ctx.destination);
 
-    for (let s = 0; s < nbSonneries; s++) {
-      frequences.forEach(freq => {
+    // Mélodie originale : [fréquence (Hz), début (s) dans la phrase]
+    const phrase = [
+      [784, 0.00], [988, 0.18], [1175, 0.36], [988, 0.54],
+      [784, 0.90], [988, 1.08], [1319, 1.26], [1175, 1.44]
+    ];
+    const dureePhrase = 2.2;   // une "sonnerie" complète
+    const nbRepetitions = 3;   // comme un téléphone qui sonne 3 fois
+    const debut = ctx.currentTime + 0.05;
+
+    function note(freq, t) {
+      // Son de marimba : fondamentale + harmonique légère, attaque rapide, extinction douce
+      [[1, 0.6], [4, 0.08]].forEach(([mult, vol]) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = "square";
-        osc.frequency.value = freq;
+        osc.type = "sine";
+        osc.frequency.value = freq * mult;
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02);
-        gain.gain.setValueAtTime(0.9, t + dureeNote - 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + dureeNote);
-        osc.connect(gain).connect(ctx.destination);
+        gain.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + (mult === 1 ? 0.55 : 0.15));
+        osc.connect(gain).connect(volumeGeneral);
         osc.start(t);
-        osc.stop(t + dureeNote);
-        t += dureeNote + pauseEntreNotes;
+        osc.stop(t + 0.6);
       });
-      t += pauseEntreSonneries;
+    }
+
+    for (let r = 0; r < nbRepetitions; r++) {
+      phrase.forEach(([freq, decalage]) => note(freq, debut + r * dureePhrase + decalage));
     }
   } catch (e) { console.error("Son impossible :", e); }
 
   if ("vibrate" in navigator) {
-    try { navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch (e) {}
+    try { navigator.vibrate([600, 400, 600, 1000, 600, 400, 600, 1000, 600, 400, 600]); } catch (e) {}
   }
 }
 
