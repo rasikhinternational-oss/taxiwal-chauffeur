@@ -219,7 +219,7 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="bloc-gains-jour" style="flex-wrap:wrap; row-gap:6px;">
     <span>Aujourd'hui : <b id="gains-nb-courses">0</b> course(s)</span>
     <span>💵 <b id="gains-cash">0,00 €</b></span>
-    <span>💳 <b id="gains-carte">0,00 €</b></span>
+    <span>💳/📱 <b id="gains-carte">0,00 €</b></span>
     <span>🧾 <b id="gains-facture">0,00 €</b></span>
     <span>🚕 Uber : <b id="gains-uber">0</b></span>
   </div>
@@ -270,9 +270,24 @@ window.onerror = function(msg, url, line, col, err) {
       <button id="btn-paiement-carte" style="background:var(--bleu, #3b82c4);">💳 Carte</button>
       <button id="btn-paiement-facture" style="background:#8a5a00;">🧾 Facture</button>
       <button id="btn-paiement-cheque" style="background:#6a4fa0;">🎫 Chèque social/communal</button>
+      <button id="btn-paiement-qr" style="background:#2f6fb5;">📱 QR code / virement</button>
       <button id="btn-paiement-uber" style="background:#1c1c1c;">🚕 Uber (payé sur Uber)</button>
+      <button id="btn-paiement-uber-cash" style="background:#444;">🚕💵 Uber payé en cash</button>
     </div>
     <button id="btn-annuler-paiement" class="secondaire" style="margin-top:12px;">Annuler</button>
+  </div>
+</div>
+
+<div id="overlay-qr-chauffeur" style="display:none; position:fixed; inset:0; z-index:80; background:#fff; color:#111; flex-direction:column; align-items:center; overflow-y:auto; text-align:center; padding:calc(env(safe-area-inset-top,0px) + 16px) 18px calc(env(safe-area-inset-bottom,0px) + 20px);">
+  <div style="font-weight:700; font-size:1.1rem;">📱 Paiement par QR code</div>
+  <div id="oqc-montant" style="font-size:2.6rem; font-weight:800; margin:6px 0 2px;"></div>
+  <img id="oqc-img" alt="QR code de paiement" style="width:min(82vw,420px); height:min(82vw,420px); margin:10px auto; background:#fff;">
+  <div style="font-size:.9rem; color:#444;">Bénéficiaire : <b>Rasikh International</b> · IBAN : <b>BE61 0019 7821 9717</b></div>
+  <div style="font-size:.9rem; color:#444; margin-top:3px;">Communication : <b id="oqc-comm"></b></div>
+  <div style="font-size:.85rem; color:#555; margin:12px 0; max-width:420px;">👉 Le client ouvre <b>l'application de sa banque</b>, touche <b>« Scanner »</b> et vise ce QR : montant et communication se remplissent tout seuls. Demande un <b>virement instantané</b> et regarde l'écran de confirmation.</div>
+  <div style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:420px;">
+    <button type="button" id="oqc-recu" style="background:#1f8a4c; color:#fff; border:none; border-radius:12px; padding:16px; font-size:1.05rem; font-weight:700;">✅ Paiement reçu — terminer la course</button>
+    <button type="button" id="oqc-fermer" style="background:#dcdcda; color:#111; border:none; border-radius:12px; padding:16px; font-size:1.05rem; font-weight:700;">✕ Retour (pas encore payé)</button>
   </div>
 </div>
 
@@ -486,8 +501,10 @@ async function creerFeuilleDuJourSiAbsente() {
     const aujourdHui = new Date().toISOString().slice(0, 10);
 
     const { data: feuilleExistante } = await supabase
-      .from("feuilles_route").select("id").eq("chauffeur_id", user.id).eq("date_service", aujourdHui).maybeSingle();
-    if (feuilleExistante) return;
+      .from("feuilles_route").select("id").eq("chauffeur_id", user.id).eq("date_service", aujourdHui).limit(1);
+    // (limit au lieu de maybeSingle : avec 2 feuilles le même jour — changement de véhicule — maybeSingle
+    //  renvoyait une erreur et une feuille vide en trop était créée)
+    if (feuilleExistante && feuilleExistante.length) return;
 
     const { data: vehicule } = await supabase
       .from("vehicules").select("id").eq("chauffeur_id", user.id).eq("actif", true).maybeSingle();
@@ -630,7 +647,8 @@ function mettreAJourGainsJour(courses) {
   coursesDuJourTerminees.forEach(c => {
     const prix = Number(c.prix) || 0;
     if (c.mode_paiement === "cash") totalCash += prix;
-    else if (c.mode_paiement === "carte") totalCarte += prix;
+    else if (c.mode_paiement === "carte" || c.mode_paiement === "qr") totalCarte += prix;
+    else if (c.mode_paiement === "uber_cash") { totalCash += prix; nbUber++; }
     else if (c.mode_paiement === "facture") totalFacture += prix;
     else if (c.mode_paiement === "uber") nbUber++;
   });
@@ -675,7 +693,8 @@ const feuillesHistoOuvertes = new Set();
 function libellePaiement(mode) {
   return {
     cash: "💶 Cash", carte: "💳 Carte", facture: "🧾 Facture",
-    cheque_social: "🎫 Chèque social/communal", uber: "🚕 Uber"
+    cheque_social: "🎫 Chèque social/communal", uber: "🚕 Uber",
+    qr: "📱 QR / virement", uber_cash: "🚕💵 Uber payé en cash"
   }[mode] || "";
 }
 function libelleTypeCourse(type) {
@@ -710,6 +729,7 @@ async function chargerHistoriqueFeuilles() {
     .from("feuilles_route")
     .select("*, vehicules:vehicule_id(nom, plaque)")
     .eq("chauffeur_id", user.id)
+    .or("verifiee_admin.is.null,verifiee_admin.eq.false") // validée par la direction = disparaît de l'app chauffeur
     .gte("date_service", ilYA30Jours)
     .lte("date_service", aujourdHui)
     .order("date_service", { ascending: false });
@@ -1154,6 +1174,40 @@ document.getElementById("btn-paiement-carte").addEventListener("click", () => te
 document.getElementById("btn-paiement-facture").addEventListener("click", () => terminerAvecPaiement("facture"));
 document.getElementById("btn-paiement-uber").addEventListener("click", () => terminerAvecPaiement("uber"));
 document.getElementById("btn-paiement-cheque").addEventListener("click", () => terminerAvecPaiement("cheque_social"));
+document.getElementById("btn-paiement-uber-cash").addEventListener("click", () => terminerAvecPaiement("uber_cash"));
+
+// ---- Paiement par QR code (virement instantané, norme EPC lue par toutes les apps bancaires belges) ----
+function urlQrPaiementChauffeur(montant, communication) {
+  const payload = ["BCD", "002", "1", "SCT", "", "Rasikh International", "BE61001978219717",
+    "EUR" + Number(montant).toFixed(2), "", "", communication.slice(0, 140)].join("\n");
+  return "https://api.qrserver.com/v1/create-qr-code/?size=600x600&ecc=M&margin=10&data=" + encodeURIComponent(payload);
+}
+document.getElementById("btn-paiement-qr").addEventListener("click", async () => {
+  if (!courseEnFinDePaiement) return;
+  const { data: c } = await supabase.from("courses")
+    .select("prix, surprime, acompte_montant, acompte_paye, date_heure").eq("id", courseEnFinDePaiement).maybeSingle();
+  let montant = (Number(c?.prix) || 0) + (Number(c?.surprime) || 0) - (c?.acompte_paye ? (Number(c?.acompte_montant) || 0) : 0);
+  if (!(montant > 0)) {
+    const saisi = prompt("Montant à payer par le client (€) :");
+    montant = parseFloat(String(saisi || "").replace(",", "."));
+    if (!(montant > 0)) return;
+  }
+  const quand = c?.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const communication = ("Taxi Wal course " + quand).trim();
+  document.getElementById("oqc-montant").textContent = montant.toFixed(2).replace(".", ",") + " €";
+  document.getElementById("oqc-img").src = urlQrPaiementChauffeur(montant, communication);
+  document.getElementById("oqc-comm").textContent = communication;
+  modalePaiement.style.display = "none";
+  document.getElementById("overlay-qr-chauffeur").style.display = "flex";
+});
+document.getElementById("oqc-fermer").addEventListener("click", () => {
+  document.getElementById("overlay-qr-chauffeur").style.display = "none";
+  modalePaiement.style.display = "flex";
+});
+document.getElementById("oqc-recu").addEventListener("click", async () => {
+  document.getElementById("overlay-qr-chauffeur").style.display = "none";
+  await terminerAvecPaiement("qr");
+});
 
 async function terminerAvecPaiement(mode) {
   if (!courseEnFinDePaiement) return;

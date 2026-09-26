@@ -195,6 +195,10 @@ window.onerror = function(msg, url, line, col, err) {
   .bloc-paiement .ligne-info b{ color:var(--blanc); user-select:all; }
   .bloc-paiement .note-instant{ font-size:.78rem; color:#8a6d1e; margin-top:8px; text-align:left; }
   #btn-copier-iban{ background:#dcdcda; margin-top:10px; font-size:.85rem; padding:10px; }
+  .bloc-paiement .btn-copie{ background:#e6e6e3; color:#111; border:none; border-radius:8px; width:100%; margin-top:8px; font-size:.88rem; padding:11px; font-weight:600; box-sizing:border-box; }
+  .bloc-paiement .btn-contact{ display:block; text-align:center; text-decoration:none; border-radius:8px; padding:12px; margin-top:8px; font-weight:700; color:#fff; }
+  .bloc-paiement .btn-contact.wa{ background:#25a244; }
+  .bloc-paiement .btn-contact.mail{ background:#3b82c4; }
   .bloc-verif{ background:rgba(59,130,196,.12); border-radius:10px; padding:12px; margin-top:6px; font-size:.85rem; color:var(--bleu); }
 
   .badge-marque{
@@ -389,6 +393,17 @@ function esc(valeur) {
 const COMPTE_BENEFICIAIRE = "Rasikh International";
 const COMPTE_IBAN = "BE61 0019 7821 9717"; // affiché avec espaces
 const COMPTE_IBAN_BRUT = COMPTE_IBAN.replace(/\s/g, ""); // sans espaces, pour le QR et la copie
+
+// ---------- CONTACT DISPATCH (client sans moyen de payer à l'avance) ----------
+const DISPATCH_WHATSAPP = "32495353594";          // format international sans + ni espaces
+const DISPATCH_EMAIL = "infotaxiwal@gmail.com";
+
+async function copierTexte(texte, bouton, libelleOk) {
+  const avant = bouton.textContent;
+  try { await navigator.clipboard.writeText(texte); bouton.textContent = libelleOk; }
+  catch (e) { alert(texte); }
+  setTimeout(() => { bouton.textContent = avant; }, 2000);
+}
 
 // Construit le texte du QR code de paiement (norme européenne EPC069-12,
 // reconnue par le scanner intégré de toutes les applications bancaires belges)
@@ -950,8 +965,33 @@ async function construireCarteCourseClient(course) {
       <button type="button" id="btn-copier-iban">📋 Copier l'IBAN</button>
       <div class="note-instant">⚡ Merci de faire un virement instantané si ta banque le propose : on reçoit la confirmation en quelques secondes et on peut valider ta course tout de suite.</div>
       <div class="note-instant" style="color:var(--gris);">Scanne ce QR code avec l'appareil photo ou l'app de ta banque : le montant et la communication se remplissent automatiquement.</div>
+      <div class="bloc-payer-tel">
+        <div style="font-weight:700; margin:12px 0 6px;">📲 Tu réserves depuis ce téléphone ?</div>
+        <div class="note-instant" style="color:var(--gris); margin-top:0;">Ouvre l'app de ta banque → <b>Virement</b>, puis colle les infos ci-dessous (ou enregistre le QR : la plupart des apps bancaires belges savent lire un QR depuis tes photos).</div>
+        <button type="button" class="btn-copie" data-copie="iban">📋 Copier l'IBAN</button>
+        <button type="button" class="btn-copie" data-copie="montant">📋 Copier le montant (${esc(course.acompte_montant)} €)</button>
+        <button type="button" class="btn-copie" data-copie="comm">📋 Copier la communication</button>
+        <a class="btn-copie" href="${urlQrPaiement({ montant: course.acompte_montant, communication })}" target="_blank" rel="noopener" style="display:block; text-decoration:none; text-align:center;">🖼️ Ouvrir le QR en grand (appui long → enregistrer)</a>
+      </div>
       <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">J'ai payé l'acompte</button>
+      <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;">🙋 Je ne peux pas payer à l'avance</button>
+      <div class="bloc-contact-dispatch" style="display:none;">
+        <div class="note-instant" style="color:var(--gris);">Pas de souci : contacte notre dispatch, on trouve une solution ensemble (paiement à bord, facture…).</div>
+        <a class="btn-contact wa" target="_blank" rel="noopener">💬 Écrire sur WhatsApp</a>
+        <a class="btn-contact mail">✉️ Envoyer un e-mail</a>
+      </div>
     `;
+    const texteContact = `Bonjour Taxi Wal, j'ai une réservation (${communication}) de ${course.prix} € mais je ne peux pas payer l'acompte à l'avance. Pouvez-vous me contacter ?`;
+    bloc.querySelector(".btn-contact.wa").href = `https://wa.me/${DISPATCH_WHATSAPP}?text=${encodeURIComponent(texteContact)}`;
+    bloc.querySelector(".btn-contact.mail").href = `mailto:${DISPATCH_EMAIL}?subject=${encodeURIComponent("Paiement de ma réservation")}&body=${encodeURIComponent(texteContact)}`;
+    bloc.querySelector("#btn-pas-moyen").addEventListener("click", () => {
+      const z = bloc.querySelector(".bloc-contact-dispatch");
+      z.style.display = z.style.display === "none" ? "block" : "none";
+    });
+    bloc.querySelectorAll("button.btn-copie[data-copie]").forEach(b => b.addEventListener("click", () => {
+      const v = { iban: COMPTE_IBAN_BRUT, montant: Number(course.acompte_montant).toFixed(2), comm: communication }[b.dataset.copie];
+      copierTexte(v, b, "✅ Copié");
+    }));
     bloc.querySelector("#btn-copier-iban").addEventListener("click", async (e) => {
       try {
         await navigator.clipboard.writeText(COMPTE_IBAN_BRUT);

@@ -47,7 +47,11 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-course .mention-uber{ font-size:.82rem; color:var(--gris); background:#fff; border:1px solid #dcdcda; border-radius:8px; padding:9px 11px; margin-bottom:10px; }
   .btn-cloturer-course{ width:100%; padding:12px; border-radius:8px; border:none; background:var(--rouge); color:#fff; font-weight:600; font-size:.9rem; margin-top:6px; }
   .btn-maintenant{ width:100%; padding:9px 6px; margin:-4px 0 10px; border-radius:8px; border:1px solid var(--vert); background:#eaf5ee; color:var(--vert); font-weight:700; font-size:.85rem; }
-  input:disabled + .btn-maintenant{ display:none; }
+  input:disabled + .btn-maintenant, input:disabled + .rangee-heure{ display:none; }
+  .rangee-heure{ display:flex; gap:6px; margin:-4px 0 10px; }
+  .rangee-heure .btn-maintenant{ flex:1; margin:0; }
+  .btn-decaler{ width:56px; flex-shrink:0; padding:9px 0; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-weight:700; font-size:.9rem; color:var(--blanc); }
+  .btn-position{ width:100%; padding:10px; margin:-4px 0 10px; border-radius:8px; border:1px solid #2f6fb5; background:#eaf1fa; color:#2f6fb5; font-weight:700; font-size:.9rem; }
   .champ-heure-invalide{ border-color:var(--rouge) !important; background:#fdecee !important; }
   .suggestions-adresse{ display:none; position:absolute; left:0; right:0; top:100%; margin-top:-8px; z-index:30; background:#fff; border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); overflow:hidden; }
   .suggestion-adresse{ padding:12px; border-bottom:1px solid #eee; font-size:.92rem; cursor:pointer; }
@@ -93,6 +97,19 @@ window.onerror = function(msg, url, line, col, err) {
   .section-passee .sp-ligne{ display:flex; justify-content:space-between; font-size:.85rem; padding:3px 0; }
   .section-passee .sp-course{ font-size:.82rem; color:var(--gris); padding:4px 0; border-top:1px dashed #cfcfcd; margin-top:4px; }
   #vehicule-actuel-titre{ font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:6px; }
+  .ligne-course.plein-ecran{ position:fixed; inset:0; z-index:900; margin:0; border-radius:0; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#f0f1ee; padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 90px); }
+  body.mode-plein-ecran{ overflow:hidden; }
+  .btn-plein-ecran{ width:100%; background:#2f6fb5; color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; font-size:1rem; margin-bottom:10px; }
+  .ligne-course.plein-ecran .btn-plein-ecran{ position:sticky; top:0; z-index:2; background:var(--rouge); }
+  .bloc-qr-ligne{ grid-column:1 / -1; background:#fff; border:2px solid #2f6fb5; border-radius:10px; padding:12px; margin-bottom:10px; text-align:center; }
+  .bloc-qr-ligne button{ width:100%; background:#2f6fb5; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:1.05rem; }
+  #overlay-qr{ position:fixed; inset:0; z-index:2000; background:#fff; display:none; flex-direction:column; align-items:center; overflow-y:auto; padding:calc(env(safe-area-inset-top,0px) + 16px) 18px calc(env(safe-area-inset-bottom,0px) + 20px); text-align:center; color:#111; }
+  #overlay-qr .oq-montant{ font-size:2.6rem; font-weight:800; margin:6px 0 2px; }
+  #overlay-qr img{ width:min(82vw, 420px); height:min(82vw, 420px); margin:10px auto; background:#fff; }
+  #overlay-qr .oq-info{ font-size:.9rem; color:#444; margin:3px 0; }
+  #overlay-qr .oq-aide{ font-size:.85rem; color:#555; margin:10px 0; max-width:420px; }
+  #overlay-qr .oq-btns{ display:flex; flex-direction:column; gap:10px; width:100%; max-width:420px; margin-top:8px; }
+  #overlay-qr .oq-btns button{ border:none; border-radius:12px; padding:16px; font-size:1.05rem; font-weight:700; }
 </style>
 </head>
 <body>
@@ -198,6 +215,19 @@ window.onerror = function(msg, url, line, col, err) {
 <div class="bloc" id="bloc-courses">
   <h2>Courses</h2>
   <div id="liste-lignes"></div>
+  <div id="overlay-qr">
+    <div style="font-weight:700; font-size:1.1rem;">📱 Paiement par QR code</div>
+    <div class="oq-montant" id="oq-montant"></div>
+    <img id="oq-img" alt="QR code de paiement">
+    <div class="oq-info">Bénéficiaire : <b id="oq-benef"></b></div>
+    <div class="oq-info">IBAN : <b id="oq-iban"></b></div>
+    <div class="oq-info">Communication : <b id="oq-comm"></b></div>
+    <div class="oq-aide">👉 Le client ouvre <b>l'application de sa banque</b>, touche <b>« Scanner »</b> et vise ce QR code : le montant et la communication se remplissent tout seuls. Demande-lui de choisir <b>virement instantané</b> et de te montrer l'écran de confirmation.</div>
+    <div class="oq-btns">
+      <button type="button" id="oq-recu" style="background:#1f8a4c; color:#fff;">✅ Paiement reçu (j'ai vu la confirmation)</button>
+      <button type="button" id="oq-fermer" style="background:#dcdcda; color:#111;">✕ Fermer</button>
+    </div>
+  </div>
   <button id="btn-ajouter-ligne">+ Ajouter une course</button>
 </div>
 
@@ -255,7 +285,25 @@ function attacherNormalisationHeure(input) {
   input.autocomplete = "off";
   if (!input.placeholder) input.placeholder = "ex : 1430";
   input.addEventListener("focus", () => { input.dataset.avant = input.value; input.classList.remove("champ-heure-invalide"); });
+  // Saisie rapide : dès que 4 chiffres sont tapés (1430) ou 14:30 / 14h30, l'heure est validée
+  // et enregistrée toute seule, sans devoir cliquer ailleurs.
+  input.addEventListener("input", () => {
+    const v = input.value.trim();
+    if (!/^\d{4}$/.test(v) && !/^\d{1,2}[:h.,]\d{2}$/i.test(v)) return;
+    const propre = normaliserHeure(v);
+    if (!propre) return;
+    input.value = propre;
+    input.dispatchEvent(new Event("change"));
+    input._dejaEnvoye = propre;
+    input.blur();
+  });
   input.addEventListener("change", (e) => {
+    // évite un 2e enregistrement quand le téléphone renvoie "change" au moment où le clavier se ferme
+    if (e.isTrusted && input._dejaEnvoye && input._dejaEnvoye === input.value) {
+      input._dejaEnvoye = null;
+      e.stopImmediatePropagation();
+      return;
+    }
     const propre = normaliserHeure(input.value);
     if (propre === null) {
       e.stopImmediatePropagation();
@@ -267,16 +315,65 @@ function attacherNormalisationHeure(input) {
     input.value = propre;
   });
 }
+// Rangée de boutons sous chaque heure : [−5] [🕐 Maintenant] [+5] → corriger d'un tap, sans clavier.
 function creerBoutonMaintenant(input) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "btn-maintenant";
-  b.textContent = "🕐 Maintenant";
-  b.addEventListener("click", () => {
+  const rangee = document.createElement("div");
+  rangee.className = "rangee-heure";
+  const fixer = (valeur) => {
     if (input.disabled) return;
-    input.value = heureMaintenantTexte();
+    input.value = valeur;
     input.classList.remove("champ-heure-invalide");
     input.dispatchEvent(new Event("change"));
+  };
+  const decaler = (minutes) => {
+    const base = normaliserHeure(input.value) || heureMaintenantTexte();
+    let [h, m] = base.split(":").map(Number);
+    let total = (h * 60 + m + minutes + 1440) % 1440;
+    total = Math.round(total / 5) * 5 % 1440;
+    fixer(String(Math.floor(total / 60)).padStart(2, "0") + ":" + String(total % 60).padStart(2, "0"));
+  };
+  const b = (texte, classe, action) => {
+    const x = document.createElement("button");
+    x.type = "button"; x.className = classe; x.textContent = texte;
+    x.addEventListener("click", action);
+    rangee.appendChild(x);
+  };
+  b("−5", "btn-decaler", () => decaler(-5));
+  b("🕐 Maintenant", "btn-maintenant", () => fixer(heureMaintenantTexte()));
+  b("+5", "btn-decaler", () => decaler(5));
+  return rangee;
+}
+
+// ================== BOUTON « MA POSITION » (GPS → adresse) ==================
+function creerBoutonPosition(input) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn-position";
+  b.textContent = "📍 Ma position actuelle";
+  b.addEventListener("click", () => {
+    if (input.disabled) return;
+    if (!navigator.geolocation) { alert("La localisation n'est pas disponible sur ce téléphone."); return; }
+    b.disabled = true; b.textContent = "📍 Recherche de ta position…";
+    const finir = () => { b.disabled = false; b.textContent = "📍 Ma position actuelle"; };
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const rep = await fetch(`https://photon.komoot.io/reverse?lang=fr&lat=${latitude}&lon=${longitude}`);
+        const donnees = await rep.json();
+        const libelle = libelleAdresse((donnees.features && donnees.features[0] && donnees.features[0].properties) || {});
+        if (!libelle) throw new Error("vide");
+        input.value = libelle;
+        input.dispatchEvent(new Event("change"));
+      } catch (e) {
+        alert("Adresse introuvable pour cette position. Tape-la à la main.");
+      }
+      finir();
+    }, (err) => {
+      finir();
+      alert(err.code === 1
+        ? "Accès à la position refusé. Autorise la localisation pour Taxi Wal dans les réglages du téléphone."
+        : "Position introuvable (GPS faible). Réessaie ou tape l'adresse.");
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 20000 });
   });
   return b;
 }
@@ -360,6 +457,51 @@ function nombreOuNull(v) {
 
 let feuilleActuelle = null;
 let lignesActuelles = [];
+
+// ================== PAIEMENT PAR QR CODE (virement instantané, norme EPC) ==================
+const COMPTE_BENEFICIAIRE = "Rasikh International";
+const COMPTE_IBAN = "BE61 0019 7821 9717";
+const COMPTE_IBAN_BRUT = COMPTE_IBAN.replace(/\s/g, "");
+function urlQrPaiement(montant, communication) {
+  const payload = ["BCD", "002", "1", "SCT", "", COMPTE_BENEFICIAIRE.slice(0, 70), COMPTE_IBAN_BRUT,
+    "EUR" + Number(montant).toFixed(2), "", "", communication.slice(0, 140)].join("\n");
+  return "https://api.qrserver.com/v1/create-qr-code/?size=600x600&ecc=M&margin=10&data=" + encodeURIComponent(payload);
+}
+let actionPaiementRecu = null;
+function ouvrirQrPaiement(montant, communication, surRecu) {
+  document.getElementById("oq-montant").textContent = formatEuro(montant);
+  document.getElementById("oq-img").src = urlQrPaiement(montant, communication);
+  document.getElementById("oq-benef").textContent = COMPTE_BENEFICIAIRE;
+  document.getElementById("oq-iban").textContent = COMPTE_IBAN;
+  document.getElementById("oq-comm").textContent = communication;
+  actionPaiementRecu = surRecu || null;
+  document.getElementById("overlay-qr").style.display = "flex";
+  document.body.classList.add("mode-plein-ecran");
+}
+function fermerQrPaiement() {
+  document.getElementById("overlay-qr").style.display = "none";
+  if (!ligneEnPleinEcran) document.body.classList.remove("mode-plein-ecran");
+}
+document.getElementById("oq-fermer").addEventListener("click", fermerQrPaiement);
+document.getElementById("oq-recu").addEventListener("click", async () => {
+  if (actionPaiementRecu) await actionPaiementRecu();
+  fermerQrPaiement();
+});
+
+// ================== ÉDITION EN PLEIN ÉCRAN ==================
+// Tant qu'une course est ouverte en grand, rien ne se recharge derrière (plus de saut ni de fermeture).
+let ligneEnPleinEcran = null;
+function fermerPleinEcran() {
+  const el = document.querySelector(".ligne-course.plein-ecran");
+  if (el) {
+    el.classList.remove("plein-ecran");
+    const b = el.querySelector(".btn-plein-ecran");
+    if (b) b.textContent = "🔍 Ouvrir en grand";
+  }
+  ligneEnPleinEcran = null;
+  document.body.classList.remove("mode-plein-ecran");
+  if (rechargeEnAttente) setTimeout(rechargerSilencieusement, 200);
+}
 let identiteSocieteActuelle = "Rasikh international";
 const etatManuelLignes = new Map();
 
@@ -455,7 +597,7 @@ let vehiculesActifsCache = [];
     // que soit sa date — elle reste entièrement modifiable jusqu'à ce qu'elle soit clôturée.
     const { data: feuilleCiblee, error: erreurCiblee } = await supabase
       .from("feuilles_route").select("*").eq("id", idDepuisUrl).eq("chauffeur_id", user.id).maybeSingle();
-    if (erreurCiblee || !feuilleCiblee) {
+    if (erreurCiblee || !feuilleCiblee || feuilleCiblee.verifiee_admin) {
       document.getElementById("erreur").textContent = "Cette feuille est introuvable ou ne t'appartient pas.";
       return;
     }
@@ -463,7 +605,7 @@ let vehiculesActifsCache = [];
     const { data: memeJour } = await supabase
       .from("feuilles_route").select("*").eq("chauffeur_id", user.id).eq("date_service", dateAAfficher)
       .order("created_at", { ascending: true });
-    toutesLesFeuillesDuJour = memeJour || [feuilleCiblee];
+    toutesLesFeuillesDuJour = (memeJour || [feuilleCiblee]).filter(f => !f.verifiee_admin);
     feuilleActuelle = feuilleCiblee;
   } else {
     let { data: feuilles } = await supabase
@@ -473,6 +615,14 @@ let vehiculesActifsCache = [];
       .eq("date_service", aujourdHui)
       .order("created_at", { ascending: true });
 
+    // Une feuille validée par la direction disparaît de l'app chauffeur (elle reste 30 jours côté admin).
+    const feuillesValidees = (feuilles || []).filter(f => f.verifiee_admin);
+    feuilles = (feuilles || []).filter(f => !f.verifiee_admin);
+    if (feuilles.length === 0 && feuillesValidees.length > 0) {
+      document.getElementById("sous-titre").textContent = "Feuille du " + aujourdHui;
+      document.getElementById("erreur").innerHTML = '<div style="background:#e7f5ec; color:#1f6b3f; border-radius:10px; padding:16px; font-weight:600; text-align:center;">✅ Ta feuille de route du jour a été vérifiée et validée par la direction. Rien d\'autre à faire.</div>';
+      return;
+    }
     if (!feuilles || feuilles.length === 0) {
       const { data: nouvelle, error } = await supabase
         .from("feuilles_route")
@@ -623,7 +773,7 @@ function chauffeurEnTrainDeSaisir() {
 
 async function rechargerSilencieusement() {
   if (!feuilleActuelle) return;
-  if (chauffeurEnTrainDeSaisir()) { rechargeEnAttente = true; return; }
+  if (chauffeurEnTrainDeSaisir() || ligneEnPleinEcran || document.getElementById("overlay-qr").style.display === "flex") { rechargeEnAttente = true; return; }
   rechargeEnAttente = false;
 
   const { data: feuille, error } = await supabase
@@ -640,7 +790,7 @@ async function rechargerSilencieusement() {
 }
 
 document.addEventListener("focusout", () => {
-  setTimeout(() => { if (rechargeEnAttente && !chauffeurEnTrainDeSaisir()) rechargerSilencieusement(); }, 300);
+  setTimeout(() => { if (rechargeEnAttente && !chauffeurEnTrainDeSaisir() && !ligneEnPleinEcran) rechargerSilencieusement(); }, 300);
 });
 
 let canalTempsReelActuel = null;
@@ -739,7 +889,7 @@ Object.keys(champsEntete).forEach(idHtml => {
 async function chargerLignes() {
   const { data, error } = await supabase
     .from("lignes_feuille_route")
-    .select("*, courses(statut)")
+    .select("*, courses(statut, notes)")
     .eq("feuille_route_id", feuilleActuelle.id)
     .order("n_ordre", { ascending: true });
 
@@ -764,9 +914,11 @@ async function afficherCaisse() {
   const modes = {
     cash: { nom: "💶 Espèces (dans la caisse)", total: 0, nb: 0 },
     carte: { nom: "💳 Carte", total: 0, nb: 0 },
+    qr: { nom: "📱 QR / virement", total: 0, nb: 0 },
     facture: { nom: "🧾 Facture", total: 0, nb: 0 },
     cheque_social: { nom: "🎫 Chèque social/communal", total: 0, nb: 0 },
-    uber: { nom: "🚕 Uber (payé sur Uber)", total: 0, nb: 0 }
+    uber: { nom: "🚕 Uber (payé sur Uber)", total: 0, nb: 0 },
+    uber_cash: { nom: "🚕💵 Uber payé en cash (dans la caisse, hors recette)", total: 0, nb: 0 }
   };
   let sansMode = 0, sansMontant = 0, nbForfaits = 0, totalForfaits = 0;
   (lignes || []).forEach(l => {
@@ -774,7 +926,8 @@ async function afficherCaisse() {
     if (vide) return;
     const somme = nombreOuNull(l.sommes_percues);
     const montant = (somme !== null && somme > 0) ? somme : (nombreOuNull(l.prix_taximetre) ?? 0);
-    const mode = (l.type_course === "uber") ? "uber" : l.mode_paiement;
+    if (l.type_course === "prive") return;
+    const mode = (l.mode_paiement === "uber_cash") ? "uber_cash" : (l.type_course === "uber") ? "uber" : l.mode_paiement;
     if (!mode || !modes[mode]) { sansMode++; return; }
     modes[mode].nb++;
     if (mode !== "uber") {
@@ -783,29 +936,57 @@ async function afficherCaisse() {
     }
     if (l.type_course === "forfait") { nbForfaits++; totalForfaits += montant; }
   });
-  const totalGeneral = Object.entries(modes).filter(([k]) => k !== "uber").reduce((s, [, m]) => s + m.total, 0);
+  // Recette = tout sauf Uber (payé sur Uber OU en cash : Uber déclare déjà la TVA)
+  const totalGeneral = Object.entries(modes).filter(([k]) => k !== "uber" && k !== "uber_cash").reduce((s, [, m]) => s + m.total, 0);
+  const especesDansCaisse = modes.cash.total + modes.uber_cash.total;
 
   let html = `
     <div class="caisse-principale">
       <div class="cp-label">Argent liquide que tu dois avoir dans la caisse</div>
-      <div class="cp-montant">${formatEuro(modes.cash.total)}</div>
-      <div class="cp-label">${modes.cash.nb} course(s) payée(s) en espèces</div>
+      <div class="cp-montant">${formatEuro(especesDansCaisse)}</div>
+      <div class="cp-label">${modes.cash.nb} course(s) payée(s) en espèces${modes.uber_cash.nb ? " + " + modes.uber_cash.nb + " Uber payée(s) en cash" : ""}</div>
     </div>`;
   Object.values(modes).forEach(m => {
     if (!m.nb) return;
-    html += `<div class="caisse-ligne"><span>${m.nom} · ${m.nb}</span><b>${m.nom.startsWith("🚕") ? "—" : formatEuro(m.total)}</b></div>`;
+    html += `<div class="caisse-ligne"><span>${m.nom} · ${m.nb}</span><b>${m === modes.uber ? "—" : formatEuro(m.total)}</b></div>`;
   });
   if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
-  html += `<div class="caisse-ligne caisse-total"><span>Total encaissé (tous paiements)</span><b>${formatEuro(totalGeneral)}</b></div>`;
+  html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber)</span><b>${formatEuro(totalGeneral)}</b></div>`;
   if (sansMode) html += `<div class="caisse-alerte">⚠️ ${sansMode} course(s) sans mode de paiement : choisis Cash, Carte… sinon elles ne comptent pas dans la caisse.</div>`;
   if (sansMontant) html += `<div class="caisse-alerte">⚠️ ${sansMontant} course(s) sans prix rempli.</div>`;
   zone.innerHTML = html;
 }
 
+// Une course saisie à la main dans la feuille crée une course "terminée" en base dès qu'un montant est rempli :
+// elle ne doit PAS pour autant se fermer/verrouiller. Seules les courses de la centrale terminées se verrouillent.
+function estCourseManuelle(ligne) { return ligne.courses?.notes === "Saisie depuis la feuille de route"; }
+function estTermineeParCentrale(ligne) {
+  const st = ligne.courses?.statut;
+  return (st === "terminee" || st === "annulee") && !estCourseManuelle(ligne);
+}
+function signatureLigne(ligne, numero) {
+  const copie = { ...ligne, courses: estTermineeParCentrale(ligne) };
+  return JSON.stringify(copie) + "|" + numero + "|" + (feuilleActuelle?.verrouillee ? 1 : 0);
+}
+// Ne reconstruit QUE les courses qui ont vraiment changé, et garde la position de la page.
 function afficherLignes() {
   const conteneur = document.getElementById("liste-lignes");
-  conteneur.innerHTML = "";
-  lignesActuelles.forEach((ligne, index) => conteneur.appendChild(construireLigneHtml(ligne, index + 1)));
+  const positionPage = window.scrollY;
+  const existants = new Map([...conteneur.children].map(el => [el.dataset.id, el]));
+  const nouveaux = lignesActuelles.map((ligne, index) => {
+    const sig = signatureLigne(ligne, index + 1);
+    const ancien = existants.get(String(ligne.id));
+    if (ancien && ancien._ligne && signatureLigne(ancien._ligne, index + 1) === sig) {
+      lignesActuelles[index] = ancien._ligne; // garde le même objet que les champs affichés
+      return ancien;
+    }
+    const el = construireLigneHtml(ligne, index + 1);
+    el.dataset.id = ligne.id;
+    el._ligne = ligne;
+    return el;
+  });
+  conteneur.replaceChildren(...nouveaux);
+  window.scrollTo(0, positionPage);
 }
 
 const champsLigne = [
@@ -828,16 +1009,18 @@ function construireLigneHtml(ligne, numeroAffiche) {
   const div = document.createElement("div");
   div.className = "ligne-course";
 
-  const statutCourse = ligne.courses?.statut;
-  const ligneTerminee = statutCourse === "terminee" || statutCourse === "annulee";
+  const ligneTerminee = estTermineeParCentrale(ligne);
+  const courseManuelle = estCourseManuelle(ligne);
   const ligneVerrouillee = feuilleActuelle.verrouillee || ligneTerminee || ligne.cloturee;
   const estFermeeParDefaut = ligneVerrouillee;
   const ouverte = etatManuelLignes.has(ligne.id) ? etatManuelLignes.get(ligne.id) : !estFermeeParDefaut;
 
   let badge = "";
-  if (ligne.course_id) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
+  if (ligne.course_id && !courseManuelle) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
   else if (ligne.cloturee) badge = " · 🔒 clôturée";
-  if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
+  if (ligne.mode_paiement === "uber_cash") badge += " · 🚕💵 Uber cash";
+  else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
+  if (ligne.mode_paiement === "qr") badge += " · 📱 QR";
 
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
   const heureResume = (ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "") + (ligne.note_chauffeur ? " · 📝" : "");
@@ -849,6 +1032,21 @@ function construireLigneHtml(ligne, numeroAffiche) {
 
   const corps = document.createElement("div");
   corps.style.display = ouverte ? "block" : "none";
+
+  const btnGrand = document.createElement("button");
+  btnGrand.type = "button";
+  btnGrand.className = "btn-plein-ecran";
+  btnGrand.textContent = "🔍 Ouvrir en grand";
+  btnGrand.addEventListener("click", () => {
+    if (div.classList.contains("plein-ecran")) { fermerPleinEcran(); return; }
+    fermerPleinEcran();
+    div.classList.add("plein-ecran");
+    document.body.classList.add("mode-plein-ecran");
+    ligneEnPleinEcran = ligne.id;
+    btnGrand.textContent = "✕ Fermer (retour à la feuille)";
+    div.scrollTop = 0;
+  });
+  corps.appendChild(btnGrand);
 
   const etat = document.createElement("div");
   etat.className = "etat-sauvegarde";
@@ -875,8 +1073,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="cash">💶 Cash</option>
         <option value="carte">💳 Carte</option>
         <option value="facture">🧾 Facture</option>
+        <option value="qr">📱 QR code / virement instantané</option>
         <option value="cheque_social">🎫 Chèque social/communal</option>
         <option value="uber">🚕 Uber (payé sur Uber)</option>
+        <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
       `;
     } else if (estTypeCourse) {
       input.innerHTML = `
@@ -933,10 +1133,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
         }
       }
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiement();
+      if (estPaiement && valeur === "qr" && !error) afficherQrDeLaLigne();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     if (type === "time") wrap.appendChild(creerBoutonMaintenant(input));
-    if (estAdresse && !ligneVerrouillee) attacherSuggestionsAdresse(input, wrap);
+    if (estAdresse && !ligneVerrouillee) { attacherSuggestionsAdresse(input, wrap); wrap.appendChild(creerBoutonPosition(input)); }
     corps.appendChild(wrap);
   });
 
@@ -944,6 +1145,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionUber.className = "mention-uber";
   mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
   corps.insertBefore(mentionUber, wrapsParChamp["mode_paiement"]);
+
+  const mentionUberCash = document.createElement("div");
+  mentionUberCash.className = "mention-uber";
+  mentionUberCash.textContent = "🚕💵 Uber payé en cash : l'argent va dans ta caisse, mais ne compte PAS dans la recette (Uber déclare déjà la TVA). Indique la somme reçue.";
+  corps.insertBefore(mentionUberCash, wrapsParChamp["mode_paiement"]);
 
   const mentionPrive = document.createElement("div");
   mentionPrive.className = "mention-uber";
@@ -1011,6 +1217,27 @@ function construireLigneHtml(ligne, numeroAffiche) {
   corps.insertBefore(blocMonnaie, wrapsParChamp["numero_dossier"]);
   mettreAJourRenduMonnaie();
 
+  // ---- Paiement par QR code (le client scanne avec l'app de sa banque) ----
+  const blocQr = document.createElement("div");
+  blocQr.className = "bloc-qr-ligne";
+  blocQr.innerHTML = `<button type="button">📱 Afficher le QR de paiement au client</button>
+    <div style="font-size:.8rem; color:var(--gris); margin-top:8px;">Le montant utilisé = sommes perçues (sinon prix taximètre).</div>`;
+  function afficherQrDeLaLigne() {
+    const montant = prixACalculer();
+    if (montant === null || montant <= 0) { alert("Remplis d'abord le prix (taximètre ou sommes perçues), puis réaffiche le QR."); return; }
+    const communication = `Taxi Wal ${feuilleActuelle.date_service || ""} course ${numeroAffiche}`.trim();
+    ouvrirQrPaiement(montant, communication, async () => {
+      if (nombreOuNull(inputsParChamp["sommes_percues"].value) === null && !ligneVerrouillee) {
+        inputsParChamp["sommes_percues"].value = String(montant);
+        inputsParChamp["sommes_percues"].dispatchEvent(new Event("change"));
+      }
+      const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+      if (etatEl) { etatEl.textContent = "✓ Paiement QR confirmé par le chauffeur"; etatEl.className = "etat-sauvegarde ok"; }
+    });
+  }
+  blocQr.querySelector("button").addEventListener("click", afficherQrDeLaLigne);
+  corps.insertBefore(blocQr, wrapsParChamp["numero_dossier"]);
+
   // ---- Note du chauffeur (modifiable jusqu'à la signature, même course terminée) ----
   const wrapNote = document.createElement("div");
   wrapNote.style.gridColumn = "1 / -1";
@@ -1055,6 +1282,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         if (error) { alert("Erreur : " + error.message); return; }
       }
       etatManuelLignes.delete(ligne.id);
+      fermerPleinEcran();
       await chargerLignes();
     });
     corps.appendChild(btnCloturer);
@@ -1071,16 +1299,19 @@ function construireLigneHtml(ligne, numeroAffiche) {
   function appliquerVisibilitePaiement() {
     const mode = inputsParChamp["mode_paiement"].value;
     const typeCourse = inputsParChamp["type_course"].value;
-    const estUber = mode === "uber" || typeCourse === "uber";
+    const estUberCash = mode === "uber_cash";
+    const estUber = !estUberCash && (mode === "uber" || typeCourse === "uber");
     const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
-    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive) ? "none" : "";
+    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash) ? "none" : "";
     wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionPrive.style.display = estPrive ? "" : "none";
     mentionUber.style.display = estUber ? "" : "none";
-    blocMonnaie.style.display = (!estUber && !estPrive && (mode === "cash" || mode === "")) ? "" : "none";
+    mentionUberCash.style.display = estUberCash ? "" : "none";
+    blocMonnaie.style.display = (!estUber && !estPrive && (mode === "cash" || mode === "" || estUberCash)) ? "" : "none";
+    blocQr.style.display = (mode === "qr" && !estPrive) ? "" : "none";
   }
   appliquerVisibilitePaiement();
 
