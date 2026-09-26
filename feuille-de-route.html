@@ -459,6 +459,40 @@ function nombreOuNull(v) {
 let feuilleActuelle = null;
 let lignesActuelles = [];
 
+// ================== DEMANDE DE CORRECTION (fenêtre avec la raison) ==================
+function demanderMotifCorrection(numero) {
+  return new Promise((resoudre) => {
+    const fond = document.createElement("div");
+    fond.style.cssText = "position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center;";
+    const choix = [
+      "Supprimer : course ouverte par erreur",
+      "Supprimer : course en double",
+      "Modifier : erreur dans les informations",
+      "Autre"
+    ];
+    fond.innerHTML = `<div style="background:#fff; color:#111; width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 18px);">
+      <div style="font-weight:800; font-size:1.08rem; margin-bottom:10px;">📨 Demande à la centrale — course n° ${numero}</div>
+      <div style="font-size:.88rem; color:#555; margin-bottom:10px;">Que doit faire la centrale ?</div>
+      ${choix.map((c, i) => `<label style="display:flex; align-items:center; gap:10px; padding:11px 10px; border:1px solid #ddd; border-radius:10px; margin-bottom:8px; font-size:.95rem;"><input type="radio" name="motif-choix" value="${c}" ${i === 0 ? "checked" : ""} style="width:20px; height:20px;"> ${c}</label>`).join("")}
+      <textarea id="motif-detail" rows="3" placeholder="Explique en quelques mots (ex : j'ai appuyé 2 fois, mauvaise adresse d'arrivée…)" style="width:100%; box-sizing:border-box; padding:11px; border-radius:10px; border:1px solid #ccc; font-size:1rem; margin-top:4px;"></textarea>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button type="button" id="motif-annuler" style="flex:1; padding:14px; border:none; border-radius:12px; background:#e3e3e0; font-weight:700; font-size:1rem;">Annuler</button>
+        <button type="button" id="motif-envoyer" style="flex:2; padding:14px; border:none; border-radius:12px; background:#c81e2c; color:#fff; font-weight:800; font-size:1rem;">📨 Envoyer</button>
+      </div>
+    </div>`;
+    document.body.appendChild(fond);
+    const fermer = (valeur) => { fond.remove(); resoudre(valeur); };
+    fond.querySelector("#motif-annuler").addEventListener("click", () => fermer(null));
+    fond.addEventListener("click", (e) => { if (e.target === fond) fermer(null); });
+    fond.querySelector("#motif-envoyer").addEventListener("click", () => {
+      const choisi = fond.querySelector('input[name="motif-choix"]:checked').value;
+      const detail = fond.querySelector("#motif-detail").value.trim();
+      if (choisi === "Autre" && !detail) { alert("Explique ta demande en quelques mots."); return; }
+      fermer((choisi === "Autre" ? "" : choisi) + (detail ? (choisi === "Autre" ? "" : " — ") + detail : "") || choisi);
+    });
+  });
+}
+
 // ================== PAIEMENT PAR QR CODE (virement instantané, norme EPC) ==================
 const COMPTE_BENEFICIAIRE = "Rasikh International";
 const COMPTE_IBAN = "BE61 0019 7821 9717";
@@ -571,24 +605,43 @@ let vehiculesActifsCache = [];
 
   // Avertit toujours d'une éventuelle feuille oubliée d'un jour précédent (jamais clôturée) —
   // elle doit rester modifiable tant qu'elle n'est pas terminée, même des jours après.
-  const { data: feuillesOubliees } = await supabase
+  const { data: feuillesNonCloturees } = await supabase
     .from("feuilles_route")
-    .select("id, date_service")
+    .select("id, date_service, heure_debut, verifiee_admin, lignes_feuille_route(count)")
     .eq("chauffeur_id", user.id)
     .eq("verrouillee", false)
     .lt("date_service", aujourdHui)
     .order("date_service", { ascending: true });
+  // Une feuille d'un jour précédent compte comme "à clôturer" seulement si le chauffeur a
+  // vraiment travaillé ce jour-là (heure de début ou au moins une course) — pas les feuilles
+  // vides créées automatiquement un jour de congé.
+  const feuillesOubliees = (feuillesNonCloturees || []).filter(f =>
+    !f.verifiee_admin && (f.heure_debut || ((f.lignes_feuille_route && f.lignes_feuille_route[0] && f.lignes_feuille_route[0].count) || 0) > 0));
 
   const bandeau = document.getElementById("bandeau-feuille-oubliee");
-  if (feuillesOubliees && feuillesOubliees.length > 0 && !idDepuisUrl) {
-    const premiere = feuillesOubliees[0];
-    const dateLisible = new Date(premiere.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
-    bandeau.innerHTML = `⚠️ Tu as une feuille du <b>${esc(dateLisible)}</b> jamais terminée`
-      + (feuillesOubliees.length > 1 ? ` (+ ${feuillesOubliees.length - 1} autre(s))` : "")
-      + ` — <a href="feuille-de-route.html?feuille=${premiere.id}" style="color:#8a2020; text-decoration:underline; font-weight:700;">l'ouvrir et la terminer</a>`;
+  bandeau.style.display = "none";
+  // Seules les feuilles des 3 derniers jours bloquent (hier, avant-hier…). Les très anciennes
+  // non clôturées sont seulement signalées : c'est à la centrale de les régler.
+  const limiteBlocage = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+  const feuillesBloquantes = feuillesOubliees.filter(f => f.date_service >= limiteBlocage);
+  const feuillesAnciennes = feuillesOubliees.filter(f => f.date_service < limiteBlocage);
+  if (feuillesBloquantes.length === 0 && feuillesAnciennes.length > 0 && !idDepuisUrl) {
+    const p = feuillesAnciennes[0];
+    bandeau.innerHTML = `⚠️ Tu as ${feuillesAnciennes.length} ancienne(s) feuille(s) jamais clôturée(s) (la plus ancienne : ${esc(new Date(p.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}) — <a href="feuille-de-route.html?feuille=${p.id}" style="color:#8a2020; text-decoration:underline; font-weight:700;">l'ouvrir</a>`;
     bandeau.style.display = "block";
-  } else {
-    bandeau.style.display = "none";
+  }
+  if (feuillesBloquantes.length > 0) {
+    const premiere = feuillesBloquantes[0];
+    const dateLisible = new Date(premiere.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
+    // RÈGLE : tant que la feuille d'un jour précédent n'est pas clôturée, le chauffeur ne peut
+    // PAS ouvrir la feuille d'aujourd'hui → on l'emmène directement sur l'ancienne.
+    if (!idDepuisUrl || idDepuisUrl !== premiere.id) {
+      const cible = feuillesOubliees.find(f => f.id === idDepuisUrl);
+      if (!cible) { location.replace("feuille-de-route.html?feuille=" + premiere.id); return; }
+    }
+    bandeau.innerHTML = `🔒 <b>Feuille du ${esc(dateLisible)} pas encore clôturée.</b><br>Tu dois la compléter et la <b>clôturer</b> (bouton « Signer / clôturer » en bas) avant de pouvoir ouvrir ta feuille d'aujourd'hui.`
+      + (feuillesBloquantes.length > 1 ? `<br>(+ ${feuillesBloquantes.length - 1} autre feuille non clôturée après celle-ci)` : "");
+    bandeau.style.display = "block";
   }
 
   let dateAAfficher = aujourdHui;
@@ -921,13 +974,14 @@ async function afficherCaisse() {
     uber: { nom: "🚕 Uber (payé sur Uber)", total: 0, nb: 0 },
     uber_cash: { nom: "🚕💵 Uber payé en cash (dans la caisse, hors recette)", total: 0, nb: 0 }
   };
-  let sansMode = 0, sansMontant = 0, nbForfaits = 0, totalForfaits = 0;
+  let sansMode = 0, sansMontant = 0, nbForfaits = 0, totalForfaits = 0, nbAnnulees = 0;
   (lignes || []).forEach(l => {
     const vide = !l.embarquement_lieu && !l.debarquement_lieu && l.sommes_percues == null && l.prix_taximetre == null && !l.mode_paiement;
     if (vide) return;
     const somme = nombreOuNull(l.sommes_percues);
     const montant = (somme !== null && somme > 0) ? somme : (nombreOuNull(l.prix_taximetre) ?? 0);
     if (l.type_course === "prive") return;
+    if (l.mode_paiement === "annulee") { nbAnnulees++; return; }
     const mode = (l.mode_paiement === "uber_cash") ? "uber_cash" : (l.type_course === "uber") ? "uber" : l.mode_paiement;
     if (!mode || !modes[mode]) { sansMode++; return; }
     modes[mode].nb++;
@@ -953,6 +1007,7 @@ async function afficherCaisse() {
   });
   if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
   html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber)</span><b>${formatEuro(totalGeneral)}</b></div>`;
+  if (nbAnnulees) html += `<div class="caisse-ligne"><span>❌ Courses annulées (rien encaissé)</span><b>${nbAnnulees}</b></div>`;
   if (sansMode) html += `<div class="caisse-alerte">⚠️ ${sansMode} course(s) sans mode de paiement : choisis Cash, Carte… sinon elles ne comptent pas dans la caisse.</div>`;
   if (sansMontant) html += `<div class="caisse-alerte">⚠️ ${sansMontant} course(s) sans prix rempli.</div>`;
   zone.innerHTML = html;
@@ -1022,6 +1077,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
   if (ligne.mode_paiement === "uber_cash") badge += " · 🚕💵 Uber cash";
   else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
   if (ligne.mode_paiement === "qr") badge += " · 📱 QR";
+  if (ligne.mode_paiement === "annulee") badge += " · ❌ annulée";
+  if (ligne.signalee_erreur) badge += " · 📨 demande envoyée à la centrale";
 
   const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
   const heureResume = (ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "") + (ligne.note_chauffeur ? " · 📝" : "");
@@ -1078,6 +1135,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="cheque_social">🎫 Chèque social/communal</option>
         <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
+        <option value="annulee">❌ Course annulée (rien encaissé)</option>
       `;
     } else if (estTypeCourse) {
       input.innerHTML = `
@@ -1135,6 +1193,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
       }
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiement();
       if (estPaiement && valeur === "qr" && !error) afficherQrDeLaLigne();
+      if (estPaiement && valeur === "annulee" && !error && inputsParChamp["sommes_percues"].value !== "") {
+        inputsParChamp["sommes_percues"].value = "";
+        inputsParChamp["sommes_percues"].dispatchEvent(new Event("change"));
+      }
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     if (type === "time") wrap.appendChild(creerBoutonMaintenant(input));
@@ -1146,6 +1208,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionUber.className = "mention-uber";
   mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
   corps.insertBefore(mentionUber, wrapsParChamp["mode_paiement"]);
+
+  const mentionAnnulee = document.createElement("div");
+  mentionAnnulee.className = "mention-uber";
+  mentionAnnulee.textContent = "❌ Course annulée : rien n'est encaissé, elle ne compte pas dans la caisse. Sur la feuille imprimée, « ANNULÉE » est marqué dans Sommes perçues. Indique la raison dans la note (client absent, annulé sur place…).";
+  corps.insertBefore(mentionAnnulee, wrapsParChamp["mode_paiement"]);
 
   const mentionUberCash = document.createElement("div");
   mentionUberCash.className = "mention-uber";
@@ -1289,24 +1356,38 @@ function construireLigneHtml(ligne, numeroAffiche) {
     corps.appendChild(btnCloturer);
   }
 
-  // ---- Supprimer une course ajoutée par erreur ----
-  // Seulement une course ajoutée à la main (pas une course de la centrale), non clôturée, feuille non signée.
-  const supprimable = !feuilleActuelle.verrouillee && !ligne.cloturee && (!ligne.course_id || courseManuelle);
-  if (supprimable) {
-    const btnSupprimer = document.createElement("button");
-    btnSupprimer.type = "button";
-    btnSupprimer.className = "btn-supprimer-course";
-    btnSupprimer.textContent = "🗑️ Supprimer cette course (ajoutée par erreur)";
-    btnSupprimer.addEventListener("click", async () => {
-      if (!confirm("Supprimer définitivement la course n° " + numeroAffiche + " ?\n\nÀ utiliser seulement si elle a été ajoutée par erreur.")) return;
-      btnSupprimer.disabled = true;
-      const { error } = await supabase.from("lignes_feuille_route").delete().eq("id", ligne.id);
-      if (error) { alert("Suppression impossible : " + error.message); btnSupprimer.disabled = false; return; }
-      etatManuelLignes.delete(ligne.id);
-      fermerPleinEcran();
-      await chargerLignes();
+  // ---- Demande de correction à la centrale (supprimer / modifier) avec la raison ----
+  if (!feuilleActuelle.verrouillee && !ligne.cloturee) {
+    const btnSignaler = document.createElement("button");
+    btnSignaler.type = "button";
+    btnSignaler.className = "btn-supprimer-course";
+    const majBouton = () => {
+      btnSignaler.textContent = ligne.signalee_erreur
+        ? "⏳ Demande envoyée : « " + (ligne.signalee_erreur_motif || "suppression") + " » — touche pour l'annuler"
+        : "📨 Demander à la centrale de supprimer / modifier cette course";
+      btnSignaler.style.background = ligne.signalee_erreur ? "#fdecee" : "#fff";
+    };
+    majBouton();
+    btnSignaler.addEventListener("click", async () => {
+      if (ligne.signalee_erreur) {
+        if (!confirm("Annuler ta demande à la centrale pour cette course ?")) return;
+        const { error } = await supabase.from("lignes_feuille_route").update({ signalee_erreur: false }).eq("id", ligne.id);
+        if (error) { alert("Erreur : " + error.message); return; }
+        ligne.signalee_erreur = false; ligne.signalee_erreur_motif = null; majBouton();
+        return;
+      }
+      const motif = await demanderMotifCorrection(numeroAffiche);
+      if (!motif) return;
+      btnSignaler.disabled = true;
+      const { error } = await supabase.from("lignes_feuille_route")
+        .update({ signalee_erreur: true, signalee_erreur_motif: motif }).eq("id", ligne.id);
+      btnSignaler.disabled = false;
+      if (error) { alert("Impossible d'envoyer : " + error.message); return; }
+      ligne.signalee_erreur = true; ligne.signalee_erreur_motif = motif;
+      majBouton();
+      alert("✅ Demande envoyée à la centrale. Elle la traitera dès que possible — inutile d'appeler.");
     });
-    corps.appendChild(btnSupprimer);
+    corps.appendChild(btnSignaler);
   }
   div.appendChild(corps);
 
@@ -1324,14 +1405,16 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const estUber = !estUberCash && (mode === "uber" || typeCourse === "uber");
     const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
-    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash) ? "none" : "";
-    wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive) ? "none" : "";
+    const estAnnulee = mode === "annulee";
+    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee) ? "none" : "";
+    wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionPrive.style.display = estPrive ? "" : "none";
     mentionUber.style.display = estUber ? "" : "none";
     mentionUberCash.style.display = estUberCash ? "" : "none";
     blocMonnaie.style.display = (!estUber && !estPrive && (mode === "cash" || mode === "" || estUberCash)) ? "" : "none";
+    mentionAnnulee.style.display = estAnnulee ? "" : "none";
     blocQr.style.display = (mode === "qr" && !estPrive) ? "" : "none";
   }
   appliquerVisibilitePaiement();
@@ -1403,6 +1486,15 @@ document.getElementById("btn-voir-details").addEventListener("click", () => {
 
 function appliquerVerrouillage() {
   const verrou = feuilleActuelle.verrouillee;
+  // Feuille d'un jour précédent qu'on vient de clôturer → on propose d'ouvrir la suivante / celle du jour
+  const aujourdHuiIso = new Date().toISOString().slice(0, 10);
+  if (verrou && feuilleActuelle.date_service < aujourdHuiIso) {
+    const bandeauFeuille = document.getElementById("bandeau-feuille-oubliee");
+    bandeauFeuille.style.background = "#e7f5ec"; bandeauFeuille.style.borderColor = "#b7dfc5"; bandeauFeuille.style.color = "#1f6b3f";
+    bandeauFeuille.innerHTML = `✅ Feuille du ${esc(new Date(feuilleActuelle.date_service + "T12:00:00").toLocaleDateString("fr-BE"))} clôturée.<br>
+      <a href="feuille-de-route.html" style="display:inline-block; margin-top:8px; padding:10px 14px; background:#1f8a4c; color:#fff; border-radius:10px; font-weight:700; text-decoration:none;">➡️ Ouvrir ma feuille d'aujourd'hui</a>`;
+    bandeauFeuille.style.display = "block";
+  }
   Object.keys(champsEntete).forEach(id => document.getElementById(id).disabled = verrou);
   document.getElementById("btn-ajouter-ligne").style.display = verrou ? "none" : "block";
   document.getElementById("btn-signer").style.display = verrou ? "none" : "block";
@@ -1460,7 +1552,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};
       const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-      const sommes = l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+      const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
         : estUber ? "Payé sur Uber" : l.sommes_percues;
       return `<tr>
         <td>${i + 1}</td>
@@ -1500,13 +1592,17 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       </table>
       <h2>Courses ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
       <table class="courses-table">
+        <thead>
         <tr>
           <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
           <th colspan="3">Embarquement</th><th colspan="3">Débarquement</th>
           <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th>
         </tr>
         <tr><th>Index</th><th>Lieu</th><th>Heure</th><th>Index</th><th>Lieu</th><th>Heure</th></tr>
+        </thead>
+        <tbody>
         ${lignesHtml}
+        </tbody>
       </table>
     `);
   }
@@ -1533,6 +1629,13 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
     }
     .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
+    .page { width: 190mm; height: 276mm; overflow: hidden; display: flex; flex-direction: column; background: #fff; }
+    .page-contenu { flex: 0 0 auto; }
+    .page-pied { margin-top: auto; }
+    .num-page { font-size: 8px; text-align: right; margin-top: 2px; }
+    .courses-table tr { break-inside: avoid; page-break-inside: avoid; }
+    @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 10mm solid #fff; } #pages { padding: 10mm 0; } }
+    @media print { #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } }
     @media print { .btn-print, .barre-actions-impression { display: none; } }
   </style></head>
   <body>
@@ -1540,6 +1643,8 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       <button onclick="window.close()">← Retour</button>
       <button class="btn-imprimer-action" onclick="window.print()">🖨️ Imprimer</button>
     </div>
+    <div id="pages"></div>
+    <div id="source">
     <h1>FEUILLE DE ROUTE</h1>
     <table>
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
@@ -1549,9 +1654,84 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     </table>
 
     ${blocsVehicules.join("")}
-
-    <div class="signature">Signature du chauffeur : ______________________________</div>
-    <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.${toutesLesFeuillesDuJour.length > 1 ? " Journée avec changement de véhicule : un bloc par véhicule utilisé." : ""}</div>
+    </div>
+    <template id="tpl-pied">
+      <div class="signature">Signature du chauffeur : ______________________________</div>
+      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.${toutesLesFeuillesDuJour.length > 1 ? " Journée avec changement de véhicule : un bloc par véhicule utilisé." : ""}</div>
+      <div class="num-page"></div>
+    </template>
+    <script>
+(function(){
+  function paginer(){
+    var source = document.getElementById("source"), zone = document.getElementById("pages");
+    var tpl = document.getElementById("tpl-pied");
+    var mesure = document.createElement("div");
+    mesure.style.cssText = "position:absolute;visibility:hidden;height:276mm;width:1px;";
+    document.body.appendChild(mesure);
+    var hauteurPage = mesure.getBoundingClientRect().height;
+    mesure.parentNode.removeChild(mesure);
+    var pages = [], page = null, contenu = null;
+    function nouvellePage(){
+      page = document.createElement("div"); page.className = "page";
+      contenu = document.createElement("div"); contenu.className = "page-contenu";
+      var pied = document.createElement("div"); pied.className = "page-pied"; pied.innerHTML = tpl.innerHTML;
+      page.appendChild(contenu); page.appendChild(pied);
+      zone.appendChild(page); pages.push(page);
+    }
+    function tient(){
+      var pied = page.querySelector(".page-pied");
+      return contenu.offsetHeight + pied.offsetHeight + 14 <= hauteurPage;
+    }
+    nouvellePage();
+    var elements = [].slice.call(source.children);
+    for (var i = 0; i < elements.length; i++){
+      var el = elements[i];
+      var suivant = elements[i + 1];
+      if (el.tagName === "H2" && suivant && suivant.classList.contains("courses-table")) continue;
+      if (el.classList.contains("courses-table")){
+        var titre = (elements[i - 1] && elements[i - 1].tagName === "H2") ? elements[i - 1] : null;
+        var lignes = [].slice.call(el.tBodies[0].rows);
+        var table = null, titreCourant = null;
+        var debutTable = function(suite){
+          titreCourant = null;
+          if (titre){
+            titreCourant = titre.cloneNode(true);
+            if (suite) titreCourant.textContent = titre.textContent + " (suite)";
+            contenu.appendChild(titreCourant);
+          }
+          table = el.cloneNode(false);
+          table.appendChild(el.tHead.cloneNode(true));
+          table.appendChild(document.createElement("tbody"));
+          contenu.appendChild(table);
+        };
+        debutTable(false);
+        for (var r = 0; r < lignes.length; r++){
+          table.tBodies[0].appendChild(lignes[r]);
+          if (!tient()){
+            table.tBodies[0].removeChild(lignes[r]);
+            var vide = table.tBodies[0].rows.length === 0;
+            if (vide){ contenu.removeChild(table); if (titreCourant) contenu.removeChild(titreCourant); }
+            nouvellePage();
+            debutTable(!vide || r > 0);
+            table.tBodies[0].appendChild(lignes[r]);
+          }
+        }
+        continue;
+      }
+      contenu.appendChild(el);
+      if (!tient() && contenu.children.length > 1){
+        contenu.removeChild(el); nouvellePage(); contenu.appendChild(el);
+      }
+    }
+    pages.forEach(function(p, k){
+      var n = p.querySelector(".num-page");
+      if (n) n.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length + (k === 0 ? " — recto" : (k === 1 ? " — verso" : ""))) : "";
+    });
+    source.parentNode.removeChild(source);
+  }
+  if (document.readyState === "complete") paginer(); else window.addEventListener("load", paginer);
+})();
+<\/script>
   </body></html>`;
 
   const fenetre2 = fenetre.closed ? null : fenetre;

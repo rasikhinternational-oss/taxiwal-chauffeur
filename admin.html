@@ -139,6 +139,47 @@ window.onerror = function(msg, url, line, col, err) {
   .caisse-fond button{ width:auto; padding:10px 14px; font-size:.85rem; }
 
   /* Feuilles de route (admin) */
+  .hor-barre{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .hor-barre button{ width:48px; padding:10px 0; font-size:1.2rem; }
+  #hor-titre-semaine{ flex:1; text-align:center; font-weight:700; }
+  .hor-actions{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .hor-actions button{ width:auto; padding:9px 12px; font-size:.85rem; background:#f7f7f5; color:var(--blanc); border:1px solid #cfcfcd; }
+  #hor-maintenant{ background:#fff; border:1px solid #dcdcda; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:.88rem; }
+  .hor-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid #dcdcda; border-radius:10px; background:#fff; }
+  #hor-table{ border-collapse:collapse; min-width:760px; width:100%; font-size:.8rem; }
+  #hor-table th, #hor-table td{ border:1px solid #e4e4e1; padding:6px 4px; text-align:center; vertical-align:top; }
+  #hor-table th{ background:#f7f7f5; font-size:.75rem; }
+  #hor-table th.hor-auj, #hor-table td.hor-auj{ background:#fff8e6; }
+  #hor-table td.hor-nom{ text-align:left; font-weight:700; position:sticky; left:0; background:#fff; z-index:1; min-width:84px; }
+  #hor-table td.hor-case{ cursor:pointer; min-width:88px; }
+  .hor-prevu{ font-weight:800; font-size:.85rem; }
+  .hor-vide{ color:#bbb; font-size:1.1rem; }
+  .hor-reel{ font-size:.72rem; margin-top:3px; border-radius:6px; padding:2px 3px; }
+  .hor-note{ font-size:.68rem; color:var(--gris); margin-top:2px; }
+  .hor-ok, .hor-l-ok{ color:#1f7a44; } .hor-ok{ background:#e7f5ec; }
+  .hor-retard, .hor-l-retard{ color:#9a5b00; } .hor-retard{ background:#fdf1dc; }
+  .hor-absent, .hor-l-absent{ color:#b3141b; } .hor-absent{ background:#fdecee; }
+  .hor-legende{ font-size:.78rem; color:var(--gris); margin-top:10px; }
+  #hor-modale{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:500; align-items:center; justify-content:center; padding:16px; }
+  .hor-modale-boite{ background:#fff; border-radius:14px; padding:18px; width:100%; max-width:420px; }
+  .hor-modale-boite h3{ margin:0 0 12px; font-size:1.05rem; }
+  .hor-modale-boite label{ display:block; font-size:.8rem; color:var(--gris); margin:6px 0 4px; }
+  .hor-modale-boite input{ width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; font-size:1rem; box-sizing:border-box; }
+  .hor-ligne2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .hor-jours{ display:flex; gap:6px; flex-wrap:wrap; }
+  .hor-jours label{ display:flex; align-items:center; gap:4px; margin:0; padding:7px 9px; border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:.82rem; }
+  .hor-jours input{ width:auto; }
+  .hor-boutons{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+  .hor-boutons button{ padding:13px; border-radius:10px; border:none; font-weight:700; font-size:.95rem; }
+  #demandes-chauffeurs-fa .dc-bloc{ background:#fff7f7; border:2px solid var(--rouge); border-radius:12px; padding:12px; margin-bottom:14px; }
+  #demandes-chauffeurs-fa .dc-titre{ font-weight:800; margin-bottom:8px; color:#8a1520; }
+  #demandes-chauffeurs-fa .dc-item{ background:#fff; border:1px solid #eadada; border-radius:10px; padding:10px; margin-bottom:8px; font-size:.86rem; }
+  #demandes-chauffeurs-fa .dc-motif{ font-weight:700; margin:4px 0; }
+  #demandes-chauffeurs-fa .dc-actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  #demandes-chauffeurs-fa .dc-actions button{ width:auto; flex:1; padding:9px 8px; border-radius:8px; font-size:.8rem; font-weight:700; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; }
+  #demandes-chauffeurs-fa .dc-actions .dc-suppr{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
+  nav button .badge-demandes{ display:inline-block; min-width:20px; padding:1px 6px; margin-left:6px; border-radius:999px; background:#fff; color:var(--rouge); font-size:.75rem; font-weight:800; }
+  nav button.actif .badge-demandes{ background:#fff; }
   #feuilles-sous-onglets{ display:flex; gap:8px; margin-bottom:14px; }
   #feuilles-sous-onglets button{ width:auto; padding:9px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
   #feuilles-sous-onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
@@ -175,6 +216,18 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:none; font-size:.8rem; font-weight:700; cursor:pointer; flex-shrink:0; }
   .feuille-admin .btn-verrou.rouvrir{ background:var(--rouge); color:#fff; }
   .feuille-admin .btn-verrou.cloturer{ background:#1c1c1c; color:#fff; }
+  /* Édition d'une course en grand (plein écran, 1 colonne, gros champs) */
+  .ligne-admin .grille3-fa{ display:grid; grid-template-columns:1fr 1fr 1fr; border:1px solid #cfcfcd; border-radius:6px; overflow:hidden; }
+  .ligne-admin .grille3-fa > div{ padding:6px 8px; }
+  .ligne-admin label{ display:block; font-size:.72rem; color:var(--gris); margin-bottom:3px; }
+  .ligne-admin.plein-ecran-ligne{ position:fixed; inset:0; z-index:700; margin:0; border-radius:0; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#f0f1ee; padding:calc(env(safe-area-inset-top,0px) + 10px) 14px calc(env(safe-area-inset-bottom,0px) + 80px); }
+  .ligne-admin.plein-ecran-ligne .num-ligne{ position:sticky; top:0; z-index:2; background:#f0f1ee; padding:8px 0; }
+  .ligne-admin.plein-ecran-ligne .grille3-fa{ grid-template-columns:1fr; border:none; background:#fff; border-radius:10px; }
+  .ligne-admin.plein-ecran-ligne .grille3-fa > div{ border-right:none; border-bottom:1px solid #eee; padding:10px 12px; }
+  .ligne-admin.plein-ecran-ligne label{ font-size:.85rem; }
+  .ligne-admin.plein-ecran-ligne input, .ligne-admin.plein-ecran-ligne select, .ligne-admin.plein-ecran-ligne textarea{ font-size:1.05rem !important; padding:12px !important; width:100%; box-sizing:border-box; }
+  .ligne-admin .num-ligne button.btn-grand-ligne{ background:#3b82c4; color:#fff; border-color:#3b82c4; }
+  body.ligne-en-grand{ overflow:hidden; }
   .ligne-admin{ background:#f0f1ee; border-radius:10px; padding:10px; margin-bottom:8px; border:1px solid #dcdcda; }
   .ligne-admin .num-ligne{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; cursor:pointer; gap:8px; }
   .ligne-admin .num-ligne span{ color:var(--blanc); font-size:.82rem; flex:1; }
@@ -307,6 +360,11 @@ window.onerror = function(msg, url, line, col, err) {
   }
   #ecran-login-admin button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; color:var(--blanc); }
   #erreur-login-admin{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
+  .course.carte-en-grand{ position:fixed; inset:0; z-index:650; margin:0 !important; border-radius:0 !important; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(env(safe-area-inset-bottom,0px) + 90px) !important; font-size:1.06rem; }
+  .course.carte-en-grand button, .course.carte-en-grand select, .course.carte-en-grand input{ font-size:1rem; }
+  .course.carte-en-grand .btn-carte-grand{ position:sticky; top:0; z-index:3; background:var(--rouge) !important; }
+  body.carte-grand-ouverte{ overflow:hidden; }
+  .btn-carte-grand{ display:block; width:100%; margin:0 0 10px; padding:9px; border:none; border-radius:9px; background:#3b82c4; color:#fff; font-weight:700; font-size:.88rem; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -340,6 +398,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button class="actif" data-onglet="courses">Courses</button>
     <button data-onglet="agenda">Agenda</button>
     <button data-onglet="carte">Carte chauffeurs</button>
+    <button data-onglet="horaires">🗓️ Horaires</button>
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
@@ -409,6 +468,7 @@ window.onerror = function(msg, url, line, col, err) {
 </section>
 
 <section id="section-feuilles">
+  <div id="demandes-chauffeurs-fa"></div>
   <div id="feuilles-sous-onglets">
     <button class="actif" id="btn-vue-jour-fa">📅 Vue du jour</button>
     <button id="btn-vue-historique-fa">📁 Historique par chauffeur</button>
@@ -432,6 +492,40 @@ window.onerror = function(msg, url, line, col, err) {
     <div id="liste-historique-fa"></div>
   </div>
 </section>
+
+<section id="section-horaires">
+  <div class="hor-barre">
+    <button type="button" id="hor-prec">‹</button>
+    <div id="hor-titre-semaine"></div>
+    <button type="button" id="hor-suiv">›</button>
+  </div>
+  <div class="hor-actions">
+    <button type="button" id="hor-aujourdhui">Cette semaine</button>
+    <button type="button" id="hor-copier">📋 Copier la semaine précédente</button>
+  </div>
+  <div id="hor-maintenant"></div>
+  <div class="hor-scroll"><table id="hor-table"></table></div>
+  <p class="hor-legende">Touche une case pour créer ou modifier un horaire. En gras : horaire prévu. En dessous : heures réelles (feuille de route). <span class="hor-l-ok">vert</span> = à l'heure, <span class="hor-l-retard">orange</span> = plus de 10 min de retard, <span class="hor-l-absent">rouge</span> = pas de feuille de route.</p>
+</section>
+
+<div id="hor-modale" style="display:none;">
+  <div class="hor-modale-boite">
+    <h3 id="hor-modale-titre"></h3>
+    <div class="hor-ligne2">
+      <div><label>Début</label><input id="hor-debut" inputmode="numeric" placeholder="ex : 0700"></div>
+      <div><label>Fin</label><input id="hor-fin" inputmode="numeric" placeholder="ex : 1530"></div>
+    </div>
+    <label>Note (optionnel)</label>
+    <input id="hor-note" placeholder="ex : École Bruxelles, garde de nuit…">
+    <label style="margin-top:10px;">Appliquer aussi aux autres jours de cette semaine :</label>
+    <div id="hor-jours" class="hor-jours"></div>
+    <div class="hor-boutons">
+      <button type="button" id="hor-enregistrer" style="background:var(--vert); color:#fff;">✅ Enregistrer</button>
+      <button type="button" id="hor-supprimer" style="background:#fff; color:var(--rouge); border:1px solid var(--rouge);">🗑️ Supprimer</button>
+      <button type="button" id="hor-annuler" style="background:#dcdcda;">Annuler</button>
+    </div>
+  </div>
+</div>
 
 <section id="section-vehicules">
   <button id="btn-ajouter-vehicule">+ Ajouter un véhicule</button>
@@ -792,13 +886,28 @@ function demarrerAdmin() {
   setInterval(surveillerImpressionsFeuilles, 20000);
   setInterval(rafraichirFeuillesSiPossible, 15000);
   activerTempsReelAdmin();
+  chargerDemandesChauffeurs();
+  setInterval(chargerDemandesChauffeurs, 30000);
 }
 
+// Dernière action de l'admin dans les feuilles (toucher, taper, choisir) : on ne rafraîchit pas
+// la page pendant 30 s après, pour lui laisser le temps de modifier tranquillement.
+let derniereActiviteFeuilles = 0;
+["pointerdown", "keydown", "input", "focusin", "change"].forEach(evt => document.addEventListener(evt, (e) => {
+  const t = e.target;
+  if (t && t.closest && (t.closest("#section-feuilles") || t.closest("#overlay-plein-ecran-fa") || t.closest(".plein-ecran-ligne"))) {
+    derniereActiviteFeuilles = Date.now();
+  }
+}, true));
 function rafraichirFeuillesSiPossible() {
   const zoneFeuilles = document.getElementById("section-feuilles");
   if (!zoneFeuilles.classList.contains("visible")) return;
   if (document.getElementById("vue-historique-fa").style.display === "block") return;
-  if (zoneFeuilles.contains(document.activeElement) && document.activeElement.tagName !== "BODY") return;
+  if (document.getElementById("overlay-plein-ecran-fa")) return;          // feuille ouverte en plein écran
+  if (document.querySelector(".plein-ecran-ligne")) return;               // course ouverte en grand
+  if (Date.now() - derniereActiviteFeuilles < 30000) return;               // l'admin est en train de modifier
+  const actif = document.activeElement;
+  if (actif && actif.tagName !== "BODY" && (zoneFeuilles.contains(actif))) return;
   chargerFeuillesAdmin();
 }
 
@@ -811,6 +920,8 @@ function activerTempsReelAdmin() {
     .subscribe();
 }
 function planifierRafraichissementFeuilles() {
+  clearTimeout(window.minuterieDemandesChauffeurs);
+  window.minuterieDemandesChauffeurs = setTimeout(chargerDemandesChauffeurs, 800);
   clearTimeout(minuterieTempsReelFeuilles);
   minuterieTempsReelFeuilles = setTimeout(rafraichirFeuillesSiPossible, 600);
 }
@@ -865,11 +976,161 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "carte") chargerCarte();
     if (btn.dataset.onglet === "caisse") chargerCaisse();
     if (btn.dataset.onglet === "feuilles") chargerFeuillesAdmin();
+    if (btn.dataset.onglet === "horaires") chargerHoraires();
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
     if (btn.dataset.onglet === "carnet") chargerCarnet();
   });
+});
+
+// ================== HORAIRES DES CHAUFFEURS (planning semaine) ==================
+const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+function lundiDe(d) { const x = new Date(d); x.setHours(12, 0, 0, 0); const j = (x.getDay() + 6) % 7; x.setDate(x.getDate() - j); return x; }
+function isoDate(d) { const x = new Date(d); return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0"); }
+function ajouterJours(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function hhmm(t) { return t ? String(t).slice(0, 5) : ""; }
+function minutesHeure(t) { if (!t) return null; const [h, m] = String(t).split(":").map(Number); return (isNaN(h) || isNaN(m)) ? null : h * 60 + m; }
+function normaliserHeureHoraire(texte) {
+  const t = String(texte || "").trim().toLowerCase().replace(/\s/g, "");
+  if (!t) return null;
+  let h, m;
+  const sep = t.match(/^(\d{1,2})[:h.,](\d{0,2})$/);
+  if (sep) { h = +sep[1]; m = sep[2] ? +sep[2] : 0; }
+  else if (/^\d{1,4}$/.test(t)) { if (t.length <= 2) { h = +t; m = 0; } else { h = +t.slice(0, -2); m = +t.slice(-2); } }
+  else return null;
+  if (h > 23 || m > 59) return null;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+let horLundi = lundiDe(new Date());
+let horDonnees = { horaires: [], feuilles: [] };
+let horEdition = null;
+
+async function chargerHoraires() {
+  if (!chauffeursCache.length) await chargerChauffeurs();
+  const debut = isoDate(horLundi), fin = isoDate(ajouterJours(horLundi, 6));
+  document.getElementById("hor-titre-semaine").textContent =
+    "Semaine du " + new Date(debut + "T12:00:00").toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" }) +
+    " au " + new Date(fin + "T12:00:00").toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const [{ data: horaires, error: e1 }, { data: feuilles }] = await Promise.all([
+    supabase.from("horaires_chauffeurs").select("*").gte("date_service", debut).lte("date_service", fin),
+    supabase.from("feuilles_route").select("chauffeur_id, date_service, heure_debut, heure_fin").gte("date_service", debut).lte("date_service", fin)
+  ]);
+  if (e1) { document.getElementById("hor-table").innerHTML = "<tr><td>Erreur : " + esc(e1.message) + "</td></tr>"; return; }
+  horDonnees = { horaires: horaires || [], feuilles: feuilles || [] };
+  rendreHoraires();
+}
+
+function reelDuJour(chauffeurId, date) {
+  // Plusieurs feuilles le même jour (changement de véhicule) : du plus tôt au plus tard
+  const fs = horDonnees.feuilles.filter(f => f.chauffeur_id === chauffeurId && f.date_service === date);
+  const debuts = fs.map(f => hhmm(f.heure_debut)).filter(Boolean).sort();
+  const fins = fs.map(f => hhmm(f.heure_fin)).filter(Boolean).sort();
+  return fs.length ? { existe: true, debut: debuts[0] || "", fin: fins[fins.length - 1] || "" } : { existe: false };
+}
+
+function rendreHoraires() {
+  const table = document.getElementById("hor-table");
+  const aujourdHui = isoDate(new Date());
+  const jours = [...Array(7)].map((_, i) => isoDate(ajouterJours(horLundi, i)));
+  let html = "<tr><th>Chauffeur</th>" + jours.map((d, i) =>
+    `<th class="${d === aujourdHui ? "hor-auj" : ""}">${JOURS_COURTS[i]}<br>${d.slice(8, 10)}/${d.slice(5, 7)}</th>`).join("") + "</tr>";
+  chauffeursCache.forEach(ch => {
+    html += `<tr><td class="hor-nom">${esc(ch.nom || ch.telephone || "Chauffeur")}</td>`;
+    jours.forEach(d => {
+      const h = horDonnees.horaires.find(x => x.chauffeur_id === ch.id && x.date_service === d);
+      const r = reelDuJour(ch.id, d);
+      let contenu = h ? `<div class="hor-prevu">${hhmm(h.heure_debut)}–${hhmm(h.heure_fin)}</div>` : `<div class="hor-vide">+</div>`;
+      if (h && h.note) contenu += `<div class="hor-note">${esc(h.note)}</div>`;
+      if (r.existe && (r.debut || r.fin)) {
+        let classe = "hor-ok";
+        if (h && r.debut && minutesHeure(r.debut) - minutesHeure(h.heure_debut) > 10) classe = "hor-retard";
+        contenu += `<div class="hor-reel ${classe}">réel ${r.debut || "?"}–${r.fin || "en cours"}</div>`;
+      } else if (h && d < aujourdHui) {
+        contenu += `<div class="hor-reel hor-absent">pas de feuille</div>`;
+      } else if (h && d === aujourdHui && minutesHeure(new Date().toTimeString().slice(0, 5)) > minutesHeure(h.heure_debut) + 10) {
+        contenu += `<div class="hor-reel hor-retard">pas encore commencé</div>`;
+      }
+      html += `<td class="hor-case ${d === aujourdHui ? "hor-auj" : ""}" data-ch="${ch.id}" data-date="${d}">${contenu}</td>`;
+    });
+    html += "</tr>";
+  });
+  html += "<tr><td class=\"hor-nom\" style=\"font-weight:400;\">Total</td>" + jours.map(d =>
+    `<td class="${d === aujourdHui ? "hor-auj" : ""}">${horDonnees.horaires.filter(x => x.date_service === d).length} chauffeur(s)</td>`).join("") + "</tr>";
+  table.innerHTML = html;
+  table.querySelectorAll(".hor-case").forEach(td => td.addEventListener("click", () => ouvrirEditionHoraire(td.dataset.ch, td.dataset.date)));
+
+  // Encadré "qui travaille aujourd'hui"
+  const zone = document.getElementById("hor-maintenant");
+  if (!jours.includes(aujourdHui)) { zone.style.display = "none"; return; }
+  zone.style.display = "block";
+  const duJour = horDonnees.horaires.filter(x => x.date_service === aujourdHui)
+    .sort((a, b) => String(a.heure_debut).localeCompare(String(b.heure_debut)));
+  const nomDe = id => (chauffeursCache.find(c => c.id === id) || {}).nom || "Chauffeur";
+  zone.innerHTML = "<b>Aujourd'hui :</b> " + (duJour.length
+    ? duJour.map(x => `${esc(nomDe(x.chauffeur_id))} ${hhmm(x.heure_debut)}–${hhmm(x.heure_fin)}`).join(" · ")
+    : "aucun horaire prévu");
+}
+
+function ouvrirEditionHoraire(chauffeurId, date) {
+  const ch = chauffeursCache.find(c => c.id === chauffeurId) || {};
+  const h = horDonnees.horaires.find(x => x.chauffeur_id === chauffeurId && x.date_service === date);
+  horEdition = { chauffeurId, date, existant: h || null };
+  document.getElementById("hor-modale-titre").textContent =
+    (ch.nom || "Chauffeur") + " — " + new Date(date + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
+  document.getElementById("hor-debut").value = h ? hhmm(h.heure_debut) : "";
+  document.getElementById("hor-fin").value = h ? hhmm(h.heure_fin) : "";
+  document.getElementById("hor-note").value = h?.note || "";
+  document.getElementById("hor-supprimer").style.display = h ? "" : "none";
+  document.getElementById("hor-jours").innerHTML = [...Array(7)].map((_, i) => {
+    const d = isoDate(ajouterJours(horLundi, i));
+    return d === date ? "" : `<label><input type="checkbox" value="${d}"> ${JOURS_COURTS[i]}</label>`;
+  }).join("");
+  document.getElementById("hor-modale").style.display = "flex";
+}
+function fermerEditionHoraire() { document.getElementById("hor-modale").style.display = "none"; horEdition = null; }
+
+document.getElementById("hor-annuler").addEventListener("click", fermerEditionHoraire);
+document.getElementById("hor-modale").addEventListener("click", (e) => { if (e.target.id === "hor-modale") fermerEditionHoraire(); });
+document.getElementById("hor-enregistrer").addEventListener("click", async () => {
+  if (!horEdition) return;
+  const debut = normaliserHeureHoraire(document.getElementById("hor-debut").value);
+  const fin = normaliserHeureHoraire(document.getElementById("hor-fin").value);
+  if (!debut || !fin) { alert("Heures non reconnues. Tape par exemple 0700 et 1530."); return; }
+  const note = document.getElementById("hor-note").value.trim() || null;
+  const dates = [horEdition.date, ...[...document.querySelectorAll("#hor-jours input:checked")].map(x => x.value)];
+  const { data: { user } } = await supabase.auth.getUser();
+  const lignes = dates.map(d => ({ chauffeur_id: horEdition.chauffeurId, date_service: d, heure_debut: debut, heure_fin: fin, note, cree_par: user?.id || null, updated_at: new Date().toISOString() }));
+  const { error } = await supabase.from("horaires_chauffeurs").upsert(lignes, { onConflict: "chauffeur_id,date_service" });
+  if (error) { alert("Erreur : " + error.message); return; }
+  fermerEditionHoraire();
+  chargerHoraires();
+});
+document.getElementById("hor-supprimer").addEventListener("click", async () => {
+  if (!horEdition?.existant) return;
+  if (!confirm("Supprimer cet horaire ?")) return;
+  const { error } = await supabase.from("horaires_chauffeurs").delete().eq("id", horEdition.existant.id);
+  if (error) { alert("Erreur : " + error.message); return; }
+  fermerEditionHoraire();
+  chargerHoraires();
+});
+document.getElementById("hor-prec").addEventListener("click", () => { horLundi = ajouterJours(horLundi, -7); chargerHoraires(); });
+document.getElementById("hor-suiv").addEventListener("click", () => { horLundi = ajouterJours(horLundi, 7); chargerHoraires(); });
+document.getElementById("hor-aujourdhui").addEventListener("click", () => { horLundi = lundiDe(new Date()); chargerHoraires(); });
+document.getElementById("hor-copier").addEventListener("click", async () => {
+  const debutPrec = isoDate(ajouterJours(horLundi, -7)), finPrec = isoDate(ajouterJours(horLundi, -1));
+  const { data: prec, error } = await supabase.from("horaires_chauffeurs").select("*").gte("date_service", debutPrec).lte("date_service", finPrec);
+  if (error) { alert("Erreur : " + error.message); return; }
+  if (!prec || !prec.length) { alert("Aucun horaire la semaine précédente."); return; }
+  if (!confirm(`Copier les ${prec.length} horaire(s) de la semaine précédente sur cette semaine ?\n(Les horaires déjà créés cette semaine pour les mêmes jours seront remplacés.)`)) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  const lignes = prec.map(h => ({
+    chauffeur_id: h.chauffeur_id, date_service: isoDate(ajouterJours(new Date(h.date_service + "T12:00:00"), 7)),
+    heure_debut: h.heure_debut, heure_fin: h.heure_fin, note: h.note, cree_par: user?.id || null, updated_at: new Date().toISOString()
+  }));
+  const { error: e2 } = await supabase.from("horaires_chauffeurs").upsert(lignes, { onConflict: "chauffeur_id,date_service" });
+  if (e2) { alert("Erreur : " + e2.message); return; }
+  chargerHoraires();
 });
 
 let chauffeursCache = [];
@@ -1055,7 +1316,11 @@ function afficherListeCoursesAdmin() {
 }
 document.getElementById("recherche-course").addEventListener("input", afficherListeCoursesAdmin);
 
+var rechargeCartesEnAttente = false;
+function rechargerApresCarteGrand() { if (rechargeCartesEnAttente) { rechargeCartesEnAttente = false; chargerCoursesAdmin(true); } }
 async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
+  // Une course est ouverte en grand : on ne redessine pas la liste (sinon elle se fermerait)
+  if (document.querySelector(".carte-en-grand")) { rechargeCartesEnAttente = true; return; }
   const { data: courses, error } = await supabase
     .from("courses")
     .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom), vehicules:vehicule_id(nom, plaque, places)")
@@ -1689,6 +1954,22 @@ function construireCarteAdmin(course) {
   });
   corps.appendChild(btnFermerCourse);
 
+  // ---- Ouvrir la course en grand (plein écran) ----
+  const btnCarteGrand = document.createElement("button");
+  btnCarteGrand.type = "button";
+  btnCarteGrand.className = "btn-carte-grand";
+  btnCarteGrand.textContent = "🔍 Ouvrir en grand";
+  btnCarteGrand.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const ouvrir = !div.classList.contains("carte-en-grand");
+    document.querySelectorAll(".carte-en-grand").forEach(x => { x.classList.remove("carte-en-grand"); const b = x.querySelector(".btn-carte-grand"); if (b) b.textContent = "🔍 Ouvrir en grand"; });
+    div.classList.toggle("carte-en-grand", ouvrir);
+    document.body.classList.toggle("carte-grand-ouverte", ouvrir);
+    btnCarteGrand.textContent = ouvrir ? "✕ Fermer (retour à la liste)" : "🔍 Ouvrir en grand";
+    if (ouvrir) div.scrollTop = 0;
+    else if (typeof rechargerApresCarteGrand === "function") rechargerApresCarteGrand();
+  });
+  div.insertBefore(btnCarteGrand, div.firstChild);
   return div;
 }
 
@@ -2761,6 +3042,95 @@ const feuillesDepliees = new Set();
 const lignesDepliees = new Set();
 const etatManuelLignesAdmin = new Map();
 
+// ---- Suppression d'une feuille de route protégée par un code choisi par l'admin ----
+async function definirCodeSuppression(ancienCode) {
+  const nouveau = prompt("Choisis ton code de suppression (au moins 4 caractères) :");
+  if (!nouveau) return false;
+  const confirmation = prompt("Retape le même code pour confirmer :");
+  if (confirmation !== nouveau) { alert("Les deux codes ne sont pas identiques. Recommence."); return false; }
+  const { error } = await supabase.rpc("admin_definir_code_suppression", { p_ancien: ancienCode || null, p_nouveau: nouveau });
+  if (error) { alert("Erreur : " + error.message); return false; }
+  alert("✅ Code de suppression enregistré. Garde-le pour toi.");
+  return true;
+}
+async function demanderCodeEtSupprimerFeuille(feuilleId, nom, dateChoisie, nbLignes) {
+  const { data: codeExiste, error: e0 } = await supabase.rpc("admin_code_suppression_defini");
+  if (e0) { alert("Erreur : " + e0.message); return false; }
+  if (!codeExiste) {
+    alert("Aucun code de suppression n'est encore défini. Tu vas d'abord le créer.");
+    if (!(await definirCodeSuppression(null))) return false;
+  }
+  const dateTxt = new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE");
+  if (!confirm(`Supprimer DÉFINITIVEMENT la feuille de route de ${nom} du ${dateTxt} ?\n\n` +
+      `${nbLignes} course(s) seront retirées de la feuille. Les courses saisies à la main disparaissent aussi de la caisse. ` +
+      `Les courses de la centrale restent dans le système.`)) return false;
+  const code = prompt("Tape ton code de suppression :\n(ou tape CHANGER pour modifier ton code)");
+  if (!code) return false;
+  if (code.trim().toUpperCase() === "CHANGER") {
+    const ancien = prompt("Tape ton code actuel :");
+    if (!ancien) return false;
+    await definirCodeSuppression(ancien);
+    return false;
+  }
+  const { error } = await supabase.rpc("admin_supprimer_feuille", { p_feuille_id: feuilleId, p_code: code });
+  if (error) { alert(error.message.includes("Code incorrect") ? "❌ Code incorrect. La feuille n'a pas été supprimée." : "Erreur : " + error.message); return false; }
+  alert("✅ Feuille de route supprimée.");
+  return true;
+}
+
+// ================== DEMANDES DES CHAUFFEURS (supprimer / modifier une course de leur feuille) ==================
+async function chargerDemandesChauffeurs() {
+  const zone = document.getElementById("demandes-chauffeurs-fa");
+  const { data, error } = await supabase.from("lignes_feuille_route")
+    .select("id, n_ordre, embarquement_lieu, debarquement_lieu, embarquement_heure, course_id, signalee_erreur_motif, signalee_erreur_a, feuille_route_id, feuilles_route(date_service, profils:chauffeur_id(nom))")
+    .eq("signalee_erreur", true).order("signalee_erreur_a", { ascending: true });
+  if (error) { console.error(error); return; }
+  const liste = data || [];
+  const btnNav = document.querySelector('nav button[data-onglet="feuilles"]');
+  if (btnNav) {
+    let pastille = btnNav.querySelector(".badge-demandes");
+    if (liste.length) {
+      if (!pastille) { pastille = document.createElement("span"); pastille.className = "badge-demandes"; btnNav.appendChild(pastille); }
+      pastille.textContent = liste.length;
+    } else if (pastille) pastille.remove();
+  }
+  if (!liste.length) { zone.innerHTML = ""; return; }
+  zone.innerHTML = `<div class="dc-bloc"><div class="dc-titre">📨 Demandes des chauffeurs (${liste.length})</div>${liste.map(l => {
+    const f = l.feuilles_route || {};
+    const quand = l.signalee_erreur_a ? new Date(l.signalee_erreur_a).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+    const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).join(" → ") || "détails non remplis";
+    return `<div class="dc-item" data-id="${l.id}" data-date="${f.date_service || ""}">
+      <div><b>${esc(f.profils?.nom || "Chauffeur")}</b> · feuille du ${f.date_service ? new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE") : "?"} · course n° ${l.n_ordre ?? "?"}${quand ? " · envoyée le " + quand : ""}</div>
+      <div class="dc-motif">« ${esc(l.signalee_erreur_motif || "Demande de suppression")} »</div>
+      <div style="color:var(--gris);">${esc(trajet)}${l.embarquement_heure ? " · " + String(l.embarquement_heure).slice(0, 5) : ""}${l.course_id ? " · liée à une course" : " · saisie à la main"}</div>
+      <div class="dc-actions">
+        <button type="button" class="dc-voir">👁️ Voir / modifier</button>
+        <button type="button" class="dc-suppr">🗑️ Supprimer la course</button>
+        <button type="button" class="dc-ok">✅ Traitée</button>
+      </div></div>`;
+  }).join("")}</div>`;
+  zone.querySelectorAll(".dc-item").forEach(item => {
+    const id = item.dataset.id, date = item.dataset.date;
+    item.querySelector(".dc-voir").addEventListener("click", async () => {
+      if (date) document.getElementById("fa-date").value = date;
+      await chargerFeuillesAdmin(true);
+      const el = document.querySelector(`.ligne-admin[data-ligne-id="${id}"]`);
+      if (el) { const b = el.querySelector(".btn-grand-ligne"); if (b) b.click(); else el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+    });
+    item.querySelector(".dc-suppr").addEventListener("click", async () => {
+      if (!confirm("Supprimer cette course de la feuille de route du chauffeur ?")) return;
+      const { error } = await supabase.from("lignes_feuille_route").delete().eq("id", id);
+      if (error) { alert("Erreur : " + error.message); return; }
+      await chargerDemandesChauffeurs(); chargerFeuillesAdmin();
+    });
+    item.querySelector(".dc-ok").addEventListener("click", async () => {
+      const { error } = await supabase.from("lignes_feuille_route").update({ signalee_erreur: false }).eq("id", id);
+      if (error) { alert("Erreur : " + error.message); return; }
+      await chargerDemandesChauffeurs(); chargerFeuillesAdmin();
+    });
+  });
+}
+
 function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroFeuille, totalFeuillesChauffeur) {
   const div = document.createElement("div");
   div.className = "feuille-admin" + (feuille.verrouillee ? " verrouillee-fa" : "");
@@ -2790,6 +3160,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
         <button class="btn-nouvelle-course-fa">+ Course</button>
         <button class="btn-plein-ecran-fa" style="background:#3b82c4; color:#fff; border:none;">🔍 Plein écran</button>
         <button class="btn-imprimer-fa">🖨️ Imprimer / PDF</button>
+        <button class="btn-supprimer-feuille-fa" style="background:#fff; color:var(--rouge); border:1px solid var(--rouge);">🗑️ Supprimer la feuille</button>
       </div>
     </div>
   `;
@@ -2832,6 +3203,11 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       chargerFeuillesAdmin();
     });
   }
+  entete.querySelector(".btn-supprimer-feuille-fa").addEventListener("click", async () => {
+    const nom = feuille.profils?.nom || "ce chauffeur";
+    const ok = await demanderCodeEtSupprimerFeuille(feuille.id, nom, dateChoisie, lignes.length);
+    if (ok) chargerFeuillesAdmin();
+  });
   entete.querySelector(".btn-imprimer-fa").addEventListener("click", () => {
     imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie);
   });
@@ -2934,7 +3310,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   totalPercuDiv.style.cssText = "font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:8px;";
   function calculerTotalPercuLignes(listeLignes) {
     return listeLignes.reduce((s, l) => {
-      if (l.type_course === "uber" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.type_course === "prive") return s;
+      if (l.type_course === "uber" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.mode_paiement === "annulee" || l.type_course === "prive") return s;
       const v = parseFloat(l.sommes_percues ?? l.prix_taximetre ?? 0);
       return s + (isNaN(v) ? 0 : v);
     }, 0);
@@ -3000,6 +3376,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
 function construireLigneAdmin(ligne, numeroAffiche) {
   const div = document.createElement("div");
   div.className = "ligne-admin";
+  div.dataset.ligneId = ligne.id;
 
   const statutCourse = ligne.courses?.statut;
   const labelStatutLigne = {
@@ -3021,7 +3398,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
 
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")} <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${ligne.signalee_erreur ? " · <b style='color:var(--rouge)'>📨 DEMANDE DU CHAUFFEUR</b>" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")} <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
 
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
@@ -3038,6 +3415,25 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     }
     chargerFeuillesAdmin();
   });
+  const btnGrand = document.createElement("button");
+  btnGrand.className = "btn-grand-ligne";
+  btnGrand.textContent = "🔍 En grand";
+  btnGrand.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const enGrand = div.classList.toggle("plein-ecran-ligne");
+    document.body.classList.toggle("ligne-en-grand", enGrand);
+    btnGrand.textContent = enGrand ? "✕ Fermer" : "🔍 En grand";
+    if (enGrand) {
+      const g = div.querySelector(".grille3-fa");
+      if (g) g.style.display = "grid";
+      etatManuelLignesAdmin.set(ligne.id, true);
+      div.scrollTop = 0;
+    } else {
+      derniereActiviteFeuilles = 0;
+      setTimeout(rafraichirFeuillesSiPossible, 300);
+    }
+  });
+  entete.appendChild(btnGrand);
   entete.appendChild(btnSupprimer);
   div.appendChild(entete);
 
@@ -3067,6 +3463,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="cheque_social">🎫 Chèque social/communal</option>
         <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
+        <option value="annulee">❌ Course annulée (rien encaissé)</option>
       `;
     } else if (estTypeCourse) {
       input.innerHTML = `
@@ -3103,8 +3500,38 @@ function construireLigneAdmin(ligne, numeroAffiche) {
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiementAdmin();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
+    if (type === "time") {
+      // Mêmes boutons que dans l'app chauffeur : [−5] [🕐 Maintenant] [+5]
+      const rangee = document.createElement("div");
+      rangee.style.cssText = "display:flex; gap:4px; margin-top:4px;";
+      const fixer = (v) => { input.value = v; input.dispatchEvent(new Event("change")); };
+      const decaler = (min) => {
+        const base = input.value || new Date().toTimeString().slice(0, 5);
+        let [h, m] = base.split(":").map(Number);
+        let t = ((h * 60 + m + min) % 1440 + 1440) % 1440;
+        fixer(String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"));
+      };
+      [["−5", () => decaler(-5)], ["🕐 Maint.", () => fixer(new Date().toTimeString().slice(0, 5))], ["+5", () => decaler(5)]].forEach(([t, fn]) => {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = t;
+        b.style.cssText = "flex:" + (t.length > 3 ? "2" : "1") + "; padding:7px 2px; border-radius:6px; border:1px solid #cfcfcd; background:#fff; font-size:.75rem; font-weight:700; color:var(--blanc);";
+        b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+        rangee.appendChild(b);
+      });
+      wrap.appendChild(rangee);
+    }
     grille.appendChild(wrap);
   });
+
+  // Course signalée par le chauffeur comme ouverte PAR ERREUR → l'admin la supprime
+  if (ligne.signalee_erreur) {
+    const alerte = document.createElement("div");
+    alerte.style.cssText = "grid-column:1 / -1; background:#fdecee; border:2px solid var(--rouge); color:#8a1520; border-radius:8px; padding:10px; margin:6px 8px; font-weight:700; font-size:.85rem;";
+    alerte.innerHTML = "📨 Demande du chauffeur : « " + esc(ligne.signalee_erreur_motif || "suppression") + " »" +
+      (ligne.signalee_erreur_a ? " (le " + new Date(ligne.signalee_erreur_a).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + ")" : "") +
+      ". Supprime avec « Supprimer » en haut, ou modifie puis marque-la traitée dans « Demandes des chauffeurs ».";
+    grille.insertBefore(alerte, grille.firstChild);
+    div.style.border = "2px solid var(--rouge)";
+  }
 
   const mentionUber = document.createElement("div");
   mentionUber.className = "mention-uber";
@@ -3123,8 +3550,9 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const estUber = !estUberCash && (mode === "uber" || typeCourse === "uber");
     const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
-    wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash) ? "none" : "";
-    wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive) ? "none" : "";
+    const estAnnulee = mode === "annulee";
+    wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee) ? "none" : "";
+    wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionUber.style.display = estUber ? "" : "none";
@@ -3175,7 +3603,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     l = l || {};
     const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
     const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-    const sommes = l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+    const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
       : estUber ? "Payé sur Uber" : l.sommes_percues;
     return `<tr>
       <td>${i + 1}</td>
@@ -3215,6 +3643,13 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
     }
     .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
+    .page { width: 190mm; height: 276mm; overflow: hidden; display: flex; flex-direction: column; background: #fff; }
+    .page-contenu { flex: 0 0 auto; }
+    .page-pied { margin-top: auto; }
+    .num-page { font-size: 8px; text-align: right; margin-top: 2px; }
+    .courses-table tr { break-inside: avoid; page-break-inside: avoid; }
+    @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 10mm solid #fff; } #pages { padding: 10mm 0; } }
+    @media print { #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } }
     @media print { .barre-actions-impression { display: none; } }
   </style></head>
   <body>
@@ -3222,6 +3657,8 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       <button onclick="window.close()">← Retour</button>
       <button class="btn-imprimer-action" onclick="window.print()">🖨️ Imprimer</button>
     </div>
+    <div id="pages"></div>
+    <div id="source">
     <h1>FEUILLE DE ROUTE</h1>
     <table>
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
@@ -3266,8 +3703,84 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       </tbody>
     </table>
 
-    <div class="signature">Signature du chauffeur : ______________________________</div>
-    <div class="note-bas">* Après déduction d'une remise commerciale éventuelle. (A/R) = course aller-retour.</div>
+    </div>
+    <template id="tpl-pied">
+      <div class="signature">Signature du chauffeur : ______________________________</div>
+      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle. (A/R) = course aller-retour.</div>
+      <div class="num-page"></div>
+    </template>
+    <script>
+(function(){
+  function paginer(){
+    var source = document.getElementById("source"), zone = document.getElementById("pages");
+    var tpl = document.getElementById("tpl-pied");
+    var mesure = document.createElement("div");
+    mesure.style.cssText = "position:absolute;visibility:hidden;height:276mm;width:1px;";
+    document.body.appendChild(mesure);
+    var hauteurPage = mesure.getBoundingClientRect().height;
+    mesure.parentNode.removeChild(mesure);
+    var pages = [], page = null, contenu = null;
+    function nouvellePage(){
+      page = document.createElement("div"); page.className = "page";
+      contenu = document.createElement("div"); contenu.className = "page-contenu";
+      var pied = document.createElement("div"); pied.className = "page-pied"; pied.innerHTML = tpl.innerHTML;
+      page.appendChild(contenu); page.appendChild(pied);
+      zone.appendChild(page); pages.push(page);
+    }
+    function tient(){
+      var pied = page.querySelector(".page-pied");
+      return contenu.offsetHeight + pied.offsetHeight + 14 <= hauteurPage;
+    }
+    nouvellePage();
+    var elements = [].slice.call(source.children);
+    for (var i = 0; i < elements.length; i++){
+      var el = elements[i];
+      var suivant = elements[i + 1];
+      if (el.tagName === "H2" && suivant && suivant.classList.contains("courses-table")) continue;
+      if (el.classList.contains("courses-table")){
+        var titre = (elements[i - 1] && elements[i - 1].tagName === "H2") ? elements[i - 1] : null;
+        var lignes = [].slice.call(el.tBodies[0].rows);
+        var table = null, titreCourant = null;
+        var debutTable = function(suite){
+          titreCourant = null;
+          if (titre){
+            titreCourant = titre.cloneNode(true);
+            if (suite) titreCourant.textContent = titre.textContent + " (suite)";
+            contenu.appendChild(titreCourant);
+          }
+          table = el.cloneNode(false);
+          table.appendChild(el.tHead.cloneNode(true));
+          table.appendChild(document.createElement("tbody"));
+          contenu.appendChild(table);
+        };
+        debutTable(false);
+        for (var r = 0; r < lignes.length; r++){
+          table.tBodies[0].appendChild(lignes[r]);
+          if (!tient()){
+            table.tBodies[0].removeChild(lignes[r]);
+            var vide = table.tBodies[0].rows.length === 0;
+            if (vide){ contenu.removeChild(table); if (titreCourant) contenu.removeChild(titreCourant); }
+            nouvellePage();
+            debutTable(!vide || r > 0);
+            table.tBodies[0].appendChild(lignes[r]);
+          }
+        }
+        continue;
+      }
+      contenu.appendChild(el);
+      if (!tient() && contenu.children.length > 1){
+        contenu.removeChild(el); nouvellePage(); contenu.appendChild(el);
+      }
+    }
+    pages.forEach(function(p, k){
+      var n = p.querySelector(".num-page");
+      if (n) n.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length + (k === 0 ? " — recto" : (k === 1 ? " — verso" : ""))) : "";
+    });
+    source.parentNode.removeChild(source);
+  }
+  if (document.readyState === "complete") paginer(); else window.addEventListener("load", paginer);
+})();
+<\/script>
   </body></html>`;
 
   const fenetre = window.open("", "_blank");

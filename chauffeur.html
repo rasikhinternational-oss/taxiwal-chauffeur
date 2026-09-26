@@ -91,6 +91,10 @@ window.onerror = function(msg, url, line, col, err) {
 
   nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px; }
   nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
+  .form-demande label{ display:block; font-size:.82rem; color:var(--gris); margin:10px 0 4px; }
+  .form-demande input, .form-demande textarea{ width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; background:#fff; color:#111; font-family:inherit; }
+  .form-demande label.dc-case{ display:flex; align-items:center; gap:10px; font-size:.92rem; color:inherit; margin:12px 0 0; }
+  .form-demande label.dc-case input{ width:22px; height:22px; flex-shrink:0; }
   nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   .explication-demandes{ font-size:.82rem; color:var(--gris); margin-bottom:10px; }
   .form-proposition{ margin-top:10px; background:#f7f7f5; border-radius:10px; padding:10px; }
@@ -180,6 +184,11 @@ window.onerror = function(msg, url, line, col, err) {
   .course-actions{ display:flex; gap:8px; }
   .course-actions button{ font-size:.9rem; padding:10px; }
   #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
+  .course.carte-en-grand{ position:fixed; inset:0; z-index:650; margin:0 !important; border-radius:0 !important; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(env(safe-area-inset-bottom,0px) + 90px) !important; font-size:1.06rem; }
+  .course.carte-en-grand button, .course.carte-en-grand select, .course.carte-en-grand input{ font-size:1rem; }
+  .course.carte-en-grand .btn-carte-grand{ position:sticky; top:0; z-index:3; background:var(--rouge) !important; }
+  body.carte-grand-ouverte{ overflow:hidden; }
+  .btn-carte-grand{ display:block; width:100%; margin:0 0 10px; padding:9px; border:none; border-radius:9px; background:#3b82c4; color:#fff; font-weight:700; font-size:.88rem; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -228,6 +237,7 @@ window.onerror = function(msg, url, line, col, err) {
     <span>🧾 <b id="gains-facture">0,00 €</b></span>
     <span>🚕 Uber : <b id="gains-uber">0</b></span>
   </div>
+  <div id="horaire-du-jour" style="display:none; margin:10px 20px 0; background:#eef4fb; border:1px solid #bcd3ee; color:#1d4f86; border-radius:12px; padding:11px 14px; font-weight:700; font-size:.92rem;"></div>
   <a href="feuille-de-route.html" id="btn-feuille-route" style="text-decoration:none; display:block; text-align:center;">📋 Ma feuille de route du jour</a>
 
   <nav class="onglets">
@@ -235,6 +245,8 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="demandes-ouvertes">📢 Demandes ouvertes</button>
     <button data-onglet="agenda">Agenda</button>
     <button data-onglet="historique-feuilles">📁 Mes feuilles (30 jours)</button>
+    <button data-onglet="mes-horaires">🗓️ Mes horaires</button>
+    <button data-onglet="demande-client">📝 Demande d'un client</button>
   </nav>
 
   <section id="section-mes-courses" class="visible">
@@ -259,6 +271,37 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
     <p id="agenda-jour-titre"></p>
     <div id="agenda-liste-jour"></div>
+  </section>
+
+  <section id="section-demande-client">
+    <div class="form-demande">
+      <p style="color:var(--gris); font-size:.88rem; margin:0 0 12px;">Un client te demande une course pour un autre jour ou son retour ? Remplis ce formulaire : la centrale la reçoit tout de suite et l'attribue.</p>
+      <label>Nom du client</label>
+      <input id="dc-nom" placeholder="ex : Madame Dupont">
+      <label>Téléphone du client</label>
+      <input id="dc-tel" type="tel" placeholder="ex : 0478 12 34 56">
+      <label>Départ *</label>
+      <input id="dc-depart" placeholder="Adresse de prise en charge">
+      <label>Arrivée *</label>
+      <input id="dc-arrivee" placeholder="Destination">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div><label>Date *</label><input id="dc-date" type="date"></div>
+        <div><label>Heure *</label><input id="dc-heure" type="time"></div>
+      </div>
+      <label>Passagers</label>
+      <input id="dc-passagers" type="number" min="1" value="1" inputmode="numeric">
+      <label class="dc-case"><input type="checkbox" id="dc-ar"> Aller-retour</label>
+      <label>Note (bagages, retour, fauteuil…)</label>
+      <textarea id="dc-note" rows="3"></textarea>
+      <label class="dc-case"><input type="checkbox" id="dc-carnet" checked> Enregistrer ce client dans le carnet de la centrale</label>
+      <label class="dc-case"><input type="checkbox" id="dc-moi"> Je peux faire cette course moi-même</label>
+      <p id="dc-erreur" style="color:var(--rouge); font-weight:600; min-height:1em;"></p>
+      <button type="button" id="dc-envoyer" style="width:100%; padding:15px; border:none; border-radius:12px; background:var(--rouge); color:#fff; font-weight:800; font-size:1.05rem;">📨 Envoyer à la centrale</button>
+    </div>
+  </section>
+
+  <section id="section-mes-horaires">
+    <div id="liste-mes-horaires">Chargement…</div>
   </section>
 
   <section id="section-historique-feuilles">
@@ -411,6 +454,68 @@ async function activerNotificationsPushReelles() {
   } catch (e) { console.error("Abonnement notifications push impossible :", e); }
 }
 
+// ================== DEMANDE D'UN CLIENT → CENTRALE ==================
+document.getElementById("dc-envoyer").addEventListener("click", async () => {
+  const v = id => document.getElementById(id).value.trim();
+  const err = document.getElementById("dc-erreur");
+  err.textContent = "";
+  if (!v("dc-depart") || !v("dc-arrivee") || !v("dc-date") || !v("dc-heure")) { err.textContent = "Remplis au moins le départ, l'arrivée, la date et l'heure."; return; }
+  const quand = new Date(v("dc-date") + "T" + v("dc-heure"));
+  if (isNaN(quand.getTime())) { err.textContent = "Date ou heure invalide."; return; }
+  const btn = document.getElementById("dc-envoyer");
+  btn.disabled = true; btn.textContent = "Envoi…";
+  const { error } = await supabase.rpc("chauffeur_demander_course", {
+    p_client_nom: v("dc-nom"), p_client_telephone: v("dc-tel"), p_depart: v("dc-depart"), p_arrivee: v("dc-arrivee"),
+    p_date_heure: quand.toISOString(), p_passagers: parseInt(v("dc-passagers"), 10) || 1,
+    p_aller_retour: document.getElementById("dc-ar").checked, p_note: v("dc-note"),
+    p_enregistrer_carnet: document.getElementById("dc-carnet").checked, p_je_peux_la_faire: document.getElementById("dc-moi").checked
+  });
+  btn.disabled = false; btn.textContent = "📨 Envoyer à la centrale";
+  if (error) { err.textContent = "Erreur : " + error.message; return; }
+  ["dc-nom", "dc-tel", "dc-depart", "dc-arrivee", "dc-date", "dc-heure", "dc-note"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("dc-passagers").value = "1";
+  document.getElementById("dc-ar").checked = false; document.getElementById("dc-moi").checked = false;
+  alert("✅ Demande envoyée à la centrale. Elle va l'attribuer et tu seras prévenu si elle est pour toi.");
+});
+
+// ================== MES HORAIRES (planning créé par l'admin) ==================
+function isoJour(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+async function chargerHoraireDuJour() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("horaires_chauffeurs").select("heure_debut, heure_fin, note")
+      .eq("chauffeur_id", user.id).eq("date_service", isoJour(new Date())).maybeSingle();
+    const zone = document.getElementById("horaire-du-jour");
+    if (data) {
+      zone.textContent = "🗓️ Ton horaire aujourd'hui : " + String(data.heure_debut).slice(0, 5) + " – " + String(data.heure_fin).slice(0, 5) + (data.note ? " · " + data.note : "");
+      zone.style.display = "block";
+    } else zone.style.display = "none";
+  } catch (e) { /* pas bloquant */ }
+}
+async function chargerMesHoraires() {
+  const zone = document.getElementById("liste-mes-horaires");
+  zone.textContent = "Chargement…";
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const debut = new Date(); debut.setDate(debut.getDate() - 1);
+  const fin = new Date(); fin.setDate(fin.getDate() + 21);
+  const { data, error } = await supabase.from("horaires_chauffeurs").select("date_service, heure_debut, heure_fin, note")
+    .eq("chauffeur_id", user.id).gte("date_service", isoJour(debut)).lte("date_service", isoJour(fin)).order("date_service");
+  if (error) { zone.textContent = "Erreur : " + error.message; return; }
+  if (!data || !data.length) { zone.innerHTML = '<p style="color:var(--gris); padding:10px 0;">Aucun horaire prévu pour les 3 prochaines semaines. La centrale te les ajoutera ici.</p>'; return; }
+  const auj = isoJour(new Date());
+  zone.innerHTML = data.map(h => {
+    const d = new Date(h.date_service + "T12:00:00");
+    const jour = d.toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
+    const estAuj = h.date_service === auj;
+    return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:13px 14px; margin-bottom:8px; border-radius:12px; border:1px solid ${estAuj ? "var(--rouge)" : "#dcdcda"}; background:${estAuj ? "#fdecee" : "var(--noir-2)"};">
+      <div><div style="font-weight:700; text-transform:capitalize;">${estAuj ? "Aujourd'hui · " : ""}${jour}</div>${h.note ? `<div style="font-size:.82rem; color:var(--gris);">${esc(h.note)}</div>` : ""}</div>
+      <div style="font-weight:800; font-size:1.05rem; white-space:nowrap;">${String(h.heure_debut).slice(0, 5)} – ${String(h.heure_fin).slice(0, 5)}</div>
+    </div>`;
+  }).join("");
+}
+
 // Réabonnement COMPLET (sur appui du chauffeur) : supprime l'ancien abonnement du téléphone
 // (souvent "périmé" chez Google/Apple sans que le téléphone le sache) et en crée un neuf.
 async function reinscrireNotifications(bouton) {
@@ -510,6 +615,7 @@ async function demarrerEspaceChauffeur() {
   }
   activerNotificationsPushReelles();
   setTimeout(verifierEtatNotifications, 1500);
+  chargerHoraireDuJour();
 
   await creerFeuilleDuJourSiAbsente();
   await chargerCourses();
@@ -666,7 +772,11 @@ function verifierRappels30MinChauffeur(courses) {
   });
 }
 
+var rechargeCartesEnAttente = false;
+function rechargerApresCarteGrand() { if (rechargeCartesEnAttente) { rechargeCartesEnAttente = false; chargerCourses(); } }
 async function chargerCourses() {
+  // Une course est ouverte en grand : on ne redessine pas la liste (sinon elle se fermerait)
+  if (document.querySelector(".carte-en-grand")) { rechargeCartesEnAttente = true; return; }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
@@ -759,6 +869,7 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
     document.getElementById("section-" + btn.dataset.onglet).classList.add("visible");
     if (btn.dataset.onglet === "demandes-ouvertes") chargerDemandesOuvertes();
     if (btn.dataset.onglet === "historique-feuilles") chargerHistoriqueFeuilles();
+    if (btn.dataset.onglet === "mes-horaires") chargerMesHoraires();
   });
 });
 
@@ -1120,6 +1231,22 @@ function construireCarteCourse(course) {
   }
 
   if (actions.children.length > 0) div.appendChild(actions);
+  // ---- Ouvrir la course en grand (plein écran) ----
+  const btnCarteGrand = document.createElement("button");
+  btnCarteGrand.type = "button";
+  btnCarteGrand.className = "btn-carte-grand";
+  btnCarteGrand.textContent = "🔍 Ouvrir en grand";
+  btnCarteGrand.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const ouvrir = !div.classList.contains("carte-en-grand");
+    document.querySelectorAll(".carte-en-grand").forEach(x => { x.classList.remove("carte-en-grand"); const b = x.querySelector(".btn-carte-grand"); if (b) b.textContent = "🔍 Ouvrir en grand"; });
+    div.classList.toggle("carte-en-grand", ouvrir);
+    document.body.classList.toggle("carte-grand-ouverte", ouvrir);
+    btnCarteGrand.textContent = ouvrir ? "✕ Fermer (retour à la liste)" : "🔍 Ouvrir en grand";
+    if (ouvrir) div.scrollTop = 0;
+    else if (typeof rechargerApresCarteGrand === "function") rechargerApresCarteGrand();
+  });
+  div.insertBefore(btnCarteGrand, div.firstChild);
   return div;
 }
 
