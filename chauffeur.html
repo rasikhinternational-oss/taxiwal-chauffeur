@@ -206,6 +206,12 @@ window.onerror = function(msg, url, line, col, err) {
     <input type="text" id="otp" inputmode="numeric" placeholder="123456">
   </div>
 
+  <div id="bloc-mdp-demo" style="display:none;">
+    <label for="mdp-demo">Mot de passe</label>
+    <input type="password" id="mdp-demo" placeholder="Mot de passe" autocomplete="current-password">
+    <button id="btn-connexion-mdp">Se connecter</button>
+  </div>
+
   <button id="btn-envoyer-code">Recevoir un code</button>
   <button id="btn-valider-code" class="secondaire" style="display:none;">Se connecter</button>
   <p id="erreur-login"></p>
@@ -320,6 +326,7 @@ function esc(valeur) {
 }
 
 let positionInterval = null;
+const COMPTES_DEMO = ["demo.chauffeur@taxiwal.com", "demo@taxiwal.com"];
 
 document.getElementById("btn-envoyer-code").addEventListener("click", async () => {
   const btn = document.getElementById("btn-envoyer-code");
@@ -327,6 +334,13 @@ document.getElementById("btn-envoyer-code").addEventListener("click", async () =
   const erreur = document.getElementById("erreur-login");
   erreur.textContent = "";
   if (!email) { erreur.textContent = "Entre ton adresse email."; return; }
+
+  // Compte de démonstration (vérification Apple / Google) : connexion par mot de passe
+  if (COMPTES_DEMO.includes(email.toLowerCase())) {
+    document.getElementById("bloc-mdp-demo").style.display = "block";
+    btn.style.display = "none";
+    return;
+  }
 
   btn.disabled = true;
   const texteOriginal = btn.textContent;
@@ -344,6 +358,16 @@ document.getElementById("btn-envoyer-code").addEventListener("click", async () =
     btn.disabled = false;
     btn.textContent = texteOriginal;
   }
+});
+
+document.getElementById("btn-connexion-mdp").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const password = document.getElementById("mdp-demo").value;
+  const erreur = document.getElementById("erreur-login");
+  erreur.textContent = "";
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) { erreur.textContent = "Mot de passe incorrect."; return; }
+  demarrerEspaceChauffeur();
 });
 
 document.getElementById("btn-valider-code").addEventListener("click", async () => {
