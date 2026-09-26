@@ -114,7 +114,7 @@ window.onerror = function(msg, url, line, col, err) {
   <p class="identite"><span>Identité de l'exploitant :</span> <b id="identite-societe">—</b></p>
   <p class="identite"><span>Date :</span> <b id="identite-date">—</b></p>
   <p class="identite"><span>Nom du chauffeur :</span> <b id="identite-chauffeur">—</b></p>
-  <p class="identite"><span>Véhicule :</span> <b id="identite-vehicule">—</b></p>
+  <p class="identite"><span>Véhicule :</span> <select id="identite-vehicule-select" style="width:auto; display:inline-block; padding:6px 8px; margin:0; font-size:.9rem;"><option value="">— Aucun —</option></select></p>
   <p class="identite"><span>N° plaque d'immatriculation :</span> <b id="identite-plaque">—</b></p>
   <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
 </div>
@@ -677,11 +677,26 @@ async function remplirIdentite(user) {
     }
   }
 
+  // Menu déroulant véhicule : pré-rempli automatiquement (véhicule attitré) comme avant, mais
+  // reste modifiable à tout moment si le mauvais véhicule a été retenu.
+  const selectVehicule = document.getElementById("identite-vehicule-select");
+  const { data: tousLesVehicules } = await supabase.from("vehicules").select("*").eq("actif", true).order("nom");
+  selectVehicule.innerHTML = `<option value="">— Aucun —</option>` +
+    (tousLesVehicules || []).map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("");
+  selectVehicule.onchange = async () => {
+    const { error } = await supabase.from("feuilles_route").update({ vehicule_id: selectVehicule.value || null }).eq("id", feuilleActuelle.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    feuilleActuelle.vehicule_id = selectVehicule.value || null;
+    await remplirIdentite(user);
+  };
+
   if (vehicule) {
-    document.getElementById("identite-vehicule").textContent = vehicule.nom || "—";
     document.getElementById("identite-plaque").textContent = vehicule.plaque || "—";
     document.getElementById("identite-numid").textContent = vehicule.numero_identification || "—";
     identiteSocieteActuelle = vehicule.identite_exploitant || "Rasikh international";
+  } else {
+    document.getElementById("identite-plaque").textContent = "—";
+    document.getElementById("identite-numid").textContent = "—";
   }
   document.getElementById("identite-societe").textContent = identiteSocieteActuelle;
 }

@@ -2765,7 +2765,14 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       <div class="entete-fa-info" style="cursor:pointer;">
         <div class="identite-exploitant">${esc(identiteFeuille)} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
         <h3>Nom du chauffeur : ${esc(feuille.profils?.nom || "Chauffeur")}${esc(labelFeuille)} <span class="chevron-ligne">▾</span></h3>
-        <div class="sous">Véhicule : ${feuille.vehicules ? (esc(feuille.vehicules.nom) + (feuille.vehicules.plaque ? " · plaque " + esc(feuille.vehicules.plaque) : "") + (feuille.vehicules.numero_identification ? " · n° identification " + esc(feuille.vehicules.numero_identification) : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</div>
+        <div class="sous" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span>Véhicule :</span>
+          <select class="select-vehicule-feuille" style="width:auto; padding:6px 8px; border-radius:6px; border:1px solid #cfcfcd; font-size:.82rem;" onclick="event.stopPropagation()">
+            <option value="">— Aucun —</option>
+            ${vehiculesCache.map(v => `<option value="${v.id}" ${v.id === feuille.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}
+          </select>
+          <span>· ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</span>
+        </div>
       </div>
       <div class="entete-fa-actions">
         <button class="btn-verrou ${feuille.verrouillee ? "rouvrir" : "cloturer"}">${feuille.verrouillee ? "🔓 Rouvrir pour le chauffeur" : "🔒 Signer / clôturer"}</button>
@@ -2795,6 +2802,11 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   });
   entete.querySelector(".btn-nouvelle-course-fa").addEventListener("click", () => {
     ouvrirModaleCourse({ chauffeurId: chauffeur.id, date: dateChoisie + "T09:00" });
+  });
+  entete.querySelector(".select-vehicule-feuille").addEventListener("change", async (e) => {
+    const { error } = await supabase.from("feuilles_route").update({ vehicule_id: e.target.value || null }).eq("id", feuille.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    chargerFeuillesAdmin();
   });
   const btnVerifierAdmin = entete.querySelector(".btn-verifier-admin");
   if (btnVerifierAdmin) {
