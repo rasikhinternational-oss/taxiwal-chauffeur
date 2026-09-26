@@ -2,6 +2,12 @@
 <html lang="fr">
 <head>
 <script>
+// Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
+function dateLocaleISO(d) {
+  const x = d ? new Date(d) : new Date();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+}
+
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
@@ -757,12 +763,12 @@ async function chargerMesCourses() {
 let dernieresCoursesClient = [];
 let calMoisAffiche = new Date();
 calMoisAffiche.setDate(1);
-let calJourSelectionne = new Date().toISOString().slice(0, 10);
+let calJourSelectionne = dateLocaleISO();
 
 function joursAvecCoursesClient(courses) {
   const map = {};
   (courses || []).forEach(c => {
-    const jour = c.date_heure.slice(0, 10);
+    const jour = dateLocaleISO(c.date_heure);
     map[jour] = (map[jour] || 0) + 1;
   });
   return map;
@@ -787,7 +793,7 @@ function rendreCalendrierClient() {
   const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
   const nbJours = new Date(annee, mois + 1, 0).getDate();
   const map = joursAvecCoursesClient(dernieresCoursesClient);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = dateLocaleISO();
 
   for (let i = 0; i < premierJourSemaine; i++) {
     const vide = document.createElement("div");
@@ -825,7 +831,7 @@ async function afficherCoursesDuJourClient(dateStr) {
   });
   titre.textContent = dateLisible;
 
-  const coursesDuJour = dernieresCoursesClient.filter(c => c.date_heure.slice(0, 10) === dateStr);
+  const coursesDuJour = dernieresCoursesClient.filter(c => dateLocaleISO(c.date_heure) === dateStr);
   liste.innerHTML = "";
   if (coursesDuJour.length === 0) {
     liste.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune course ce jour-là.</p>';

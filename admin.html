@@ -2,6 +2,12 @@
 <html lang="fr">
 <head>
 <script>
+// Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
+function dateLocaleISO(d) {
+  const x = d ? new Date(d) : new Date();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+}
+
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
@@ -1427,12 +1433,12 @@ function lienWhatsappCourse(course) {
 
 let calMoisAffiche = new Date();
 calMoisAffiche.setDate(1);
-let calJourSelectionne = new Date().toISOString().slice(0, 10);
+let calJourSelectionne = dateLocaleISO();
 
 function joursAvecCoursesAdmin(courses) {
   const map = {};
   (courses || []).forEach(c => {
-    const jour = c.date_heure.slice(0, 10);
+    const jour = dateLocaleISO(c.date_heure);
     map[jour] = (map[jour] || 0) + 1;
   });
   return map;
@@ -1456,7 +1462,7 @@ function rendreCalendrierAdmin() {
   const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
   const nbJours = new Date(annee, mois + 1, 0).getDate();
   const map = joursAvecCoursesAdmin(dernieresCoursesAdmin);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = dateLocaleISO();
 
   for (let i = 0; i < premierJourSemaine; i++) {
     const vide = document.createElement("div");
@@ -1494,7 +1500,7 @@ function afficherCoursesDuJourAdmin(dateStr) {
   });
   texte.textContent = dateLisible;
 
-  const coursesDuJour = dernieresCoursesAdmin.filter(c => c.date_heure.slice(0, 10) === dateStr);
+  const coursesDuJour = dernieresCoursesAdmin.filter(c => dateLocaleISO(c.date_heure) === dateStr);
   liste.innerHTML = "";
   if (coursesDuJour.length === 0) {
     liste.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune course ce jour-là.</p>';
@@ -2709,7 +2715,7 @@ async function chargerCaisse() {
   if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
 
   const inputDate = document.getElementById("caisse-date");
-  if (!inputDate.value) inputDate.value = new Date().toISOString().slice(0, 10);
+  if (!inputDate.value) inputDate.value = dateLocaleISO();
   const dateChoisie = inputDate.value;
 
   const { data: chauffeurs } = await supabase
@@ -2865,11 +2871,11 @@ const champsLigneFA = [
   ["numero_dossier", "N° de dossier (assurance)", "text"]
 ];
 
-document.getElementById("fa-date").value = new Date().toISOString().slice(0, 10);
+document.getElementById("fa-date").value = dateLocaleISO();
 document.getElementById("fa-prev").addEventListener("click", () => decalerDateFA(-1));
 document.getElementById("fa-next").addEventListener("click", () => decalerDateFA(1));
 document.getElementById("fa-aujourdhui").addEventListener("click", () => {
-  document.getElementById("fa-date").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("fa-date").value = dateLocaleISO();
   chargerFeuillesAdmin();
 });
 document.getElementById("fa-date").addEventListener("change", () => chargerFeuillesAdmin());
@@ -2896,7 +2902,7 @@ async function chargerHistoriqueFeuillesChauffeur() {
   if (!chauffeurId) { conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun chauffeur.</p>'; return; }
   conteneur.innerHTML = "Chargement…";
 
-  const ilYA30Jours = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const ilYA30Jours = dateLocaleISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
   const { data: feuilles, error } = await supabase
     .from("feuilles_route")
     .select("*, vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
@@ -2957,7 +2963,7 @@ async function ouvrirApercuHistoriqueFeuille(feuille, chauffeur) {
 function decalerDateFA(jours) {
   const d = new Date(document.getElementById("fa-date").value + "T00:00:00");
   d.setDate(d.getDate() + jours);
-  document.getElementById("fa-date").value = d.toISOString().slice(0, 10);
+  document.getElementById("fa-date").value = dateLocaleISO(d);
   chargerFeuillesAdmin();
 }
 

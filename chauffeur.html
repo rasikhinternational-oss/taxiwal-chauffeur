@@ -2,6 +2,12 @@
 <html lang="fr">
 <head>
 <script>
+// Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
+function dateLocaleISO(d) {
+  const x = d ? new Date(d) : new Date();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+}
+
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
@@ -678,7 +684,7 @@ async function creerFeuilleDuJourSiAbsente() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const aujourdHui = new Date().toISOString().slice(0, 10);
+    const aujourdHui = dateLocaleISO();
 
     const { data: feuilleExistante } = await supabase
       .from("feuilles_route").select("id").eq("chauffeur_id", user.id).eq("date_service", aujourdHui).limit(1);
@@ -822,9 +828,9 @@ async function chargerCourses() {
 }
 
 function mettreAJourGainsJour(courses) {
-  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const aujourdHui = dateLocaleISO();
   const coursesDuJourTerminees = (courses || []).filter(c =>
-    c.statut === "terminee" && c.date_heure && c.date_heure.slice(0, 10) === aujourdHui
+    c.statut === "terminee" && c.date_heure && dateLocaleISO(c.date_heure) === aujourdHui
   );
 
   let totalCash = 0, totalCarte = 0, totalFacture = 0, nbUber = 0;
@@ -907,8 +913,8 @@ async function chargerHistoriqueFeuilles() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const ilYA30Jours = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const ilYA30Jours = dateLocaleISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const aujourdHui = dateLocaleISO();
 
   const { data: feuilles, error } = await supabase
     .from("feuilles_route")
@@ -1035,12 +1041,12 @@ function construireFeuilleHistorique(feuille, lignes, estAujourdhui) {
 let dernieresCoursesChauffeur = [];
 let calMoisAffiche = new Date();
 calMoisAffiche.setDate(1);
-let calJourSelectionne = new Date().toISOString().slice(0, 10);
+let calJourSelectionne = dateLocaleISO();
 
 function joursAvecCourses(courses) {
   const map = {};
   (courses || []).forEach(c => {
-    const jour = c.date_heure.slice(0, 10);
+    const jour = dateLocaleISO(c.date_heure);
     map[jour] = (map[jour] || 0) + 1;
   });
   return map;
@@ -1064,7 +1070,7 @@ function rendreCalendrier(courses) {
   const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
   const nbJours = new Date(annee, mois + 1, 0).getDate();
   const map = joursAvecCourses(courses);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = dateLocaleISO();
 
   for (let i = 0; i < premierJourSemaine; i++) {
     const vide = document.createElement("div");
@@ -1101,7 +1107,7 @@ function afficherCoursesDuJour(dateStr) {
   });
   titre.textContent = dateLisible;
 
-  const coursesDuJour = dernieresCoursesChauffeur.filter(c => c.date_heure.slice(0, 10) === dateStr);
+  const coursesDuJour = dernieresCoursesChauffeur.filter(c => dateLocaleISO(c.date_heure) === dateStr);
   liste.innerHTML = "";
   if (coursesDuJour.length === 0) {
     liste.innerHTML = '<div class="vide-agenda" style="text-align:center; color:var(--gris); padding:40px 20px; font-size:.95rem;">Aucune course ce jour-là.</div>';

@@ -2,6 +2,12 @@
 <html lang="fr">
 <head>
 <script>
+// Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
+function dateLocaleISO(d) {
+  const x = d ? new Date(d) : new Date();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+}
+
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
@@ -600,7 +606,7 @@ let vehiculesActifsCache = [];
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { document.getElementById("erreur").textContent = "Connecte-toi d'abord depuis l'app chauffeur."; return; }
 
-  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const aujourdHui = dateLocaleISO();
   const idDepuisUrl = new URLSearchParams(location.search).get("feuille");
 
   // Avertit toujours d'une éventuelle feuille oubliée d'un jour précédent (jamais clôturée) —
@@ -622,7 +628,7 @@ let vehiculesActifsCache = [];
   bandeau.style.display = "none";
   // Seules les feuilles des 3 derniers jours bloquent (hier, avant-hier…). Les très anciennes
   // non clôturées sont seulement signalées : c'est à la centrale de les régler.
-  const limiteBlocage = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+  const limiteBlocage = dateLocaleISO(new Date(Date.now() - 3 * 864e5));
   const feuillesBloquantes = feuillesOubliees.filter(f => f.date_service >= limiteBlocage);
   const feuillesAnciennes = feuillesOubliees.filter(f => f.date_service < limiteBlocage);
   if (feuillesBloquantes.length === 0 && feuillesAnciennes.length > 0 && !idDepuisUrl) {
@@ -737,7 +743,7 @@ async function ouvrirChangementVehicule() {
   if (!confirm(`Passer au véhicule "${vehiculeChoisi.nom}" maintenant ? L'heure de fin du véhicule actuel sera complétée automatiquement si elle est vide.`)) return;
 
   const { data: { user } } = await supabase.auth.getUser();
-  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const aujourdHui = dateLocaleISO();
   const heureMaintenant = new Date().toTimeString().slice(0, 5);
 
   // Clôture le segment en cours : complète l'heure de fin si elle n'est pas déjà remplie
@@ -1502,7 +1508,7 @@ document.getElementById("btn-voir-details").addEventListener("click", () => {
 function appliquerVerrouillage() {
   const verrou = feuilleActuelle.verrouillee;
   // Feuille d'un jour précédent qu'on vient de clôturer → on propose d'ouvrir la suivante / celle du jour
-  const aujourdHuiIso = new Date().toISOString().slice(0, 10);
+  const aujourdHuiIso = dateLocaleISO();
   if (verrou && feuilleActuelle.date_service < aujourdHuiIso) {
     const bandeauFeuille = document.getElementById("bandeau-feuille-oubliee");
     bandeauFeuille.style.background = "#e7f5ec"; bandeauFeuille.style.borderColor = "#b7dfc5"; bandeauFeuille.style.color = "#1f6b3f";
