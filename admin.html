@@ -415,6 +415,9 @@ window.onerror = function(msg, url, line, col, err) {
   </div>
 
   <div id="vue-jour-fa">
+    <select id="filtre-chauffeur-fa" style="width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; margin-bottom:12px; font-size:.95rem;">
+      <option value="">👥 Tous les chauffeurs</option>
+    </select>
     <div id="feuilles-date-nav">
       <button id="fa-prev">‹</button>
       <input type="date" id="fa-date">
@@ -436,6 +439,7 @@ window.onerror = function(msg, url, line, col, err) {
 </section>
 
 <section id="section-caisse">
+  <input type="date" id="caisse-date" style="width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; margin-bottom:14px; background:#fff;">
   <div id="liste-caisse"></div>
 </section>
 
@@ -919,6 +923,13 @@ async function chargerChauffeurs() {
   if (selectHisto) {
     selectHisto.innerHTML = optionsChauffeursEtPartenaires(null).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
   }
+  const filtreFa = document.getElementById("filtre-chauffeur-fa");
+  if (filtreFa) {
+    const valeurAvant = filtreFa.value;
+    filtreFa.innerHTML = `<option value="">👥 Tous les chauffeurs</option>` +
+      chauffeursCache.map(c => `<option value="${c.id}">${esc(c.nom || c.telephone || c.id)}</option>`).join("");
+    filtreFa.value = valeurAvant; // garde le chauffeur choisi même après un rechargement de la liste
+  }
 }
 
 let idsCoursesConnusAdmin = null;
@@ -1070,6 +1081,14 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
         }
         if (ancien.statut !== "terminee" && c.statut === "terminee") {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: `✅ ${nomChauffeurPourNotif(c)} a clôturé une course`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
+        }
+        if (ancien.statut !== "annulee" && c.statut === "annulee") {
+          const motifLisible = {
+            non_presente: "client non présenté", annulation_client: "annulée par le client",
+            annulation_admin: "annulée par l'administration", annulation_chauffeur: "annulée par le chauffeur",
+            annulation_uber: "annulée par Uber"
+          }[(c.motif_annulation || "").split(" — ")[0]] || c.motif_annulation || "annulée";
+          notifierNouvelleCourseAdmin({ ...c, adresse_depart: `❌ Course annulée — ${motifLisible} (${nomChauffeurPourNotif(c)})`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
       idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur });
@@ -2398,18 +2417,31 @@ async function chargerCaisse() {
   const conteneur = document.getElementById("liste-caisse");
   if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
 
-  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const inputDate = document.getElementById("caisse-date");
+  if (!inputDate.value) inputDate.value = new Date().toISOString().slice(0, 10);
+  const dateChoisie = inputDate.value;
 
   const { data: chauffeurs } = await supabase
     .from("profils").select("id, nom").eq("role", "chauffeur").eq("actif", true);
 
   const { data: fonds } = await supabase
-    .from("fonds_de_caisse").select("*").eq("date", aujourdHui);
+    .from("fonds_de_caisse").select("*").eq("date", dateChoisie);
   const fondParChauffeur = {};
   (fonds || []).forEach(f => { fondParChauffeur[f.chauffeur_id] = f; });
 
-  const debutJour = aujourdHui + "T00:00:00";
-  const finJour = aujourdHui + "T23:59:59";
+  // Feuilles de route de cette date, pour afficher la recette au taximètre (index de départ)
+  // à côté de la caisse (encaissements par course) — les deux doivent normalement concorder.
+  const { data: feuillesJour } = await supabase
+    .from("feuilles_route").select("chauffeur_id, recettes_debut, recettes_fin, verrouillee")
+    .eq("date_service", dateChoisie);
+  const feuillesParChauffeur = {};
+  (feuillesJour || []).forEach(f => {
+    if (!feuillesParChauffeur[f.chauffeur_id]) feuillesParChauffeur[f.chauffeur_id] = [];
+    feuillesParChauffeur[f.chauffeur_id].push(f);
+  });
+
+  const debutJour = dateChoisie + "T00:00:00";
+  const finJour = dateChoisie + "T23:59:59";
   const { data: courses } = await supabase
     .from("courses")
     .select("chauffeur_id, prix, mode_paiement, statut, date_heure")
@@ -2432,7 +2464,21 @@ async function chargerCaisse() {
     const coursesCheque = coursesChauffeur.filter(c => c.mode_paiement === "cheque_social");
     const coursesUber = coursesChauffeur.filter(c => c.mode_paiement === "uber");
     const totalCash = somme(coursesCash);
+    const totalUber = somme(coursesUber);
     const caisseActuelle = montantFond + totalCash;
+
+    // Recette au taximètre (fin - début), additionnée si le chauffeur a eu plusieurs véhicules
+    // ce jour-là (changement de véhicule en cours de journée)
+    const feuillesChauffeur = feuillesParChauffeur[ch.id] || [];
+    let recetteTaximetre = null;
+    if (feuillesChauffeur.length) {
+      recetteTaximetre = feuillesChauffeur.reduce((s, f) => {
+        if (f.recettes_debut == null || f.recettes_fin == null) return s;
+        return s + (parseFloat(f.recettes_fin) - parseFloat(f.recettes_debut));
+      }, 0);
+    }
+    const totalEncaisseApp = totalCash + somme(coursesCarte) + somme(coursesFacture) + somme(coursesCheque) + totalUber;
+    const ecart = recetteTaximetre !== null ? (recetteTaximetre - totalEncaisseApp) : null;
 
     const div = document.createElement("div");
     div.className = "caisse-chauffeur";
@@ -2443,8 +2489,13 @@ async function chargerCaisse() {
       <div class="caisse-ligne"><span>💳 Carte — ${coursesCarte.length} course(s)</span><b>${somme(coursesCarte).toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>🧾 Facture — ${coursesFacture.length} course(s)</span><b>${somme(coursesFacture).toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>🎫 Chèque social — ${coursesCheque.length} course(s)</span><b>${somme(coursesCheque).toFixed(2)} €</b></div>
-      <div class="caisse-ligne"><span>🚕 Uber (payé sur Uber, hors caisse) — ${coursesUber.length} course(s)</span><b>—</b></div>
+      <div class="caisse-ligne"><span>🚕 Uber (encaissé par Uber, hors caisse) — ${coursesUber.length} course(s)</span><b>${totalUber.toFixed(2)} €</b></div>
       <div class="caisse-total"><span>Caisse actuelle (espèces)</span><span>${caisseActuelle.toFixed(2)} €</span></div>
+      ${recetteTaximetre !== null ? `
+      <div class="caisse-ligne" style="margin-top:8px; border-top:2px solid #dcdcda; padding-top:10px;"><span>📟 Recette taximètre (feuille de route)</span><b>${recetteTaximetre.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>Total encaissé dans l'app (cash+carte+facture+chèque+Uber)</span><b>${totalEncaisseApp.toFixed(2)} €</b></div>
+      ${Math.abs(ecart) > 0.5 ? `<div class="caisse-alerte">⚠️ Écart de ${ecart.toFixed(2)} € entre le taximètre et l'app — à vérifier</div>` : ""}
+      ` : ""}
       <div class="caisse-fond">
         <input type="number" step="0.5" placeholder="Nouveau fond (€)" id="input-fond-${ch.id}" value="${montantFond || ""}">
         <button data-chauffeur="${ch.id}" class="btn-enregistrer-fond">Enregistrer</button>
@@ -2452,6 +2503,10 @@ async function chargerCaisse() {
     `;
     conteneur.appendChild(div);
   });
+
+  if (!chauffeurs || chauffeurs.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun chauffeur actif.</p>';
+  }
 
   document.querySelectorAll(".btn-enregistrer-fond").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -2461,7 +2516,7 @@ async function chargerCaisse() {
 
       await supabase.from("fonds_de_caisse").upsert({
         chauffeur_id: chauffeurId,
-        date: aujourdHui,
+        date: dateChoisie,
         montant_initial: montant,
         created_by: user?.id || null
       }, { onConflict: "chauffeur_id,date" });
@@ -2471,6 +2526,7 @@ async function chargerCaisse() {
     });
   });
 }
+document.getElementById("caisse-date").addEventListener("change", chargerCaisse);
 
 const IDENTITE_EXPLOITANT = "Rasikh international";
 
@@ -2578,6 +2634,7 @@ async function chargerHistoriqueFeuillesChauffeur() {
       e.stopPropagation();
       feuillesDepliees.add(feuille.id);
       document.getElementById("fa-date").value = feuille.date_service;
+      document.getElementById("filtre-chauffeur-fa").value = feuille.chauffeur_id;
       document.getElementById("btn-vue-jour-fa").click();
     });
     div.querySelector(".btn-apercu").addEventListener("click", (e) => {
@@ -2663,7 +2720,13 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
   conteneur.innerHTML = "";
   // Un chauffeur peut avoir PLUSIEURS feuilles le même jour (changement de véhicule en cours de
   // journée) : on les affiche toutes, numérotées "Feuille 1/2" s'il y en a plusieurs.
-  chauffeurs.forEach(chauffeur => {
+  const chauffeurFiltre = document.getElementById("filtre-chauffeur-fa")?.value || "";
+  const chauffeursAffiches = chauffeurFiltre ? chauffeurs.filter(c => c.id === chauffeurFiltre) : chauffeurs;
+  if (chauffeurFiltre && chauffeursAffiches.length === 0) {
+    conteneur.innerHTML = '<p id="feuilles-vide">Ce chauffeur n\'a pas de feuille ce jour-là.</p>';
+    return;
+  }
+  chauffeursAffiches.forEach(chauffeur => {
     const feuillesChauffeur = (feuilles || []).filter(f => f.chauffeur_id === chauffeur.id);
     if (feuillesChauffeur.length === 0) return;
     feuillesChauffeur.forEach((feuille, idx) => {
@@ -2672,6 +2735,7 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
     });
   });
 }
+document.getElementById("filtre-chauffeur-fa").addEventListener("change", () => chargerFeuillesAdmin());
 
 function minutesDepuisHeure(heureStr) {
   if (!heureStr) return null;
@@ -2701,12 +2765,14 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       <div class="entete-fa-info" style="cursor:pointer;">
         <div class="identite-exploitant">${esc(identiteFeuille)} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
         <h3>Nom du chauffeur : ${esc(feuille.profils?.nom || "Chauffeur")}${esc(labelFeuille)} <span class="chevron-ligne">▾</span></h3>
-        <div class="sous">Véhicule : ${feuille.vehicules ? (esc(feuille.vehicules.nom) + (feuille.vehicules.plaque ? " · plaque " + esc(feuille.vehicules.plaque) : "") + (feuille.vehicules.numero_identification ? " · n° identification " + esc(feuille.vehicules.numero_identification) : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}</div>
+        <div class="sous">Véhicule : ${feuille.vehicules ? (esc(feuille.vehicules.nom) + (feuille.vehicules.plaque ? " · plaque " + esc(feuille.vehicules.plaque) : "") + (feuille.vehicules.numero_identification ? " · n° identification " + esc(feuille.vehicules.numero_identification) : "")) : "Aucun véhicule assigné"} · ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</div>
       </div>
       <div class="entete-fa-actions">
         <button class="btn-verrou ${feuille.verrouillee ? "rouvrir" : "cloturer"}">${feuille.verrouillee ? "🔓 Rouvrir pour le chauffeur" : "🔒 Signer / clôturer"}</button>
+        ${feuille.verrouillee ? `<button class="btn-verifier-admin" style="background:${feuille.verifiee_admin ? "#dcdcda" : "var(--vert)"}; color:${feuille.verifiee_admin ? "var(--blanc)" : "#fff"}; border:none;">${feuille.verifiee_admin ? "✅ Vérifiée" : "☑️ Marquer vérifiée"}</button>` : ""}
         <button class="btn-details-fa">▾ Détails</button>
         <button class="btn-nouvelle-course-fa">+ Course</button>
+        <button class="btn-plein-ecran-fa" style="background:#3b82c4; color:#fff; border:none;">🔍 Plein écran</button>
         <button class="btn-imprimer-fa">🖨️ Imprimer / PDF</button>
       </div>
     </div>
@@ -2730,6 +2796,21 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   entete.querySelector(".btn-nouvelle-course-fa").addEventListener("click", () => {
     ouvrirModaleCourse({ chauffeurId: chauffeur.id, date: dateChoisie + "T09:00" });
   });
+  const btnVerifierAdmin = entete.querySelector(".btn-verifier-admin");
+  if (btnVerifierAdmin) {
+    btnVerifierAdmin.addEventListener("click", async () => {
+      if (feuille.verifiee_admin) {
+        if (!confirm("Retirer la vérification de cette feuille ?")) return;
+        await supabase.from("feuilles_route").update({ verifiee_admin: false, verifiee_admin_a: null, verifiee_admin_par: null }).eq("id", feuille.id);
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from("feuilles_route").update({
+          verifiee_admin: true, verifiee_admin_a: new Date().toISOString(), verifiee_admin_par: user?.id || null
+        }).eq("id", feuille.id);
+      }
+      chargerFeuillesAdmin();
+    });
+  }
   entete.querySelector(".btn-imprimer-fa").addEventListener("click", () => {
     imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie);
   });
@@ -2825,6 +2906,21 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   titreCourses.className = "mini-titre"; titreCourses.textContent = "Courses";
   corps.appendChild(titreCourses);
 
+  // Total calculé automatiquement à partir des courses de cette feuille (se remet à jour tout
+  // seul dès qu'une course est ajoutée/modifiée/supprimée, puisque tout est rechargé depuis la
+  // base à chaque fois) — distinct de la "Recette" du taximètre qui reste un relevé manuel.
+  const totalPercuDiv = document.createElement("div");
+  totalPercuDiv.style.cssText = "font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:8px;";
+  function calculerTotalPercuLignes(listeLignes) {
+    return listeLignes.reduce((s, l) => {
+      if (l.type_course === "uber" || l.mode_paiement === "uber") return s;
+      const v = parseFloat(l.sommes_percues ?? l.prix_taximetre ?? 0);
+      return s + (isNaN(v) ? 0 : v);
+    }, 0);
+  }
+  totalPercuDiv.textContent = `💰 Total perçu (calculé) : ${calculerTotalPercuLignes(lignes).toFixed(2)} €`;
+  corps.appendChild(totalPercuDiv);
+
   const conteneurLignes = document.createElement("div");
   lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1)));
   corps.appendChild(conteneurLignes);
@@ -2846,6 +2942,36 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   });
   corps.appendChild(btnAjouter);
   div.appendChild(corps);
+
+  // Plein écran : affiche uniquement le titre + total + courses, sans l'identité/véhicule/
+  // compteurs, pour avoir toute la place à l'écran pour corriger les courses.
+  entete.querySelector(".btn-plein-ecran-fa").addEventListener("click", () => {
+    let overlay = document.getElementById("overlay-plein-ecran-fa");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "overlay-plein-ecran-fa";
+      overlay.style.cssText = "position:fixed; inset:0; background:var(--noir); z-index:100; overflow-y:auto; padding:16px;";
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = "";
+    const entetePlein = document.createElement("div");
+    entetePlein.style.cssText = "display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; position:sticky; top:0; background:var(--noir); padding-bottom:10px; z-index:1;";
+    entetePlein.innerHTML = `<h3 style="margin:0; font-size:1rem;">${esc(feuille.profils?.nom || "Chauffeur")} — ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</h3>`;
+    const btnFermer = document.createElement("button");
+    btnFermer.textContent = "✕ Fermer";
+    btnFermer.style.cssText = "width:auto; padding:9px 14px; border-radius:8px; border:none; background:#dcdcda; color:var(--blanc); font-weight:600;";
+    btnFermer.addEventListener("click", () => {
+      corps.appendChild(totalPercuDiv);
+      corps.appendChild(conteneurLignes);
+      corps.appendChild(btnAjouter);
+      overlay.remove();
+    });
+    entetePlein.appendChild(btnFermer);
+    overlay.appendChild(entetePlein);
+    overlay.appendChild(totalPercuDiv);
+    overlay.appendChild(conteneurLignes);
+    overlay.appendChild(btnAjouter);
+  });
 
   return div;
 }
@@ -2925,6 +3051,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="forfait">Forfait</option>
         <option value="navette_aeroport">Navette aéroport</option>
         <option value="uber">🚕 Course Uber</option>
+        <option value="prive">🔒 Trajet privé (non facturé)</option>
       `;
     } else if (estCheckbox) {
       input.type = "checkbox";
@@ -2960,16 +3087,24 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   mentionUber.className = "mention-uber";
   mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
   grille.insertBefore(mentionUber, wrapsParChampAdmin["mode_paiement"]);
+  const mentionPrive = document.createElement("div");
+  mentionPrive.className = "mention-uber";
+  mentionPrive.textContent = "🔒 Trajet privé : non facturé, juste comptabilisé pour le kilométrage.";
+  grille.insertBefore(mentionPrive, wrapsParChampAdmin["mode_paiement"]);
   div.appendChild(grille);
 
   function appliquerVisibilitePaiementAdmin() {
     const mode = inputsParChampAdmin["mode_paiement"].value;
-    const estUber = mode === "uber" || inputsParChampAdmin["type_course"].value === "uber";
+    const typeCourse = inputsParChampAdmin["type_course"].value;
+    const estUber = mode === "uber" || typeCourse === "uber";
+    const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
-    wrapsParChampAdmin["prix_taximetre"].style.display = estUber ? "none" : "";
-    wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber) ? "none" : "";
+    wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive) ? "none" : "";
+    wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive) ? "none" : "";
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
+    wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionUber.style.display = estUber ? "" : "none";
+    mentionPrive.style.display = estPrive ? "" : "none";
   }
   appliquerVisibilitePaiementAdmin();
 

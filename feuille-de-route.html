@@ -104,6 +104,8 @@ window.onerror = function(msg, url, line, col, err) {
   <p id="sous-titre">Chargement…</p>
 </header>
 
+<div id="bandeau-feuille-oubliee" style="display:none; margin:16px 20px 0; background:#fdecee; border:1px solid #f0c4c4; border-radius:10px; padding:12px; font-size:.88rem; color:#8a2020;"></div>
+
 <div id="sections-passees"></div>
 
 <p id="vehicule-actuel-titre" style="margin:16px 20px 0;">🚗 Véhicule actuel</p>
@@ -422,32 +424,74 @@ let vehiculesActifsCache = [];
   if (!user) { document.getElementById("erreur").textContent = "Connecte-toi d'abord depuis l'app chauffeur."; return; }
 
   const aujourdHui = new Date().toISOString().slice(0, 10);
+  const idDepuisUrl = new URLSearchParams(location.search).get("feuille");
 
-  let { data: feuilles } = await supabase
+  // Avertit toujours d'une éventuelle feuille oubliée d'un jour précédent (jamais clôturée) —
+  // elle doit rester modifiable tant qu'elle n'est pas terminée, même des jours après.
+  const { data: feuillesOubliees } = await supabase
     .from("feuilles_route")
-    .select("*")
+    .select("id, date_service")
     .eq("chauffeur_id", user.id)
-    .eq("date_service", aujourdHui)
-    .order("created_at", { ascending: true });
+    .eq("verrouillee", false)
+    .lt("date_service", aujourdHui)
+    .order("date_service", { ascending: true });
 
-  if (!feuilles || feuilles.length === 0) {
-    const { data: nouvelle, error } = await supabase
-      .from("feuilles_route")
-      .insert({ chauffeur_id: user.id, date_service: aujourdHui })
-      .select().single();
-    if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
-    feuilles = [nouvelle];
+  const bandeau = document.getElementById("bandeau-feuille-oubliee");
+  if (feuillesOubliees && feuillesOubliees.length > 0 && !idDepuisUrl) {
+    const premiere = feuillesOubliees[0];
+    const dateLisible = new Date(premiere.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
+    bandeau.innerHTML = `⚠️ Tu as une feuille du <b>${esc(dateLisible)}</b> jamais terminée`
+      + (feuillesOubliees.length > 1 ? ` (+ ${feuillesOubliees.length - 1} autre(s))` : "")
+      + ` — <a href="feuille-de-route.html?feuille=${premiere.id}" style="color:#8a2020; text-decoration:underline; font-weight:700;">l'ouvrir et la terminer</a>`;
+    bandeau.style.display = "block";
+  } else {
+    bandeau.style.display = "none";
   }
 
-  toutesLesFeuillesDuJour = feuilles;
-  // La feuille active est la dernière non clôturée ; sinon la plus récente (toutes clôturées)
-  feuilleActuelle = feuilles.find(f => !f.verrouillee) || feuilles[feuilles.length - 1];
+  let dateAAfficher = aujourdHui;
+
+  if (idDepuisUrl) {
+    // Mode "rattrapage" : on édite précisément la feuille oubliée indiquée dans le lien, quelle
+    // que soit sa date — elle reste entièrement modifiable jusqu'à ce qu'elle soit clôturée.
+    const { data: feuilleCiblee, error: erreurCiblee } = await supabase
+      .from("feuilles_route").select("*").eq("id", idDepuisUrl).eq("chauffeur_id", user.id).maybeSingle();
+    if (erreurCiblee || !feuilleCiblee) {
+      document.getElementById("erreur").textContent = "Cette feuille est introuvable ou ne t'appartient pas.";
+      return;
+    }
+    dateAAfficher = feuilleCiblee.date_service;
+    const { data: memeJour } = await supabase
+      .from("feuilles_route").select("*").eq("chauffeur_id", user.id).eq("date_service", dateAAfficher)
+      .order("created_at", { ascending: true });
+    toutesLesFeuillesDuJour = memeJour || [feuilleCiblee];
+    feuilleActuelle = feuilleCiblee;
+  } else {
+    let { data: feuilles } = await supabase
+      .from("feuilles_route")
+      .select("*")
+      .eq("chauffeur_id", user.id)
+      .eq("date_service", aujourdHui)
+      .order("created_at", { ascending: true });
+
+    if (!feuilles || feuilles.length === 0) {
+      const { data: nouvelle, error } = await supabase
+        .from("feuilles_route")
+        .insert({ chauffeur_id: user.id, date_service: aujourdHui })
+        .select().single();
+      if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+      feuilles = [nouvelle];
+    }
+
+    toutesLesFeuillesDuJour = feuilles;
+    // La feuille active est la dernière non clôturée ; sinon la plus récente (toutes clôturées)
+    feuilleActuelle = feuilles.find(f => !f.verrouillee) || feuilles[feuilles.length - 1];
+  }
 
   const { data: vehicules } = await supabase.from("vehicules").select("*").eq("actif", true);
   vehiculesActifsCache = vehicules || [];
 
-  document.getElementById("sous-titre").textContent = "Feuille du " + aujourdHui;
-  document.getElementById("identite-date").textContent = aujourdHui.split("-").reverse().join("/");
+  document.getElementById("sous-titre").textContent = "Feuille du " + dateAAfficher;
+  document.getElementById("identite-date").textContent = dateAAfficher.split("-").reverse().join("/");
 
   await chargerFeuilleActive(user);
   activerMiseAJourEnDirect(user.id);
@@ -825,6 +869,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="forfait">Forfait</option>
         <option value="navette_aeroport">Navette aéroport</option>
         <option value="uber">🚕 Course Uber</option>
+        <option value="prive">🔒 Trajet privé (non facturé)</option>
       `;
     } else if (estCheckbox) {
       input.type = "checkbox";
@@ -843,6 +888,12 @@ function construireLigneHtml(ligne, numeroAffiche) {
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {
+      if (estTypeCourse && e.target.value === "prive") {
+        if (!confirm("Confirmer qu'il s'agit bien d'un trajet privé, non facturé au client (ex : carwash, déplacement pour la société) ?\n\nN'oublie pas d'indiquer l'adresse et d'écrire une note expliquant le motif.")) {
+          e.target.value = ligne.type_course || "normale";
+          return;
+        }
+      }
       let valeur = estCheckbox ? e.target.checked : (e.target.value === "" ? null : e.target.value);
       if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
       const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
@@ -878,6 +929,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionUber.className = "mention-uber";
   mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
   corps.insertBefore(mentionUber, wrapsParChamp["mode_paiement"]);
+
+  const mentionPrive = document.createElement("div");
+  mentionPrive.className = "mention-uber";
+  mentionPrive.textContent = "🔒 Trajet privé : non facturé au client, juste comptabilisé pour le kilométrage du véhicule.";
+  corps.insertBefore(mentionPrive, wrapsParChamp["mode_paiement"]);
 
   // ---- Calculatrice "rendu monnaie" (paiement cash) ----
   // Reste utilisable tant que la feuille n'est pas signée, même si la course est terminée.
@@ -943,12 +999,19 @@ function construireLigneHtml(ligne, numeroAffiche) {
   // ---- Note du chauffeur (modifiable jusqu'à la signature, même course terminée) ----
   const wrapNote = document.createElement("div");
   wrapNote.style.gridColumn = "1 / -1";
-  wrapNote.innerHTML = `<label>📝 Note (achat, remarque, problème…)</label>`;
+  const estPriveInitial = ligne.type_course === "prive";
+  wrapNote.innerHTML = `<label style="${estPriveInitial ? "color:var(--rouge); font-weight:700;" : ""}">📝 Note (achat, remarque, problème…)${estPriveInitial ? " — obligatoire pour un trajet privé : indique le motif" : ""}</label>`;
   const note = document.createElement("textarea");
   note.className = "note-chauffeur";
-  note.placeholder = "Ex : client a payé 5 € de moins, parking payé 3 €, bagage oublié…";
+  note.placeholder = "Ex : client a payé 5 € de moins, parking payé 3 €, bagage oublié… / carwash, déplacement société…";
   note.value = ligne.note_chauffeur || "";
   note.disabled = feuilleSignee;
+  if (estPriveInitial && !note.value.trim()) note.style.borderColor = "var(--rouge)";
+  note.addEventListener("input", () => {
+    if (inputsParChamp["type_course"].value === "prive") {
+      note.style.borderColor = note.value.trim() ? "#cfcfcd" : "var(--rouge)";
+    }
+  });
   note.addEventListener("change", async () => {
     const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
     const { error } = await supabase.rpc("maj_note_billet_ligne", { p_ligne: ligne.id, p_champ: "note_chauffeur", p_valeur: note.value });
@@ -994,12 +1057,15 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const mode = inputsParChamp["mode_paiement"].value;
     const typeCourse = inputsParChamp["type_course"].value;
     const estUber = mode === "uber" || typeCourse === "uber";
+    const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
-    wrapsParChamp["prix_taximetre"].style.display = estUber ? "none" : "";
-    wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber) ? "none" : "";
+    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive) ? "none" : "";
+    wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
+    wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
+    mentionPrive.style.display = estPrive ? "" : "none";
     mentionUber.style.display = estUber ? "" : "none";
-    blocMonnaie.style.display = (!estUber && (mode === "cash" || mode === "")) ? "" : "none";
+    blocMonnaie.style.display = (!estUber && !estPrive && (mode === "cash" || mode === "")) ? "" : "none";
   }
   appliquerVisibilitePaiement();
 
