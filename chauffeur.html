@@ -192,6 +192,7 @@ window.onerror = function(msg, url, line, col, err) {
   </div>
   <button id="btn-menu-chauffeur" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
   <div id="menu-chauffeur-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+    <button id="btn-reactiver-notifs-menu" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">🔔 Réactiver les notifications</button>
     <button id="btn-deconnexion-chauffeur" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
   </div>
 </header>
@@ -212,6 +213,10 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <div id="ecran-principal" style="display:none;">
+  <div id="bandeau-notifs" style="display:none; margin:10px 20px 0; background:#fdecee; border:2px solid #c81e2c; color:#8a1520; border-radius:12px; padding:12px 14px; font-size:.9rem; font-weight:600;">
+    <div id="bandeau-notifs-texte">⚠️ Tes notifications ne fonctionnent pas : tu ne seras pas prévenu des nouvelles courses.</div>
+    <button type="button" id="btn-reactiver-notifs" style="margin-top:10px; width:100%; background:#c81e2c; color:#fff; border:none; border-radius:10px; padding:13px; font-weight:700; font-size:1rem;">🔔 Réactiver les notifications</button>
+  </div>
   <div id="barre-dispo">
     <span id="label-dispo">Disponible / position partagée</span>
     <div class="switch" id="switch-dispo"></div>
@@ -406,6 +411,74 @@ async function activerNotificationsPushReelles() {
   } catch (e) { console.error("Abonnement notifications push impossible :", e); }
 }
 
+// Réabonnement COMPLET (sur appui du chauffeur) : supprime l'ancien abonnement du téléphone
+// (souvent "périmé" chez Google/Apple sans que le téléphone le sache) et en crée un neuf.
+async function reinscrireNotifications(bouton) {
+  const texteAvant = bouton ? bouton.textContent : "";
+  if (bouton) { bouton.disabled = true; bouton.textContent = "⏳ Activation…"; }
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      alert("Ce téléphone ne permet pas les notifications dans ce navigateur. Sur iPhone : ouvre l'app depuis l'icône Taxi Wal de l'écran d'accueil.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      alert("Les notifications sont bloquées. Va dans les Réglages du téléphone → Notifications (ou Chrome → Paramètres du site) et autorise Taxi Wal, puis réessaie.");
+      return;
+    }
+    const registration = await navigator.serviceWorker.ready;
+    const ancien = await registration.pushManager.getSubscription();
+    if (ancien) { try { await ancien.unsubscribe(); } catch (e) {} }
+    const nouveau = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const json = nouveau.toJSON();
+    await supabase.from("push_subscriptions").delete().eq("user_id", user.id).neq("endpoint", json.endpoint);
+    const { error } = await supabase.from("push_subscriptions").upsert({
+      user_id: user.id, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth
+    }, { onConflict: "endpoint" });
+    if (error) throw error;
+    localStorage.setItem("taxiwal_notifs_reactivees", String(Date.now()));
+    document.getElementById("bandeau-notifs").style.display = "none";
+    alert("✅ Notifications réactivées ! Tu seras prévenu des prochaines courses.");
+  } catch (e) {
+    alert("Impossible d'activer les notifications : " + (e.message || e));
+  } finally {
+    if (bouton) { bouton.disabled = false; bouton.textContent = texteAvant; }
+  }
+}
+document.getElementById("btn-reactiver-notifs").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
+document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
+
+// Affiche le bandeau rouge si les notifications sont bloquées, ou si les derniers envois ont échoué
+async function verifierEtatNotifications() {
+  const bandeau = document.getElementById("bandeau-notifs");
+  const texte = document.getElementById("bandeau-notifs-texte");
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+      texte.textContent = "⚠️ Les notifications sont désactivées : tu ne seras pas prévenu des nouvelles courses.";
+      bandeau.style.display = "block";
+      return;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: derniere } = await supabase.from("notifications")
+      .select("statut_envoi, created_at").eq("chauffeur_id", user.id)
+      .order("created_at", { ascending: false }).limit(1);
+    const reactiveeA = Number(localStorage.getItem("taxiwal_notifs_reactivees") || 0);
+    if (derniere && derniere[0] && derniere[0].statut_envoi === "echec"
+        && new Date(derniere[0].created_at).getTime() > reactiveeA) {
+      texte.textContent = "⚠️ Ta dernière notification n'a pas pu arriver sur ce téléphone. Touche le bouton pour réparer.";
+      bandeau.style.display = "block";
+    } else {
+      bandeau.style.display = "none";
+    }
+  } catch (e) { /* pas bloquant */ }
+}
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data && event.data.type === "nouvelle-course") {
@@ -436,6 +509,7 @@ async function demarrerEspaceChauffeur() {
     Notification.requestPermission();
   }
   activerNotificationsPushReelles();
+  setTimeout(verifierEtatNotifications, 1500);
 
   await creerFeuilleDuJourSiAbsente();
   await chargerCourses();
