@@ -1067,13 +1067,15 @@ function construireLigneHtml(ligne, numeroAffiche) {
 
   const ligneTerminee = estTermineeParCentrale(ligne);
   const courseManuelle = estCourseManuelle(ligne);
-  const ligneVerrouillee = feuilleActuelle.verrouillee || ligneTerminee || ligne.cloturee;
+  // La ligne reste modifiable tant que le CHAUFFEUR ne l'a pas clôturée lui-même (même si la
+  // course a été marquée terminée dans l'app) — il peut compléter sa feuille plus tard.
+  const ligneVerrouillee = feuilleActuelle.verrouillee || ligne.cloturee;
   const estFermeeParDefaut = ligneVerrouillee;
   const ouverte = etatManuelLignes.has(ligne.id) ? etatManuelLignes.get(ligne.id) : !estFermeeParDefaut;
 
   let badge = "";
-  if (ligne.course_id && !courseManuelle) badge = ligneTerminee ? " · ✅ terminée" : " · attribuée par la centrale";
-  else if (ligne.cloturee) badge = " · 🔒 clôturée";
+  if (ligne.cloturee) badge = " · 🔒 clôturée";
+  else if (ligne.course_id && !courseManuelle) badge = ligneTerminee ? " · ✅ course faite — à compléter puis clôturer" : " · attribuée par la centrale";
   if (ligne.mode_paiement === "uber_cash") badge += " · 🚕💵 Uber cash";
   else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
   if (ligne.mode_paiement === "qr") badge += " · 📱 QR";
@@ -1339,16 +1341,29 @@ function construireLigneHtml(ligne, numeroAffiche) {
     btnCloturer.className = "btn-cloturer-course";
     btnCloturer.textContent = "🔒 Clôturer cette course";
     btnCloturer.addEventListener("click", async () => {
-      if (!confirm("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).")) return;
-      if (ligne.course_id) {
+      // Vérifie ce qui manque avant de clôturer
+      const mode = ligne.mode_paiement || "";
+      const sansMontant = ["uber", "annulee", "facture"].includes(mode) || ligne.type_course === "uber" || ligne.type_course === "prive";
+      const manque = [];
+      if (!ligne.embarquement_lieu) manque.push("lieu d'embarquement");
+      if (!ligne.debarquement_lieu) manque.push("lieu de débarquement");
+      if (!ligne.embarquement_heure) manque.push("heure d'embarquement");
+      if (!ligne.debarquement_heure) manque.push("heure de débarquement");
+      if (!mode && ligne.type_course !== "prive") manque.push("mode de paiement");
+      if (!sansMontant && ligne.sommes_percues == null && ligne.prix_taximetre == null) manque.push("prix / sommes perçues");
+      const message = manque.length
+        ? "⚠️ Il manque encore : " + manque.join(", ") + ".\n\nClôturer quand même ? Tu ne pourras plus la modifier ensuite (seule la direction pourra)."
+        : "Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).";
+      if (!confirm(message)) return;
+      if (ligne.course_id && !courseManuelle && !ligneTerminee) {
+        const modesCourse = ["cash", "carte", "facture", "uber", "cheque_social", "qr", "uber_cash"];
         const { error } = await supabase.from("courses")
-          .update({ statut: "terminee", mode_paiement: ligne.mode_paiement || null })
+          .update({ statut: "terminee", mode_paiement: modesCourse.includes(mode) ? mode : null })
           .eq("id", ligne.course_id);
         if (error) { alert("Erreur : " + error.message); return; }
-      } else {
-        const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: true }).eq("id", ligne.id);
-        if (error) { alert("Erreur : " + error.message); return; }
       }
+      const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: true }).eq("id", ligne.id);
+      if (error) { alert("Erreur : " + error.message); return; }
       etatManuelLignes.delete(ligne.id);
       fermerPleinEcran();
       await chargerLignes();

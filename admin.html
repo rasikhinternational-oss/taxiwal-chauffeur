@@ -894,6 +894,9 @@ function demarrerAdmin() {
 // la page pendant 30 s après, pour lui laisser le temps de modifier tranquillement.
 let derniereActiviteFeuilles = 0;
 ["pointerdown", "keydown", "input", "focusin", "change"].forEach(evt => document.addEventListener(evt, (e) => {
+  if (e.target && e.target.closest && e.target.closest("#section-courses")) window.derniereActiviteCourses = Date.now();
+}, true));
+["pointerdown", "keydown", "input", "focusin", "change"].forEach(evt => document.addEventListener(evt, (e) => {
   const t = e.target;
   if (t && t.closest && (t.closest("#section-feuilles") || t.closest("#overlay-plein-ecran-fa") || t.closest(".plein-ecran-ligne"))) {
     derniereActiviteFeuilles = Date.now();
@@ -1321,6 +1324,13 @@ function rechargerApresCarteGrand() { if (rechargeCartesEnAttente) { rechargeCar
 async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   // Une course est ouverte en grand : on ne redessine pas la liste (sinon elle se fermerait)
   if (document.querySelector(".carte-en-grand")) { rechargeCartesEnAttente = true; return; }
+  // L'admin est en train de modifier une course : pas de rafraîchissement automatique
+  if (depuisAutoRafraichissement) {
+    const formOuvert = [...document.querySelectorAll("#section-courses .form-modif-course")].some(x => x.style.display === "block");
+    const actif = document.activeElement;
+    const saisie = actif && ["INPUT", "SELECT", "TEXTAREA"].includes(actif.tagName) && actif.closest("#section-courses");
+    if (formOuvert || saisie || Date.now() - (window.derniereActiviteCourses || 0) < 30000) return;
+  }
   const { data: courses, error } = await supabase
     .from("courses")
     .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom), vehicules:vehicule_id(nom, plaque, places)")
@@ -3434,6 +3444,20 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     }
   });
   entete.appendChild(btnGrand);
+  if (ligne.cloturee) {
+    // Seule la direction peut rouvrir une course clôturée par le chauffeur
+    const btnRouvrir = document.createElement("button");
+    btnRouvrir.textContent = "🔓 Rouvrir";
+    btnRouvrir.style.cssText = "background:#fff6e0; color:#8a5a00; border-color:#e8c77a;";
+    btnRouvrir.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm("Rouvrir cette course pour que le chauffeur puisse la modifier à nouveau ?")) return;
+      const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: false }).eq("id", ligne.id);
+      if (error) { alert("Erreur : " + error.message); return; }
+      chargerFeuillesAdmin();
+    });
+    entete.appendChild(btnRouvrir);
+  }
   entete.appendChild(btnSupprimer);
   div.appendChild(entete);
 
