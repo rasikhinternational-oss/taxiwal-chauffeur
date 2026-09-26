@@ -51,6 +51,7 @@ window.onerror = function(msg, url, line, col, err) {
   .rangee-heure{ display:flex; gap:6px; margin:-4px 0 10px; }
   .rangee-heure .btn-maintenant{ flex:1; margin:0; }
   .btn-decaler{ width:56px; flex-shrink:0; padding:9px 0; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-weight:700; font-size:.9rem; color:var(--blanc); }
+  .btn-supprimer-course{ width:100%; margin-top:10px; padding:12px; border-radius:10px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700; font-size:.95rem; }
   .btn-position{ width:100%; padding:10px; margin:-4px 0 10px; border-radius:8px; border:1px solid #2f6fb5; background:#eaf1fa; color:#2f6fb5; font-weight:700; font-size:.9rem; }
   .champ-heure-invalide{ border-color:var(--rouge) !important; background:#fdecee !important; }
   .suggestions-adresse{ display:none; position:absolute; left:0; right:0; top:100%; margin-top:-8px; z-index:30; background:#fff; border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); overflow:hidden; }
@@ -1286,6 +1287,26 @@ function construireLigneHtml(ligne, numeroAffiche) {
       await chargerLignes();
     });
     corps.appendChild(btnCloturer);
+  }
+
+  // ---- Supprimer une course ajoutée par erreur ----
+  // Seulement une course ajoutée à la main (pas une course de la centrale), non clôturée, feuille non signée.
+  const supprimable = !feuilleActuelle.verrouillee && !ligne.cloturee && (!ligne.course_id || courseManuelle);
+  if (supprimable) {
+    const btnSupprimer = document.createElement("button");
+    btnSupprimer.type = "button";
+    btnSupprimer.className = "btn-supprimer-course";
+    btnSupprimer.textContent = "🗑️ Supprimer cette course (ajoutée par erreur)";
+    btnSupprimer.addEventListener("click", async () => {
+      if (!confirm("Supprimer définitivement la course n° " + numeroAffiche + " ?\n\nÀ utiliser seulement si elle a été ajoutée par erreur.")) return;
+      btnSupprimer.disabled = true;
+      const { error } = await supabase.from("lignes_feuille_route").delete().eq("id", ligne.id);
+      if (error) { alert("Suppression impossible : " + error.message); btnSupprimer.disabled = false; return; }
+      etatManuelLignes.delete(ligne.id);
+      fermerPleinEcran();
+      await chargerLignes();
+    });
+    corps.appendChild(btnSupprimer);
   }
   div.appendChild(corps);
 
