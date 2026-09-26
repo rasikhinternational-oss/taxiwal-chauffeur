@@ -2779,6 +2779,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
             <option value="">— Aucun —</option>
             ${vehiculesCache.map(v => `<option value="${v.id}" ${v.id === feuille.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}
           </select>
+          <span>· 🕐 ${feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "--:--"} → ${feuille.heure_fin ? String(feuille.heure_fin).slice(0, 5) : (feuille.heure_debut ? "en service" : "--:--")}${feuille.heure_debut && feuille.heure_fin ? (() => { const d = minutesDepuisHeure(String(feuille.heure_debut).slice(0, 5)), f = minutesDepuisHeure(String(feuille.heure_fin).slice(0, 5)); return (d !== null && f !== null) ? " (" + formatDureeMinutes((f - d + 1440) % 1440) + ")" : ""; })() : ""}</span>
           <span>· ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</span>
         </div>
       </div>
