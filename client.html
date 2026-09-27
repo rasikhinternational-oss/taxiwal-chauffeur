@@ -230,7 +230,9 @@ window.onerror = function(msg, url, line, col, err) {
   .rz-etape{ display:none; animation:rzEntree .2s ease; }
   .rz-etape.active{ display:block; }
   @keyframes rzEntree{ from{ opacity:0; transform:translateX(12px);} to{ opacity:1; transform:none; } }
-  .rz-carte{ height:190px; border-radius:14px; overflow:hidden; border:1px solid #e3e3e0; margin:4px 0 8px; background:#eef1ee; }
+  .rz-carte{ height:230px; border-radius:16px; overflow:hidden; border:none; margin:6px 0 8px; background:#eef1ee; box-shadow:0 6px 20px rgba(0,0,0,.12); }
+  .rz-bouton-vue{ background:#fff; border:none; border-radius:10px; padding:8px 11px; font-weight:800; font-size:.8rem; box-shadow:0 2px 8px rgba(0,0,0,.25); cursor:pointer; color:#111; }
+  .rz-carte .leaflet-control-attribution{ font-size:9px; background:rgba(255,255,255,.7); }
   .rz-trajet-info{ display:flex; gap:10px; justify-content:center; font-weight:700; font-size:.92rem; margin-bottom:12px; color:#333; min-height:1.2em; }
   .rz-vehicules{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
   .rz-vehicule{ border:2px solid #e3e3e0; border-radius:14px; padding:12px 10px; background:#fff; cursor:pointer; text-align:left; transition:border-color .15s, transform .15s; }
@@ -252,6 +254,9 @@ window.onerror = function(msg, url, line, col, err) {
   .rz-nav .rz-suivant{ flex:1; }
   #info-process.rz-replie ol{ display:none; }
   #info-process.rz-replie{ cursor:pointer; }
+  .btn-payer-en-ligne{ width:100%; padding:16px; border:none; border-radius:12px; background:#111; color:#fff; font-weight:800; font-size:1.05rem; margin-top:8px; cursor:pointer; }
+  .payer-moyens{ font-size:.78rem; color:var(--gris); text-align:center; margin-top:6px; }
+  .payer-ou{ font-size:.78rem; color:var(--gris); text-align:center; margin:12px 0 6px; }
 </style>
 </head>
 <body>
@@ -1029,6 +1034,11 @@ async function construireCarteCourseClient(course) {
     bloc.className = "bloc-paiement";
     bloc.innerHTML = `
       <div style="font-weight:700; margin-bottom:4px;">Acompte à payer : ${esc(course.acompte_montant)} €</div>
+      <div class="zone-paiement-en-ligne" style="display:none;">
+        <button type="button" class="btn-payer-en-ligne">💳 Payer maintenant · ${esc(course.acompte_montant)} €</button>
+        <div class="payer-moyens"> Apple Pay · Bancontact (ouvre ton app bancaire) · carte</div>
+        <div class="payer-ou">— ou par virement —</div>
+      </div>
       <img src="${urlQrPaiement({ montant: course.acompte_montant, communication })}" alt="QR code de paiement">
       <div class="ligne-info">Bénéficiaire<br><b>${esc(COMPTE_BENEFICIAIRE)}</b></div>
       <div class="ligne-info">IBAN<br><b>${esc(COMPTE_IBAN)}</b></div>
@@ -1052,6 +1062,23 @@ async function construireCarteCourseClient(course) {
         <a class="btn-contact mail">✉️ Envoyer un e-mail</a>
       </div>
     `;
+    // Paiement en ligne (Apple Pay / Bancontact / carte) si activé par la centrale
+    etatPaiementEnLigne().then(etat => {
+      if (etat !== "actif" && etat !== "test") return;
+      const zp = bloc.querySelector(".zone-paiement-en-ligne");
+      zp.style.display = "block";
+      if (etat === "test") zp.querySelector(".payer-moyens").textContent += " (mode test)";
+      zp.querySelector(".btn-payer-en-ligne").addEventListener("click", async (e) => {
+        const btn = e.currentTarget; btn.disabled = true; btn.textContent = "Ouverture du paiement…";
+        const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id } });
+        if (error || !data || !data.url) {
+          btn.disabled = false; btn.textContent = "💳 Payer maintenant · " + course.acompte_montant + " €";
+          alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement ci-dessous.");
+          return;
+        }
+        window.location.href = data.url;
+      });
+    });
     const texteContact = `Bonjour Taxi Wal, j'ai une réservation (${communication}) de ${course.prix} € mais je ne peux pas payer l'acompte à l'avance. Pouvez-vous me contacter ?`;
     bloc.querySelector(".btn-contact.wa").href = `https://wa.me/${DISPATCH_WHATSAPP}?text=${encodeURIComponent(texteContact)}`;
     bloc.querySelector(".btn-contact.mail").href = `mailto:${DISPATCH_EMAIL}?subject=${encodeURIComponent("Paiement de ma réservation")}&body=${encodeURIComponent(texteContact)}`;
@@ -1546,8 +1573,29 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
   let carte = null, couche = null;
   function initCarte() {
     if (carte || typeof L === "undefined") return;
-    carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 9);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(carte);
+    carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 10);
+    // Plan clair et moderne (style « Voyager ») + vue satellite au choix
+    const plan = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO" });
+    const satellite = L.layerGroup([
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "© Esri" }),
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd" })
+    ]);
+    plan.addTo(carte);
+    let enSatellite = false;
+    const bascule = L.control({ position: "topright" });
+    bascule.onAdd = () => {
+      const b = L.DomUtil.create("button", "rz-bouton-vue");
+      b.type = "button"; b.textContent = "🛰️ Satellite";
+      L.DomEvent.disableClickPropagation(b);
+      b.addEventListener("click", () => {
+        enSatellite = !enSatellite;
+        if (enSatellite) { carte.removeLayer(plan); satellite.addTo(carte); b.textContent = "🗺️ Plan"; }
+        else { carte.removeLayer(satellite); plan.addTo(carte); b.textContent = "🛰️ Satellite"; }
+      });
+      return b;
+    };
+    bascule.addTo(carte);
     couche = L.layerGroup().addTo(carte);
   }
   async function geocoder(adresse) {
@@ -1579,9 +1627,12 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
       if (carte) {
         carteDiv.style.display = "";
         couche.clearLayers();
-        L.marker(a).addTo(couche).bindTooltip("Départ");
-        L.marker(b).addTo(couche).bindTooltip("Arrivée");
-        L.polyline(ligne, { color: "#c81e2c", weight: 5, opacity: .85 }).addTo(couche);
+        const pastille = (texte, couleur) => L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15],
+          html: `<div style="width:30px;height:30px;border-radius:50%;background:${couleur};color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);font-size:13px;">${texte}</div>` });
+        L.polyline(ligne, { color: "#ffffff", weight: 9, opacity: .9 }).addTo(couche);
+        L.polyline(ligne, { color: "#c81e2c", weight: 5, opacity: .95 }).addTo(couche);
+        L.marker(a, { icon: pastille("A", "#1f8a4c") }).addTo(couche).bindTooltip("Départ");
+        L.marker(b, { icon: pastille("B", "#c81e2c") }).addTo(couche).bindTooltip("Arrivée");
         carte.invalidateSize();
         carte.fitBounds(L.latLngBounds(ligne), { padding: [24, 24] });
       }
@@ -1637,6 +1688,24 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
   // La carte s'initialise quand l'onglet est visible
   setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 400);
   document.querySelectorAll('nav.onglets button[data-onglet="reserver"]').forEach(b => b.addEventListener("click", () => setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 150)));
+})();
+</script>
+<script>
+let _etatPaiement = null;
+async function etatPaiementEnLigne() {
+  if (_etatPaiement) return _etatPaiement;
+  try { const { data } = await supabase.rpc("paiement_en_ligne_etat"); _etatPaiement = data || "inactif"; } catch (e) { _etatPaiement = "inactif"; }
+  return _etatPaiement;
+}
+// Retour depuis la page de paiement
+(function () {
+  const p = new URLSearchParams(location.search);
+  if (p.get("paiement") !== "retour") return;
+  history.replaceState(null, "", location.pathname);
+  setTimeout(() => {
+    alert("Merci ! Ton paiement est en cours de vérification. Dès qu'il est reçu, ta course passe automatiquement en « Confirmée ».");
+    const b = document.querySelector('nav.onglets button[data-onglet="mes-courses"]'); if (b) b.click();
+  }, 1200);
 })();
 </script>
 </body>

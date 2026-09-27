@@ -520,6 +520,7 @@ window.onerror = function(msg, url, line, col, err) {
     <h1 style="margin:0; flex:1;">Taxi Wal — Admin</h1>
     <button id="btn-menu-admin" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
     <div id="menu-admin-deroulant" style="display:none; position:absolute; top:46px; right:0; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+      <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Apple Pay…)</button>
       <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
     </div>
   </div>
@@ -1102,6 +1103,16 @@ document.getElementById("btn-menu-admin").addEventListener("click", (e) => {
 });
 document.addEventListener("click", () => {
   document.getElementById("menu-admin-deroulant").style.display = "none";
+});
+document.getElementById("btn-paiement-en-ligne-admin").addEventListener("click", async () => {
+  const { data: etat } = await supabase.rpc("paiement_en_ligne_etat");
+  const txt = { actif: "✅ ACTIF (paiements réels)", test: "🧪 MODE TEST (aucun vrai paiement)", inactif: "❌ PAS ACTIVÉ" }[etat] || etat;
+  const cle = prompt("Paiement en ligne des acomptes (Apple Pay, Bancontact, carte) via Mollie.\n\nÉtat actuel : " + txt +
+    "\n\nColle ta clé API Mollie (commence par live_ ou test_).\nLaisse vide et valide pour DÉSACTIVER.");
+  if (cle === null) return;
+  const { error } = await supabase.rpc("admin_definir_cle_paiement", { p_cle: cle });
+  if (error) { alert("Erreur : " + error.message); return; }
+  alert(cle.trim() ? "✅ Clé enregistrée. Les clients voient maintenant le bouton « 💳 Payer maintenant »." : "Paiement en ligne désactivé.");
 });
 document.getElementById("btn-deconnexion-admin").addEventListener("click", async () => {
   if (!confirm("Se déconnecter de l'administration Taxi Wal ?")) return;
