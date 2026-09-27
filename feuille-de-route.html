@@ -7,6 +7,61 @@ function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
+// ================== PLUSIEURS ADRESSES (arrêts : autres prises en charge / déposes) ==================
+function normaliserArrets(liste) {
+  return (Array.isArray(liste) ? liste : []).map(a => ({ type: a && a.type === "prise" ? "prise" : "depose", adresse: String((a && a.adresse) || "").trim() }));
+}
+function texteArrets(liste) {
+  return normaliserArrets(liste).filter(a => a.adresse).map(a => (a.type === "prise" ? "📍 Prise en charge : " : "🏁 Dépose : ") + a.adresse);
+}
+// Éditeur : lignes [type ▾] [adresse] [✕] + bouton « Ajouter une adresse ». onChange(liste) est appelé à chaque modification.
+function creerEditeurArrets(listeInitiale, options) {
+  const { desactive = false, onChange = () => {}, avecSuggestions = null } = options || {};
+  let arrets = normaliserArrets(listeInitiale);
+  const zone = document.createElement("div");
+  zone.className = "editeur-arrets";
+  zone.style.cssText = "grid-column:1 / -1; margin:4px 0 10px; padding:10px; border:1px dashed #b9b9b5; border-radius:10px; background:#fafaf8;";
+  const envoyer = () => onChange(arrets.filter(a => a.adresse));
+  function rendre() {
+    zone.innerHTML = `<div style="font-size:.8rem; font-weight:700; color:#555; margin-bottom:6px;">🧭 Autres adresses (plusieurs clients ou plusieurs arrêts)</div>`;
+    if (!arrets.length && desactive) { zone.innerHTML += `<div style="font-size:.8rem; color:#888;">Aucune</div>`; return; }
+    arrets.forEach((a, i) => {
+      const ligne = document.createElement("div");
+      ligne.style.cssText = "display:flex; gap:6px; align-items:center; margin-bottom:6px; position:relative; flex-wrap:wrap;";
+      ligne.innerHTML = `<select ${desactive ? "disabled" : ""} style="flex:0 0 auto; width:auto; padding:9px 6px; border-radius:8px; border:1px solid #cfcfcd; font-size:.85rem; background:#fff;">
+          <option value="prise" ${a.type === "prise" ? "selected" : ""}>📍 Prise en charge</option>
+          <option value="depose" ${a.type === "depose" ? "selected" : ""}>🏁 Dépose</option>
+        </select>
+        <input type="text" ${desactive ? "disabled" : ""} placeholder="Adresse n° ${i + 1}" style="flex:1 1 160px; min-width:0; padding:9px; border-radius:8px; border:1px solid #cfcfcd; font-size:.95rem; background:#fff;">
+        ${desactive ? "" : `<button type="button" title="Retirer" style="flex:0 0 auto; width:auto; padding:8px 11px; border-radius:8px; border:1px solid #e0b4b4; background:#fff; color:#b3141b; font-weight:800;">✕</button>`}`;
+      const sel = ligne.querySelector("select"), inp = ligne.querySelector("input");
+      inp.value = a.adresse;
+      sel.addEventListener("change", () => { arrets[i].type = sel.value; envoyer(); });
+      inp.addEventListener("change", () => { arrets[i].adresse = inp.value.trim(); envoyer(); });
+      const btn = ligne.querySelector("button");
+      if (btn) btn.addEventListener("click", () => { arrets.splice(i, 1); rendre(); envoyer(); });
+      zone.appendChild(ligne);
+      if (avecSuggestions && !desactive) { try { avecSuggestions(inp, ligne); } catch (e) {} }
+    });
+    if (!desactive) {
+      const ajouter = document.createElement("button");
+      ajouter.type = "button";
+      ajouter.textContent = "➕ Ajouter une adresse";
+      ajouter.style.cssText = "width:100%; padding:10px; border-radius:8px; border:1px solid #3b82c4; background:#eef4fb; color:#1d4f86; font-weight:700; font-size:.88rem;";
+      ajouter.addEventListener("click", () => {
+        arrets.push({ type: "depose", adresse: "" });
+        rendre();
+        const inputs = zone.querySelectorAll("input[type=text]");
+        if (inputs.length) inputs[inputs.length - 1].focus();
+      });
+      zone.appendChild(ajouter);
+    }
+  }
+  rendre();
+  zone.lireArrets = () => arrets.filter(a => a.adresse);
+  zone.remplacer = (liste) => { arrets = normaliserArrets(liste); rendre(); };
+  return zone;
+}
 
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
@@ -1088,7 +1143,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
   if (ligne.mode_paiement === "annulee") badge += " · ❌ annulée";
   if (ligne.signalee_erreur) badge += " · 📨 demande envoyée à la centrale";
 
-  const resume = [ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
+  const nbArrets = normaliserArrets(ligne.arrets).filter(a => a.adresse).length;
+  const resume = ([ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis") + (nbArrets ? ` (+${nbArrets} adresse${nbArrets > 1 ? "s" : ""})` : "");
   const heureResume = (ligne.embarquement_heure ? " · " + String(ligne.embarquement_heure).slice(0, 5) : "") + (ligne.note_chauffeur ? " · 📝" : "");
 
   const entete = document.createElement("div");
@@ -1216,6 +1272,20 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionUber.className = "mention-uber";
   mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
   corps.insertBefore(mentionUber, wrapsParChamp["mode_paiement"]);
+
+  // Plusieurs adresses (autres clients à prendre / à déposer)
+  const editeurArrets = creerEditeurArrets(ligne.arrets, {
+    desactive: ligneVerrouillee,
+    avecSuggestions: (typeof attacherSuggestionsAdresse === "function") ? attacherSuggestionsAdresse : null,
+    onChange: async (liste) => {
+      const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+      if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde"; }
+      const { error } = await supabase.from("lignes_feuille_route").update({ arrets: liste }).eq("id", ligne.id);
+      if (etatEl) { etatEl.textContent = error ? "⚠️ Non enregistré" : "✓ Enregistré"; etatEl.className = "etat-sauvegarde " + (error ? "erreur" : "ok"); }
+      if (!error) ligne.arrets = liste;
+    }
+  });
+  wrapsParChamp["debarquement_lieu"].insertAdjacentElement("afterend", editeurArrets);
 
   const mentionAnnulee = document.createElement("div");
   mentionAnnulee.className = "mention-uber";
@@ -1579,10 +1649,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${i + 1}</td>
         <td>${fmtVal(l.index_depart)}</td>
         <td>${fmtVal(l.embarquement_index)}</td>
-        <td>${fmtVal(l.embarquement_lieu)}</td>
+        <td>${fmtVal(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => "<br>+ " + esc(a.adresse)).join("")}</td>
         <td>${fmtVal(l.embarquement_heure)}</td>
         <td>${fmtVal(l.debarquement_index)}</td>
-        <td>${fmtVal(l.debarquement_lieu)}</td>
+        <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtVal(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure)}</td>
         <td>${estUber ? "Uber" : fmtVal(l.prix_taximetre)}</td>
         <td>${fmtVal(sommes)}</td>

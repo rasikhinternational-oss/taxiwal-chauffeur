@@ -97,6 +97,20 @@ window.onerror = function(msg, url, line, col, err) {
 
   nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px; }
   nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; cursor:pointer; }
+  #section-demande-client{ padding:4px 16px 40px; }
+  .form-demande .dc-gros-bouton{ width:100%; padding:14px; border:none; border-radius:12px; background:#1f8a4c; color:#fff; font-weight:800; font-size:1rem; }
+  .form-demande .dc-aide{ font-size:.78rem; color:var(--gris); margin:5px 0 4px; }
+  .form-demande .dc-rangee{ display:flex; gap:6px; margin-top:6px; flex-wrap:nowrap; align-items:center; }
+  .form-demande .dc-rangee > button{ width:auto !important; flex:1 1 0 !important; min-width:0; margin:0 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .form-demande .dc-rangee > input{ width:auto !important; flex:1.4 1 0 !important; margin:0 !important; }
+  .form-demande .dc-rangee .dc-puce{ padding:10px 4px; font-size:.8rem; }
+  .form-demande .dc-mini{ flex:1 1 auto; padding:10px 8px; border-radius:9px; border:1px solid #cfcfcd; background:#fff; color:#111; font-weight:700; font-size:.85rem; }
+  .form-demande .dc-puce{ flex:1 1 auto; padding:10px 8px; border-radius:999px; border:1px solid #3b82c4; background:#eef4fb; color:#1d4f86; font-weight:700; font-size:.85rem; }
+  .form-demande .dc-champ-adresse{ position:relative; }
+  .suggestions-adresse{ display:none; position:absolute; left:0; right:0; top:100%; margin-top:2px; z-index:30; background:#fff; border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); overflow:hidden; color:#111; }
+  .suggestion-adresse{ padding:12px; border-bottom:1px solid #eee; font-size:.92rem; cursor:pointer; }
+  .suggestion-adresse:last-child{ border-bottom:none; }
+  .suggestion-adresse small{ display:block; color:#777; font-size:.78rem; margin-top:2px; }
   .form-demande label{ display:block; font-size:.82rem; color:var(--gris); margin:10px 0 4px; }
   .form-demande input, .form-demande textarea{ width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; background:#fff; color:#111; font-family:inherit; }
   .form-demande label.dc-case{ display:flex; align-items:center; gap:10px; font-size:.92rem; color:inherit; margin:12px 0 0; }
@@ -281,28 +295,61 @@ window.onerror = function(msg, url, line, col, err) {
 
   <section id="section-demande-client">
     <div class="form-demande">
-      <p style="color:var(--gris); font-size:.88rem; margin:0 0 12px;">Un client te demande une course pour un autre jour ou son retour ? Remplis ce formulaire : la centrale la reçoit tout de suite et l'attribue.</p>
+      <p style="color:var(--gris); font-size:.88rem; margin:0 0 12px;">Un client te demande une course pour un autre jour ou son retour ? Remplis vite : la centrale la reçoit tout de suite.</p>
+      <button type="button" id="dc-retour" class="dc-gros-bouton">🔄 Retour de ma course actuelle / dernière course</button>
+      <div class="dc-aide">Remplit tout seul : même client, départ = là où tu l'as déposé, arrivée = là où tu l'as pris.</div>
+
       <label>Nom du client</label>
-      <input id="dc-nom" placeholder="ex : Madame Dupont">
+      <input id="dc-nom" placeholder="ex : Madame Dupont" autocomplete="off">
       <label>Téléphone du client</label>
-      <input id="dc-tel" type="tel" placeholder="ex : 0478 12 34 56">
+      <input id="dc-tel" type="tel" placeholder="ex : 0478 12 34 56" autocomplete="off">
+
       <label>Départ *</label>
-      <input id="dc-depart" placeholder="Adresse de prise en charge">
-      <label>Arrivée *</label>
-      <input id="dc-arrivee" placeholder="Destination">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div><label>Date *</label><input id="dc-date" type="date"></div>
-        <div><label>Heure *</label><input id="dc-heure" type="time"></div>
+      <div class="dc-champ-adresse"><input id="dc-depart" placeholder="Adresse de prise en charge"></div>
+      <div class="dc-rangee">
+        <button type="button" class="dc-mini" data-pos="dc-depart">📍 Ma position</button>
+        <button type="button" class="dc-mini" id="dc-inverser">⇅ Inverser</button>
       </div>
+      <label>Arrivée *</label>
+      <div class="dc-champ-adresse"><input id="dc-arrivee" placeholder="Destination"></div>
+      <div class="dc-rangee">
+        <button type="button" class="dc-mini" data-pos="dc-arrivee">📍 Ma position</button>
+        <button type="button" class="dc-mini" id="dc-carte">🗺️ Voir la carte</button>
+      </div>
+
+      <label>Date *</label>
+      <div class="dc-rangee">
+        <button type="button" class="dc-puce" data-jour="0">Aujourd'hui</button>
+        <button type="button" class="dc-puce" data-jour="1">Demain</button>
+        <button type="button" class="dc-puce" data-jour="2">Après-demain</button>
+      </div>
+      <input id="dc-date" type="date">
+      <label>Heure *</label>
+      <div class="dc-rangee">
+        <button type="button" class="dc-puce" data-dans="30">+30 min</button>
+        <button type="button" class="dc-puce" data-dans="60">+1 h</button>
+        <button type="button" class="dc-puce" data-dans="120">+2 h</button>
+        <button type="button" class="dc-puce" data-dans="180">+3 h</button>
+      </div>
+      <div class="dc-rangee">
+        <button type="button" class="dc-mini" data-decaler="-15">−15 min</button>
+        <input id="dc-heure" type="time" style="flex:1; min-width:0;">
+        <button type="button" class="dc-mini" data-decaler="15">+15 min</button>
+      </div>
+
       <label>Passagers</label>
-      <input id="dc-passagers" type="number" min="1" value="1" inputmode="numeric">
+      <div class="dc-rangee">
+        <button type="button" class="dc-mini" id="dc-moins">−</button>
+        <input id="dc-passagers" type="number" min="1" value="1" inputmode="numeric" style="flex:1; text-align:center; min-width:0;">
+        <button type="button" class="dc-mini" id="dc-plus">+</button>
+      </div>
       <label class="dc-case"><input type="checkbox" id="dc-ar"> Aller-retour</label>
-      <label>Note (bagages, retour, fauteuil…)</label>
+      <label>Note (bagages, fauteuil, attente…)</label>
       <textarea id="dc-note" rows="3"></textarea>
       <label class="dc-case"><input type="checkbox" id="dc-carnet" checked> Enregistrer ce client dans le carnet de la centrale</label>
-      <label class="dc-case"><input type="checkbox" id="dc-moi"> Je peux faire cette course moi-même</label>
+      <label class="dc-case"><input type="checkbox" id="dc-moi" checked> Je peux faire cette course moi-même</label>
       <p id="dc-erreur" style="color:var(--rouge); font-weight:600; min-height:1em;"></p>
-      <button type="button" id="dc-envoyer" style="width:100%; padding:15px; border:none; border-radius:12px; background:var(--rouge); color:#fff; font-weight:800; font-size:1.05rem;">📨 Envoyer à la centrale</button>
+      <button type="button" id="dc-envoyer" style="width:100%; padding:16px; border:none; border-radius:12px; background:var(--rouge); color:#fff; font-weight:800; font-size:1.08rem;">📨 Envoyer à la centrale</button>
     </div>
   </section>
 
@@ -460,6 +507,142 @@ async function activerNotificationsPushReelles() {
   } catch (e) { console.error("Abonnement notifications push impossible :", e); }
 }
 
+function libelleAdresse(p) {
+  const rue = p.street ? p.street + (p.housenumber ? " " + p.housenumber : "") : "";
+  const ville = [p.postcode, p.city || p.town || p.village].filter(Boolean).join(" ");
+  const morceaux = [];
+  if (p.name && p.name !== p.street && p.name !== (p.city || p.town || p.village)) morceaux.push(p.name);
+  if (rue) morceaux.push(rue);
+  if (ville) morceaux.push(ville);
+  else if (p.name && !morceaux.includes(p.name)) morceaux.push(p.name);
+  if (p.countrycode && p.countrycode !== "BE" && p.country) morceaux.push(p.country);
+  return morceaux.join(", ");
+}
+function attacherSuggestionsAdresse(input, conteneur) {
+  input.autocomplete = "off";
+  input.setAttribute("autocorrect", "off");
+  input.setAttribute("autocapitalize", "words");
+  input.spellcheck = false;
+  input.placeholder = "Commence à taper l'adresse…";
+  conteneur.style.position = "relative";
+  const liste = document.createElement("div");
+  liste.className = "suggestions-adresse";
+  conteneur.appendChild(liste);
+  let minuterie = null, controleur = null;
+  const fermer = () => { liste.innerHTML = ""; liste.style.display = "none"; };
+
+  input.addEventListener("input", () => {
+    clearTimeout(minuterie);
+    const q = input.value.trim();
+    if (q.length < 3) { fermer(); return; }
+    minuterie = setTimeout(() => chercher(q), 300);
+  });
+  input.addEventListener("blur", () => setTimeout(fermer, 250));
+
+  async function chercher(q) {
+    if (controleur) controleur.abort();
+    controleur = new AbortController();
+    try {
+      const url = "https://photon.komoot.io/api/?lang=fr&limit=6&lat=50.43&lon=3.83&q=" + encodeURIComponent(q);
+      const rep = await fetch(url, { signal: controleur.signal });
+      const donnees = await rep.json();
+      const vus = new Set();
+      const resultats = (donnees.features || [])
+        .map(f => libelleAdresse(f.properties || {}))
+        .filter(l => l && !vus.has(l) && vus.add(l));
+      afficher(resultats);
+    } catch (e) { /* hors connexion : le chauffeur peut toujours taper à la main */ }
+  }
+  function afficher(resultats) {
+    liste.innerHTML = "";
+    if (!resultats.length || document.activeElement !== input) { fermer(); return; }
+    resultats.forEach(libelle => {
+      const [principal, ...reste] = libelle.split(", ");
+      const item = document.createElement("div");
+      item.className = "suggestion-adresse";
+      item.innerHTML = `📍 ${esc(principal)}${reste.length ? `<small>${esc(reste.join(", "))}</small>` : ""}`;
+      item.addEventListener("pointerdown", (e) => e.preventDefault());
+      item.addEventListener("click", () => {
+        input.value = libelle;
+        fermer();
+        input.dispatchEvent(new Event("change"));
+        input.blur();
+      });
+      liste.appendChild(item);
+    });
+    liste.style.display = "block";
+  }
+}
+
+
+// ================== DEMANDE D'UN CLIENT → CENTRALE (remplissage rapide) ==================
+(function preparerFormulaireDemande() {
+  const $ = id => document.getElementById(id);
+  ["dc-depart", "dc-arrivee"].forEach(id => attacherSuggestionsAdresse($(id), $(id).parentNode));
+  $("dc-depart").placeholder = "Adresse de prise en charge (commence à taper…)";
+  $("dc-arrivee").placeholder = "Destination (commence à taper…)";
+  const deuxChiffres = n => String(n).padStart(2, "0");
+  const fixerHeure = d => { $("dc-date").value = dateLocaleISO(d); $("dc-heure").value = deuxChiffres(d.getHours()) + ":" + deuxChiffres(d.getMinutes()); };
+  // Position GPS -> adresse
+  document.querySelectorAll(".form-demande [data-pos]").forEach(b => b.addEventListener("click", () => {
+    const cible = $(b.dataset.pos);
+    if (!navigator.geolocation) { alert("Localisation indisponible sur ce téléphone."); return; }
+    const avant = b.textContent; b.disabled = true; b.textContent = "📍 Recherche…";
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const r = await fetch(`https://photon.komoot.io/reverse?lang=fr&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+        const d = await r.json();
+        const lib = libelleAdresse((d.features && d.features[0] && d.features[0].properties) || {});
+        if (lib) cible.value = lib; else alert("Adresse introuvable, tape-la à la main.");
+      } catch (e) { alert("Adresse introuvable, tape-la à la main."); }
+      b.disabled = false; b.textContent = avant;
+    }, () => { b.disabled = false; b.textContent = avant; alert("Position introuvable (autorise la localisation pour Taxi Wal)."); },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 20000 });
+  }));
+  $("dc-inverser").addEventListener("click", () => { const a = $("dc-depart").value; $("dc-depart").value = $("dc-arrivee").value; $("dc-arrivee").value = a; });
+  $("dc-carte").addEventListener("click", () => {
+    if (!$("dc-depart").value || !$("dc-arrivee").value) { alert("Remplis d'abord le départ et l'arrivée."); return; }
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent($("dc-depart").value)}&destination=${encodeURIComponent($("dc-arrivee").value)}&travelmode=driving`, "_blank");
+  });
+  document.querySelectorAll(".form-demande [data-jour]").forEach(b => b.addEventListener("click", () => {
+    const d = new Date(); d.setDate(d.getDate() + Number(b.dataset.jour)); $("dc-date").value = dateLocaleISO(d);
+  }));
+  document.querySelectorAll(".form-demande [data-dans]").forEach(b => b.addEventListener("click", () => {
+    const d = new Date(Date.now() + Number(b.dataset.dans) * 60000);
+    d.setMinutes(Math.round(d.getMinutes() / 5) * 5); fixerHeure(d);
+  }));
+  document.querySelectorAll(".form-demande [data-decaler]").forEach(b => b.addEventListener("click", () => {
+    const base = $("dc-heure").value || (new Date().toTimeString().slice(0, 5));
+    let [h, m] = base.split(":").map(Number);
+    let t = ((h * 60 + m + Number(b.dataset.decaler)) % 1440 + 1440) % 1440;
+    $("dc-heure").value = deuxChiffres(Math.floor(t / 60)) + ":" + deuxChiffres(t % 60);
+    if (!$("dc-date").value) $("dc-date").value = dateLocaleISO();
+  }));
+  $("dc-moins").addEventListener("click", () => { $("dc-passagers").value = Math.max(1, (parseInt($("dc-passagers").value, 10) || 1) - 1); });
+  $("dc-plus").addEventListener("click", () => { $("dc-passagers").value = (parseInt($("dc-passagers").value, 10) || 1) + 1; });
+  // Retour de la course actuelle / dernière course : on inverse les adresses et on reprend le client
+  $("dc-retour").addEventListener("click", async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const depuis = new Date(Date.now() - 18 * 3600e3).toISOString();
+    const { data } = await supabase.from("courses")
+      .select("client_nom, client_telephone, adresse_depart, adresse_arrivee, passagers, statut, date_heure")
+      .eq("chauffeur_id", user.id).in("statut", ["en_cours", "terminee", "assignee", "confirmee"])
+      .gte("date_heure", depuis).lte("date_heure", new Date(Date.now() + 3600e3).toISOString())
+      .order("date_heure", { ascending: false }).limit(5);
+    const c = (data || []).find(x => x.statut === "en_cours") || (data || [])[0];
+    if (!c) { alert("Aucune course récente trouvée. Remplis le formulaire à la main."); return; }
+    $("dc-nom").value = c.client_nom || "";
+    $("dc-tel").value = c.client_telephone || "";
+    $("dc-depart").value = c.adresse_arrivee || "";
+    $("dc-arrivee").value = c.adresse_depart || "";
+    $("dc-passagers").value = c.passagers || 1;
+    $("dc-date").value = dateLocaleISO();
+    $("dc-heure").focus();
+    alert("✅ Rempli avec le retour de la course de " + (c.client_nom || "ton client") + ". Choisis juste l'heure (boutons « +1 h », « +2 h »…).");
+  });
+})();
+
 // ================== DEMANDE D'UN CLIENT → CENTRALE ==================
 document.getElementById("dc-envoyer").addEventListener("click", async () => {
   const v = id => document.getElementById(id).value.trim();
@@ -480,7 +663,7 @@ document.getElementById("dc-envoyer").addEventListener("click", async () => {
   if (error) { err.textContent = "Erreur : " + error.message; return; }
   ["dc-nom", "dc-tel", "dc-depart", "dc-arrivee", "dc-date", "dc-heure", "dc-note"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("dc-passagers").value = "1";
-  document.getElementById("dc-ar").checked = false; document.getElementById("dc-moi").checked = false;
+  document.getElementById("dc-ar").checked = false; document.getElementById("dc-moi").checked = true;
   alert("✅ Demande envoyée à la centrale. Elle va l'attribuer et tu seras prévenu si elle est pour toi.");
 });
 
@@ -623,7 +806,8 @@ async function demarrerEspaceChauffeur() {
   setTimeout(verifierEtatNotifications, 1500);
   chargerHoraireDuJour();
 
-  await creerFeuilleDuJourSiAbsente();
+  // (plus de feuille créée automatiquement à l'ouverture de l'app : elle est créée quand le
+  //  chauffeur ouvre sa feuille de route, donc seulement les jours où il travaille vraiment)
   await chargerCourses();
   setInterval(chargerCourses, 30000);
   activerTempsReelCourses();
@@ -939,7 +1123,10 @@ async function chargerHistoriqueFeuilles() {
     .order("n_ordre", { ascending: true });
 
   conteneur.innerHTML = "";
-  feuilles.forEach(f => {
+  // Seulement les jours réellement travaillés : pas de feuille vide dans l'historique
+  const feuillesTravaillees = feuilles.filter(f => f.verrouillee || f.heure_debut || f.heure_fin || (lignes || []).some(l => l.feuille_route_id === f.id));
+  if (!feuillesTravaillees.length) { conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune feuille de route sur les 30 derniers jours.</p>'; return; }
+  feuillesTravaillees.forEach(f => {
     const lignesFeuille = (lignes || []).filter(l => l.feuille_route_id === f.id);
     conteneur.appendChild(construireFeuilleHistorique(f, lignesFeuille, f.date_service === aujourdHui));
   });
@@ -1168,6 +1355,7 @@ function construireCarteCourse(course) {
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
+${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse).map(a => `<b>${a.type === "prise" ? "📍 Prise en charge" : "🏁 Dépose"} :</b> ${esc(a.adresse)}<br>`).join("")}
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
       ${ligneVehicule}${ligneGroupe}
       ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
@@ -1197,7 +1385,8 @@ function construireCarteCourse(course) {
     const btnGps = creerBouton("🧭 Itinéraire GPS", () => {
       const dest = encodeURIComponent(course.adresse_arrivee);
       const dep = encodeURIComponent(course.adresse_depart);
-      window.open(`https://www.google.com/maps/dir/?api=1&origin=${dep}&destination=${dest}&travelmode=driving`, "_blank");
+      const etapes = (Array.isArray(course.arrets) ? course.arrets : []).filter(x => x && x.adresse).map(x => x.adresse).join("|");
+      window.open(`https://www.google.com/maps/dir/?api=1&origin=${dep}&destination=${dest}${etapes ? "&waypoints=" + encodeURIComponent(etapes) : ""}&travelmode=driving`, "_blank");
     });
     btnGps.style.background = "#3b82c4";
     actions.appendChild(btnGps);
@@ -1306,6 +1495,7 @@ function construireCarteDemandeOuverte(course, maProposition) {
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
+${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse).map(a => `<b>${a.type === "prise" ? "📍 Prise en charge" : "🏁 Dépose"} :</b> ${esc(a.adresse)}<br>`).join("")}
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
       ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
       ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
