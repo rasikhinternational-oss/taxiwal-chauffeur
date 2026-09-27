@@ -8,6 +8,57 @@ function dateLocaleISO(d) {
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
 // ================== PLUSIEURS ADRESSES (arrêts : autres prises en charge / déposes) ==================
+// ================== CALCUL DU PRIX CONSEILLÉ (tarif officiel + km d'approche Mons-Borinage) ==================
+// Tarif officiel : prise en charge 3,10 € (jour) / 6,20 € (nuit 22h-6h), 2,50 €/km aller simple,
+// 1,70 €/km aller-retour, course minimum 8,20 €.
+// Si le DÉPART est dans la région Mons-Borinage, on ajoute les km d'approche depuis la GARE DE MONS
+// jusqu'à l'adresse de départ (le taxi part de là).
+const TARIF_TAXIWAL = { priseJour: 3.10, priseNuit: 6.20, kmAllerSimple: 2.50, kmAllerRetour: 1.70, minimum: 8.20 };
+const GARE_DE_MONS = [50.4536, 3.9425];
+function estRegionMonsBorinage(codePostal) {
+  const cp = parseInt(codePostal, 10);
+  return (cp >= 7000 && cp <= 7050) || cp === 7080 || (cp >= 7300 && cp <= 7390);
+}
+async function geocoderAdresseTarif(adresse) {
+  const r = await fetch("https://photon.komoot.io/api/?lang=fr&limit=1&lat=50.43&lon=3.83&q=" + encodeURIComponent(adresse));
+  const d = await r.json();
+  const f = d.features && d.features[0];
+  if (!f) return null;
+  const cpTexte = (String(adresse).match(/\b(7\d{3})\b/) || [])[1];
+  return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], cp: (f.properties && f.properties.postcode) || cpTexte || "" };
+}
+async function distanceRouteKm(a, b) {
+  const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`);
+  const d = await r.json();
+  const route = d.routes && d.routes[0];
+  return route ? { km: route.distance / 1000, min: route.duration / 60, ligne: route.geometry.coordinates.map(c => [c[1], c[0]]) } : null;
+}
+// Renvoie { prix, kmTrajet, kmApproche, minutes, allerRetour, nuit, detail, ligne, depart, arrivee } ou null
+async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
+  const [a, b] = await Promise.all([geocoderAdresseTarif(depart), geocoderAdresseTarif(arrivee)]);
+  if (!a || !b) return null;
+  const trajet = await distanceRouteKm([a.lat, a.lon], [b.lat, b.lon]);
+  if (!trajet) return null;
+  let kmApproche = 0;
+  if (estRegionMonsBorinage(a.cp)) {
+    const approche = await distanceRouteKm(GARE_DE_MONS, [a.lat, a.lon]);
+    kmApproche = approche ? approche.km : 0;
+    if (kmApproche < 0.5) kmApproche = 0;   // client à la gare de Mons
+  }
+  const d = dateHeure ? new Date(dateHeure) : new Date();
+  const nuit = d.getHours() >= 22 || d.getHours() < 6;
+  const prise = nuit ? TARIF_TAXIWAL.priseNuit : TARIF_TAXIWAL.priseJour;
+  const kmFactures = allerRetour ? kmApproche + 2 * trajet.km : kmApproche + trajet.km;
+  const prixKm = allerRetour ? TARIF_TAXIWAL.kmAllerRetour : TARIF_TAXIWAL.kmAllerSimple;
+  const prix = Math.max(TARIF_TAXIWAL.minimum, prise + kmFactures * prixKm);
+  const f = x => x.toFixed(1).replace(".", ",");
+  const detail = (kmApproche ? `${f(kmApproche)} km depuis la gare de Mons jusqu'au départ + ` : "") +
+    (allerRetour ? `${f(trajet.km)} km aller + ${f(trajet.km)} km retour à ${TARIF_TAXIWAL.kmAllerRetour.toFixed(2).replace(".", ",")} €/km (aller-retour)`
+                 : `${f(trajet.km)} km de trajet à ${TARIF_TAXIWAL.kmAllerSimple.toFixed(2).replace(".", ",")} €/km (aller simple)`) +
+    ` + prise en charge ${prise.toFixed(2).replace(".", ",")} €${nuit ? " (nuit)" : ""}`;
+  return { prix, kmTrajet: trajet.km, kmApproche, minutes: trajet.min, allerRetour, nuit, detail, ligne: trajet.ligne, depart: a, arrivee: b };
+}
+
 function normaliserArrets(liste) {
   return (Array.isArray(liste) ? liste : []).map(a => ({ type: a && a.type === "prise" ? "prise" : "depose", adresse: String((a && a.adresse) || "").trim() }));
 }
@@ -731,6 +782,8 @@ window.onerror = function(msg, url, line, col, err) {
 
     <label>Prix (€) — par véhicule</label>
     <input type="text" id="input-prix" placeholder="ex: 35">
+    <button type="button" id="btn-calculer-prix" style="margin-top:6px; width:100%; padding:10px; border-radius:8px; border:1px solid #3b82c4; background:#eef4fb; color:#1d4f86; font-weight:700;">🧮 Calculer le prix conseillé</button>
+    <div id="detail-prix-conseille" style="font-size:.78rem; color:var(--gris); margin-top:4px;"></div>
 
     <label>Mode de tarification</label>
     <select id="input-mode-tarification">
@@ -2276,6 +2329,18 @@ function ouvrirModaleCourse({ chauffeurId = null, date = null, client = null } =
 }
 
 document.getElementById("btn-nouvelle-course").addEventListener("click", () => ouvrirModaleCourse());
+document.getElementById("btn-calculer-prix").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-calculer-prix"), det = document.getElementById("detail-prix-conseille");
+  const dep = document.getElementById("input-depart").value.trim(), arr = document.getElementById("input-arrivee").value.trim();
+  if (!dep || !arr) { det.textContent = "Remplis d'abord le départ et l'arrivée."; return; }
+  btn.disabled = true; btn.textContent = "Calcul…";
+  let r = null;
+  try { r = await calculerPrixConseille(dep, arr, document.getElementById("input-date").value, document.getElementById("input-aller-retour").checked); } catch (e) {}
+  btn.disabled = false; btn.textContent = "🧮 Calculer le prix conseillé";
+  if (!r) { det.textContent = "Adresse introuvable : vérifie les adresses ou mets le prix à la main."; return; }
+  document.getElementById("input-prix").value = String(Math.round(r.prix));
+  det.innerHTML = "≈ " + r.prix.toFixed(2).replace(".", ",") + " € — " + r.detail + ". <b>À vérifier avant d'envoyer.</b>";
+});
 document.getElementById("btn-annuler-modale").addEventListener("click", () => modale.classList.remove("visible"));
 
 document.getElementById("input-aller-retour").addEventListener("change", (e) => {
