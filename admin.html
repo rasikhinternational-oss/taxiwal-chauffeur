@@ -15,6 +15,7 @@ function dateLocaleISO(d) {
 // jusqu'à l'adresse de départ (le taxi part de là).
 const TARIF_TAXIWAL = { priseJour: 3.10, priseNuit: 6.20, kmAllerSimple: 2.50, kmAllerRetour: 1.70, minimum: 8.20 };
 const GARE_DE_MONS = [50.4536, 3.9425];
+const BASES_TAXIWAL = { mons: { nom: "Gare de Mons", pos: [50.4536, 3.9425] }, saintghislain: { nom: "Gare de Saint-Ghislain", pos: [50.4488, 3.8197] } };
 function estRegionMonsBorinage(codePostal) {
   const cp = parseInt(codePostal, 10);
   return (cp >= 7000 && cp <= 7050) || cp === 7080 || (cp >= 7300 && cp <= 7390);
@@ -34,14 +35,17 @@ async function distanceRouteKm(a, b) {
   return route ? { km: route.distance / 1000, min: route.duration / 60, ligne: route.geometry.coordinates.map(c => [c[1], c[0]]) } : null;
 }
 // Renvoie { prix, kmTrajet, kmApproche, minutes, allerRetour, nuit, detail, ligne, depart, arrivee } ou null
-async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
+// base : "mons" | "saintghislain" | "aucune" | "auto" (auto = gare de Mons si départ en Mons-Borinage)
+async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, base) {
+  base = base || "auto";
   const [a, b] = await Promise.all([geocoderAdresseTarif(depart), geocoderAdresseTarif(arrivee)]);
   if (!a || !b) return null;
   const trajet = await distanceRouteKm([a.lat, a.lon], [b.lat, b.lon]);
   if (!trajet) return null;
   let kmApproche = 0;
-  if (estRegionMonsBorinage(a.cp)) {
-    const approche = await distanceRouteKm(GARE_DE_MONS, [a.lat, a.lon]);
+  const baseChoisie = base === "auto" ? (estRegionMonsBorinage(a.cp) ? "mons" : "aucune") : base;
+  if (BASES_TAXIWAL[baseChoisie]) {
+    const approche = await distanceRouteKm(BASES_TAXIWAL[baseChoisie].pos, [a.lat, a.lon]);
     kmApproche = approche ? approche.km : 0;
     if (kmApproche < 0.5) kmApproche = 0;   // client à la gare de Mons
   }
@@ -52,11 +56,12 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
   const prixKm = allerRetour ? TARIF_TAXIWAL.kmAllerRetour : TARIF_TAXIWAL.kmAllerSimple;
   const prix = Math.max(TARIF_TAXIWAL.minimum, prise + kmFactures * prixKm);
   const f = x => x.toFixed(1).replace(".", ",");
-  const detail = (kmApproche ? `${f(kmApproche)} km depuis la gare de Mons jusqu'au départ + ` : "") +
+  const nomBase = BASES_TAXIWAL[baseChoisie] ? "la " + BASES_TAXIWAL[baseChoisie].nom.charAt(0).toLowerCase() + BASES_TAXIWAL[baseChoisie].nom.slice(1) : "";
+  const detail = (kmApproche ? `${f(kmApproche)} km depuis ${nomBase} jusqu'au départ + ` : "") +
     (allerRetour ? `${f(trajet.km)} km aller + ${f(trajet.km)} km retour à ${TARIF_TAXIWAL.kmAllerRetour.toFixed(2).replace(".", ",")} €/km (aller-retour)`
                  : `${f(trajet.km)} km de trajet à ${TARIF_TAXIWAL.kmAllerSimple.toFixed(2).replace(".", ",")} €/km (aller simple)`) +
     ` + prise en charge ${prise.toFixed(2).replace(".", ",")} €${nuit ? " (nuit)" : ""}`;
-  return { prix, kmTrajet: trajet.km, kmApproche, minutes: trajet.min, allerRetour, nuit, detail, ligne: trajet.ligne, depart: a, arrivee: b };
+  return { prix, base: baseChoisie, kmTrajet: trajet.km, kmApproche, minutes: trajet.min, allerRetour, nuit, detail, ligne: trajet.ligne, depart: a, arrivee: b };
 }
 
 function normaliserArrets(liste) {
@@ -258,6 +263,17 @@ window.onerror = function(msg, url, line, col, err) {
   .pc-puces button.actif .pc-nb{ background:#fff; color:var(--rouge); }
   .pc-groupe-titre{ font-weight:800; font-size:.95rem; margin:16px 0 8px; padding:8px 12px; border-radius:10px; }
   .pc-info-attribuees{ background:#eef4fb; border:1px solid #bcd3ee; color:#1d4f86; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:.86rem; cursor:pointer; }
+  .outil-km-admin{ background:#f6f9fd; border:1px solid #cfe0f3; border-radius:10px; padding:10px; margin:10px 0; font-size:.86rem; }
+  .outil-km-admin .okm-titre{ font-weight:800; margin-bottom:6px; }
+  .outil-km-admin .okm-client{ display:block; font-weight:600; color:#1d4f86; margin-top:2px; }
+  .outil-km-admin .okm-ligne{ display:flex; gap:8px; align-items:center; }
+  .outil-km-admin .okm-ligne select{ flex:1; min-width:0; }
+  .outil-km-admin .okm-ar{ display:flex; align-items:center; gap:4px; white-space:nowrap; font-weight:700; }
+  .outil-km-admin .okm-ar input{ width:auto; }
+  .outil-km-admin .okm-calculer{ width:100%; margin-top:8px; padding:9px; border-radius:8px; border:1px solid #3b82c4; background:#eef4fb; color:#1d4f86; font-weight:700; }
+  .outil-km-admin .okm-resultat div{ margin-top:5px; }
+  .outil-km-admin .okm-note{ font-size:.75rem; color:var(--gris); }
+  .outil-km-admin .okm-utiliser{ width:100%; margin-top:8px; padding:10px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:700; }
   .hor-barre{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
   .hor-barre button{ width:48px; padding:10px 0; font-size:1.2rem; }
   #hor-titre-semaine{ flex:1; text-align:center; font-weight:700; }
@@ -783,6 +799,11 @@ window.onerror = function(msg, url, line, col, err) {
 
     <label>Prix (€) — par véhicule</label>
     <input type="text" id="input-prix" placeholder="ex: 35">
+    <select id="input-base-calcul" style="margin-top:6px;">
+      <option value="mons">Le taxi part de la gare de Mons</option>
+      <option value="saintghislain">Le taxi part de la gare de Saint-Ghislain</option>
+      <option value="aucune">Sans km d'approche</option>
+    </select>
     <button type="button" id="btn-calculer-prix" style="margin-top:6px; width:100%; padding:10px; border-radius:8px; border:1px solid #3b82c4; background:#eef4fb; color:#1d4f86; font-weight:700;">🧮 Calculer le prix conseillé</button>
     <div id="detail-prix-conseille" style="font-size:.78rem; color:var(--gris); margin-top:4px;"></div>
 
@@ -1911,6 +1932,43 @@ function construireCarteAdmin(course) {
     corps.appendChild(resume);
   }
 
+  // Outil km & prix : distance entre les 2 adresses + km d'approche depuis la gare choisie
+  let champPrixCible = null;
+  if (!["terminee", "annulee"].includes(course.statut)) {
+    const outil = document.createElement("div");
+    outil.className = "outil-km-admin";
+    outil.innerHTML = `
+      <div class="okm-titre">🧮 Kilomètres & prix ${course.distance_km ? `<span class="okm-client">📏 ${String(course.distance_km).replace(".", ",")} km entre les 2 adresses${course.duree_min ? " · ⏱️ " + course.duree_min + " min" : ""}</span>` : ""}</div>
+      <div class="okm-ligne">
+        <select class="okm-base">
+          <option value="mons">Départ du taxi : gare de Mons</option>
+          <option value="saintghislain">Départ du taxi : gare de Saint-Ghislain</option>
+          <option value="aucune">Sans km d'approche</option>
+        </select>
+        <label class="okm-ar"><input type="checkbox" class="okm-allerretour" ${course.aller_retour ? "checked" : ""}> A/R</label>
+      </div>
+      <button type="button" class="okm-calculer">Calculer</button>
+      <div class="okm-resultat"></div>`;
+    outil.querySelector(".okm-calculer").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const zone = outil.querySelector(".okm-resultat");
+      zone.textContent = "Calcul…";
+      let r = null;
+      try { r = await calculerPrixConseille(course.adresse_depart, course.adresse_arrivee, course.date_heure, outil.querySelector(".okm-allerretour").checked, outil.querySelector(".okm-base").value); } catch (err) {}
+      if (!r) { zone.textContent = "Adresse introuvable : vérifie les adresses."; return; }
+      const f1 = x => x.toFixed(1).replace(".", ",");
+      zone.innerHTML = `
+        ${r.kmApproche ? `<div>🚕 ${BASES_TAXIWAL[r.base].nom} → départ : <b>${f1(r.kmApproche)} km</b></div>` : ""}
+        <div>📍 Départ → arrivée : <b>${f1(r.kmTrajet)} km</b> (${Math.round(r.minutes)} min)</div>
+        <div>💶 Prix conseillé (tarif officiel${r.allerRetour ? " aller-retour" : " aller simple"}) : <b>≈ ${r.prix.toFixed(2).replace(".", ",")} €</b></div>
+        <div class="okm-note">${r.detail}. À vérifier : c'est toi qui décides le prix.</div>
+        ${champPrixCible ? `<button type="button" class="okm-utiliser">➡️ Mettre ${Math.round(r.prix)} € dans le prix à proposer</button>` : ""}`;
+      const u = zone.querySelector(".okm-utiliser");
+      if (u) u.addEventListener("click", (ev) => { ev.stopPropagation(); champPrixCible.value = String(Math.round(r.prix)); champPrixCible.focus(); });
+    });
+    corps.appendChild(outil);
+  }
+
   if (course.origine === "client" && course.statut === "en_attente" && course.client_id) {
     const blocPrix = document.createElement("div");
     blocPrix.className = "bloc-prix-admin";
@@ -1918,6 +1976,7 @@ function construireCarteAdmin(course) {
       <input type="number" step="0.5" placeholder="Prix à proposer (€)">
       <button type="button">Envoyer le prix</button>
     `;
+    champPrixCible = blocPrix.querySelector("input");
     blocPrix.querySelector("button").addEventListener("click", async () => {
       const prix = parseFloat(blocPrix.querySelector("input").value);
       if (!prix || prix <= 0) { alert("Indique un prix valide."); return; }
@@ -2358,7 +2417,7 @@ document.getElementById("btn-calculer-prix").addEventListener("click", async () 
   if (!dep || !arr) { det.textContent = "Remplis d'abord le départ et l'arrivée."; return; }
   btn.disabled = true; btn.textContent = "Calcul…";
   let r = null;
-  try { r = await calculerPrixConseille(dep, arr, document.getElementById("input-date").value, document.getElementById("input-aller-retour").checked); } catch (e) {}
+  try { r = await calculerPrixConseille(dep, arr, document.getElementById("input-date").value, document.getElementById("input-aller-retour").checked, document.getElementById("input-base-calcul").value); } catch (e) {}
   btn.disabled = false; btn.textContent = "🧮 Calculer le prix conseillé";
   if (!r) { det.textContent = "Adresse introuvable : vérifie les adresses ou mets le prix à la main."; return; }
   document.getElementById("input-prix").value = String(Math.round(r.prix));

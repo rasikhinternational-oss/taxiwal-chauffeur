@@ -770,6 +770,8 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
     chauffeur_prefere_id: document.getElementById("input-chauffeur-prefere").value || null,
     ouverte_marche: document.getElementById("input-ouverte-marche").checked,
     aller_retour: !!(document.getElementById("rz-aller-retour") && document.getElementById("rz-aller-retour").checked),
+    distance_km: (window.__distanceTrajetKm ? Math.round(window.__distanceTrajetKm * 10) / 10 : null),
+    duree_min: (window.__dureeTrajetMin ? Math.round(window.__dureeTrajetMin) : null),
     notes: document.getElementById("input-notes").value.trim()
   });
 
@@ -1420,6 +1422,7 @@ function attacherSuggestionsAdresse(input, conteneur) {
 // jusqu'à l'adresse de départ (le taxi part de là).
 const TARIF_TAXIWAL = { priseJour: 3.10, priseNuit: 6.20, kmAllerSimple: 2.50, kmAllerRetour: 1.70, minimum: 8.20 };
 const GARE_DE_MONS = [50.4536, 3.9425];
+const BASES_TAXIWAL = { mons: { nom: "Gare de Mons", pos: [50.4536, 3.9425] }, saintghislain: { nom: "Gare de Saint-Ghislain", pos: [50.4488, 3.8197] } };
 function estRegionMonsBorinage(codePostal) {
   const cp = parseInt(codePostal, 10);
   return (cp >= 7000 && cp <= 7050) || cp === 7080 || (cp >= 7300 && cp <= 7390);
@@ -1439,14 +1442,17 @@ async function distanceRouteKm(a, b) {
   return route ? { km: route.distance / 1000, min: route.duration / 60, ligne: route.geometry.coordinates.map(c => [c[1], c[0]]) } : null;
 }
 // Renvoie { prix, kmTrajet, kmApproche, minutes, allerRetour, nuit, detail, ligne, depart, arrivee } ou null
-async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
+// base : "mons" | "saintghislain" | "aucune" | "auto" (auto = gare de Mons si départ en Mons-Borinage)
+async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, base) {
+  base = base || "auto";
   const [a, b] = await Promise.all([geocoderAdresseTarif(depart), geocoderAdresseTarif(arrivee)]);
   if (!a || !b) return null;
   const trajet = await distanceRouteKm([a.lat, a.lon], [b.lat, b.lon]);
   if (!trajet) return null;
   let kmApproche = 0;
-  if (estRegionMonsBorinage(a.cp)) {
-    const approche = await distanceRouteKm(GARE_DE_MONS, [a.lat, a.lon]);
+  const baseChoisie = base === "auto" ? (estRegionMonsBorinage(a.cp) ? "mons" : "aucune") : base;
+  if (BASES_TAXIWAL[baseChoisie]) {
+    const approche = await distanceRouteKm(BASES_TAXIWAL[baseChoisie].pos, [a.lat, a.lon]);
     kmApproche = approche ? approche.km : 0;
     if (kmApproche < 0.5) kmApproche = 0;   // client à la gare de Mons
   }
@@ -1457,11 +1463,12 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
   const prixKm = allerRetour ? TARIF_TAXIWAL.kmAllerRetour : TARIF_TAXIWAL.kmAllerSimple;
   const prix = Math.max(TARIF_TAXIWAL.minimum, prise + kmFactures * prixKm);
   const f = x => x.toFixed(1).replace(".", ",");
-  const detail = (kmApproche ? `${f(kmApproche)} km depuis la gare de Mons jusqu'au départ + ` : "") +
+  const nomBase = BASES_TAXIWAL[baseChoisie] ? "la " + BASES_TAXIWAL[baseChoisie].nom.charAt(0).toLowerCase() + BASES_TAXIWAL[baseChoisie].nom.slice(1) : "";
+  const detail = (kmApproche ? `${f(kmApproche)} km depuis ${nomBase} jusqu'au départ + ` : "") +
     (allerRetour ? `${f(trajet.km)} km aller + ${f(trajet.km)} km retour à ${TARIF_TAXIWAL.kmAllerRetour.toFixed(2).replace(".", ",")} €/km (aller-retour)`
                  : `${f(trajet.km)} km de trajet à ${TARIF_TAXIWAL.kmAllerSimple.toFixed(2).replace(".", ",")} €/km (aller simple)`) +
     ` + prise en charge ${prise.toFixed(2).replace(".", ",")} €${nuit ? " (nuit)" : ""}`;
-  return { prix, kmTrajet: trajet.km, kmApproche, minutes: trajet.min, allerRetour, nuit, detail, ligne: trajet.ligne, depart: a, arrivee: b };
+  return { prix, base: baseChoisie, kmTrajet: trajet.km, kmApproche, minutes: trajet.min, allerRetour, nuit, detail, ligne: trajet.ligne, depart: a, arrivee: b };
 }
 
 // ================== RÉSERVATION EN ÉTAPES (trajet → quand → véhicule → récap) ==================
@@ -1622,6 +1629,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
         if (route) {
           ligne = route.geometry.coordinates.map(c => [c[1], c[0]]);
           infoTrajet = { km: route.distance / 1000, min: route.duration / 60 };
+          window.__distanceTrajetKm = infoTrajet.km; window.__dureeTrajetMin = infoTrajet.min;
         }
       } catch (e) { infoTrajet = { km: null, min: null }; }
       if (carte) {
@@ -1648,14 +1656,10 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
   async function lancerCalculPrix() {
     const zone = $("rz-zone-prix");
     if (!zone) return;
-    zone.innerHTML = `<div class="rz-prix">Calcul du prix indicatif…</div>`;
-    try {
-      calculPrix = await calculerPrixConseille($("input-depart").value, $("input-arrivee").value, $("input-date").value, $("rz-aller-retour").checked);
-    } catch (e) { calculPrix = null; }
-    if (!calculPrix) { zone.innerHTML = ""; return; }
-    zone.innerHTML = `<div class="rz-prix">Prix indicatif : <b>≈ ${calculPrix.prix.toFixed(2).replace(".", ",")} €</b>
-      <small>${calculPrix.detail}.</small>
-      <small>⚠️ Estimation automatique, elle peut contenir des erreurs : le prix final est <b>confirmé par notre dispatching</b> avant la course (il peut être un peu plus ou un peu moins).</small></div>`;
+    // Pas de prix calculé automatiquement : on montre seulement la distance, Taxi Wal envoie le prix
+    const km = infoTrajet.km;
+    zone.innerHTML = `<div class="rz-prix">${km ? `Distance entre les deux adresses : <b>${km.toFixed(1).replace(".", ",")} km</b>${infoTrajet.min ? ` · ⏱️ ${Math.max(1, Math.round(infoTrajet.min))} min` : ""}` : "<b>Distance en cours de calcul…</b>"}
+      <small>💶 Le <b>prix</b> de ta course t'est envoyé par notre équipe juste après ta demande (notification + e-mail). Tu l'acceptes ou non, sans engagement.</small></div>`;
   }
   function majRecap() {
     const d = $("input-date").value ? new Date($("input-date").value) : null;
@@ -1679,7 +1683,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour) {
     let essais = 0;
     const t = setInterval(() => {
       essais++;
-      if (!$("input-depart").value && !$("input-arrivee").value) { clearInterval(t); couche && couche.clearLayers(); trajetInfo.textContent = ""; infoTrajet = { km: null, min: null }; allerEtape(1); }
+      if (!$("input-depart").value && !$("input-arrivee").value) { clearInterval(t); couche && couche.clearLayers(); trajetInfo.textContent = ""; infoTrajet = { km: null, min: null }; window.__distanceTrajetKm = null; window.__dureeTrajetMin = null; allerEtape(1); }
       if (essais > 40) clearInterval(t);
     }, 250);
   });
