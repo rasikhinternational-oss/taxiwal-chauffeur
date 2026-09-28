@@ -797,6 +797,11 @@ window.onerror = function(msg, url, line, col, err) {
       <label for="input-aller-retour">🔄 Course aller-retour</label>
     </div>
     <div id="bloc-type-retour">
+      <label>🚕 Chauffeur pour le RETOUR</label>
+      <select id="input-chauffeur-retour">
+        <option value="meme">Le même chauffeur que l'aller</option>
+        <option value="aucun">Pas encore attribué (je choisirai plus tard)</option>
+      </select>
       <label>Type de retour</label>
       <select id="input-type-retour">
         <option value="immediat">Retour immédiat (≤15 min d'attente)</option>
@@ -2322,8 +2327,15 @@ function preparerChoixMultiChauffeurs() {
   }));
 }
 
+function remplirChauffeurRetour() {
+  const sel = document.getElementById("input-chauffeur-retour");
+  sel.innerHTML = `<option value="meme">Le même chauffeur que l'aller</option><option value="aucun">Pas encore attribué (je choisirai plus tard)</option>` +
+    (chauffeursCache || []).map(c => `<option value="${c.id}">${esc(c.nom || "Chauffeur")}</option>`).join("");
+  sel.value = "meme";
+}
 function ouvrirModaleCourse({ chauffeurId = null, date = null, client = null } = {}) {
   reinitialiserModaleCourse();
+  remplirChauffeurRetour();
   preparerArretsModale();
   preparerChoixMultiChauffeurs();
   if (date) document.getElementById("input-date").value = date;
@@ -2466,6 +2478,8 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
     notes: document.getElementById("input-notes").value.trim(),
     aller_retour: estAllerRetour,
     type_retour: estAllerRetour ? document.getElementById("input-type-retour").value : null,
+    retour_chauffeur_choix: estAllerRetour ? (["meme", "aucun"].includes(document.getElementById("input-chauffeur-retour").value) ? document.getElementById("input-chauffeur-retour").value : "autre") : null,
+    retour_chauffeur_id: estAllerRetour && !["meme", "aucun"].includes(document.getElementById("input-chauffeur-retour").value) ? document.getElementById("input-chauffeur-retour").value : null,
     duree_attente_estimee: (estAllerRetour && document.getElementById("input-type-retour").value === "attente")
       ? document.getElementById("input-duree-attente").value.trim() || null : null
   };
