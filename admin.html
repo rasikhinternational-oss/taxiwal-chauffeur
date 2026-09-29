@@ -227,6 +227,13 @@ window.onerror = function(msg, url, line, col, err) {
 
   /* Carte */
   #carte{ height:45vh; border-radius:12px; }
+  .cc-maj{ font-size:.72rem; font-weight:400; color:var(--gris); }
+  .cc-suivi{ background:#fff; border:1px solid #eadada; border-radius:10px; padding:10px; margin:6px 0 8px; }
+  .cc-barre{ height:8px; border-radius:99px; background:#eee; overflow:hidden; }
+  .cc-barre-remplie{ height:100%; background:linear-gradient(90deg,#1f8a4c,#c81e2c); transition:width .6s; }
+  .cc-chiffres{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px; text-align:center; }
+  .cc-chiffres span{ display:block; font-size:.66rem; color:var(--gris); }
+  .cc-chiffres b{ font-size:.95rem; }
   #carte-liste-chauffeurs{ margin-top:14px; }
   .cc-chauffeur{ background:var(--noir-2); border-radius:12px; padding:12px 14px; margin-bottom:10px; border-left:4px solid var(--gris); font-size:.9rem; }
   .cc-chauffeur.cc-dispo{ border-left-color:var(--vert); }
@@ -2701,6 +2708,7 @@ let lignesRouteCarte = {};
 let marqueursDestinationCarte = {};
 const cacheGeocodage = {};
 const cacheEta = {};
+setInterval(() => { Object.keys(cacheEta).forEach(k => { if (Date.now() - cacheEta[k].calculeA > 15000) delete cacheEta[k]; }); }, 15000);
 
 async function geocoderAdresse(adresse) {
   if (cacheGeocodage[adresse]) return cacheGeocodage[adresse];
@@ -2869,7 +2877,17 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
     div.className = "cc-chauffeur " + (courseActive ? "cc-course" : (p.disponible ? "cc-dispo" : ""));
 
     if (courseActive) {
-      div.innerHTML = `<h4>${esc(nom)}</h4>
+      div.innerHTML = `<h4>${esc(nom)} <span class="cc-maj" id="cc-maj-${p.chauffeur_id}"></span></h4>
+        <div class="cc-suivi" id="cc-suivi-${courseActive.id}">
+          <div class="cc-barre"><div class="cc-barre-remplie" id="cc-barre-${courseActive.id}" style="width:0%"></div></div>
+          <div class="cc-chiffres">
+            <div><span>Parcouru</span><b id="cc-fait-${courseActive.id}">…</b></div>
+            <div><span>Reste</span><b id="cc-reste-${courseActive.id}">…</b></div>
+            <div><span>Temps restant</span><b id="cc-min-${courseActive.id}">…</b></div>
+            <div><span>Arrivée vers</span><b id="cc-heure-${courseActive.id}">…</b></div>
+          </div>
+        </div>
+        <div class="cc-ligne">🟢 Départ : ${esc(courseActive.adresse_depart || "")}</div>
         <div class="cc-ligne">🚕 En route vers <b>${esc(courseActive.adresse_arrivee)}</b></div>
         <div class="cc-ligne">📍 Position actuelle : <span id="cc-adresse-${p.chauffeur_id}">chargement…</span>
           <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>
@@ -2881,6 +2899,7 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
         const el = document.getElementById(`cc-depose-${courseActive.id}`);
         if (el) el.textContent = eta ? `dans environ ${eta.texte} (arrivée ~${heureDansXMinutes(eta.minutes)})` : "indisponible";
       });
+      majSuiviTempsReel(courseActive, p);
       calculerRetourCentrale(courseActive.adresse_arrivee).then(retour => {
         const el = document.getElementById(`cc-retour-${courseActive.id}`);
         if (el) el.textContent = retour ? `environ ${retour.minutes} min (${retour.km} km)` : "indisponible";
@@ -2902,6 +2921,42 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
   if (!positions || positions.length === 0) {
     conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun chauffeur avec position partagée pour le moment.</p>';
   }
+}
+
+// ================== SUIVI EN TEMPS RÉEL : parcouru / reste / minutes / heure d'arrivée ==================
+const cacheTrajetTotal = {};
+async function trajetTotalCourse(course) {
+  if (cacheTrajetTotal[course.id]) return cacheTrajetTotal[course.id];
+  const a = await geocoderAdresse(course.adresse_depart), b = await geocoderAdresse(course.adresse_arrivee);
+  if (!a || !b) return null;
+  const t = await calculerTrajetCoords(a.lat, a.lon, b.lat, b.lon);
+  if (t) cacheTrajetTotal[course.id] = { km: parseFloat(t.km), minutes: t.minutes };
+  return cacheTrajetTotal[course.id] || null;
+}
+async function majSuiviTempsReel(course, p) {
+  const dest = await geocoderAdresse(course.adresse_arrivee);
+  if (!dest) return;
+  const [reste, total] = await Promise.all([calculerTrajetCoords(p.latitude, p.longitude, dest.lat, dest.lon), trajetTotalCourse(course)]);
+  if (!reste) return;
+  const kmReste = parseFloat(reste.km);
+  const kmTotal = total ? Math.max(total.km, kmReste) : null;
+  const kmFait = kmTotal != null ? Math.max(0, kmTotal - kmReste) : null;
+  const pct = kmTotal ? Math.min(100, Math.round(kmFait / kmTotal * 100)) : 0;
+  const f = x => x.toFixed(1).replace(".", ",") + " km";
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set(`cc-fait-${course.id}`, kmFait != null ? f(kmFait) : "—");
+  set(`cc-reste-${course.id}`, f(kmReste));
+  set(`cc-min-${course.id}`, reste.minutes < 1 ? "arrivé" : "≈ " + reste.minutes + " min");
+  set(`cc-heure-${course.id}`, heureDansXMinutes(reste.minutes));
+  const barre = document.getElementById(`cc-barre-${course.id}`);
+  if (barre) barre.style.width = pct + "%";
+  // aussi dans la bulle du marqueur
+  const span = document.getElementById(`eta-${course.id}`);
+  if (span) span.textContent = `⏱️ ≈ ${reste.minutes} min · reste ${f(kmReste)}${kmFait != null ? " · parcouru " + f(kmFait) : ""}`;
+}
+function ageMiseAJour(dateIso) {
+  const s = Math.max(0, Math.round((Date.now() - new Date(dateIso).getTime()) / 1000));
+  return s < 60 ? `il y a ${s} s` : s < 3600 ? `il y a ${Math.round(s / 60)} min` : "il y a longtemps";
 }
 
 function heureDansXMinutes(minutes) {
@@ -2963,9 +3018,17 @@ document.getElementById("btn-calculer-trajet").addEventListener("click", async (
 async function chargerCarte() {
   if (!carteLeaflet) {
     carteLeaflet = L.map("carte").setView([50.45, 4.10], 10);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap"
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19, subdomains: "abcd", attribution: "&copy; OpenStreetMap &copy; CARTO"
     }).addTo(carteLeaflet);
+    // Position des chauffeurs en direct : dès qu'un téléphone envoie sa position, on redessine
+    supabase.channel("positions-admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "positions_chauffeurs" }, () => {
+        clearTimeout(window.minuterieCarteDirect);
+        window.minuterieCarteDirect = setTimeout(() => {
+          if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
+        }, 800);
+      }).subscribe();
     setTimeout(() => carteLeaflet.invalidateSize(), 200);
   }
 
@@ -2976,7 +3039,7 @@ async function chargerCarte() {
 
   const { data: coursesEnCours } = await supabase
     .from("courses")
-    .select("id, chauffeur_id, adresse_arrivee")
+    .select("id, chauffeur_id, adresse_depart, adresse_arrivee")
     .eq("statut", "en_cours");
   const coursesParChauffeur = {};
   (coursesEnCours || []).forEach(c => { coursesParChauffeur[c.chauffeur_id] = c; });
@@ -2991,6 +3054,8 @@ async function chargerCarte() {
   for (const p of (positions || [])) {
     const nom = p.profils?.nom || "Chauffeur";
     const courseActive = coursesParChauffeur[p.chauffeur_id];
+    const maj = document.getElementById(`cc-maj-${p.chauffeur_id}`);
+    if (maj && p.updated_at) maj.textContent = "· position " + ageMiseAJour(p.updated_at);
 
     let couleur = "gray";
     let popup = `<b>${esc(nom)}</b><br>Hors service`;

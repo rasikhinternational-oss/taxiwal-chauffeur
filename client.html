@@ -439,6 +439,10 @@ window.onerror = function(msg, url, line, col, err) {
     <button id="btn-sauver-profil" class="vert">Enregistrer</button>
     <a href="https://taxiwal.com" target="_blank" id="btn-visiter-site" style="text-decoration:none; display:block;">🌐 Visiter le site Taxi Wal</a>
     <button id="btn-deconnexion" class="secondaire">Se déconnecter</button>
+    <div style="margin-top:28px; padding-top:16px; border-top:1px solid #e3e3e0;">
+      <button id="btn-supprimer-compte" type="button" style="width:100%; padding:13px; border-radius:12px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700;">🗑️ Supprimer mon compte</button>
+      <p style="font-size:.78rem; color:var(--gris); margin-top:6px; text-align:center;">Supprime définitivement ton compte, tes adresses favorites et tes données personnelles. Tes demandes en attente sont annulées.</p>
+    </div>
   </section>
 </div>
 
@@ -1266,6 +1270,19 @@ document.getElementById("btn-sauver-profil").addEventListener("click", async () 
   document.getElementById("sous-titre").textContent = "Bonjour " + nom.split(" ")[0];
   erreur.style.color = "var(--vert)"; erreur.textContent = "Profil enregistré ✓";
   setTimeout(() => erreur.textContent = "", 2000);
+});
+
+document.getElementById("btn-supprimer-compte").addEventListener("click", async () => {
+  if (!confirm("Supprimer définitivement ton compte Taxi Wal ?\n\nTon compte, tes adresses favorites et tes données personnelles seront effacés. Tes demandes de course pas encore faites seront annulées.\n\nCette action est irréversible.")) return;
+  const saisie = prompt("Pour confirmer, tape le mot SUPPRIMER");
+  if (!saisie || saisie.trim().toUpperCase() !== "SUPPRIMER") { alert("Suppression annulée."); return; }
+  const btn = document.getElementById("btn-supprimer-compte");
+  btn.disabled = true; btn.textContent = "Suppression…";
+  const { error } = await supabase.rpc("client_supprimer_mon_compte");
+  if (error) { btn.disabled = false; btn.textContent = "🗑️ Supprimer mon compte"; alert("Erreur : " + error.message); return; }
+  try { await supabase.auth.signOut(); } catch (e) {}
+  alert("Ton compte a été supprimé. Merci d'avoir utilisé Taxi Wal.");
+  location.reload();
 });
 
 document.getElementById("btn-deconnexion").addEventListener("click", async () => {

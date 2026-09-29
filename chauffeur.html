@@ -1638,7 +1638,7 @@ function demarrerPartagePosition() {
   if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible sur cet appareil."); return; }
 
   envoyerPosition();
-  positionInterval = setInterval(envoyerPosition, 30000);
+  positionInterval = setInterval(envoyerPosition, 15000);
 }
 
 function arreterPartagePosition() {
