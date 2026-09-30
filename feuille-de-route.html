@@ -1595,7 +1595,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
       champPrix.disabled = ligneVerrouillee;
       if (champPrix.value === "" && ligne.prix_taximetre != null) champPrix.value = ligne.prix_taximetre;
     }
-    wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
+    wrapsParChamp["sommes_percues"].style.display = ((estFacture && typeCourse !== "forfait") || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionPrive.style.display = estPrive ? "" : "none";
@@ -1740,8 +1740,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};
       const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-      const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
-        : estUber ? "Payé sur Uber" : l.sommes_percues;
+      const montantFacture = nombreOuNull(l.sommes_percues) || nombreOuNull(l.prix_taximetre);
+      const sommesHtml = l.mode_paiement === "annulee" ? "ANNULÉE"
+        : l.mode_paiement === "facture" ? ("Facture n° " + esc(l.numero_dossier || "") + (montantFacture ? "<br>" + esc(montantFacture) : ""))
+        : estUber ? "Payé sur Uber" : fmtVal(l.sommes_percues);
       return `<tr>
         <td>${i + 1}</td>
         <td>${fmtVal(l.index_depart)}</td>
@@ -1752,7 +1754,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtVal(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure)}</td>
         <td>${estUber ? "Uber" : l.type_course === "forfait" ? ("Forfait" + (l.motif_forfait ? "<br><small>" + esc(l.motif_forfait) + "</small>" : "")) : fmtVal(l.prix_taximetre)}</td>
-        <td>${fmtVal(sommes)}</td>
+        <td>${sommesHtml}</td>
       </tr>`;
     }).join("");
 
