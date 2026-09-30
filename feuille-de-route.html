@@ -1106,6 +1106,25 @@ function afficherLignes() {
   window.scrollTo(0, positionPage);
 }
 
+const MOTIFS_FORFAIT = [
+  "Prix fixe convenu à l'avance",
+  "Client habitué (tarif régulier)",
+  "Forfait payé à l'avance",
+  "Forfait aéroport",
+  "Forfait gare",
+  "Forfait hôpital / rendez-vous médical",
+  "Forfait école / transport scolaire",
+  "Forfait entreprise / convention",
+  "Forfait longue distance",
+  "Mise à disposition (à l'heure)",
+  "Forfait événement / mariage",
+  "Forfait groupe",
+  "Transport PMR",
+  "Réservation via partenaire",
+  "Tarif réduit / geste commercial",
+  "Course courte (prise en charge minimum)"
+];
+
 const champsLigne = [
   ["index_depart", "Index départ", "number"],
   ["embarquement_index", "Embarquement — Index", "number"],
@@ -1428,6 +1447,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (!ligne.debarquement_heure) manque.push("heure de débarquement");
       if (!mode && ligne.type_course !== "prive") manque.push("mode de paiement");
       if (!sansMontant && ligne.sommes_percues == null && ligne.prix_taximetre == null) manque.push("prix / sommes perçues");
+      if (ligne.type_course === "forfait" && !ligne.motif_forfait) {
+        alert("⚠️ Choisis d'abord le motif du forfait (à la place du prix taximètre) avant de clôturer cette course.");
+        selMotif.focus();
+        return;
+      }
       const message = manque.length
         ? "⚠️ Il manque encore : " + manque.join(", ") + ".\n\nClôturer quand même ? Tu ne pourras plus la modifier ensuite (seule la direction pourra)."
         : "Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).";
@@ -1490,6 +1514,46 @@ function construireLigneHtml(ligne, numeroAffiche) {
     inputsParChamp["sommes_percues"].value = ligne.sommes_percues ?? "";
   }
 
+  const wrapPrix = wrapsParChamp["prix_taximetre"];
+  const labelPrix = wrapPrix.querySelector("label");
+  const selMotif = document.createElement("select");
+  function remplirMotifs() {
+    const actuel = ligne.motif_forfait || "";
+    const horsListe = actuel && !MOTIFS_FORFAIT.includes(actuel);
+    selMotif.innerHTML = `<option value="">— Choisir le motif —</option>`
+      + MOTIFS_FORFAIT.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join("")
+      + (horsListe ? `<option value="${esc(actuel)}">${esc(actuel)}</option>` : "")
+      + `<option value="__autre__">✏️ Autre (écrire le motif)</option>`;
+    selMotif.value = actuel;
+  }
+  remplirMotifs();
+  selMotif.disabled = ligneVerrouillee;
+  selMotif.style.display = "none";
+  wrapPrix.appendChild(selMotif);
+  function marquerMotif() {
+    selMotif.style.border = selMotif.value ? "" : "2px solid #d6162b";
+  }
+  selMotif.addEventListener("change", async () => {
+    let motif = selMotif.value;
+    if (motif === "__autre__") {
+      const saisi = prompt("Motif du forfait :", "");
+      if (!saisi || !saisi.trim()) { selMotif.value = ligne.motif_forfait || ""; marquerMotif(); return; }
+      motif = "Autre : " + saisi.trim();
+    }
+    const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+    if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
+    const { data: ligneServeur, error } = await supabase
+      .from("lignes_feuille_route").update({ motif_forfait: motif || null }).eq("id", ligne.id)
+      .select("*").maybeSingle();
+    if (!error && ligneServeur) Object.assign(ligne, ligneServeur);
+    remplirMotifs();
+    marquerMotif();
+    if (etatEl) {
+      etatEl.textContent = error ? "⚠️ Non enregistré" : "✓ Enregistré";
+      etatEl.className = "etat-sauvegarde " + (error ? "erreur" : "ok");
+    }
+  });
+
   async function basculerEnForfait() {
     const prix = nombreOuNull(inputsParChamp["prix_taximetre"].value);
     const somme = nombreOuNull(inputsParChamp["sommes_percues"].value);
@@ -1520,15 +1584,15 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const champPrix = inputsParChamp["prix_taximetre"];
     if (estForfait) {
       champPrix.value = "";
-      champPrix.placeholder = "Forfait";
-      champPrix.disabled = true;
-      champPrix.style.background = "#e8e8e8";
-      champPrix.style.fontWeight = "700";
+      champPrix.style.display = "none";
+      selMotif.style.display = "";
+      labelPrix.textContent = "Motif du forfait (obligatoire)";
+      marquerMotif();
     } else {
-      champPrix.placeholder = "";
+      champPrix.style.display = "";
+      selMotif.style.display = "none";
+      labelPrix.textContent = "Prix taximètre (€)";
       champPrix.disabled = ligneVerrouillee;
-      champPrix.style.background = "";
-      champPrix.style.fontWeight = "";
       if (champPrix.value === "" && ligne.prix_taximetre != null) champPrix.value = ligne.prix_taximetre;
     }
     wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
@@ -1687,7 +1751,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${fmtVal(l.debarquement_index)}</td>
         <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtVal(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure)}</td>
-        <td>${estUber ? "Uber" : l.type_course === "forfait" ? "Forfait" : fmtVal(l.prix_taximetre)}</td>
+        <td>${estUber ? "Uber" : l.type_course === "forfait" ? ("Forfait" + (l.motif_forfait ? "<br><small>" + esc(l.motif_forfait) + "</small>" : "")) : fmtVal(l.prix_taximetre)}</td>
         <td>${fmtVal(sommes)}</td>
       </tr>`;
     }).join("");
