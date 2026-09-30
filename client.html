@@ -1599,12 +1599,12 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   function initCarte() {
     if (carte || typeof L === "undefined") return;
     carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 10);
-    // Plan clair et moderne (style « Voyager ») + vue satellite au choix
-    const plan = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO" });
+    // Plan OpenStreetMap (sans clé API) + vue satellite au choix
+    const plan = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, attribution: "© OpenStreetMap" });
     const satellite = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "© Esri" }),
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd" })
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 })
     ]);
     plan.addTo(carte);
     let enSatellite = false;
