@@ -1,7 +1,7 @@
 // Service worker — permet à Android/Chrome et aux ordinateurs de proposer
 // "Installer l'application", ET reçoit les vraies notifications push
 // (fonctionne même si l'app est fermée ou le téléphone verrouillé).
-const CACHE_NAME = "taxiwal-v2";
+const CACHE_NAME = "taxiwal-v3";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -11,11 +11,22 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Laisse passer toutes les requêtes normalement (pas de mode hors-ligne
-// complexe pour l'instant, juste ce qu'il faut pour l'installation).
+// Les pages (.html) sont TOUJOURS rechargées depuis le serveur, sans copie en mémoire :
+// dès qu'un fichier est mis à jour sur GitHub, tous les téléphones voient la nouvelle version.
 self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+  const estPage = req.method === "GET" && url.origin === self.location.origin &&
+    (req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname.endsWith("/"));
+  if (estPage) {
+    event.respondWith(
+      fetch(req.url, { cache: "no-store", credentials: "same-origin" })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(req).catch(() => caches.match(req))
   );
 });
 
