@@ -1255,6 +1255,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
           setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
         }
       }
+      if (estTypeCourse && valeur === "forfait" && !error) await basculerEnForfait();
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiement();
       if (estPaiement && valeur === "qr" && !error) afficherQrDeLaLigne();
       if (estPaiement && valeur === "annulee" && !error && inputsParChamp["sommes_percues"].value !== "") {
@@ -1489,6 +1490,23 @@ function construireLigneHtml(ligne, numeroAffiche) {
     inputsParChamp["sommes_percues"].value = ligne.sommes_percues ?? "";
   }
 
+  async function basculerEnForfait() {
+    const prix = nombreOuNull(inputsParChamp["prix_taximetre"].value);
+    const somme = nombreOuNull(inputsParChamp["sommes_percues"].value);
+    const maj = { prix_taximetre: null };
+    if ((somme === null || somme === 0) && prix !== null) maj.sommes_percues = prix;
+    const { data: ligneServeur, error } = await supabase
+      .from("lignes_feuille_route").update(maj).eq("id", ligne.id)
+      .select("*").maybeSingle();
+    if (!error && ligneServeur) {
+      Object.assign(ligne, ligneServeur);
+      inputsParChamp["sommes_percues"].value = ligne.sommes_percues ?? "";
+      inputsParChamp["prix_taximetre"].value = "";
+      mettreAJourRenduMonnaie();
+      planifierCaisse();
+    }
+  }
+
   function appliquerVisibilitePaiement() {
     const mode = inputsParChamp["mode_paiement"].value;
     const typeCourse = inputsParChamp["type_course"].value;
@@ -1498,6 +1516,21 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
     wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee) ? "none" : "";
+    const estForfait = typeCourse === "forfait";
+    const champPrix = inputsParChamp["prix_taximetre"];
+    if (estForfait) {
+      champPrix.value = "";
+      champPrix.placeholder = "Forfait";
+      champPrix.disabled = true;
+      champPrix.style.background = "#e8e8e8";
+      champPrix.style.fontWeight = "700";
+    } else {
+      champPrix.placeholder = "";
+      champPrix.disabled = ligneVerrouillee;
+      champPrix.style.background = "";
+      champPrix.style.fontWeight = "";
+      if (champPrix.value === "" && ligne.prix_taximetre != null) champPrix.value = ligne.prix_taximetre;
+    }
     wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
@@ -1654,7 +1687,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${fmtVal(l.debarquement_index)}</td>
         <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtVal(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure)}</td>
-        <td>${estUber ? "Uber" : fmtVal(l.prix_taximetre)}</td>
+        <td>${estUber ? "Uber" : l.type_course === "forfait" ? "Forfait" : fmtVal(l.prix_taximetre)}</td>
         <td>${fmtVal(sommes)}</td>
       </tr>`;
     }).join("");
