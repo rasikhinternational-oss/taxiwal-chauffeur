@@ -1221,7 +1221,7 @@ async function afficherCarteChauffeurClient(courseId, chauffeurId) {
   try {
     const carte = L.map(conteneurCarte, { zoomControl: false, attributionControl: false })
       .setView([position.latitude, position.longitude], 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(carte);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }).addTo(carte);
     L.marker([position.latitude, position.longitude]).addTo(carte).bindPopup("Votre chauffeur");
   } catch (e) {
     conteneurCarte.innerHTML = '<p class="carte-en-attente">Carte indisponible pour le moment.</p>';
@@ -1599,9 +1599,9 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   function initCarte() {
     if (carte || typeof L === "undefined") return;
     carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 10);
-    // Plan OpenStreetMap (sans clé API) + vue satellite au choix
-    const plan = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap" });
+    // Plan Esri (rapide, sans clé API) + vue satellite au choix
+    const plan = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, attribution: "© Esri, © OpenStreetMap" });
     const satellite = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "© Esri" }),
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 })
