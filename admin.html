@@ -3251,6 +3251,25 @@ const blocsEnteteFA = [
   { titre: "Recettes", debut: "recettes_debut", fin: "recettes_fin" }
 ];
 
+const MOTIFS_FORFAIT = [
+  "Prix fixe convenu à l'avance",
+  "Client habitué (tarif régulier)",
+  "Forfait payé à l'avance",
+  "Forfait aéroport",
+  "Forfait gare",
+  "Forfait hôpital / rendez-vous médical",
+  "Forfait école / transport scolaire",
+  "Forfait entreprise / convention",
+  "Forfait longue distance",
+  "Mise à disposition (à l'heure)",
+  "Forfait événement / mariage",
+  "Forfait groupe",
+  "Transport PMR",
+  "Réservation via partenaire",
+  "Tarif réduit / geste commercial",
+  "Course courte (prise en charge minimum)"
+];
+
 const champsLigneFA = [
   ["index_depart", "Index départ", "number"],
   ["embarquement_index", "Embarq. — Index", "number"],
@@ -3959,6 +3978,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         inputsParChampAdmin["prix_taximetre"].value = ligne.prix_taximetre ?? "";
         inputsParChampAdmin["sommes_percues"].value = ligne.sommes_percues ?? "";
       }
+      if (estTypeCourse && valeur === "forfait") await basculerEnForfaitAdmin();
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiementAdmin();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
@@ -4014,6 +4034,49 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   grille.insertBefore(mentionPrive, wrapsParChampAdmin["mode_paiement"]);
   div.appendChild(grille);
 
+  const wrapPrixA = wrapsParChampAdmin["prix_taximetre"];
+  const labelPrixA = wrapPrixA.querySelector("label");
+  const selMotifA = document.createElement("select");
+  function remplirMotifsA() {
+    const actuel = ligne.motif_forfait || "";
+    const horsListe = actuel && !MOTIFS_FORFAIT.includes(actuel);
+    selMotifA.innerHTML = `<option value="">— Choisir le motif —</option>`
+      + MOTIFS_FORFAIT.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join("")
+      + (horsListe ? `<option value="${esc(actuel)}">${esc(actuel)}</option>` : "")
+      + `<option value="__autre__">✏️ Autre (écrire le motif)</option>`;
+    selMotifA.value = actuel;
+  }
+  remplirMotifsA();
+  selMotifA.style.display = "none";
+  wrapPrixA.appendChild(selMotifA);
+  const marquerMotifA = () => { selMotifA.style.border = selMotifA.value ? "" : "2px solid #d6162b"; };
+  selMotifA.addEventListener("change", async () => {
+    let motif = selMotifA.value;
+    if (motif === "__autre__") {
+      const saisi = prompt("Motif du forfait :", "");
+      if (!saisi || !saisi.trim()) { selMotifA.value = ligne.motif_forfait || ""; marquerMotifA(); return; }
+      motif = "Autre : " + saisi.trim();
+    }
+    const { data: ligneServeur, error } = await supabase.from("lignes_feuille_route")
+      .update({ motif_forfait: motif || null }).eq("id", ligne.id).select("*").maybeSingle();
+    if (error) { alert("Erreur : " + error.message); return; }
+    if (ligneServeur) Object.assign(ligne, ligneServeur);
+    remplirMotifsA(); marquerMotifA();
+  });
+  async function basculerEnForfaitAdmin() {
+    const prix = parseFloat(String(inputsParChampAdmin["prix_taximetre"].value).replace(",", "."));
+    const somme = parseFloat(String(inputsParChampAdmin["sommes_percues"].value).replace(",", "."));
+    const maj = { prix_taximetre: null };
+    if ((isNaN(somme) || somme === 0) && !isNaN(prix)) maj.sommes_percues = prix;
+    const { data: ligneServeur, error } = await supabase.from("lignes_feuille_route")
+      .update(maj).eq("id", ligne.id).select("*").maybeSingle();
+    if (!error && ligneServeur) {
+      Object.assign(ligne, ligneServeur);
+      inputsParChampAdmin["sommes_percues"].value = ligne.sommes_percues ?? "";
+      inputsParChampAdmin["prix_taximetre"].value = "";
+    }
+  }
+
   function appliquerVisibilitePaiementAdmin() {
     const mode = inputsParChampAdmin["mode_paiement"].value;
     const typeCourse = inputsParChampAdmin["type_course"].value;
@@ -4023,7 +4086,17 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
     wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee) ? "none" : "";
-    wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
+    wrapsParChampAdmin["sommes_percues"].style.display = ((estFacture && typeCourse !== "forfait") || estUber || estPrive || estAnnulee) ? "none" : "";
+    const champPrixA = inputsParChampAdmin["prix_taximetre"];
+    if (typeCourse === "forfait") {
+      champPrixA.value = ""; champPrixA.style.display = "none";
+      selMotifA.style.display = ""; labelPrixA.textContent = "Motif du forfait (obligatoire)";
+      marquerMotifA();
+    } else {
+      champPrixA.style.display = ""; selMotifA.style.display = "none";
+      labelPrixA.textContent = "Prix taximètre (€)";
+      if (champPrixA.value === "" && ligne.prix_taximetre != null) champPrixA.value = ligne.prix_taximetre;
+    }
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionUber.style.display = estUber ? "" : "none";
@@ -4074,8 +4147,13 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     l = l || {};
     const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
     const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-    const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
-      : estUber ? "Payé sur Uber" : l.sommes_percues;
+    const montantFacture = parseFloat(l.sommes_percues) || parseFloat(l.prix_taximetre) || null;
+    const sommesHtml = l.mode_paiement === "annulee" ? "ANNULÉE"
+      : l.mode_paiement === "facture" ? ("Facture n° " + esc(l.numero_dossier || "") + (montantFacture ? "<br>" + esc(montantFacture) : ""))
+      : estUber ? "Payé sur Uber" : fmtNombre(l.sommes_percues);
+    const prixHtml = estUber ? "Uber"
+      : l.type_course === "forfait" ? ("Forfait" + (l.motif_forfait ? "<br><small>" + esc(l.motif_forfait) + "</small>" : ""))
+      : fmtNombre(l.prix_taximetre);
     return `<tr>
       <td>${i + 1}</td>
       <td>${fmtNombre(l.index_depart)}</td>
@@ -4085,8 +4163,8 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       <td>${fmtNombre(l.debarquement_index)}</td>
       <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtNombre(l.debarquement_lieu)}</td>
       <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
-      <td>${estUber ? "Uber" : fmtNombre(l.prix_taximetre)}</td>
-      <td>${fmtNombre(sommes)}</td>
+      <td>${prixHtml}</td>
+      <td>${sommesHtml}</td>
     </tr>`;
   }).join("");
 
