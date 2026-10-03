@@ -1642,8 +1642,9 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     if (carte || typeof L === "undefined") return;
     carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 10);
     // Plan clair et moderne (style « Voyager ») + vue satellite au choix
-    const plan = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap" });
+    // Plan Esri (sans clé) : les tuiles OpenStreetMap sont souvent bloquées dans l'application iPhone
+    const plan = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, attribution: "© Esri" });
     const satellite = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "© Esri" }),
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 })
@@ -1755,7 +1756,12 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   try {
     const elCarte = document.getElementById("rz-carte");
     if (elCarte && "ResizeObserver" in window) {
-      new ResizeObserver(() => { if (elCarte.offsetWidth > 0) { initCarte(); carte && carte.invalidateSize(); } }).observe(elCarte);
+      new ResizeObserver(() => {
+        if (elCarte.offsetWidth > 0) {
+          initCarte();
+          if (carte) { carte.invalidateSize(); if (!couche || !couche.getLayers || couche.getLayers().length === 0) carte.setView([50.43, 3.83], 10); }
+        }
+      }).observe(elCarte);
     }
   } catch (e) {}
   document.querySelectorAll('nav.onglets button[data-onglet="reserver"]').forEach(b => b.addEventListener("click", () => setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 150)));
