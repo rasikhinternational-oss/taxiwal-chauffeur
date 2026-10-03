@@ -364,10 +364,14 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin input[type=time]{ -webkit-appearance:none; appearance:none; width:100%; text-align:left; }
   .feuille-admin .grille3-fa > div{ min-width:0; }
   /* Feuille ouverte en grand : 1 champ par ligne, gros champs faciles à toucher */
-  .feuille-admin.feuille-en-grand .grille3-fa{ grid-template-columns:1fr; border:none; background:#fff; border-radius:10px; }
-  .feuille-admin.feuille-en-grand .grille3-fa > div{ border-right:none; border-bottom:1px solid #eee; padding:10px 12px; }
-  .feuille-admin.feuille-en-grand .grille3-fa label{ font-size:.85rem; }
-  .feuille-admin.feuille-en-grand .grille3-fa input{ font-size:1.05rem; padding:12px; width:100%; }
+  .feuille-admin.feuille-en-grand .grille3-fa{ grid-template-columns:1fr 1fr 1fr; }
+  .feuille-admin.feuille-en-grand .grille3-fa input{ font-size:.95rem; padding:8px; width:100%; }
+  .bloc-compteurs-fa{ background:#fff; border:1px solid #dcdcda; border-radius:12px; margin:8px 0 12px; }
+  .bloc-compteurs-fa > summary{ list-style:none; cursor:pointer; padding:12px 14px; font-weight:800; font-size:.92rem; }
+  .bloc-compteurs-fa > summary::-webkit-details-marker{ display:none; }
+  .bloc-compteurs-fa > summary span{ display:block; font-weight:400; font-size:.8rem; color:var(--gris); margin-top:2px; }
+  .bloc-compteurs-fa[open] > summary{ border-bottom:1px solid #eee; }
+  .bloc-compteurs-fa > :not(summary){ padding:0 10px; }
   .feuille-admin .btn-nouvelle-course-fa{ width:auto; padding:8px 12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-size:.8rem; cursor:pointer; }
   .feuille-admin .btn-details-fa{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.8rem; cursor:pointer; font-weight:600; }
   .feuille-admin .btn-imprimer-fa{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid var(--bleu); background:transparent; color:var(--bleu); font-size:.8rem; cursor:pointer; }
@@ -3933,6 +3937,16 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     chargerFeuillesAdmin();
   });
   corps.appendChild(btnAjouter);
+  // Heures + compteurs regroupés dans un bloc repliable (fermé par défaut) :
+  // les courses sont tout de suite visibles, plus besoin de descendre.
+  const blocService = document.createElement("details");
+  blocService.className = "bloc-compteurs-fa";
+  const hDeb = feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "--:--";
+  const hFin = feuille.heure_fin ? String(feuille.heure_fin).slice(0, 5) : (feuille.heure_debut ? "en service" : "--:--");
+  blocService.innerHTML = `<summary>⏱️ Service &amp; compteurs <span>${hDeb} → ${hFin} · km début ${feuille.index_km_debut ?? "—"} · touche pour voir / modifier</span></summary>`;
+  const aRegrouper = [...corps.children].slice(0, [...corps.children].indexOf(titreCourses));
+  aRegrouper.forEach(el => blocService.appendChild(el));
+  corps.insertBefore(blocService, titreCourses);
   div.appendChild(corps);
 
   // Plein écran : affiche uniquement le titre + total + courses, sans l'identité/véhicule/
