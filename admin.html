@@ -359,6 +359,15 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin.feuille-en-grand .btn-ouvrir-grand-fa{ position:sticky; top:0; z-index:5; background:var(--rouge); margin:0 0 10px; }
   .feuille-admin.feuille-en-grand .btn-details-fa{ display:none; }
   body.feuille-grand-ouverte{ overflow:hidden; }
+  /* Champs de la feuille : jamais plus larges que leur case (sinon ils se chevauchent et on touche le mauvais) */
+  .feuille-admin input, .feuille-admin select, .feuille-admin textarea{ box-sizing:border-box; max-width:100%; min-width:0; }
+  .feuille-admin input[type=time]{ -webkit-appearance:none; appearance:none; width:100%; text-align:left; }
+  .feuille-admin .grille3-fa > div{ min-width:0; }
+  /* Feuille ouverte en grand : 1 champ par ligne, gros champs faciles à toucher */
+  .feuille-admin.feuille-en-grand .grille3-fa{ grid-template-columns:1fr; border:none; background:#fff; border-radius:10px; }
+  .feuille-admin.feuille-en-grand .grille3-fa > div{ border-right:none; border-bottom:1px solid #eee; padding:10px 12px; }
+  .feuille-admin.feuille-en-grand .grille3-fa label{ font-size:.85rem; }
+  .feuille-admin.feuille-en-grand .grille3-fa input{ font-size:1.05rem; padding:12px; width:100%; }
   .feuille-admin .btn-nouvelle-course-fa{ width:auto; padding:8px 12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-size:.8rem; cursor:pointer; }
   .feuille-admin .btn-details-fa{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.8rem; cursor:pointer; font-weight:600; }
   .feuille-admin .btn-imprimer-fa{ width:auto; padding:8px 12px; border-radius:8px; border:1px solid var(--bleu); background:transparent; color:var(--bleu); font-size:.8rem; cursor:pointer; }
