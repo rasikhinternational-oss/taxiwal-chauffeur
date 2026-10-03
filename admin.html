@@ -7,6 +7,14 @@ function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
+// Index de compteur (3 chiffres) : 8 s'affiche « 008 », 22 « 022 »
+const CHAMPS_INDEX = ["index_depart", "embarquement_index", "debarquement_index"];
+function formatIndex(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const n = Number(v);
+  if (Number.isInteger(n) && n >= 0 && n < 1000) return String(n).padStart(3, "0");
+  return String(v);
+}
 // ================== PLUSIEURS ADRESSES (arrêts : autres prises en charge / déposes) ==================
 // ================== CALCUL DU PRIX CONSEILLÉ (tarif officiel + km d'approche Mons-Borinage) ==================
 // Tarif officiel : prise en charge 3,10 € (jour) / 6,20 € (nuit 22h-6h), 2,50 €/km aller simple,
@@ -2713,6 +2721,12 @@ setInterval(() => { Object.keys(cacheEta).forEach(k => { if (Date.now() - cacheE
 async function geocoderAdresse(adresse) {
   if (cacheGeocodage[adresse]) return cacheGeocodage[adresse];
   try {
+    const r = await fetch("https://photon.komoot.io/api/?lang=fr&limit=1&lat=50.45&lon=3.95&q=" + encodeURIComponent(adresse));
+    const d = await r.json();
+    const f = d.features && d.features[0];
+    if (f) { const point = { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }; cacheGeocodage[adresse] = point; return point; }
+  } catch (e) { /* on essaie Nominatim */ }
+  try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=be,fr&q=${encodeURIComponent(adresse)}`;
     const res = await fetch(url);
     const data = await res.json();
@@ -2841,9 +2855,21 @@ adresseCentraleInput.addEventListener("change", () => {
 });
 
 const cacheAdresseInverse = {};
+const cacheVilleChauffeur = {};
 async function adresseDepuisCoords(lat, lon) {
-  const cle = lat.toFixed(4) + "," + lon.toFixed(4);
+  const cle = lat.toFixed(3) + "," + lon.toFixed(3);
   if (cacheAdresseInverse[cle]) return cacheAdresseInverse[cle];
+  try {
+    const r = await fetch(`https://photon.komoot.io/reverse?lang=fr&lat=${lat}&lon=${lon}`);
+    const d = await r.json();
+    const p = d.features && d.features[0] && d.features[0].properties;
+    if (p) {
+      const rue = [p.street || p.name, p.housenumber].filter(Boolean).join(" ");
+      const ville = p.city || p.town || p.village || p.locality || p.district || "";
+      const adresse = [rue, [p.postcode, ville].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+      if (adresse) { cacheAdresseInverse[cle] = adresse; cacheVilleChauffeur[cle] = ville; return adresse; }
+    }
+  } catch (e) { /* repli Nominatim */ }
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
     const res = await fetch(url);
@@ -2934,6 +2960,14 @@ async function trajetTotalCourse(course) {
   return cacheTrajetTotal[course.id] || null;
 }
 async function majSuiviTempsReel(course, p) {
+  const ageMin = p.updated_at ? (Date.now() - new Date(p.updated_at).getTime()) / 60000 : 999;
+  const zoneSuivi = document.getElementById(`cc-suivi-${course.id}`);
+  if (ageMin > 5) {
+    // Position pas à jour : on ne fait pas croire à un suivi en direct
+    if (zoneSuivi) zoneSuivi.innerHTML = `<div style="color:#9a5b00; font-weight:700;">⚠️ Pas de position reçue depuis ${ageMin < 60 ? Math.round(ageMin) + " min" : Math.floor(ageMin / 60) + " h " + String(Math.round(ageMin % 60)).padStart(2, "0")} (dernière à ${new Date(p.updated_at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}).</div>
+      <div style="font-size:.8rem; color:var(--gris); margin-top:4px;">L'app du chauffeur est fermée ou le téléphone est en veille. Demande-lui de rouvrir l'app Taxi Wal pendant la course. Si la course est finie, elle n'a peut-être pas été marquée « terminée ».</div>`;
+    return;
+  }
   const dest = await geocoderAdresse(course.adresse_arrivee);
   if (!dest) return;
   const [reste, total] = await Promise.all([calculerTrajetCoords(p.latitude, p.longitude, dest.lat, dest.lon), trajetTotalCourse(course)]);
@@ -2956,7 +2990,7 @@ async function majSuiviTempsReel(course, p) {
 }
 function ageMiseAJour(dateIso) {
   const s = Math.max(0, Math.round((Date.now() - new Date(dateIso).getTime()) / 1000));
-  return s < 60 ? `il y a ${s} s` : s < 3600 ? `il y a ${Math.round(s / 60)} min` : "il y a longtemps";
+  return s < 60 ? `il y a ${s} s` : s < 3600 ? `il y a ${Math.round(s / 60)} min` : `à ${new Date(dateIso).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })} (il y a ${Math.floor(s / 3600)} h)`;
 }
 
 function heureDansXMinutes(minutes) {
@@ -3017,21 +3051,53 @@ document.getElementById("btn-calculer-trajet").addEventListener("click", async (
 
 async function chargerCarte() {
   if (!carteLeaflet) {
-    carteLeaflet = L.map("carte").setView([50.45, 4.10], 10);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19, subdomains: "abcd", attribution: "&copy; OpenStreetMap &copy; CARTO"
-    }).addTo(carteLeaflet);
+    carteLeaflet = L.map("carte").setView([50.45, 3.95], 10);
+    const plan = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" });
+    const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "&copy; Esri" });
+    plan.addTo(carteLeaflet);
+    L.control.layers({ "🗺️ Plan": plan, "🛰️ Satellite": satellite }, null, { position: "topright" }).addTo(carteLeaflet);
+    const centrer = L.control({ position: "topleft" });
+    centrer.onAdd = () => {
+      const b = L.DomUtil.create("button");
+      b.textContent = "🎯 Voir tous les chauffeurs";
+      b.style.cssText = "width:auto; padding:7px 10px; border-radius:8px; border:none; background:#fff; font-weight:700; font-size:.8rem; box-shadow:0 2px 8px rgba(0,0,0,.3); cursor:pointer; color:#111;";
+      L.DomEvent.disableClickPropagation(b);
+      b.addEventListener("click", () => centrerSurChauffeurs(true));
+      return b;
+    };
+    centrer.addTo(carteLeaflet);
     // Position des chauffeurs en direct : dès qu'un téléphone envoie sa position, on redessine
     supabase.channel("positions-admin")
       .on("postgres_changes", { event: "*", schema: "public", table: "positions_chauffeurs" }, () => {
         clearTimeout(window.minuterieCarteDirect);
         window.minuterieCarteDirect = setTimeout(() => {
           if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
-        }, 800);
+        }, 3000);
       }).subscribe();
     setTimeout(() => carteLeaflet.invalidateSize(), 200);
   }
 
+  // Pas plus d'une mise à jour toutes les 8 secondes (sinon la carte rame)
+  if (window.__carteEnCours) return;
+  if (window.__derniereCarte && Date.now() - window.__derniereCarte < 8000) {
+    clearTimeout(window.__carteDiffere);
+    window.__carteDiffere = setTimeout(chargerCarte, 8000 - (Date.now() - window.__derniereCarte));
+    return;
+  }
+  window.__carteEnCours = true; window.__derniereCarte = Date.now();
+  try { await chargerCarteInterne(); } finally { window.__carteEnCours = false; }
+}
+
+function centrerSurChauffeurs(meme) {
+  const recents = (dernieresPositionsCarte || []).filter(p => Date.now() - new Date(p.updated_at).getTime() < 3 * 3600e3);
+  const liste = recents.length ? recents : (dernieresPositionsCarte || []);
+  if (!liste.length || !carteLeaflet) return;
+  if (!meme && window.__carteCentree) return;
+  window.__carteCentree = true;
+  carteLeaflet.fitBounds(L.latLngBounds(liste.map(p => [p.latitude, p.longitude])), { padding: [50, 50], maxZoom: 13 });
+}
+
+async function chargerCarteInterne() {
   const { data: positions, error } = await supabase
     .from("positions_chauffeurs")
     .select("*, profils:chauffeur_id(nom)");
@@ -3046,6 +3112,7 @@ async function chargerCarte() {
 
   dernieresPositionsCarte = positions || [];
   afficherListeChauffeursCarte(positions, coursesParChauffeur);
+  setTimeout(() => centrerSurChauffeurs(false), 300);
 
   Object.keys(lignesRouteCarte).forEach(chauffeurId => {
     if (!coursesParChauffeur[chauffeurId]) retirerRouteCarte(chauffeurId);
@@ -3068,10 +3135,18 @@ async function chargerCarte() {
       popup = `<b>${esc(nom)}</b><br>✅ Disponible<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button>`;
     }
 
+    const ancienne = p.updated_at && (Date.now() - new Date(p.updated_at).getTime()) > 10 * 60000;
+    const villeConnue = cacheVilleChauffeur[p.latitude.toFixed(3) + "," + p.longitude.toFixed(3)] || "";
+    const fondPastille = ancienne ? "#9a9a9a" : ({ red: "#c81e2c", green: "#1f8a4c", gray: "#6b6b6b" }[couleur]);
     const icone = L.divIcon({
       className: "",
-      html: `<div style="width:16px;height:16px;border-radius:50%;background:${couleur};border:2px solid #fff;"></div>`,
-      iconSize: [16, 16]
+      iconSize: [0, 0], iconAnchor: [0, 0],
+      html: `<div style="position:absolute; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto;">
+        <div style="background:${fondPastille}; color:#fff; font-weight:800; font-size:12px; padding:4px 9px; border-radius:999px; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.35); border:2px solid #fff;">
+          ${courseActive ? "🚕" : (p.disponible ? "✅" : "⏸️")} ${esc(nom)}${villeConnue ? " · " + esc(villeConnue) : ""}${ancienne ? " · " + esc(ageMiseAJour(p.updated_at)) : ""}
+        </div>
+        <div style="width:14px; height:14px; margin-top:-2px; border-radius:50%; background:${fondPastille}; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>
+      </div>`
     });
 
     if (marqueurs[p.chauffeur_id]) {
@@ -3096,6 +3171,13 @@ async function chargerCarte() {
     adresseDepuisCoords(p.latitude, p.longitude).then(adresse => {
       const span = document.getElementById(`popup-adr-${p.chauffeur_id}`);
       if (span) span.textContent = adresse;
+      const cleV = p.latitude.toFixed(3) + "," + p.longitude.toFixed(3);
+      if (cacheVilleChauffeur[cleV] && !villeConnue && marqueurs[p.chauffeur_id]) {
+        // on remet l'étiquette avec la ville dès qu'elle est connue
+        const el = marqueurs[p.chauffeur_id].getElement && marqueurs[p.chauffeur_id].getElement();
+        const badge = el && el.querySelector("div > div > div");
+        if (badge && !badge.textContent.includes(cacheVilleChauffeur[cleV])) badge.textContent = badge.textContent.trim() + " · " + cacheVilleChauffeur[cleV];
+      }
       const popupObj = marqueurs[p.chauffeur_id]?.getPopup();
       if (popupObj) popupObj.setContent(popupObj.getContent().replace("chargement…", esc(adresse)));
     });
@@ -3249,25 +3331,6 @@ const blocsEnteteFA = [
   { titre: "Km en charge", debut: "km_en_charge_debut", fin: "km_en_charge_fin" },
   { titre: "Chutes (€)", debut: "chutes_debut", fin: "chutes_fin" },
   { titre: "Recettes", debut: "recettes_debut", fin: "recettes_fin" }
-];
-
-const MOTIFS_FORFAIT = [
-  "Prix fixe convenu à l'avance",
-  "Client habitué (tarif régulier)",
-  "Forfait payé à l'avance",
-  "Forfait aéroport",
-  "Forfait gare",
-  "Forfait hôpital / rendez-vous médical",
-  "Forfait école / transport scolaire",
-  "Forfait entreprise / convention",
-  "Forfait longue distance",
-  "Mise à disposition (à l'heure)",
-  "Forfait événement / mariage",
-  "Forfait groupe",
-  "Transport PMR",
-  "Réservation via partenaire",
-  "Tarif réduit / geste commercial",
-  "Course courte (prise en charge minimum)"
 ];
 
 const champsLigneFA = [
@@ -3491,6 +3554,61 @@ const feuillesEnGrand = new Set();
 const lignesDepliees = new Set();
 const etatManuelLignesAdmin = new Map();
 
+// ---- Identité de la feuille : tout est modifiable par l'admin, à tout moment ----
+function ouvrirEditionIdentiteFeuille(feuille, chauffeur) {
+  const veh = feuille.vehicules || {};
+  const fond = document.createElement("div");
+  fond.style.cssText = "position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:14px;";
+  const champ = (label, html) => `<label style="display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px;">${label}</label>${html}`;
+  const st = "width:100%; box-sizing:border-box; padding:11px; border-radius:8px; border:1px solid #cfcfcd; font-size:1rem;";
+  fond.innerHTML = `<div style="background:#fff; border-radius:14px; padding:18px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto;">
+    <div style="font-weight:800; font-size:1.05rem;">✏️ Identité de la feuille de route</div>
+    <div style="font-size:.8rem; color:var(--gris); margin-top:2px;">Laisse un champ vide pour reprendre la valeur du véhicule / du profil.</div>
+    ${champ("Chauffeur (à qui appartient la feuille)", `<select id="idf-chauffeur" style="${st}">${(chauffeursCache || []).map(c => `<option value="${c.id}" ${c.id === feuille.chauffeur_id ? "selected" : ""}>${esc(c.nom || "Chauffeur")}</option>`).join("")}</select>`)}
+    ${champ("Nom du chauffeur écrit sur la feuille", `<input id="idf-nom" style="${st}" placeholder="${esc(chauffeur?.nom || "")}" value="${esc(feuille.nom_chauffeur_affiche || "")}">`)}
+    ${champ("Date de la feuille", `<input id="idf-date" type="date" style="${st}" value="${esc(feuille.date_service || "")}">`)}
+    ${champ("Véhicule", `<select id="idf-vehicule" style="${st}"><option value="">— Aucun —</option>${(vehiculesCache || []).map(v => `<option value="${v.id}" ${v.id === feuille.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}</select>`)}
+    ${champ("Identité de l'exploitant", `<input id="idf-exploitant" style="${st}" placeholder="${esc(veh.identite_exploitant || IDENTITE_EXPLOITANT)}" value="${esc(feuille.identite_exploitant || "")}">`)}
+    ${champ("N° plaque d'immatriculation", `<input id="idf-plaque" style="${st}" placeholder="${esc(veh.plaque || "")}" value="${esc(feuille.plaque || "")}">`)}
+    ${champ("N° identification", `<input id="idf-numid" style="${st}" placeholder="${esc(veh.numero_identification || "")}" value="${esc(feuille.numero_identification || "")}">`)}
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button type="button" id="idf-annuler" style="flex:1; padding:13px; border-radius:10px; border:none; background:#e3e3e0; font-weight:700;">Annuler</button>
+      <button type="button" id="idf-ok" style="flex:2; padding:13px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:800;">✅ Enregistrer</button>
+    </div></div>`;
+  document.body.appendChild(fond);
+  const fermer = () => fond.remove();
+  // Nouveau chauffeur choisi : la feuille passe sur son compte et son nom s'écrit sur la feuille
+  fond.querySelector("#idf-chauffeur").addEventListener("change", (e) => {
+    const c = (chauffeursCache || []).find(x => x.id === e.target.value);
+    const nom = fond.querySelector("#idf-nom");
+    nom.value = ""; nom.placeholder = c?.nom || "";
+  });
+  fond.querySelector("#idf-annuler").addEventListener("click", fermer);
+  fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
+  fond.querySelector("#idf-ok").addEventListener("click", async () => {
+    const v = id => fond.querySelector(id).value.trim();
+    const maj = {
+      chauffeur_id: v("#idf-chauffeur") || feuille.chauffeur_id,
+      nom_chauffeur_affiche: v("#idf-nom") || null,
+      date_service: v("#idf-date") || feuille.date_service,
+      vehicule_id: v("#idf-vehicule") || null,
+      identite_exploitant: v("#idf-exploitant") || null,
+      plaque: v("#idf-plaque") || null,
+      numero_identification: v("#idf-numid") || null
+    };
+    if (maj.chauffeur_id !== feuille.chauffeur_id) {
+      const nouveau = (chauffeursCache || []).find(x => x.id === maj.chauffeur_id);
+      if (!confirm(`Donner cette feuille de route à ${nouveau?.nom || "ce chauffeur"} ?\n\nElle disparaîtra de l'app de ${chauffeur?.nom || "l'ancien chauffeur"} et ses courses passeront au nom de ${nouveau?.nom || "ce chauffeur"}.`)) return;
+    }
+    const { error } = await supabase.from("feuilles_route").update(maj).eq("id", feuille.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    fermer();
+    if (maj.date_service !== feuille.date_service) document.getElementById("fa-date").value = maj.date_service;
+    derniereActiviteFeuilles = 0;
+    chargerFeuillesAdmin(true);
+  });
+}
+
 // ---- Suppression d'une feuille de route protégée par un code choisi par l'admin ----
 async function definirCodeSuppression(ancienCode) {
   const nouveau = prompt("Choisis ton code de suppression (au moins 4 caractères) :");
@@ -3585,13 +3703,13 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   div.className = "feuille-admin" + (feuille.verrouillee ? " verrouillee-fa" : "");
 
   const entete = document.createElement("div");
-  const identiteFeuille = feuille.vehicules?.identite_exploitant || IDENTITE_EXPLOITANT;
+  const identiteFeuille = feuille.identite_exploitant || feuille.vehicules?.identite_exploitant || IDENTITE_EXPLOITANT;
   const labelFeuille = numeroFeuille ? ` — Feuille ${numeroFeuille}/${totalFeuillesChauffeur} (changement de véhicule)` : "";
   entete.innerHTML = `
     <div class="entete-fa-titre">
       <div class="entete-fa-info" style="cursor:pointer;">
         <div class="identite-exploitant">${esc(identiteFeuille)} · Date : ${new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE")}</div>
-        <h3>Nom du chauffeur : ${esc(feuille.profils?.nom || "Chauffeur")}${esc(labelFeuille)} <span class="chevron-ligne">▾</span></h3>
+        <h3>Nom du chauffeur : ${esc(feuille.nom_chauffeur_affiche || feuille.profils?.nom || "Chauffeur")}${esc(labelFeuille)} <span class="chevron-ligne">▾</span></h3>
         <div class="sous" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <span>Véhicule :</span>
           <select class="select-vehicule-feuille" style="width:auto; padding:6px 8px; border-radius:6px; border:1px solid #cfcfcd; font-size:.82rem;" onclick="event.stopPropagation()">
@@ -3609,6 +3727,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
         <button class="btn-nouvelle-course-fa">+ Course</button>
         <button class="btn-plein-ecran-fa" style="background:#3b82c4; color:#fff; border:none;">🔍 Plein écran</button>
         <button class="btn-imprimer-fa">🖨️ Imprimer / PDF</button>
+        <button class="btn-identite-fa" style="background:#fff6e0; color:#8a5a00; border:1px solid #e8c77a;">✏️ Modifier l'identité</button>
         <button class="btn-supprimer-feuille-fa" style="background:#fff; color:var(--rouge); border:1px solid var(--rouge);">🗑️ Supprimer la feuille</button>
       </div>
     </div>
@@ -3652,6 +3771,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       chargerFeuillesAdmin();
     });
   }
+  entete.querySelector(".btn-identite-fa").addEventListener("click", () => ouvrirEditionIdentiteFeuille(feuille, chauffeur));
   entete.querySelector(".btn-supprimer-feuille-fa").addEventListener("click", async () => {
     const nom = feuille.profils?.nom || "ce chauffeur";
     const ok = await demanderCodeEtSupprimerFeuille(feuille.id, nom, dateChoisie, lignes.length);
@@ -3964,6 +4084,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:12px; font-weight:600;";
     if (estCheckbox) input.checked = !!ligne[champ];
     else if (type === "time" && ligne[champ]) input.value = String(ligne[champ]).slice(0, 5);
+    else if (CHAMPS_INDEX.includes(champ)) input.value = formatIndex(ligne[champ]);
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.addEventListener("change", async (e) => {
       let valeur = estCheckbox ? e.target.checked : (e.target.value || null);
@@ -3973,12 +4094,12 @@ function construireLigneAdmin(ligne, numeroAffiche) {
       if (error) { alert("Erreur : " + error.message); return; }
       if (ligneServeur) {
         Object.assign(ligne, ligneServeur);
+        if (CHAMPS_INDEX.includes(champ)) e.target.value = formatIndex(ligne[champ]);
         inputsParChampAdmin["type_course"].value = ligne.type_course || "normale";
         inputsParChampAdmin["mode_paiement"].value = ligne.mode_paiement || "";
         inputsParChampAdmin["prix_taximetre"].value = ligne.prix_taximetre ?? "";
         inputsParChampAdmin["sommes_percues"].value = ligne.sommes_percues ?? "";
       }
-      if (estTypeCourse && valeur === "forfait") await basculerEnForfaitAdmin();
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiementAdmin();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
@@ -4034,49 +4155,6 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   grille.insertBefore(mentionPrive, wrapsParChampAdmin["mode_paiement"]);
   div.appendChild(grille);
 
-  const wrapPrixA = wrapsParChampAdmin["prix_taximetre"];
-  const labelPrixA = wrapPrixA.querySelector("label");
-  const selMotifA = document.createElement("select");
-  function remplirMotifsA() {
-    const actuel = ligne.motif_forfait || "";
-    const horsListe = actuel && !MOTIFS_FORFAIT.includes(actuel);
-    selMotifA.innerHTML = `<option value="">— Choisir le motif —</option>`
-      + MOTIFS_FORFAIT.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join("")
-      + (horsListe ? `<option value="${esc(actuel)}">${esc(actuel)}</option>` : "")
-      + `<option value="__autre__">✏️ Autre (écrire le motif)</option>`;
-    selMotifA.value = actuel;
-  }
-  remplirMotifsA();
-  selMotifA.style.display = "none";
-  wrapPrixA.appendChild(selMotifA);
-  const marquerMotifA = () => { selMotifA.style.border = selMotifA.value ? "" : "2px solid #d6162b"; };
-  selMotifA.addEventListener("change", async () => {
-    let motif = selMotifA.value;
-    if (motif === "__autre__") {
-      const saisi = prompt("Motif du forfait :", "");
-      if (!saisi || !saisi.trim()) { selMotifA.value = ligne.motif_forfait || ""; marquerMotifA(); return; }
-      motif = "Autre : " + saisi.trim();
-    }
-    const { data: ligneServeur, error } = await supabase.from("lignes_feuille_route")
-      .update({ motif_forfait: motif || null }).eq("id", ligne.id).select("*").maybeSingle();
-    if (error) { alert("Erreur : " + error.message); return; }
-    if (ligneServeur) Object.assign(ligne, ligneServeur);
-    remplirMotifsA(); marquerMotifA();
-  });
-  async function basculerEnForfaitAdmin() {
-    const prix = parseFloat(String(inputsParChampAdmin["prix_taximetre"].value).replace(",", "."));
-    const somme = parseFloat(String(inputsParChampAdmin["sommes_percues"].value).replace(",", "."));
-    const maj = { prix_taximetre: null };
-    if ((isNaN(somme) || somme === 0) && !isNaN(prix)) maj.sommes_percues = prix;
-    const { data: ligneServeur, error } = await supabase.from("lignes_feuille_route")
-      .update(maj).eq("id", ligne.id).select("*").maybeSingle();
-    if (!error && ligneServeur) {
-      Object.assign(ligne, ligneServeur);
-      inputsParChampAdmin["sommes_percues"].value = ligne.sommes_percues ?? "";
-      inputsParChampAdmin["prix_taximetre"].value = "";
-    }
-  }
-
   function appliquerVisibilitePaiementAdmin() {
     const mode = inputsParChampAdmin["mode_paiement"].value;
     const typeCourse = inputsParChampAdmin["type_course"].value;
@@ -4086,17 +4164,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
     wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee) ? "none" : "";
-    wrapsParChampAdmin["sommes_percues"].style.display = ((estFacture && typeCourse !== "forfait") || estUber || estPrive || estAnnulee) ? "none" : "";
-    const champPrixA = inputsParChampAdmin["prix_taximetre"];
-    if (typeCourse === "forfait") {
-      champPrixA.value = ""; champPrixA.style.display = "none";
-      selMotifA.style.display = ""; labelPrixA.textContent = "Motif du forfait (obligatoire)";
-      marquerMotifA();
-    } else {
-      champPrixA.style.display = ""; selMotifA.style.display = "none";
-      labelPrixA.textContent = "Prix taximètre (€)";
-      if (champPrixA.value === "" && ligne.prix_taximetre != null) champPrixA.value = ligne.prix_taximetre;
-    }
+    wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionUber.style.display = estUber ? "" : "none";
@@ -4141,30 +4209,28 @@ function calcTotalHeures(debut, fin) {
 function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
   const dateLisible = new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE");
   const vehicule = feuille.vehicules;
-  const identiteFeuille = vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
+  const identiteFeuille = feuille.identite_exploitant || vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
 
   const lignesHtml = (lignes.length ? lignes : new Array(8).fill(null)).map((l, i) => {
     l = l || {};
     const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
     const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-    const montantFacture = parseFloat(l.sommes_percues) || parseFloat(l.prix_taximetre) || null;
-    const sommesHtml = l.mode_paiement === "annulee" ? "ANNULÉE"
-      : l.mode_paiement === "facture" ? ("Facture n° " + esc(l.numero_dossier || "") + (montantFacture ? "<br>" + esc(montantFacture) : ""))
-      : estUber ? "Payé sur Uber" : fmtNombre(l.sommes_percues);
-    const prixHtml = estUber ? "Uber"
-      : l.type_course === "forfait" ? ("Forfait" + (l.motif_forfait ? "<br><small>" + esc(l.motif_forfait) + "</small>" : ""))
-      : fmtNombre(l.prix_taximetre);
+    const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+      : estUber ? "Payé sur Uber" : l.sommes_percues;
     return `<tr>
       <td>${i + 1}</td>
-      <td>${fmtNombre(l.index_depart)}</td>
-      <td>${fmtNombre(l.embarquement_index)}</td>
+      <td>${formatIndex(l.index_depart)}</td>
+      <td>${formatIndex(l.embarquement_index)}</td>
       <td>${fmtNombre(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => "<br>+ " + esc(a.adresse)).join("")}${mentionAR}</td>
       <td>${fmtNombre(l.embarquement_heure ? String(l.embarquement_heure).slice(0, 5) : "")}</td>
-      <td>${fmtNombre(l.debarquement_index)}</td>
+      <td>${formatIndex(l.debarquement_index)}</td>
       <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtNombre(l.debarquement_lieu)}</td>
       <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
-      <td>${prixHtml}</td>
-      <td>${sommesHtml}</td>
+      <td>${estUber ? "Uber" : fmtNombre(l.prix_taximetre)}</td>
+      <td>${fmtNombre(sommes)}${(() => {
+          const m = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH" }[l.mode_paiement];
+          return m && l.sommes_percues != null ? `<br><b style="font-size:8px; letter-spacing:.5px;">${m}</b>` : "";
+        })()}</td>
     </tr>`;
   }).join("");
 
@@ -4213,10 +4279,10 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
           <td colspan="3" class="valeur">${esc(identiteFeuille)}</td></tr>
       <tr><td><span class="mini">Date</span> <span class="valeur">${esc(dateLisible)}</span></td>
-          <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${esc(chauffeur.nom) || ""}</span></td></tr>
-      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(vehicule?.plaque) || "—"}</span></td>
+          <td colspan="3"><span class="mini">Nom du chauffeur</span> <span class="valeur">${esc(feuille.nom_chauffeur_affiche || chauffeur.nom) || ""}</span></td></tr>
+      <tr><td><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(feuille.plaque || vehicule?.plaque) || "—"}</span></td>
           <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(vehicule?.nom) || "—"}</span></td>
-          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(vehicule?.numero_identification) || "—"}</span></td></tr>
+          <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(feuille.numero_identification || vehicule?.numero_identification) || "—"}</span></td></tr>
     </table>
 
     <h2>Service</h2>

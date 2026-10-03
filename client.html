@@ -69,8 +69,7 @@ window.onerror = function(msg, url, line, col, err) {
     width:100%; padding:14px; border-radius:10px; border:none;
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
   }
-  button.secondaire{ background:var(--noir-2); color:var(--blanc); border:1px solid #cfcfcd; margin-top:10px; }
-  #btn-deconnexion{ color:var(--rouge); }
+  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
   button.vert{ background:var(--vert); }
   #btn-visiter-site{
     width:100%; padding:14px; border-radius:10px; text-align:center; box-sizing:border-box;
@@ -1221,7 +1220,7 @@ async function afficherCarteChauffeurClient(courseId, chauffeurId) {
   try {
     const carte = L.map(conteneurCarte, { zoomControl: false, attributionControl: false })
       .setView([position.latitude, position.longitude], 14);
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }).addTo(carte);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(carte);
     L.marker([position.latitude, position.longitude]).addTo(carte).bindPopup("Votre chauffeur");
   } catch (e) {
     conteneurCarte.innerHTML = '<p class="carte-en-attente">Carte indisponible pour le moment.</p>';
@@ -1599,9 +1598,9 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   function initCarte() {
     if (carte || typeof L === "undefined") return;
     carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 10);
-    // Plan Esri (rapide, sans clé API) + vue satellite au choix
-    const plan = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-      maxZoom: 19, attribution: "© Esri, © OpenStreetMap" });
+    // Plan clair et moderne (style « Voyager ») + vue satellite au choix
+    const plan = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, attribution: "© OpenStreetMap" });
     const satellite = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "© Esri" }),
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 })
