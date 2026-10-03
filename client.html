@@ -1751,6 +1751,13 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   allerEtape(1);
   // La carte s'initialise quand l'onglet est visible
   setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 400);
+  // Carte grise après connexion : on recalcule la taille dès que le cadre de la carte devient visible ou change de taille
+  try {
+    const elCarte = document.getElementById("rz-carte");
+    if (elCarte && "ResizeObserver" in window) {
+      new ResizeObserver(() => { if (elCarte.offsetWidth > 0) { initCarte(); carte && carte.invalidateSize(); } }).observe(elCarte);
+    }
+  } catch (e) {}
   document.querySelectorAll('nav.onglets button[data-onglet="reserver"]').forEach(b => b.addEventListener("click", () => setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 150)));
 })();
 </script>
