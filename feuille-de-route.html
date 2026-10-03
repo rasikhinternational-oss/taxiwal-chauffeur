@@ -7,6 +7,14 @@ function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
+// Index de compteur (3 chiffres) : 8 s'affiche « 008 », 22 « 022 »
+const CHAMPS_INDEX = ["index_depart", "embarquement_index", "debarquement_index"];
+function formatIndex(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const n = Number(v);
+  if (Number.isInteger(n) && n >= 0 && n < 1000) return String(n).padStart(3, "0");
+  return String(v);
+}
 // ================== PLUSIEURS ADRESSES (arrêts : autres prises en charge / déposes) ==================
 function normaliserArrets(liste) {
   return (Array.isArray(liste) ? liste : []).map(a => ({ type: a && a.type === "prise" ? "prise" : "depose", adresse: String((a && a.adresse) || "").trim() }));
@@ -928,7 +936,8 @@ function activerMiseAJourEnDirect(userId) {
 
 async function remplirIdentite(user) {
   const { data: profil } = await supabase.from("profils").select("nom").eq("id", user.id).maybeSingle();
-  if (profil?.nom) document.getElementById("identite-chauffeur").textContent = profil.nom;
+  const nomAffiche = feuilleActuelle?.nom_chauffeur_affiche || profil?.nom;
+  if (nomAffiche) document.getElementById("identite-chauffeur").textContent = nomAffiche;
 
   let vehiculeId = feuilleActuelle.vehicule_id;
   let vehicule = null;
@@ -955,14 +964,10 @@ async function remplirIdentite(user) {
     await remplirIdentite(user);
   };
 
-  if (vehicule) {
-    document.getElementById("identite-plaque").textContent = vehicule.plaque || "—";
-    document.getElementById("identite-numid").textContent = vehicule.numero_identification || "—";
-    identiteSocieteActuelle = vehicule.identite_exploitant || "Rasikh international";
-  } else {
-    document.getElementById("identite-plaque").textContent = "—";
-    document.getElementById("identite-numid").textContent = "—";
-  }
+  // Les valeurs corrigées par l'administrateur passent avant celles du véhicule
+  document.getElementById("identite-plaque").textContent = feuilleActuelle.plaque || vehicule?.plaque || "—";
+  document.getElementById("identite-numid").textContent = feuilleActuelle.numero_identification || vehicule?.numero_identification || "—";
+  identiteSocieteActuelle = feuilleActuelle.identite_exploitant || vehicule?.identite_exploitant || "Rasikh international";
   document.getElementById("identite-societe").textContent = identiteSocieteActuelle;
 }
 
@@ -1106,25 +1111,6 @@ function afficherLignes() {
   window.scrollTo(0, positionPage);
 }
 
-const MOTIFS_FORFAIT = [
-  "Prix fixe convenu à l'avance",
-  "Client habitué (tarif régulier)",
-  "Forfait payé à l'avance",
-  "Forfait aéroport",
-  "Forfait gare",
-  "Forfait hôpital / rendez-vous médical",
-  "Forfait école / transport scolaire",
-  "Forfait entreprise / convention",
-  "Forfait longue distance",
-  "Mise à disposition (à l'heure)",
-  "Forfait événement / mariage",
-  "Forfait groupe",
-  "Transport PMR",
-  "Réservation via partenaire",
-  "Tarif réduit / geste commercial",
-  "Course courte (prise en charge minimum)"
-];
-
 const champsLigne = [
   ["index_depart", "Index départ", "number"],
   ["embarquement_index", "Embarquement — Index", "number"],
@@ -1134,6 +1120,7 @@ const champsLigne = [
   ["debarquement_lieu", "Débarquement — Lieu", "text"],
   ["debarquement_heure", "Débarquement — Heure", "time"],
   ["type_course", "Type de course", "select_type"],
+  ["motif_forfait", "Motif du forfait", "select_motif"],
   ["aller_retour", "Aller-retour ?", "checkbox"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
   ["sommes_percues", "Sommes perçues (€)", "number"],
@@ -1199,6 +1186,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   champsLigne.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
+    const estMotif = champ === "motif_forfait";
     const estTypeCourse = champ === "type_course";
     const estCheckbox = type === "checkbox";
     const wrap = document.createElement("div");
@@ -1206,7 +1194,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     if (estAdresse) wrap.style.gridColumn = "1 / -1";
     const lab = document.createElement("label");
     lab.textContent = libelle;
-    const input = (estPaiement || estTypeCourse) ? document.createElement("select") : document.createElement("input");
+    const input = (estPaiement || estTypeCourse || estMotif) ? document.createElement("select") : document.createElement("input");
     inputsParChamp[champ] = input;
     if (estPaiement) {
       input.innerHTML = `
@@ -1219,6 +1207,17 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
         <option value="annulee">❌ Course annulée (rien encaissé)</option>
+      `;
+    } else if (estMotif) {
+      input.innerHTML = `
+        <option value="">— Choisir le motif (obligatoire) —</option>
+        <option value="Forfait gare">Forfait gare</option>
+        <option value="Client habitué (tarif régulier)">Client habitué (tarif régulier)</option>
+        <option value="Payé à l'avance">Payé à l'avance</option>
+        <option value="Prix convenu à la réservation">Prix convenu à la réservation</option>
+        <option value="Aéroport / longue distance">Aéroport / longue distance</option>
+        <option value="Convention entreprise / école">Convention entreprise / école</option>
+        <option value="Autre">Autre</option>
       `;
     } else if (estTypeCourse) {
       input.innerHTML = `
@@ -1242,6 +1241,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     if (estAdresse) input.style.cssText = "font-size:1rem; padding:13px; font-weight:600;";
     if (estCheckbox) input.checked = !!ligne[champ];
     else if (type === "time" && ligne[champ]) input.value = String(ligne[champ]).slice(0, 5);
+    else if (CHAMPS_INDEX.includes(champ)) input.value = formatIndex(ligne[champ]);
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.disabled = ligneVerrouillee;
     input.addEventListener("change", async (e) => {
@@ -1260,6 +1260,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         .select("*").maybeSingle();
       if (!error && ligneServeur) {
         Object.assign(ligne, ligneServeur);
+        if (CHAMPS_INDEX.includes(champ)) e.target.value = formatIndex(ligne[champ]);
         synchroniserChampsUber();
         mettreAJourRenduMonnaie();
         planifierCaisse();
@@ -1274,7 +1275,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
           setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
         }
       }
-      if (estTypeCourse && valeur === "forfait" && !error) await basculerEnForfait();
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiement();
       if (estPaiement && valeur === "qr" && !error) afficherQrDeLaLigne();
       if (estPaiement && valeur === "annulee" && !error && inputsParChamp["sommes_percues"].value !== "") {
@@ -1447,11 +1447,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (!ligne.debarquement_heure) manque.push("heure de débarquement");
       if (!mode && ligne.type_course !== "prive") manque.push("mode de paiement");
       if (!sansMontant && ligne.sommes_percues == null && ligne.prix_taximetre == null) manque.push("prix / sommes perçues");
-      if (ligne.type_course === "forfait" && !ligne.motif_forfait) {
-        alert("⚠️ Choisis d'abord le motif du forfait (à la place du prix taximètre) avant de clôturer cette course.");
-        selMotif.focus();
-        return;
-      }
+      if (ligne.type_course === "forfait" && !ligne.motif_forfait) manque.push("motif du forfait");
       const message = manque.length
         ? "⚠️ Il manque encore : " + manque.join(", ") + ".\n\nClôturer quand même ? Tu ne pourras plus la modifier ensuite (seule la direction pourra)."
         : "Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).";
@@ -1514,63 +1510,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
     inputsParChamp["sommes_percues"].value = ligne.sommes_percues ?? "";
   }
 
-  const wrapPrix = wrapsParChamp["prix_taximetre"];
-  const labelPrix = wrapPrix.querySelector("label");
-  const selMotif = document.createElement("select");
-  function remplirMotifs() {
-    const actuel = ligne.motif_forfait || "";
-    const horsListe = actuel && !MOTIFS_FORFAIT.includes(actuel);
-    selMotif.innerHTML = `<option value="">— Choisir le motif —</option>`
-      + MOTIFS_FORFAIT.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join("")
-      + (horsListe ? `<option value="${esc(actuel)}">${esc(actuel)}</option>` : "")
-      + `<option value="__autre__">✏️ Autre (écrire le motif)</option>`;
-    selMotif.value = actuel;
-  }
-  remplirMotifs();
-  selMotif.disabled = ligneVerrouillee;
-  selMotif.style.display = "none";
-  wrapPrix.appendChild(selMotif);
-  function marquerMotif() {
-    selMotif.style.border = selMotif.value ? "" : "2px solid #d6162b";
-  }
-  selMotif.addEventListener("change", async () => {
-    let motif = selMotif.value;
-    if (motif === "__autre__") {
-      const saisi = prompt("Motif du forfait :", "");
-      if (!saisi || !saisi.trim()) { selMotif.value = ligne.motif_forfait || ""; marquerMotif(); return; }
-      motif = "Autre : " + saisi.trim();
-    }
-    const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
-    if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
-    const { data: ligneServeur, error } = await supabase
-      .from("lignes_feuille_route").update({ motif_forfait: motif || null }).eq("id", ligne.id)
-      .select("*").maybeSingle();
-    if (!error && ligneServeur) Object.assign(ligne, ligneServeur);
-    remplirMotifs();
-    marquerMotif();
-    if (etatEl) {
-      etatEl.textContent = error ? "⚠️ Non enregistré" : "✓ Enregistré";
-      etatEl.className = "etat-sauvegarde " + (error ? "erreur" : "ok");
-    }
-  });
-
-  async function basculerEnForfait() {
-    const prix = nombreOuNull(inputsParChamp["prix_taximetre"].value);
-    const somme = nombreOuNull(inputsParChamp["sommes_percues"].value);
-    const maj = { prix_taximetre: null };
-    if ((somme === null || somme === 0) && prix !== null) maj.sommes_percues = prix;
-    const { data: ligneServeur, error } = await supabase
-      .from("lignes_feuille_route").update(maj).eq("id", ligne.id)
-      .select("*").maybeSingle();
-    if (!error && ligneServeur) {
-      Object.assign(ligne, ligneServeur);
-      inputsParChamp["sommes_percues"].value = ligne.sommes_percues ?? "";
-      inputsParChamp["prix_taximetre"].value = "";
-      mettreAJourRenduMonnaie();
-      planifierCaisse();
-    }
-  }
-
   function appliquerVisibilitePaiement() {
     const mode = inputsParChamp["mode_paiement"].value;
     const typeCourse = inputsParChamp["type_course"].value;
@@ -1579,23 +1518,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
-    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee) ? "none" : "";
     const estForfait = typeCourse === "forfait";
-    const champPrix = inputsParChamp["prix_taximetre"];
-    if (estForfait) {
-      champPrix.value = "";
-      champPrix.style.display = "none";
-      selMotif.style.display = "";
-      labelPrix.textContent = "Motif du forfait (obligatoire)";
-      marquerMotif();
-    } else {
-      champPrix.style.display = "";
-      selMotif.style.display = "none";
-      labelPrix.textContent = "Prix taximètre (€)";
-      champPrix.disabled = ligneVerrouillee;
-      if (champPrix.value === "" && ligne.prix_taximetre != null) champPrix.value = ligne.prix_taximetre;
-    }
-    wrapsParChamp["sommes_percues"].style.display = ((estFacture && typeCourse !== "forfait") || estUber || estPrive || estAnnulee) ? "none" : "";
+    wrapsParChamp["motif_forfait"].style.display = estForfait ? "" : "none";
+    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee || estForfait) ? "none" : "";
+    wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionPrive.style.display = estPrive ? "" : "none";
@@ -1740,29 +1666,36 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};
       const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-      const montantFacture = nombreOuNull(l.sommes_percues) || nombreOuNull(l.prix_taximetre);
-      const sommesHtml = l.mode_paiement === "annulee" ? "ANNULÉE"
-        : l.mode_paiement === "facture" ? ("Facture n° " + esc(l.numero_dossier || "") + (montantFacture ? "<br>" + esc(montantFacture) : ""))
-        : estUber ? "Payé sur Uber" : fmtVal(l.sommes_percues);
+      const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+        : estUber ? "Payé sur Uber" : l.sommes_percues;
       return `<tr>
         <td>${i + 1}</td>
-        <td>${fmtVal(l.index_depart)}</td>
-        <td>${fmtVal(l.embarquement_index)}</td>
+        <td>${formatIndex(l.index_depart)}</td>
+        <td>${formatIndex(l.embarquement_index)}</td>
         <td>${fmtVal(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => "<br>+ " + esc(a.adresse)).join("")}</td>
         <td>${fmtVal(l.embarquement_heure)}</td>
-        <td>${fmtVal(l.debarquement_index)}</td>
+        <td>${formatIndex(l.debarquement_index)}</td>
         <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtVal(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure)}</td>
-        <td>${estUber ? "Uber" : l.type_course === "forfait" ? ("Forfait" + (l.motif_forfait ? "<br><small>" + esc(l.motif_forfait) + "</small>" : "")) : fmtVal(l.prix_taximetre)}</td>
-        <td>${sommesHtml}</td>
+        <td>${(() => {
+          if (estUber) return "Uber";
+          if (l.mode_paiement === "annulee") return "—";
+          if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait)}</span>` : "");
+          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : "");
+          return esc(l.prix_taximetre);
+        })()}</td>
+        <td>${fmtVal(sommes)}${(() => {
+          const m = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH" }[l.mode_paiement];
+          return m && l.sommes_percues != null ? `<br><b style="font-size:8px; letter-spacing:.5px;">${m}</b>` : "";
+        })()}</td>
       </tr>`;
     }).join("");
 
     blocsVehicules.push(`
       <table>
-        <tr><td style="width:35%"><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(vehicule?.plaque) || "—"}</span></td>
+        <tr><td style="width:35%"><span class="mini">N° plaque d'immatriculation</span><br><span class="valeur">${esc(f.plaque || vehicule?.plaque) || "—"}</span></td>
             <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(vehicule?.nom) || "—"}</span></td>
-            <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(vehicule?.numero_identification) || "—"}</span></td></tr>
+            <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(f.numero_identification || vehicule?.numero_identification) || "—"}</span></td></tr>
       </table>
       <h2>Service ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
       <table>

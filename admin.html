@@ -3355,6 +3355,7 @@ const champsLigneFA = [
   ["debarquement_lieu", "Débarq. — Lieu", "text"],
   ["debarquement_heure", "Débarq. — Heure", "time"],
   ["type_course", "Type de course", "select_type"],
+  ["motif_forfait", "Motif du forfait", "select_motif"],
   ["aller_retour", "Aller-retour ?", "checkbox"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
   ["sommes_percues", "Sommes perçues (€)", "number"],
@@ -4069,13 +4070,14 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
+    const estMotif = champ === "motif_forfait";
     const estTypeCourse = champ === "type_course";
     const estCheckbox = type === "checkbox";
     const wrap = document.createElement("div");
     wrapsParChampAdmin[champ] = wrap;
     if (estAdresse) wrap.style.gridColumn = "1 / -1";
     const lab = document.createElement("label"); lab.textContent = libelle;
-    const input = (estPaiement || estTypeCourse) ? document.createElement("select") : document.createElement("input");
+    const input = (estPaiement || estTypeCourse || estMotif) ? document.createElement("select") : document.createElement("input");
     inputsParChampAdmin[champ] = input;
     if (estPaiement) {
       input.innerHTML = `
@@ -4088,6 +4090,17 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
         <option value="annulee">❌ Course annulée (rien encaissé)</option>
+      `;
+    } else if (estMotif) {
+      input.innerHTML = `
+        <option value="">— Choisir le motif (obligatoire) —</option>
+        <option value="Forfait gare">Forfait gare</option>
+        <option value="Client habitué (tarif régulier)">Client habitué (tarif régulier)</option>
+        <option value="Payé à l'avance">Payé à l'avance</option>
+        <option value="Prix convenu à la réservation">Prix convenu à la réservation</option>
+        <option value="Aéroport / longue distance">Aéroport / longue distance</option>
+        <option value="Convention entreprise / école">Convention entreprise / école</option>
+        <option value="Autre">Autre</option>
       `;
     } else if (estTypeCourse) {
       input.innerHTML = `
@@ -4186,7 +4199,9 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
-    wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee) ? "none" : "";
+    const estForfait = typeCourse === "forfait";
+    wrapsParChampAdmin["motif_forfait"].style.display = estForfait ? "" : "none";
+    wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee || estForfait) ? "none" : "";
     wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
@@ -4249,7 +4264,13 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       <td>${formatIndex(l.debarquement_index)}</td>
       <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtNombre(l.debarquement_lieu)}</td>
       <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
-      <td>${estUber ? "Uber" : fmtNombre(l.prix_taximetre)}</td>
+      <td>${(() => {
+        if (estUber) return "Uber";
+        if (l.mode_paiement === "annulee") return "—";
+        if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait)}</span>` : "");
+        if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : "");
+        return esc(l.prix_taximetre);
+      })()}</td>
       <td>${fmtNombre(sommes)}${(() => {
           const m = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH" }[l.mode_paiement];
           return m && l.sommes_percues != null ? `<br><b style="font-size:8px; letter-spacing:.5px;">${m}</b>` : "";
