@@ -564,6 +564,7 @@ window.onerror = function(msg, url, line, col, err) {
     <h1 style="margin:0; flex:1;">Taxi Wal — Admin</h1>
     <button id="btn-menu-admin" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
     <div id="menu-admin-deroulant" style="display:none; position:absolute; top:46px; right:0; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+      <button id="btn-email-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">✉️ E-mails (codes clients, Brevo)</button>
       <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Apple Pay…)</button>
       <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
     </div>
@@ -1157,6 +1158,16 @@ document.getElementById("btn-menu-admin").addEventListener("click", (e) => {
 });
 document.addEventListener("click", () => {
   document.getElementById("menu-admin-deroulant").style.display = "none";
+});
+document.getElementById("btn-email-admin").addEventListener("click", async () => {
+  const { data: actif } = await supabase.rpc("email_envoi_actif");
+  const cle = prompt("E-mails Taxi Wal en français (code de connexion des clients + e-mails aux chauffeurs) via Brevo.\n\nÉtat actuel : " +
+    (actif ? "✅ ACTIF" : "❌ PAS ACTIVÉ (les clients reçoivent l'e-mail anglais de secours)") +
+    "\n\nColle ta clé API Brevo (commence par xkeysib-).\nLaisse vide et valide pour désactiver.");
+  if (cle === null) return;
+  const { error } = await supabase.rpc("admin_definir_cle_email", { p_cle: cle });
+  if (error) { alert("Erreur : " + error.message); return; }
+  alert(cle.trim() ? "✅ Clé enregistrée. Les clients reçoivent maintenant « Ton code Taxi Wal » en français." : "Envoi d'e-mails désactivé.");
 });
 document.getElementById("btn-paiement-en-ligne-admin").addEventListener("click", async () => {
   const { data: etat } = await supabase.rpc("paiement_en_ligne_etat");
