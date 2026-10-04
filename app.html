@@ -1,27 +1,1789 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Taxi Wal</title>
 <script>
-  // Point d'entrée de l'application iPhone/Android Taxi Wal : on ouvre directement l'espace client
-  (function () {
-    var suite = window.location.search + window.location.hash;
-    window.location.replace("client.html" + suite);
-  })();
+// Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
+function dateLocaleISO(d) {
+  const x = d ? new Date(d) : new Date();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+}
+
+window.onerror = function(msg, url, line, col, err) {
+  document.documentElement.insertAdjacentHTML("afterbegin",
+    '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
+    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
+  return false;
+};
 </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taxi Wal — Réserver</title>
+<link rel="manifest" href="manifest-client.json">
+<meta name="theme-color" content="#f7f7f5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Taxi Wal">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  html, body { margin:0; height:100%; background:#fff; font-family:-apple-system, system-ui, sans-serif; }
-  .c { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#333; }
-  a { color:#c8102e; font-weight:600; }
+  :root{
+    --noir:#f7f7f5; --noir-2:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c;
+    --gris:#6b6b6b; --blanc:#1c1c1c; --bleu:#3b82c4;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:
+      linear-gradient(rgba(255,255,255,.90), rgba(255,255,255,.94)),
+      url('fond-flotte.jpg') center/cover no-repeat fixed;
+    color:var(--blanc);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh; padding-bottom:80px;
+  }
+  header{
+    padding:calc(20px + env(safe-area-inset-top)) 20px 16px; border-bottom:3px solid transparent;
+    border-image:linear-gradient(90deg, var(--rouge), var(--vert)) 1;
+    position:sticky; top:0; background:rgba(255,255,255,.85); backdrop-filter:blur(6px); z-index:5;
+    display:flex; align-items:center; gap:12px;
+  }
+  @keyframes logo-pulse{
+    0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(200,30,44,0)); }
+    50%{ transform:scale(1.06); filter:drop-shadow(0 0 10px rgba(200,30,44,.55)); }
+  }
+  header img{ width:38px; height:38px; border-radius:10px; animation:logo-pulse 3.5s ease-in-out infinite; }
+  header h1{ margin:0; font-size:1.05rem; font-weight:600; }
+  header p{ margin:2px 0 0; color:var(--gris); font-size:.8rem; }
+
+  #btn-installer-app{
+    display:none; margin:12px 20px 0; width:calc(100% - 40px); padding:12px;
+    border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; cursor:pointer;
+  }
+
+  #ecran-login{ padding:40px 20px; max-width:360px; margin:0 auto; }
+  #ecran-login label, #ecran-profil-setup label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
+  #ecran-login input, #ecran-profil-setup input{
+    width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
+    border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:1rem;
+  }
+  button{
+    width:100%; padding:14px; border-radius:10px; border:none;
+    background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
+  }
+  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
+  button.vert{ background:var(--vert); }
+  #btn-visiter-site{
+    width:100%; padding:14px; border-radius:10px; text-align:center; box-sizing:border-box;
+    background:var(--noir-2); border:1px solid #cfcfcd; color:var(--blanc); font-size:1rem; font-weight:600; margin-top:10px;
+  }
+  #erreur-login, #erreur-profil, #erreur-reservation{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
+
+  #ecran-profil-setup{ padding:40px 20px; max-width:360px; margin:0 auto; }
+
+  nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px 0; }
+  nav.onglets button{ padding:16px 8px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--gris); font-size:.95rem; font-weight:600; }
+  nav.onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
+
+  /* Agenda / calendrier */
+  .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .cal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .cal-header button{ width:auto; padding:6px 14px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); cursor:pointer; }
+  .cal-header span{ font-weight:600; text-transform:capitalize; }
+  .cal-grille{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
+  .cal-jour-nom{ font-size:.7rem; color:var(--gris); padding:4px 0; }
+  .cal-jour{ position:relative; padding:9px 0; border-radius:8px; font-size:.85rem; cursor:pointer; background:var(--noir); }
+  .cal-jour.hors-mois{ visibility:hidden; }
+  .cal-jour.aujourdhui{ border:1px solid var(--vert); }
+  .cal-jour.selectionne{ background:var(--rouge); color:#fff; }
+  .cal-jour .point{ position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:5px; height:5px; border-radius:50%; background:var(--vert); }
+  .cal-jour.selectionne .point{ background:#fff; }
+  #agenda-jour-titre{ color:var(--gris); font-size:.9rem; margin-bottom:10px; }
+
+  section{ display:none; padding:20px; }
+  section.visible{ display:block; }
+
+  .champ{ margin-bottom:14px; }
+  .champ label{ display:block; font-size:.8rem; color:var(--gris); margin-bottom:5px; }
+  .favoris-rapides{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .favoris-rapides button{
+    background:#fff; border:1px solid var(--rouge); color:var(--rouge); border-radius:20px;
+    padding:5px 12px; font-size:.78rem; font-weight:600;
+  }
+  .lien-favoris{ background:none; border:none; color:var(--rouge); font-size:.8rem; font-weight:600; padding:6px 0; text-decoration:underline; }
+  #panneau-favoris{ background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px; margin-top:8px; }
+  #liste-favoris .ligne-favori{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #e2e2df; font-size:.85rem; }
+  #liste-favoris .ligne-favori button{ background:none; border:none; color:var(--gris); font-size:1rem; }
+  .ligne-ajout-favori{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .ligne-ajout-favori input{ padding:9px; border-radius:8px; border:1px solid #cfcfcd; }
+  .ligne-ajout-favori button{ background:var(--vert); color:#fff; border:none; border-radius:8px; padding:9px; font-weight:600; }
+  .ligne-checkbox-marche{ display:flex; align-items:flex-start; gap:8px; font-size:.82rem; color:var(--blanc) !important; background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px; }
+  .ligne-checkbox-marche input{ width:auto; margin-top:2px; }
+  .champ input, .champ textarea{
+    width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd;
+    background:var(--noir-2); color:var(--blanc); font-size:.95rem;
+  }
+  .champ textarea{ resize:vertical; min-height:50px; }
+  .champ-double{ display:flex; gap:10px; }
+  .champ-double .champ{ flex:1; }
+
+  .course{
+    background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:12px;
+    border-left:4px solid var(--gris);
+  }
+  .course.en_attente{ border-left-color:var(--gris); }
+  .course.prix_envoye{ border-left-color:#c8961e; }
+  .course.attente_acompte{ border-left-color:#c8961e; }
+  .course.acompte_declare{ border-left-color:#3b82c4; }
+  .course.confirmee{ border-left-color:var(--vert); }
+  .course.assignee{ border-left-color:var(--bleu); }
+  .course.en_cours{ border-left-color:var(--rouge); }
+  .course.terminee{ border-left-color:var(--vert); opacity:.75; }
+  .course.annulee{ border-left-color:#c7c7c5; opacity:.5; }
+  .course h3{ margin:0 0 6px; font-size:1rem; }
+  .course .heure{ color:var(--gris); font-size:.85rem; margin-bottom:10px; }
+  .course .trajet{ font-size:.9rem; line-height:1.5; margin-bottom:10px; }
+  .course .trajet b{ color:var(--blanc); }
+  .statut-label{
+    display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
+    background:#dcdcda; color:var(--gris); margin-bottom:10px;
+  }
+  .statut-label.en_attente{ background:#cfcfcd; color:#c7c7c5444; }
+  .statut-label.prix_envoye{ background:rgba(200,150,30,.2); color:#8a6d1e; }
+  .statut-label.attente_acompte{ background:rgba(200,150,30,.2); color:#8a6d1e; }
+  .statut-label.acompte_declare{ background:rgba(59,130,196,.2); color:var(--bleu); }
+  .statut-label.confirmee{ background:rgba(31,138,76,.2); color:var(--vert); }
+  .statut-label.assignee{ background:rgba(59,130,196,.2); color:var(--bleu); }
+  .statut-label.en_cours{ background:rgba(200,30,44,.2); color:var(--rouge); }
+  .statut-label.terminee{ background:rgba(31,138,76,.2); color:var(--vert); }
+  .statut-label.annulee{ background:#dcdcda; color:var(--gris); }
+  #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
+
+  /* Info process de réservation */
+  #info-process{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; font-size:.83rem; color:var(--gris); line-height:1.6; }
+  #info-process b{ color:var(--blanc); }
+  #info-process ol{ margin:6px 0 0; padding-left:18px; }
+
+  /* Bloc prix proposé (à accepter) */
+  .bloc-prix-propose{ background:#ffffff; border:1px solid #c8961e; border-radius:10px; padding:12px; margin-top:6px; }
+  .bloc-prix-propose .montant{ font-size:1.3rem; font-weight:700; color:#8a6d1e; margin-bottom:8px; }
+  .bloc-chauffeur-assigne{ background:#ffffff; border:1px solid #1f8a4c; border-radius:10px; padding:12px; margin-top:6px; }
+  .bloc-chauffeur-assigne .ligne-chauffeur{ margin-bottom:8px; }
+  .bloc-chauffeur-assigne .code-verification{ background:#f7f7f5; border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:.95rem; }
+  .bloc-chauffeur-assigne .code-verification b{ font-size:1.2rem; letter-spacing:2px; color:#c81e2c; }
+  .bloc-chauffeur-assigne .code-verification small{ color:#5a5a5a; }
+  .btn-appeler-chauffeur{ background:#1f8a4c; color:#fff; border:none; border-radius:8px; padding:10px 14px; font-weight:600; width:100%; }
+  .mini-carte-chauffeur{ height:160px; border-radius:10px; overflow:hidden; margin:8px 0; background:#e8e8e5; }
+  .mini-carte-chauffeur .carte-en-attente{ margin:0; padding:16px; text-align:center; color:var(--gris); font-size:.85rem; }
+  .bloc-notation{ background:#ffffff; border:1px solid #e2e2df; border-radius:10px; padding:12px; margin-top:6px; text-align:center; }
+  .bloc-notation .titre-notation{ font-weight:600; margin-bottom:8px; }
+  .bloc-notation .etoiles{ font-size:1.8rem; letter-spacing:4px; margin-bottom:8px; cursor:pointer; }
+  .bloc-notation .etoile{ color:#d8d8d5; }
+  .bloc-notation .etoile.pleine{ color:#f0b400; }
+  .bloc-notation textarea{ width:100%; box-sizing:border-box; margin-bottom:8px; }
+  .bloc-notation .btn-envoyer-note{ background:#c81e2c; color:#fff; border:none; border-radius:8px; padding:10px 14px; font-weight:600; width:100%; }
+  .bloc-notation .btn-envoyer-note:disabled{ opacity:.5; }
+  .bloc-facture{ background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:12px; margin-top:6px; }
+  .bloc-facture label{ display:block; font-size:.78rem; color:var(--gris); margin-bottom:4px; }
+  .bloc-facture input{ width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid #cfcfcd; margin-bottom:8px; }
+  .bloc-facture .btn-demander-facture{ width:100%; background:var(--rouge); color:#fff; border:none; border-radius:8px; padding:10px; font-weight:600; }
+  .bloc-facture .facture-envoyee-msg{ margin:0; color:var(--vert); font-size:.85rem; text-align:center; }
+  .bloc-marche{ margin-top:6px; }
+  .attente-propositions{ color:var(--gris); font-size:.85rem; text-align:center; }
+  .titre-propositions{ font-weight:600; margin-bottom:6px; }
+  .ligne-proposition{ background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px; margin-bottom:8px; }
+  .ligne-proposition .prix-propose{ font-size:1.2rem; font-weight:700; color:var(--rouge); margin-top:2px; }
+  .ligne-proposition .message-propose{ font-size:.82rem; color:var(--gris); font-style:italic; margin-top:2px; }
+  .ligne-proposition .btn-choisir-proposition{ background:var(--vert); color:#fff; border:none; border-radius:8px; padding:8px 12px; font-weight:600; width:100%; margin-top:8px; }
+
+  /* Bloc paiement acompte (QR + IBAN) */
+  .bloc-paiement{ background:#f7f7f5; border-radius:10px; padding:14px; margin-top:8px; text-align:center; }
+  .bloc-paiement img{ width:180px; height:180px; border-radius:8px; background:#fff; padding:6px; margin:8px auto; display:block; }
+  .bloc-paiement .ligne-info{ text-align:left; font-size:.85rem; margin:6px 0; color:var(--gris); }
+  .bloc-paiement .ligne-info b{ color:var(--blanc); user-select:all; }
+  .bloc-paiement .note-instant{ font-size:.78rem; color:#8a6d1e; margin-top:8px; text-align:left; }
+  #btn-copier-iban{ background:#dcdcda; margin-top:10px; font-size:.85rem; padding:10px; }
+  .bloc-paiement .btn-copie{ background:#e6e6e3; color:#111; border:none; border-radius:8px; width:100%; margin-top:8px; font-size:.88rem; padding:11px; font-weight:600; box-sizing:border-box; }
+  .bloc-paiement .btn-contact{ display:block; text-align:center; text-decoration:none; border-radius:8px; padding:12px; margin-top:8px; font-weight:700; color:#fff; }
+  .bloc-paiement .btn-contact.wa{ background:#25a244; }
+  .bloc-paiement .btn-contact.mail{ background:#3b82c4; }
+  .bloc-verif{ background:rgba(59,130,196,.12); border-radius:10px; padding:12px; margin-top:6px; font-size:.85rem; color:var(--bleu); }
+
+  .badge-marque{
+    display:inline-block; padding:2px 10px; border-radius:20px; font-size:.7rem; font-weight:700;
+    background:linear-gradient(90deg, var(--rouge), var(--vert)); color:#fff; margin-bottom:4px;
+  }
+  .rr-rangee{ display:flex; gap:6px; margin-top:6px; }
+  .rr-rangee > button{ flex:1 1 0; min-width:0; width:auto; margin:0; padding:10px 4px; border-radius:10px; border:1px solid #cfcfcd; background:#fff; color:#111; font-weight:700; font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+  .rr-rangee > button.rr-puce{ border-color:#3b82c4; background:#eef4fb; color:#1d4f86; border-radius:999px; }
+  .rr-rangee > input{ flex:1.3 1 0; min-width:0; text-align:center; }
+  .champ-adresse-rr{ position:relative; }
+  .suggestions-adresse{ display:none; position:absolute; left:0; right:0; top:100%; margin-top:2px; z-index:40; background:#fff; border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); overflow:hidden; color:#111; text-align:left; }
+  .suggestion-adresse{ padding:12px; border-bottom:1px solid #eee; font-size:.92rem; cursor:pointer; }
+  .suggestion-adresse:last-child{ border-bottom:none; }
+  .suggestion-adresse small{ display:block; color:#777; font-size:.78rem; margin-top:2px; }
+  .suggestion-adresse:active{ background:#eaf5ee; }
+  /* ================== RÉSERVATION EN ÉTAPES ================== */
+  .rz-progress{ display:flex; gap:6px; margin:4px 0 6px; }
+  .rz-progress span{ flex:1; height:5px; border-radius:99px; background:#e3e3e0; transition:background .2s; }
+  .rz-progress span.fait{ background:var(--rouge); }
+  .rz-titre{ font-size:1.25rem; font-weight:800; margin:6px 0 2px; }
+  .rz-sous{ font-size:.85rem; color:var(--gris); margin-bottom:14px; }
+  .rz-etape{ display:none; animation:rzEntree .2s ease; }
+  .rz-etape.active{ display:block; }
+  @keyframes rzEntree{ from{ opacity:0; transform:translateX(12px);} to{ opacity:1; transform:none; } }
+  .rz-carte{ height:230px; border-radius:16px; overflow:hidden; border:none; margin:6px 0 8px; background:#eef1ee; box-shadow:0 6px 20px rgba(0,0,0,.12); }
+  .rz-bouton-vue{ background:#fff; border:none; border-radius:10px; padding:8px 11px; font-weight:800; font-size:.8rem; box-shadow:0 2px 8px rgba(0,0,0,.25); cursor:pointer; color:#111; }
+  .rz-carte .leaflet-control-attribution{ font-size:9px; background:rgba(255,255,255,.7); }
+  .rz-trajet-info{ display:flex; gap:10px; justify-content:center; font-weight:700; font-size:.92rem; margin-bottom:12px; color:#333; min-height:1.2em; }
+  .rz-vehicules{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .rz-vehicule{ border:2px solid #e3e3e0; border-radius:14px; padding:12px 10px; background:#fff; cursor:pointer; text-align:left; transition:border-color .15s, transform .15s; }
+  .rz-vehicule .rz-v-icone{ font-size:1.9rem; line-height:1; }
+  .rz-vehicule .rz-v-nom{ font-weight:800; margin-top:6px; font-size:.98rem; }
+  .rz-vehicule .rz-v-detail{ font-size:.76rem; color:var(--gris); margin-top:3px; line-height:1.35; }
+  .rz-vehicule.choisi{ border-color:var(--rouge); background:#fff5f5; transform:translateY(-2px); box-shadow:0 6px 16px rgba(200,30,44,.12); }
+  .rz-recap{ background:#fff; border:1px solid #e3e3e0; border-radius:14px; padding:14px; margin-bottom:14px; }
+  .rz-recap-ligne{ display:flex; gap:10px; padding:7px 0; border-bottom:1px solid #f0f0ee; font-size:.92rem; }
+  .rz-recap-ligne:last-child{ border-bottom:none; }
+  .rz-recap-ligne span:first-child{ width:26px; flex-shrink:0; text-align:center; }
+  .rz-recap-ligne a{ margin-left:auto; color:var(--rouge); font-size:.8rem; font-weight:700; text-decoration:underline; cursor:pointer; white-space:nowrap; }
+  .rz-prix{ background:linear-gradient(135deg,#fff5f5,#f1f9f4); border:1px solid #eadada; border-radius:14px; padding:12px 14px; margin-bottom:14px; }
+  .rz-prix b{ font-size:1.35rem; }
+  .rz-prix small{ display:block; color:var(--gris); font-size:.76rem; margin-top:3px; }
+  .rz-nav{ position:sticky; bottom:0; display:flex; gap:10px; padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 10px); background:linear-gradient(to top, var(--noir) 75%, transparent); z-index:20; }
+  .rz-nav button{ margin:0 !important; }
+  .rz-nav .rz-retour{ flex:0 0 32%; background:#fff !important; color:#111 !important; border:1px solid #cfcfcd !important; }
+  .rz-nav .rz-suivant{ flex:1; }
+  #info-process.rz-replie ol{ display:none; }
+  #info-process.rz-replie{ cursor:pointer; }
+  .btn-payer-en-ligne{ width:100%; padding:16px; border:none; border-radius:12px; background:#111; color:#fff; font-weight:800; font-size:1.05rem; margin-top:8px; cursor:pointer; }
+  .payer-moyens{ font-size:.78rem; color:var(--gris); text-align:center; margin-top:6px; }
+  .payer-ou{ font-size:.78rem; color:var(--gris); text-align:center; margin:12px 0 6px; }
 </style>
 </head>
 <body>
-  <div class="c">
-    <strong>Taxi Wal</strong>
-    <span>Chargement…</span>
-    <a href="client.html">Ouvrir l'application</a>
+
+<header style="position:relative;">
+  <img src="icon-192.png" alt="Taxi Wal">
+  <div style="flex:1;">
+    <h1>Taxi Wal</h1>
+    <p id="sous-titre">Connexion requise</p>
   </div>
+  <button id="btn-menu-client" style="display:none; width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
+  <div id="menu-client-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+    <button id="btn-deconnexion-menu-client" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
+  </div>
+</header>
+<button id="btn-installer-app">📲 Installer l'application</button>
+
+<!-- ÉCRAN CONNEXION -->
+<div id="ecran-login">
+  <label for="email">Adresse email</label>
+  <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email">
+  <div id="bloc-otp" style="display:none;">
+    <label for="otp">Code reçu par email</label>
+    <input type="text" id="otp" inputmode="numeric" placeholder="123456">
+  </div>
+  <div id="bloc-mdp-demo" style="display:none;">
+    <label for="mdp-demo">Mot de passe</label>
+    <input type="password" id="mdp-demo" placeholder="Mot de passe" autocomplete="current-password">
+  </div>
+  <button id="btn-envoyer-code">Recevoir un code</button>
+  <button id="btn-valider-code" style="display:none; margin-top:10px;">Se connecter</button>
+  <p id="erreur-login"></p>
+</div>
+
+<!-- ÉCRAN CRÉATION DE PROFIL (première connexion) -->
+<div id="ecran-profil-setup" style="display:none;">
+  <h2 style="text-align:center; font-size:1.1rem;">Bienvenue 👋</h2>
+  <p style="text-align:center; color:var(--gris); font-size:.9rem; margin-top:-8px;">Encore une étape avant de réserver.</p>
+  <label for="profil-nom">Ton nom</label>
+  <input type="text" id="profil-nom" placeholder="Nom et prénom">
+  <label for="profil-tel">Ton téléphone</label>
+  <input type="tel" id="profil-tel" placeholder="04xx xx xx xx">
+  <button id="btn-creer-profil">Continuer</button>
+  <p id="erreur-profil"></p>
+</div>
+
+<!-- ÉCRAN PRINCIPAL -->
+<div id="ecran-principal" style="display:none;">
+  <nav class="onglets">
+    <button class="actif" data-onglet="reserver">Réserver</button>
+    <button data-onglet="mes-courses">Mes courses</button>
+    <button data-onglet="agenda">Agenda</button>
+    <button data-onglet="profil">Profil</button>
+  </nav>
+
+  <!-- Onglet Réserver -->
+  <section id="section-reserver" class="visible">
+    <span class="badge-marque">TAXI WAL</span>
+    <div id="info-process">
+      <b>Comment ça se passe :</b>
+      <ol>
+        <li>Tu envoies ta demande de course</li>
+        <li>Notre équipe la confirme et t'envoie un prix</li>
+        <li>Tu acceptes le prix, puis tu payes un acompte de 30%</li>
+        <li>Dès que l'acompte est reçu, ta course est confirmée</li>
+      </ol>
+    </div>
+    <div class="champ">
+      <label>Adresse de départ</label>
+      <div class="champ-adresse-rr"><input type="text" id="input-depart" placeholder="Commence à taper : ex. Rue de Boussu 12"></div>
+      <div class="rr-rangee">
+        <button type="button" id="rr-position-depart">📍 Ma position actuelle</button>
+      </div>
+      <div class="favoris-rapides" id="favoris-rapides-depart"></div>
+    </div>
+    <div class="champ">
+      <label>Adresse d'arrivée</label>
+      <div class="champ-adresse-rr"><input type="text" id="input-arrivee" placeholder="Commence à taper : ex. Aéroport de Charleroi"></div>
+      <div class="rr-rangee">
+        <button type="button" id="rr-inverser">⇅ Inverser départ / arrivée</button>
+      </div>
+      <div class="favoris-rapides" id="favoris-rapides-arrivee"></div>
+      <button type="button" id="btn-gerer-favoris" class="lien-favoris">⭐ Gérer mes adresses favorites</button>
+      <div id="panneau-favoris" style="display:none;">
+        <div id="liste-favoris"></div>
+        <div class="ligne-ajout-favori">
+          <input type="text" id="input-libelle-favori" placeholder="ex: Domicile, Travail">
+          <input type="text" id="input-adresse-favori" placeholder="Adresse complète">
+          <button type="button" id="btn-ajouter-favori">+ Ajouter</button>
+        </div>
+      </div>
+    </div>
+    <div class="champ">
+      <label>Type de véhicule souhaité (optionnel)</label>
+      <select id="input-vehicule-souhaite">
+        <option value="">Peu importe</option>
+        <option value="berline">🚗 Berline</option>
+        <option value="van">🚐 Van / grand groupe</option>
+        <option value="pmr">♿ Véhicule adapté PMR</option>
+      </select>
+    </div>
+    <div class="champ" id="champ-chauffeur-prefere" style="display:none;">
+      <label>Chauffeur préféré (optionnel)</label>
+      <select id="input-chauffeur-prefere">
+        <option value="">Peu importe</option>
+      </select>
+    </div>
+    <div class="champ">
+      <label>Date et heure</label>
+      <div class="rr-rangee">
+        <button type="button" class="rr-puce" data-dans="30">Dans 30 min</button>
+        <button type="button" class="rr-puce" data-dans="60">Dans 1 h</button>
+        <button type="button" class="rr-puce" data-dans="120">Dans 2 h</button>
+      </div>
+      <div class="rr-rangee">
+        <button type="button" class="rr-puce" data-jour="0">Aujourd'hui</button>
+        <button type="button" class="rr-puce" data-jour="1">Demain</button>
+        <button type="button" class="rr-puce" data-jour="2">Après-demain</button>
+      </div>
+      <input type="datetime-local" id="input-date" style="margin-top:6px;">
+      <div class="rr-rangee">
+        <button type="button" data-decaler="-15">−15 min</button>
+        <button type="button" data-decaler="15">+15 min</button>
+        <button type="button" data-decaler="60">+1 h</button>
+      </div>
+    </div>
+    <div class="champ">
+      <label>Passagers</label>
+      <div class="rr-rangee">
+        <button type="button" id="rr-moins">−</button>
+        <input type="number" id="input-passagers" value="1" min="1" inputmode="numeric">
+        <button type="button" id="rr-plus">+</button>
+      </div>
+    </div>
+    <div class="champ">
+      <label>Bagages (optionnel)</label>
+      <input type="number" id="input-bagages" value="0" min="0">
+    </div>
+    <div class="champ">
+      <label>Notes pour le chauffeur (optionnel)</label>
+      <textarea id="input-notes" placeholder="Ex : siège bébé, gros bagages, vol à confirmer…"></textarea>
+    </div>
+    <div class="champ">
+      <label class="ligne-checkbox-marche">
+        <input type="checkbox" id="input-ouverte-marche" checked>
+        📢 Envoyer aussi ma demande à tous les chauffeurs disponibles (recevez plusieurs propositions de prix, en plus du prix que notre équipe peut vous envoyer)
+      </label>
+    </div>
+    <p id="erreur-reservation"></p>
+    <button id="btn-reserver">Demander cette course</button>
+  </section>
+
+  <!-- Onglet Mes courses -->
+  <section id="section-mes-courses">
+    <div id="liste-mes-courses"></div>
+    <div id="vide" style="display:none;">Aucune course pour le moment.</div>
+  </section>
+
+  <!-- Onglet Agenda -->
+  <section id="section-agenda">
+    <div class="calendrier">
+      <div class="cal-header">
+        <button id="cal-prev">‹</button>
+        <span id="cal-titre"></span>
+        <button id="cal-next">›</button>
+      </div>
+      <div class="cal-grille" id="cal-grille"></div>
+    </div>
+    <p id="agenda-jour-titre"></p>
+    <div id="agenda-liste-jour"></div>
+  </section>
+
+  <!-- Onglet Profil -->
+  <section id="section-profil">
+    <div class="champ">
+      <label>Nom</label>
+      <input type="text" id="edit-profil-nom">
+    </div>
+    <div class="champ">
+      <label>Téléphone</label>
+      <input type="tel" id="edit-profil-tel">
+    </div>
+    <p id="erreur-edit-profil"></p>
+    <button id="btn-sauver-profil" class="vert">Enregistrer</button>
+    <a href="https://taxiwal.com" target="_blank" id="btn-visiter-site" style="text-decoration:none; display:block;">🌐 Visiter le site Taxi Wal</a>
+    <button id="btn-deconnexion" class="secondaire">Se déconnecter</button>
+    <div style="margin-top:28px; padding-top:16px; border-top:1px solid #e3e3e0;">
+      <button id="btn-supprimer-compte" type="button" style="width:100%; padding:13px; border-radius:12px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700;">🗑️ Supprimer mon compte</button>
+      <p style="font-size:.78rem; color:var(--gris); margin-top:6px; text-align:center;">Supprime définitivement ton compte, tes adresses favorites et tes données personnelles. Tes demandes en attente sont annulées.</p>
+    </div>
+  </section>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script>
+// =====================================================================
+// CONFIGURATION — même projet Supabase que Chauffeur/Admin
+// =====================================================================
+const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
+
+// Échappe tout texte avant de l'insérer dans du HTML — empêche qu'un nom, une adresse
+// ou une note tapée par un client (ou un chauffeur) ne soit interprétée comme du code
+// (protection contre l'injection de script / XSS).
+function esc(valeur) {
+  if (valeur === null || valeur === undefined) return "";
+  return String(valeur)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// ---------- COORDONNÉES BANCAIRES (acompte de réservation) ----------
+const COMPTE_BENEFICIAIRE = "Rasikh International";
+const COMPTE_IBAN = "BE61 0019 7821 9717"; // affiché avec espaces
+const COMPTE_IBAN_BRUT = COMPTE_IBAN.replace(/\s/g, ""); // sans espaces, pour le QR et la copie
+
+// ---------- CONTACT DISPATCH (client sans moyen de payer à l'avance) ----------
+const DISPATCH_WHATSAPP = "32495353594";          // format international sans + ni espaces
+const DISPATCH_EMAIL = "infotaxiwal@gmail.com";
+
+async function copierTexte(texte, bouton, libelleOk) {
+  const avant = bouton.textContent;
+  try { await navigator.clipboard.writeText(texte); bouton.textContent = libelleOk; }
+  catch (e) { alert(texte); }
+  setTimeout(() => { bouton.textContent = avant; }, 2000);
+}
+
+// Construit le texte du QR code de paiement (norme européenne EPC069-12,
+// reconnue par le scanner intégré de toutes les applications bancaires belges)
+function genererPayloadEpcQr({ montant, communication }) {
+  const lignes = [
+    "BCD", "002", "1", "SCT", "",
+    COMPTE_BENEFICIAIRE.slice(0, 70),
+    COMPTE_IBAN_BRUT,
+    "EUR" + Number(montant).toFixed(2),
+    "", "",
+    communication.slice(0, 140)
+  ];
+  return lignes.join("\n");
+}
+function urlQrPaiement({ montant, communication }) {
+  const payload = genererPayloadEpcQr({ montant, communication });
+  return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=M&data=" + encodeURIComponent(payload);
+}
+function communicationCourse(course) {
+  const heure = new Date(course.date_heure).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return `Course Taxi - ${course.adresse_depart} - ${course.adresse_arrivee} - ${heure}`;
+}
+
+if (!window.supabase) {
+  document.body.insertAdjacentHTML("afterbegin",
+    '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
+    'Problème de connexion internet — recharge la page.</div>');
+  throw new Error("supabase-js non chargé (pas de connexion internet ?)");
+}
+const stockageMemoire = {};
+const stockageSecurise = {
+  getItem: (cle) => { try { return window.localStorage.getItem(cle); } catch (e) { return stockageMemoire[cle] || null; } },
+  setItem: (cle, valeur) => { try { window.localStorage.setItem(cle, valeur); } catch (e) { stockageMemoire[cle] = valeur; } },
+  removeItem: (cle) => { try { window.localStorage.removeItem(cle); } catch (e) { delete stockageMemoire[cle]; } }
+};
+
+let supabase;
+try {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      storage: stockageSecurise
+    }
+  });
+} catch (e) {
+  document.body.insertAdjacentHTML("afterbegin",
+    '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
+    'Erreur au démarrage : ' + e.message + '</div>');
+}
+
+let monProfil = null;
+
+// ---------- COMPTE DÉMO (vérification Apple / Google) : connexion par mot de passe ----------
+const EMAIL_DEMO = "demo@taxiwal.com";
+function estCompteDemo(email) { return (email || "").trim().toLowerCase() === EMAIL_DEMO; }
+document.getElementById("email").addEventListener("input", () => {
+  const demo = estCompteDemo(document.getElementById("email").value);
+  document.getElementById("bloc-mdp-demo").style.display = demo ? "block" : "none";
+  const btn = document.getElementById("btn-envoyer-code");
+  if (!btn.disabled) btn.textContent = demo ? "Se connecter" : "Recevoir un code";
+});
+
+// ---------- CONNEXION (OTP email) ----------
+document.getElementById("btn-envoyer-code").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-envoyer-code");
+  const email = document.getElementById("email").value.trim();
+  const erreur = document.getElementById("erreur-login");
+  erreur.textContent = "";
+  if (!email) { erreur.textContent = "Entre ton adresse email."; return; }
+
+  if (estCompteDemo(email)) {
+    const mdp = document.getElementById("mdp-demo").value;
+    if (!mdp) { erreur.textContent = "Entre le mot de passe."; return; }
+    btn.disabled = true; btn.textContent = "Connexion…";
+    const { error } = await supabase.auth.signInWithPassword({ email: EMAIL_DEMO, password: mdp });
+    btn.disabled = false; btn.textContent = "Se connecter";
+    if (error) { erreur.textContent = "Mot de passe incorrect."; return; }
+    await apresConnexion();
+    return;
+  }
+
+  btn.disabled = true;
+  const texteOriginal = btn.textContent;
+  btn.textContent = "Envoi en cours…";
+
+  try {
+    // 1) Notre e-mail en français avec le code à 6 chiffres
+    let envoye = false;
+    try {
+      const { data, error: errFn } = await supabase.functions.invoke("connexion-client", { body: { email } });
+      if (!errFn && data && data.ok) envoye = true;
+      else if (data && data.erreur && !data.repli) { erreur.textContent = data.erreur; btn.disabled = false; btn.textContent = texteOriginal; return; }
+    } catch (e) { /* on passe au système de secours */ }
+    // 2) Secours : envoi standard
+    if (!envoye) {
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) { erreur.textContent = "Erreur : " + error.message; btn.disabled = false; btn.textContent = texteOriginal; return; }
+    }
+    const aide = document.getElementById("aide-code-email");
+    if (aide) aide.innerHTML = "📩 Un e-mail <b>« Ton code Taxi Wal »</b> vient d'être envoyé à " + email.replace(/[<>&]/g, "") + ".<br>Tape le <b>code à 6 chiffres</b> ci-dessous. Pas reçu ? Regarde dans tes <b>spams</b> (ou « Promotions »).";
+
+    if (!document.getElementById("aide-code-email")) {
+      const p = document.createElement("p"); p.id = "aide-code-email";
+      p.style.cssText = "font-size:.88rem; color:#333; background:#eef4fb; border:1px solid #bcd3ee; border-radius:10px; padding:10px 12px; margin:10px 0;";
+      document.getElementById("bloc-otp").prepend(p);
+      p.innerHTML = "📩 Un e-mail <b>« Ton code Taxi Wal »</b> vient d'être envoyé à " + email.replace(/[<>&]/g, "") + ".<br>Tape le <b>code à 6 chiffres</b> ci-dessous. Pas reçu ? Regarde dans tes <b>spams</b>.";
+    }
+    document.getElementById("bloc-otp").style.display = "block";
+    btn.style.display = "none";
+    document.getElementById("btn-valider-code").style.display = "block";
+  } catch (e) {
+    erreur.textContent = "Connexion impossible. Vérifie ta connexion internet et réessaie.";
+    btn.disabled = false;
+    btn.textContent = texteOriginal;
+  }
+});
+
+document.getElementById("btn-valider-code").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const otp = document.getElementById("otp").value.trim();
+  const erreur = document.getElementById("erreur-login");
+
+  const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+  if (error) { erreur.textContent = "Code invalide."; return; }
+
+  await apresConnexion();
+});
+
+// ---------- APRÈS CONNEXION : vérifie si le profil client existe déjà ----------
+async function apresConnexion() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: profil } = await supabase
+    .from("profils").select("*").eq("id", user.id).maybeSingle();
+
+  document.getElementById("ecran-login").style.display = "none";
+
+  if (!profil) {
+    document.getElementById("ecran-profil-setup").style.display = "block";
+  } else {
+    monProfil = profil;
+    demarrerEspaceClient();
+  }
+}
+
+document.getElementById("btn-creer-profil").addEventListener("click", async () => {
+  const nom = document.getElementById("profil-nom").value.trim();
+  const tel = document.getElementById("profil-tel").value.trim();
+  const erreur = document.getElementById("erreur-profil");
+  if (!nom || !tel) { erreur.textContent = "Merci de remplir ton nom et ton téléphone."; return; }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from("profils").insert({
+    id: user.id, role: "client", nom, telephone: tel, actif: true
+  }).select().single();
+
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+
+  monProfil = data;
+  document.getElementById("ecran-profil-setup").style.display = "none";
+  demarrerEspaceClient();
+});
+
+// ---------- DÉMARRAGE ESPACE CLIENT ----------
+function demarrerEspaceClient() {
+  document.getElementById("ecran-principal").style.display = "block";
+  document.getElementById("sous-titre").textContent = "Bonjour " + (monProfil.nom || "").split(" ")[0];
+  document.getElementById("btn-menu-client").style.display = "block";
+
+  document.getElementById("edit-profil-nom").value = monProfil.nom || "";
+  document.getElementById("edit-profil-tel").value = monProfil.telephone || "";
+
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+
+  // Pré-remplit la date avec "maintenant + 1h" par confort
+  const dansUneHeure = new Date(Date.now() + 60 * 60000);
+  dansUneHeure.setMinutes(0);
+  document.getElementById("input-date").value = dansUneHeure.toISOString().slice(0, 16);
+
+  chargerMesCourses();
+  setInterval(chargerMesCourses, 20000);
+  chargerChauffeursDejaEus();
+  chargerAdressesFavorites();
+}
+
+// ---------- Adresses favorites (domicile, travail...) ----------
+let favorisCache = [];
+async function chargerAdressesFavorites() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data } = await supabase.from("adresses_favorites").select("*").eq("client_id", user.id).order("created_at");
+  favorisCache = data || [];
+  afficherFavorisRapides();
+  afficherListeFavoris();
+}
+
+function afficherFavorisRapides() {
+  const zoneDepart = document.getElementById("favoris-rapides-depart");
+  const zoneArrivee = document.getElementById("favoris-rapides-arrivee");
+  zoneDepart.innerHTML = ""; zoneArrivee.innerHTML = "";
+  favorisCache.forEach(f => {
+    const b1 = document.createElement("button"); b1.type = "button"; b1.textContent = "⭐ " + f.libelle;
+    b1.addEventListener("click", () => { document.getElementById("input-depart").value = f.adresse; });
+    zoneDepart.appendChild(b1);
+    const b2 = document.createElement("button"); b2.type = "button"; b2.textContent = "⭐ " + f.libelle;
+    b2.addEventListener("click", () => { document.getElementById("input-arrivee").value = f.adresse; });
+    zoneArrivee.appendChild(b2);
+  });
+}
+
+function afficherListeFavoris() {
+  const liste = document.getElementById("liste-favoris");
+  if (favorisCache.length === 0) { liste.innerHTML = '<p style="color:var(--gris); font-size:.82rem; margin:0;">Aucune adresse enregistrée.</p>'; return; }
+  liste.innerHTML = favorisCache.map(f => `
+    <div class="ligne-favori" data-id="${f.id}">
+      <span><b>${esc(f.libelle)}</b> — ${esc(f.adresse)}</span>
+      <button type="button" class="btn-suppr-favori">🗑️</button>
+    </div>
+  `).join("");
+  liste.querySelectorAll(".btn-suppr-favori").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.closest(".ligne-favori").dataset.id;
+      await supabase.from("adresses_favorites").delete().eq("id", id);
+      chargerAdressesFavorites();
+    });
+  });
+}
+
+document.getElementById("btn-gerer-favoris").addEventListener("click", () => {
+  const panneau = document.getElementById("panneau-favoris");
+  panneau.style.display = panneau.style.display === "none" ? "block" : "none";
+});
+
+document.getElementById("btn-ajouter-favori").addEventListener("click", async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  const libelle = document.getElementById("input-libelle-favori").value.trim();
+  const adresse = document.getElementById("input-adresse-favori").value.trim();
+  if (!libelle || !adresse) return;
+  await supabase.from("adresses_favorites").insert({ client_id: user.id, libelle, adresse });
+  document.getElementById("input-libelle-favori").value = "";
+  document.getElementById("input-adresse-favori").value = "";
+  chargerAdressesFavorites();
+});
+
+// ---------- Chauffeur préféré : proposé seulement si le client a déjà eu au moins un chauffeur ----------
+async function chargerChauffeursDejaEus() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("chauffeur_id, profils:chauffeur_id(nom)")
+    .eq("client_id", user.id)
+    .eq("statut", "terminee")
+    .not("chauffeur_id", "is", null);
+
+  const vus = new Map();
+  (courses || []).forEach(c => { if (c.profils?.nom) vus.set(c.chauffeur_id, c.profils.nom); });
+  if (vus.size === 0) return;
+
+  const select = document.getElementById("input-chauffeur-prefere");
+  vus.forEach((nom, id) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = nom;
+    select.appendChild(option);
+  });
+  document.getElementById("champ-chauffeur-prefere").style.display = "block";
+}
+
+// ---------- MENU (☰) : déconnexion ----------
+document.getElementById("btn-menu-client").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById("menu-client-deroulant");
+  menu.style.display = menu.style.display === "none" ? "block" : "none";
+});
+document.addEventListener("click", () => {
+  document.getElementById("menu-client-deroulant").style.display = "none";
+});
+document.getElementById("btn-deconnexion-menu-client").addEventListener("click", async () => {
+  if (!confirm("Se déconnecter de Taxi Wal ?")) return;
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+// ---------- NAVIGATION ONGLETS ----------
+document.querySelectorAll("nav.onglets button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav.onglets button").forEach(b => b.classList.remove("actif"));
+    btn.classList.add("actif");
+    document.querySelectorAll("section").forEach(s => s.classList.remove("visible"));
+    document.getElementById("section-" + btn.dataset.onglet).classList.add("visible");
+  });
+});
+
+// ---------- RÉSERVER UNE COURSE ----------
+document.getElementById("btn-reserver").addEventListener("click", async () => {
+  const erreur = document.getElementById("erreur-reservation");
+  erreur.textContent = "";
+
+  const depart = document.getElementById("input-depart").value.trim();
+  const arrivee = document.getElementById("input-arrivee").value.trim();
+  const date = document.getElementById("input-date").value;
+
+  if (!depart || !arrivee || !date) {
+    erreur.textContent = "Adresse de départ, d'arrivée et date/heure sont obligatoires.";
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("courses").insert({
+    client_id: user.id,
+    origine: "client",
+    statut: "en_attente",
+    chauffeur_id: null,
+    client_nom: monProfil.nom,
+    client_telephone: monProfil.telephone,
+    adresse_depart: depart,
+    adresse_arrivee: arrivee,
+    date_heure: new Date(date).toISOString(),
+    passagers: parseInt(document.getElementById("input-passagers").value) || 1,
+    bagages: parseInt(document.getElementById("input-bagages").value) || 0,
+    vehicule_souhaite: document.getElementById("input-vehicule-souhaite").value || null,
+    chauffeur_prefere_id: document.getElementById("input-chauffeur-prefere").value || null,
+    ouverte_marche: document.getElementById("input-ouverte-marche").checked,
+    aller_retour: !!(document.getElementById("rz-aller-retour") && document.getElementById("rz-aller-retour").checked),
+    distance_km: (window.__distanceTrajetKm ? Math.round(window.__distanceTrajetKm * 10) / 10 : null),
+    duree_min: (window.__dureeTrajetMin ? Math.round(window.__dureeTrajetMin) : null),
+    notes: document.getElementById("input-notes").value.trim()
+  });
+
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+
+  document.getElementById("input-depart").value = "";
+  document.getElementById("input-arrivee").value = "";
+  document.getElementById("input-vehicule-souhaite").value = "";
+  document.getElementById("input-chauffeur-prefere").value = "";
+  document.getElementById("input-notes").value = "";
+  alert("Demande envoyée ! Elle doit être confirmée par notre équipe. Tu vas d'abord recevoir un prix à accepter, puis un acompte de 30% te sera demandé pour confirmer la course. Suis l'avancement dans \"Mes courses\".");
+  document.querySelector('[data-onglet="mes-courses"]').click();
+  chargerMesCourses();
+});
+
+// ---------- MES COURSES ----------
+let idsEtStatutsConnus = null; // détecte les changements de statut pour notifier
+
+async function chargerMesCourses() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: courses, error } = await supabase
+    .from("courses")
+    .select("*, profils:chauffeur_id(nom, telephone), vehicules:vehicule_id(nom, plaque)")
+    .eq("client_id", user.id)
+    .order("date_heure", { ascending: false });
+
+  if (error) { console.error(error); return; }
+
+  // Détecte les changements de statut depuis le dernier chargement
+  if (idsEtStatutsConnus === null) {
+    idsEtStatutsConnus = new Map((courses || []).map(c => [c.id, c.statut]));
+  } else {
+    (courses || []).forEach(c => {
+      const ancienStatut = idsEtStatutsConnus.get(c.id);
+      if (ancienStatut && ancienStatut !== c.statut) {
+        notifierChangementStatut(c);
+      }
+      idsEtStatutsConnus.set(c.id, c.statut);
+    });
+  }
+
+  const conteneur = document.getElementById("liste-mes-courses");
+  const videMsg = document.getElementById("vide");
+  conteneur.innerHTML = "";
+
+  dernieresCoursesClient = courses || [];
+  rendreCalendrierClient();
+
+  if (!courses || courses.length === 0) {
+    videMsg.style.display = "block";
+    return;
+  }
+  videMsg.style.display = "none";
+
+  for (const c of courses) conteneur.appendChild(await construireCarteCourseClient(c));
+}
+
+// ---------- AGENDA / CALENDRIER (mes réservations) ----------
+let dernieresCoursesClient = [];
+let calMoisAffiche = new Date();
+calMoisAffiche.setDate(1);
+let calJourSelectionne = dateLocaleISO();
+
+function joursAvecCoursesClient(courses) {
+  const map = {};
+  (courses || []).forEach(c => {
+    const jour = dateLocaleISO(c.date_heure);
+    map[jour] = (map[jour] || 0) + 1;
+  });
+  return map;
+}
+
+function rendreCalendrierClient() {
+  const grille = document.getElementById("cal-grille");
+  const titre = document.getElementById("cal-titre");
+  if (!grille) return;
+  grille.innerHTML = "";
+
+  ["L", "M", "M", "J", "V", "S", "D"].forEach(n => {
+    const d = document.createElement("div");
+    d.className = "cal-jour-nom";
+    d.textContent = n;
+    grille.appendChild(d);
+  });
+
+  const annee = calMoisAffiche.getFullYear(), mois = calMoisAffiche.getMonth();
+  titre.textContent = calMoisAffiche.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+
+  const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
+  const nbJours = new Date(annee, mois + 1, 0).getDate();
+  const map = joursAvecCoursesClient(dernieresCoursesClient);
+  const todayStr = dateLocaleISO();
+
+  for (let i = 0; i < premierJourSemaine; i++) {
+    const vide = document.createElement("div");
+    vide.className = "cal-jour hors-mois";
+    grille.appendChild(vide);
+  }
+
+  for (let jour = 1; jour <= nbJours; jour++) {
+    const dateStr = `${annee}-${String(mois + 1).padStart(2, "0")}-${String(jour).padStart(2, "0")}`;
+    const cell = document.createElement("div");
+    cell.className = "cal-jour"
+      + (dateStr === todayStr ? " aujourdhui" : "")
+      + (dateStr === calJourSelectionne ? " selectionne" : "");
+    cell.textContent = jour;
+    if (map[dateStr]) {
+      const point = document.createElement("div");
+      point.className = "point";
+      cell.appendChild(point);
+    }
+    cell.addEventListener("click", () => {
+      calJourSelectionne = dateStr;
+      rendreCalendrierClient();
+    });
+    grille.appendChild(cell);
+  }
+
+  afficherCoursesDuJourClient(calJourSelectionne);
+}
+
+async function afficherCoursesDuJourClient(dateStr) {
+  const titre = document.getElementById("agenda-jour-titre");
+  const liste = document.getElementById("agenda-liste-jour");
+  const dateLisible = new Date(dateStr + "T12:00:00").toLocaleDateString("fr-BE", {
+    weekday: "long", day: "2-digit", month: "long"
+  });
+  titre.textContent = dateLisible;
+
+  const coursesDuJour = dernieresCoursesClient.filter(c => dateLocaleISO(c.date_heure) === dateStr);
+  liste.innerHTML = "";
+  if (coursesDuJour.length === 0) {
+    liste.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune course ce jour-là.</p>';
+    return;
+  }
+  for (const c of coursesDuJour) liste.appendChild(await construireCarteCourseClient(c));
+}
+
+document.getElementById("cal-prev").addEventListener("click", () => {
+  calMoisAffiche.setMonth(calMoisAffiche.getMonth() - 1);
+  rendreCalendrierClient();
+});
+document.getElementById("cal-next").addEventListener("click", () => {
+  calMoisAffiche.setMonth(calMoisAffiche.getMonth() + 1);
+  rendreCalendrierClient();
+});
+
+async function construireCarteCourseClient(course) {
+  const div = document.createElement("div");
+  div.className = "course " + course.statut;
+
+  const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
+    weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+  });
+
+  const labelStatut = {
+    en_attente: "En attente de confirmation",
+    prix_envoye: "Prix proposé — à accepter",
+    attente_acompte: "Acompte à payer",
+    acompte_declare: "Paiement déclaré — vérification en cours",
+    confirmee: "Confirmée — chauffeur à venir",
+    assignee: "Chauffeur en route",
+    en_cours: "Course en cours", terminee: "Terminée", annulee: "Annulée"
+  }[course.statut] || course.statut;
+
+  div.innerHTML = `
+    <span class="statut-label ${course.statut}">${esc(labelStatut)}</span>
+    <div class="heure">${esc(heure)}</div>
+    <div class="trajet">
+      <b>Départ :</b> ${esc(course.adresse_depart)}<br>
+      <b>Arrivée :</b> ${esc(course.adresse_arrivee)}
+      ${course.prix ? `<br><b>Prix :</b> ${esc(course.prix)} €` : ""}
+    </div>
+  `;
+
+  // --- Demande publiée au marché : afficher les propositions reçues des chauffeurs ---
+  if (course.statut === "en_attente" && course.ouverte_marche) {
+    const { data: propositions } = await supabase
+      .from("propositions_courses")
+      .select("*, profils:chauffeur_id(nom)")
+      .eq("course_id", course.id)
+      .order("created_at", { ascending: true });
+
+    const blocMarche = document.createElement("div");
+    blocMarche.className = "bloc-marche";
+    if (!propositions || propositions.length === 0) {
+      blocMarche.innerHTML = `<p class="attente-propositions">📢 Demande envoyée aux chauffeurs disponibles — en attente de propositions…</p>`;
+    } else {
+      const { data: positions } = await supabase
+        .from("positions_chauffeurs")
+        .select("chauffeur_id, latitude, longitude")
+        .in("chauffeur_id", propositions.map(p => p.chauffeur_id));
+      const positionParChauffeur = new Map((positions || []).map(p => [p.chauffeur_id, p]));
+
+      blocMarche.innerHTML = `<div class="titre-propositions">📢 ${propositions.length} proposition${propositions.length > 1 ? "s" : ""} reçue${propositions.length > 1 ? "s" : ""}</div>` +
+        propositions.map(p => {
+          const pos = positionParChauffeur.get(p.chauffeur_id);
+          const distanceTxt = pos ? ` · 📍 chauffeur localisé à proximité` : "";
+          return `
+            <div class="ligne-proposition" data-id="${p.id}">
+              <div><b>${esc(p.profils?.nom) || "Chauffeur"}</b>${distanceTxt}</div>
+              ${p.prix_propose ? `<div class="prix-propose">${esc(p.prix_propose)} €</div>` : ""}
+              ${p.message ? `<div class="message-propose">"${esc(p.message)}"</div>` : ""}
+              <button type="button" class="btn-choisir-proposition">✅ Choisir ce chauffeur</button>
+            </div>`;
+        }).join("");
+    }
+    div.appendChild(blocMarche);
+    blocMarche.querySelectorAll(".btn-choisir-proposition").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const ligne = btn.closest(".ligne-proposition");
+        if (!confirm("Confirmer ce chauffeur pour votre course ?")) return;
+        const { error } = await supabase.rpc("client_accepte_proposition", { p_proposition_id: ligne.dataset.id });
+        if (error) { alert("Erreur : " + error.message); return; }
+        // Notification désormais gérée automatiquement par la base (trigger + file d'attente unifiée)
+        chargerMesCourses();
+      });
+    });
+  }
+
+  // --- Chauffeur assigné : coordonnées du chauffeur + véhicule + code de vérification ---
+  if ((course.statut === "assignee" || course.statut === "en_cours") && course.profils) {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-chauffeur-assigne";
+    bloc.innerHTML = `
+      <div class="ligne-chauffeur">🚕 <b>${esc(course.profils.nom) || "Votre chauffeur"}</b>${course.vehicules ? ` — ${esc(course.vehicules.nom) || ""} ${esc(course.vehicules.plaque) ? "(" + esc(course.vehicules.plaque) + ")" : ""}` : ""}</div>
+      <div class="mini-carte-chauffeur" id="carte-course-${course.id}"></div>
+      ${course.code_verification ? `<div class="code-verification">🔒 Code de vérification : <b>${esc(course.code_verification)}</b><br><small>Donnez ce code au chauffeur pour confirmer qu'il s'agit bien de votre course.</small></div>` : ""}
+      ${course.profils.telephone ? `<button type="button" class="btn-appeler-chauffeur">📞 Appeler le chauffeur</button>` : ""}
+    `;
+    const btnAppel = bloc.querySelector(".btn-appeler-chauffeur");
+    if (btnAppel) {
+      btnAppel.addEventListener("click", () => {
+        window.location.href = `tel:${course.profils.telephone.replace(/\s/g, "")}`;
+      });
+    }
+    div.appendChild(bloc);
+    afficherCarteChauffeurClient(course.id, course.chauffeur_id);
+  }
+
+  // --- Prix proposé : le client doit l'accepter avant de pouvoir payer l'acompte ---
+  if (course.statut === "prix_envoye") {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-prix-propose";
+    bloc.innerHTML = `
+      <div class="montant">${esc(course.prix)} € — acompte de ${esc(course.acompte_montant)} €</div>
+      <button type="button">✅ Accepter ce prix</button>
+    `;
+    bloc.querySelector("button").addEventListener("click", async () => {
+      await supabase.from("courses").update({ statut: "attente_acompte" }).eq("id", course.id);
+      chargerMesCourses();
+    });
+    div.appendChild(bloc);
+  }
+
+  // --- Acompte à payer : QR code + IBAN + bouton "j'ai payé" ---
+  if (course.statut === "attente_acompte") {
+    const communication = communicationCourse(course);
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-paiement";
+    bloc.innerHTML = `
+      <div style="font-weight:700; margin-bottom:4px;">Acompte à payer : ${esc(course.acompte_montant)} €</div>
+      <div class="zone-paiement-en-ligne" style="display:none;">
+        <button type="button" class="btn-payer-en-ligne">💳 Payer maintenant · ${esc(course.acompte_montant)} €</button>
+        <div class="payer-moyens"> Apple Pay · Bancontact (ouvre ton app bancaire) · carte</div>
+        <div class="payer-ou">— ou par virement —</div>
+      </div>
+      <img src="${urlQrPaiement({ montant: course.acompte_montant, communication })}" alt="QR code de paiement">
+      <div class="ligne-info">Bénéficiaire<br><b>${esc(COMPTE_BENEFICIAIRE)}</b></div>
+      <div class="ligne-info">IBAN<br><b>${esc(COMPTE_IBAN)}</b></div>
+      <div class="ligne-info">Communication (important)<br><b>${esc(communication)}</b></div>
+      <button type="button" id="btn-copier-iban">📋 Copier l'IBAN</button>
+      <div class="note-instant">⚡ Merci de faire un virement instantané si ta banque le propose : on reçoit la confirmation en quelques secondes et on peut valider ta course tout de suite.</div>
+      <div class="note-instant" style="color:var(--gris);">Scanne ce QR code avec l'appareil photo ou l'app de ta banque : le montant et la communication se remplissent automatiquement.</div>
+      <div class="bloc-payer-tel">
+        <div style="font-weight:700; margin:12px 0 6px;">📲 Tu réserves depuis ce téléphone ?</div>
+        <div class="note-instant" style="color:var(--gris); margin-top:0;">Ouvre l'app de ta banque → <b>Virement</b>, puis colle les infos ci-dessous (ou enregistre le QR : la plupart des apps bancaires belges savent lire un QR depuis tes photos).</div>
+        <button type="button" class="btn-copie" data-copie="iban">📋 Copier l'IBAN</button>
+        <button type="button" class="btn-copie" data-copie="montant">📋 Copier le montant (${esc(course.acompte_montant)} €)</button>
+        <button type="button" class="btn-copie" data-copie="comm">📋 Copier la communication</button>
+        <a class="btn-copie" href="${urlQrPaiement({ montant: course.acompte_montant, communication })}" target="_blank" rel="noopener" style="display:block; text-decoration:none; text-align:center;">🖼️ Ouvrir le QR en grand (appui long → enregistrer)</a>
+      </div>
+      <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">J'ai payé l'acompte</button>
+      <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;">🙋 Je ne peux pas payer à l'avance</button>
+      <div class="bloc-contact-dispatch" style="display:none;">
+        <div class="note-instant" style="color:var(--gris);">Pas de souci : contacte notre dispatch, on trouve une solution ensemble (paiement à bord, facture…).</div>
+        <a class="btn-contact wa" target="_blank" rel="noopener">💬 Écrire sur WhatsApp</a>
+        <a class="btn-contact mail">✉️ Envoyer un e-mail</a>
+      </div>
+    `;
+    // Paiement en ligne (Apple Pay / Bancontact / carte) si activé par la centrale
+    etatPaiementEnLigne().then(etat => {
+      if (etat !== "actif" && etat !== "test") return;
+      const zp = bloc.querySelector(".zone-paiement-en-ligne");
+      zp.style.display = "block";
+      if (etat === "test") zp.querySelector(".payer-moyens").textContent += " (mode test)";
+      zp.querySelector(".btn-payer-en-ligne").addEventListener("click", async (e) => {
+        const btn = e.currentTarget; btn.disabled = true; btn.textContent = "Ouverture du paiement…";
+        const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id } });
+        if (error || !data || !data.url) {
+          btn.disabled = false; btn.textContent = "💳 Payer maintenant · " + course.acompte_montant + " €";
+          alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement ci-dessous.");
+          return;
+        }
+        window.location.href = data.url;
+      });
+    });
+    const texteContact = `Bonjour Taxi Wal, j'ai une réservation (${communication}) de ${course.prix} € mais je ne peux pas payer l'acompte à l'avance. Pouvez-vous me contacter ?`;
+    bloc.querySelector(".btn-contact.wa").href = `https://wa.me/${DISPATCH_WHATSAPP}?text=${encodeURIComponent(texteContact)}`;
+    bloc.querySelector(".btn-contact.mail").href = `mailto:${DISPATCH_EMAIL}?subject=${encodeURIComponent("Paiement de ma réservation")}&body=${encodeURIComponent(texteContact)}`;
+    bloc.querySelector("#btn-pas-moyen").addEventListener("click", () => {
+      const z = bloc.querySelector(".bloc-contact-dispatch");
+      z.style.display = z.style.display === "none" ? "block" : "none";
+    });
+    bloc.querySelectorAll("button.btn-copie[data-copie]").forEach(b => b.addEventListener("click", () => {
+      const v = { iban: COMPTE_IBAN_BRUT, montant: Number(course.acompte_montant).toFixed(2), comm: communication }[b.dataset.copie];
+      copierTexte(v, b, "✅ Copié");
+    }));
+    bloc.querySelector("#btn-copier-iban").addEventListener("click", async (e) => {
+      try {
+        await navigator.clipboard.writeText(COMPTE_IBAN_BRUT);
+        e.target.textContent = "✅ IBAN copié";
+        setTimeout(() => { e.target.textContent = "📋 Copier l'IBAN"; }, 2000);
+      } catch (err) { alert("IBAN : " + COMPTE_IBAN); }
+    });
+    bloc.querySelector("#btn-jai-paye").addEventListener("click", async () => {
+      if (!confirm("Confirmes-tu avoir déjà envoyé le virement de " + course.acompte_montant + " € ?")) return;
+      await supabase.from("courses").update({
+        statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
+      }).eq("id", course.id);
+      chargerMesCourses();
+    });
+    div.appendChild(bloc);
+  }
+
+  // --- Paiement déclaré : en attente de vérification côté admin ---
+  if (course.statut === "acompte_declare") {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-verif";
+    bloc.textContent = "Merci ! Ton paiement est en cours de vérification par notre équipe. Ta course sera confirmée dès réception.";
+    div.appendChild(bloc);
+  }
+
+  if (course.statut === "confirmee") {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-verif";
+    bloc.style.background = "rgba(31,138,76,.12)"; bloc.style.color = "var(--vert)";
+    bloc.textContent = "Acompte reçu, ta course est confirmée ! Un chauffeur te sera assigné prochainement.";
+    div.appendChild(bloc);
+  }
+
+  // --- Course terminée : recevoir sa facture/reçu par email (idée reprise de Victor Cab) ---
+  if (course.statut === "terminee") {
+    const blocFacture = document.createElement("div");
+    blocFacture.className = "bloc-facture";
+    if (course.facture_envoyee) {
+      blocFacture.innerHTML = `<p class="facture-envoyee-msg">📧 Facture envoyée par email.</p>`;
+    } else {
+      blocFacture.innerHTML = `
+        <label>Numéro d'entreprise (TVA) — optionnel, pour une vraie facture pro</label>
+        <input type="text" class="input-numero-entreprise" placeholder="ex: BE0123456789">
+        <button type="button" class="btn-demander-facture">📧 Recevoir ma facture par email</button>
+      `;
+      blocFacture.querySelector(".btn-demander-facture").addEventListener("click", async (e) => {
+        e.target.disabled = true; e.target.textContent = "Envoi en cours…";
+        const numeroEntreprise = blocFacture.querySelector(".input-numero-entreprise").value.trim();
+        const { error } = await supabase.functions.invoke("envoyer-facture-client", {
+          body: { courseId: course.id, numeroEntreprise: numeroEntreprise || undefined }
+        });
+        if (error) { alert("Erreur : " + error.message); e.target.disabled = false; e.target.textContent = "📧 Recevoir ma facture par email"; return; }
+        chargerMesCourses();
+      });
+    }
+    div.appendChild(blocFacture);
+  }
+
+  // --- Course terminée : le client peut noter le chauffeur (une seule fois) ---
+  if (course.statut === "terminee" && !course.note_client) {
+    const blocNote = document.createElement("div");
+    blocNote.className = "bloc-notation";
+    blocNote.innerHTML = `
+      <div class="titre-notation">Comment s'est passée votre course ?</div>
+      <div class="etoiles">${[1,2,3,4,5].map(n => `<span class="etoile" data-valeur="${n}">★</span>`).join("")}</div>
+      <textarea class="commentaire-notation" placeholder="Un commentaire ? (optionnel)"></textarea>
+      <button type="button" class="btn-envoyer-note" disabled>Envoyer ma note</button>
+    `;
+    let noteChoisie = 0;
+    const etoiles = blocNote.querySelectorAll(".etoile");
+    const btnEnvoyer = blocNote.querySelector(".btn-envoyer-note");
+    etoiles.forEach(etoile => {
+      etoile.addEventListener("click", () => {
+        noteChoisie = parseInt(etoile.dataset.valeur);
+        etoiles.forEach(e => e.classList.toggle("pleine", parseInt(e.dataset.valeur) <= noteChoisie));
+        btnEnvoyer.disabled = false;
+      });
+    });
+    btnEnvoyer.addEventListener("click", async () => {
+      const commentaire = blocNote.querySelector(".commentaire-notation").value.trim();
+      await supabase.from("courses").update({
+        note_client: noteChoisie,
+        commentaire_client: commentaire || null
+      }).eq("id", course.id);
+      chargerMesCourses();
+    });
+    div.appendChild(blocNote);
+  }
+
+  if (["en_attente", "prix_envoye", "attente_acompte"].includes(course.statut)) {
+    const btn = document.createElement("button");
+    btn.textContent = "Annuler la demande";
+    btn.className = "secondaire";
+    btn.addEventListener("click", async () => {
+      if (!confirm("Annuler cette demande de course ?")) return;
+      await supabase.from("courses").update({ statut: "annulee" }).eq("id", course.id);
+      chargerMesCourses();
+    });
+    div.appendChild(btn);
+  }
+
+  return div;
+}
+
+// Affiche une petite carte en direct avec la position du chauffeur assigné (comme Uber),
+// ou un message d'attente tant que sa position n'est pas encore connue.
+async function afficherCarteChauffeurClient(courseId, chauffeurId) {
+  const conteneurCarte = document.getElementById(`carte-course-${courseId}`);
+  if (!conteneurCarte || !chauffeurId) return;
+
+  const { data: position } = await supabase
+    .from("positions_chauffeurs")
+    .select("latitude, longitude")
+    .eq("chauffeur_id", chauffeurId)
+    .maybeSingle();
+
+  if (!position || position.latitude == null) {
+    conteneurCarte.innerHTML = '<p class="carte-en-attente">📍 Localisation du chauffeur en cours…</p>';
+    return;
+  }
+
+  try {
+    const carte = L.map(conteneurCarte, { zoomControl: false, attributionControl: false })
+      .setView([position.latitude, position.longitude], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(carte);
+    L.marker([position.latitude, position.longitude]).addTo(carte).bindPopup("Votre chauffeur");
+  } catch (e) {
+    conteneurCarte.innerHTML = '<p class="carte-en-attente">Carte indisponible pour le moment.</p>';
+  }
+}
+
+function notifierChangementStatut(course) {
+  const messages = {
+    prix_envoye: "Un prix t'a été proposé pour ta course 💶",
+    attente_acompte: "Prix accepté — il ne reste plus qu'à payer l'acompte",
+    confirmee: "Acompte reçu, ta course est confirmée ✅",
+    assignee: "Un chauffeur a accepté ta course 🚕",
+    en_cours: "Ton chauffeur est en route !",
+    terminee: "Course terminée, merci d'avoir choisi Taxi Wal 🙏",
+    annulee: "Ta course a été annulée."
+  };
+  const texte = messages[course.statut];
+  if (!texte) return;
+
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine"; osc.frequency.value = 660;
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {}
+
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification("Taxi Wal", { body: texte, tag: "course-" + course.id });
+  }
+}
+
+// ---------- PROFIL ----------
+document.getElementById("btn-sauver-profil").addEventListener("click", async () => {
+  const erreur = document.getElementById("erreur-edit-profil");
+  const nom = document.getElementById("edit-profil-nom").value.trim();
+  const tel = document.getElementById("edit-profil-tel").value.trim();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("profils").update({ nom, telephone: tel }).eq("id", user.id);
+
+  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+  monProfil.nom = nom; monProfil.telephone = tel;
+  document.getElementById("sous-titre").textContent = "Bonjour " + nom.split(" ")[0];
+  erreur.style.color = "var(--vert)"; erreur.textContent = "Profil enregistré ✓";
+  setTimeout(() => erreur.textContent = "", 2000);
+});
+
+document.getElementById("btn-supprimer-compte").addEventListener("click", async () => {
+  if (!confirm("Supprimer définitivement ton compte Taxi Wal ?\n\nTon compte, tes adresses favorites et tes données personnelles seront effacés. Tes demandes de course pas encore faites seront annulées.\n\nCette action est irréversible.")) return;
+  const saisie = prompt("Pour confirmer, tape le mot SUPPRIMER");
+  if (!saisie || saisie.trim().toUpperCase() !== "SUPPRIMER") { alert("Suppression annulée."); return; }
+  const btn = document.getElementById("btn-supprimer-compte");
+  btn.disabled = true; btn.textContent = "Suppression…";
+  const { error } = await supabase.rpc("client_supprimer_mon_compte");
+  if (error) { btn.disabled = false; btn.textContent = "🗑️ Supprimer mon compte"; alert("Erreur : " + error.message); return; }
+  try { await supabase.auth.signOut(); } catch (e) {}
+  alert("Ton compte a été supprimé. Merci d'avoir utilisé Taxi Wal.");
+  location.reload();
+});
+
+document.getElementById("btn-deconnexion").addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+// ---------- INSTALLATION APP (Android / ordinateur) ----------
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(e => console.error("Service worker :", e));
+}
+let evenementInstallation = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  evenementInstallation = e;
+  document.getElementById("btn-installer-app").style.display = "block";
+});
+document.getElementById("btn-installer-app").addEventListener("click", async () => {
+  if (!evenementInstallation) return;
+  evenementInstallation.prompt();
+  await evenementInstallation.userChoice;
+  evenementInstallation = null;
+  document.getElementById("btn-installer-app").style.display = "none";
+});
+
+// ---------- RESTAURER LA SESSION SI DÉJÀ CONNECTÉ ----------
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) apresConnexion();
+})();
+</script>
+<script>
+function libelleAdresse(p) {
+  const rue = p.street ? p.street + (p.housenumber ? " " + p.housenumber : "") : "";
+  const ville = [p.postcode, p.city || p.town || p.village].filter(Boolean).join(" ");
+  const morceaux = [];
+  if (p.name && p.name !== p.street && p.name !== (p.city || p.town || p.village)) morceaux.push(p.name);
+  if (rue) morceaux.push(rue);
+  if (ville) morceaux.push(ville);
+  else if (p.name && !morceaux.includes(p.name)) morceaux.push(p.name);
+  if (p.countrycode && p.countrycode !== "BE" && p.country) morceaux.push(p.country);
+  return morceaux.join(", ");
+}
+function attacherSuggestionsAdresse(input, conteneur) {
+  input.autocomplete = "off";
+  input.setAttribute("autocorrect", "off");
+  input.setAttribute("autocapitalize", "words");
+  input.spellcheck = false;
+  conteneur.style.position = "relative";
+  const liste = document.createElement("div");
+  liste.className = "suggestions-adresse";
+  conteneur.appendChild(liste);
+  let minuterie = null, controleur = null;
+  const fermer = () => { liste.innerHTML = ""; liste.style.display = "none"; };
+
+  input.addEventListener("input", () => {
+    clearTimeout(minuterie);
+    const q = input.value.trim();
+    if (q.length < 3) { fermer(); return; }
+    minuterie = setTimeout(() => chercher(q), 300);
+  });
+  input.addEventListener("blur", () => setTimeout(fermer, 250));
+
+  async function chercher(q) {
+    if (controleur) controleur.abort();
+    controleur = new AbortController();
+    try {
+      const url = "https://photon.komoot.io/api/?lang=fr&limit=6&lat=50.43&lon=3.83&q=" + encodeURIComponent(q);
+      const rep = await fetch(url, { signal: controleur.signal });
+      const donnees = await rep.json();
+      const vus = new Set();
+      const resultats = (donnees.features || [])
+        .map(f => libelleAdresse(f.properties || {}))
+        .filter(l => l && !vus.has(l) && vus.add(l));
+      afficher(resultats);
+    } catch (e) { /* hors connexion : le chauffeur peut toujours taper à la main */ }
+  }
+  function afficher(resultats) {
+    liste.innerHTML = "";
+    if (!resultats.length || document.activeElement !== input) { fermer(); return; }
+    resultats.forEach(libelle => {
+      const [principal, ...reste] = libelle.split(", ");
+      const item = document.createElement("div");
+      item.className = "suggestion-adresse";
+      item.innerHTML = `📍 ${esc(principal)}${reste.length ? `<small>${esc(reste.join(", "))}</small>` : ""}`;
+      item.addEventListener("pointerdown", (e) => e.preventDefault());
+      item.addEventListener("click", () => {
+        input.value = libelle;
+        fermer();
+        input.dispatchEvent(new Event("change"));
+        input.blur();
+      });
+      liste.appendChild(item);
+    });
+    liste.style.display = "block";
+  }
+}
+
+
+// ================== RÉSERVATION FACILE (adresses proposées, position, dates en un tap) ==================
+(function () {
+  const $ = id => document.getElementById(id);
+  if (!$("input-depart")) return;
+  ["input-depart", "input-arrivee"].forEach(id => attacherSuggestionsAdresse($(id), $(id).parentNode));
+  if ($("input-adresse-favori")) {
+    const w = document.createElement("div"); w.className = "champ-adresse-rr";
+    $("input-adresse-favori").parentNode.insertBefore(w, $("input-adresse-favori")); w.appendChild($("input-adresse-favori"));
+    attacherSuggestionsAdresse($("input-adresse-favori"), w);
+  }
+  const deux = n => String(n).padStart(2, "0");
+  const versChamp = d => d.getFullYear() + "-" + deux(d.getMonth() + 1) + "-" + deux(d.getDate()) + "T" + deux(d.getHours()) + ":" + deux(d.getMinutes());
+  const lireChamp = () => { const v = $("input-date").value; return v ? new Date(v) : null; };
+  const arrondir5 = d => { d.setSeconds(0, 0); d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5); return d; };
+  const signaler = () => $("input-date").dispatchEvent(new Event("change", { bubbles: true }));
+  document.querySelectorAll("[data-dans]").forEach(b => b.addEventListener("click", () => {
+    $("input-date").value = versChamp(arrondir5(new Date(Date.now() + Number(b.dataset.dans) * 60000))); signaler();
+  }));
+  document.querySelectorAll("[data-jour]").forEach(b => b.addEventListener("click", () => {
+    const actuel = lireChamp();
+    const d = new Date(); d.setDate(d.getDate() + Number(b.dataset.jour));
+    if (actuel) d.setHours(actuel.getHours(), actuel.getMinutes(), 0, 0); else d.setHours(Number(b.dataset.jour) === 0 ? d.getHours() + 1 : 9, 0, 0, 0);
+    $("input-date").value = versChamp(arrondir5(d)); signaler();
+  }));
+  document.querySelectorAll("[data-decaler]").forEach(b => b.addEventListener("click", () => {
+    const d = lireChamp() || arrondir5(new Date(Date.now() + 30 * 60000));
+    d.setMinutes(d.getMinutes() + Number(b.dataset.decaler));
+    $("input-date").value = versChamp(d); signaler();
+  }));
+  $("rr-moins").addEventListener("click", () => { $("input-passagers").value = Math.max(1, (parseInt($("input-passagers").value, 10) || 1) - 1); });
+  $("rr-plus").addEventListener("click", () => { $("input-passagers").value = Math.min(16, (parseInt($("input-passagers").value, 10) || 1) + 1); });
+  $("rr-inverser").addEventListener("click", () => { const a = $("input-depart").value; $("input-depart").value = $("input-arrivee").value; $("input-arrivee").value = a; });
+  $("rr-position-depart").addEventListener("click", () => {
+    const b = $("rr-position-depart");
+    if (!navigator.geolocation) { alert("La localisation n'est pas disponible sur ce téléphone."); return; }
+    const avant = b.textContent; b.disabled = true; b.textContent = "📍 Recherche de ta position…";
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const r = await fetch(`https://photon.komoot.io/reverse?lang=fr&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+        const d = await r.json();
+        const lib = libelleAdresse((d.features && d.features[0] && d.features[0].properties) || {});
+        if (lib) $("input-depart").value = lib; else alert("Adresse introuvable : tape-la à la main.");
+      } catch (e) { alert("Adresse introuvable : tape-la à la main."); }
+      b.disabled = false; b.textContent = avant;
+    }, () => { b.disabled = false; b.textContent = avant; alert("Position introuvable. Autorise la localisation pour Taxi Wal, ou tape l'adresse."); },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+  });
+})();
+</script>
+<script>
+// ================== CALCUL DU PRIX CONSEILLÉ (tarif officiel + km d'approche Mons-Borinage) ==================
+// Tarif officiel : prise en charge 3,10 € (jour) / 6,20 € (nuit 22h-6h), 2,50 €/km aller simple,
+// 1,70 €/km aller-retour, course minimum 8,20 €.
+// Si le DÉPART est dans la région Mons-Borinage, on ajoute les km d'approche depuis la GARE DE MONS
+// jusqu'à l'adresse de départ (le taxi part de là).
+const TARIF_TAXIWAL = { priseJour: 3.10, priseNuit: 6.20, kmAllerSimple: 2.50, kmAllerRetour: 1.70, minimum: 8.20 };
+const GARE_DE_MONS = [50.4536, 3.9425];
+const BASES_TAXIWAL = { mons: { nom: "Gare de Mons", pos: [50.4536, 3.9425] }, saintghislain: { nom: "Gare de Saint-Ghislain", pos: [50.4488, 3.8197] } };
+function estRegionMonsBorinage(codePostal) {
+  const cp = parseInt(codePostal, 10);
+  return (cp >= 7000 && cp <= 7050) || cp === 7080 || (cp >= 7300 && cp <= 7390);
+}
+async function geocoderAdresseTarif(adresse) {
+  const r = await fetch("https://photon.komoot.io/api/?lang=fr&limit=1&lat=50.43&lon=3.83&q=" + encodeURIComponent(adresse));
+  const d = await r.json();
+  const f = d.features && d.features[0];
+  if (!f) return null;
+  const cpTexte = (String(adresse).match(/\b(7\d{3})\b/) || [])[1];
+  return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], cp: (f.properties && f.properties.postcode) || cpTexte || "" };
+}
+async function distanceRouteKm(a, b) {
+  const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`);
+  const d = await r.json();
+  const route = d.routes && d.routes[0];
+  return route ? { km: route.distance / 1000, min: route.duration / 60, ligne: route.geometry.coordinates.map(c => [c[1], c[0]]) } : null;
+}
+// Renvoie { prix, kmTrajet, kmApproche, minutes, allerRetour, nuit, detail, ligne, depart, arrivee } ou null
+// base : "mons" | "saintghislain" | "aucune" | "auto" (auto = gare de Mons si départ en Mons-Borinage)
+async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, base) {
+  base = base || "auto";
+  const [a, b] = await Promise.all([geocoderAdresseTarif(depart), geocoderAdresseTarif(arrivee)]);
+  if (!a || !b) return null;
+  const trajet = await distanceRouteKm([a.lat, a.lon], [b.lat, b.lon]);
+  if (!trajet) return null;
+  let kmApproche = 0;
+  const baseChoisie = base === "auto" ? (estRegionMonsBorinage(a.cp) ? "mons" : "aucune") : base;
+  if (BASES_TAXIWAL[baseChoisie]) {
+    const approche = await distanceRouteKm(BASES_TAXIWAL[baseChoisie].pos, [a.lat, a.lon]);
+    kmApproche = approche ? approche.km : 0;
+    if (kmApproche < 0.5) kmApproche = 0;   // client à la gare de Mons
+  }
+  const d = dateHeure ? new Date(dateHeure) : new Date();
+  const nuit = d.getHours() >= 22 || d.getHours() < 6;
+  const prise = nuit ? TARIF_TAXIWAL.priseNuit : TARIF_TAXIWAL.priseJour;
+  const kmFactures = allerRetour ? kmApproche + 2 * trajet.km : kmApproche + trajet.km;
+  const prixKm = allerRetour ? TARIF_TAXIWAL.kmAllerRetour : TARIF_TAXIWAL.kmAllerSimple;
+  const prix = Math.max(TARIF_TAXIWAL.minimum, prise + kmFactures * prixKm);
+  const f = x => x.toFixed(1).replace(".", ",");
+  const nomBase = BASES_TAXIWAL[baseChoisie] ? "la " + BASES_TAXIWAL[baseChoisie].nom.charAt(0).toLowerCase() + BASES_TAXIWAL[baseChoisie].nom.slice(1) : "";
+  const detail = (kmApproche ? `${f(kmApproche)} km depuis ${nomBase} jusqu'au départ + ` : "") +
+    (allerRetour ? `${f(trajet.km)} km aller + ${f(trajet.km)} km retour à ${TARIF_TAXIWAL.kmAllerRetour.toFixed(2).replace(".", ",")} €/km (aller-retour)`
+                 : `${f(trajet.km)} km de trajet à ${TARIF_TAXIWAL.kmAllerSimple.toFixed(2).replace(".", ",")} €/km (aller simple)`) +
+    ` + prise en charge ${prise.toFixed(2).replace(".", ",")} €${nuit ? " (nuit)" : ""}`;
+  return { prix, base: baseChoisie, kmTrajet: trajet.km, kmApproche, minutes: trajet.min, allerRetour, nuit, detail, ligne: trajet.ligne, depart: a, arrivee: b };
+}
+
+// ================== RÉSERVATION EN ÉTAPES (trajet → quand → véhicule → récap) ==================
+(function () {
+  const $ = id => document.getElementById(id);
+  const section = $("section-reserver");
+  if (!section || !$("input-depart")) return;
+  const champDe = id => $(id).closest(".champ");
+  const TARIF = { jour: 3.10, nuit: 6.20, km: 2.50, minimum: 8.20 }; // grille officielle (aller simple)
+  let infoTrajet = { km: null, min: null };
+
+  // --- Construction des 4 étapes avec les champs existants (mêmes champs, mêmes enregistrements) ---
+  const entete = document.createElement("div");
+  entete.innerHTML = `<div class="rz-progress"><span></span><span></span><span></span><span></span></div>
+    <div class="rz-titre" id="rz-titre"></div><div class="rz-sous" id="rz-sous"></div>`;
+  const etapes = [1, 2, 3, 4].map(n => { const d = document.createElement("div"); d.className = "rz-etape"; d.dataset.n = n; return d; });
+  const info = $("info-process");
+  if (info) { info.classList.add("rz-replie"); info.querySelector("b").textContent = "ℹ️ Comment ça se passe ? (toucher)"; info.addEventListener("click", () => info.classList.toggle("rz-replie")); }
+
+  // Étape 1 : trajet + carte
+  etapes[0].appendChild(champDe("input-depart"));
+  etapes[0].appendChild(champDe("input-arrivee"));
+  const carteDiv = document.createElement("div"); carteDiv.className = "rz-carte"; carteDiv.id = "rz-carte";
+  const trajetInfo = document.createElement("div"); trajetInfo.className = "rz-trajet-info"; trajetInfo.id = "rz-trajet-info";
+  etapes[0].appendChild(carteDiv); etapes[0].appendChild(trajetInfo);
+  // Étape 2 : quand + passagers + bagages
+  etapes[1].appendChild(champDe("input-date"));
+  etapes[1].appendChild(champDe("input-passagers"));
+  etapes[1].appendChild(champDe("input-bagages"));
+  const champAR = document.createElement("div"); champAR.className = "champ";
+  champAR.innerHTML = `<label class="ligne-checkbox-marche" style="display:flex; gap:10px; align-items:center;"><input type="checkbox" id="rz-aller-retour" style="width:22px; height:22px; flex-shrink:0;"> 🔁 Aller-retour (le taxi me ramène)</label>`;
+  etapes[1].appendChild(champAR);
+  // Étape 3 : véhicule en cartes
+  const selVeh = $("input-vehicule-souhaite");
+  const champVeh = champDe("input-vehicule-souhaite");
+  const grille = document.createElement("div"); grille.className = "rz-vehicules";
+  const VEHICULES = [
+    ["", "✨", "Peu importe", "Le premier véhicule disponible"],
+    ["berline", "🚗", "Berline", "1 à 4 passagers · 3 valises"],
+    ["van", "🚐", "Van", "Jusqu'à 7 passagers · 7 valises"],
+    ["pmr", "♿", "Adapté PMR", "Fauteuil roulant, aide à la montée"]
+  ];
+  VEHICULES.forEach(([val, ico, nom, det]) => {
+    const b = document.createElement("div");
+    b.className = "rz-vehicule"; b.dataset.val = val;
+    b.innerHTML = `<div class="rz-v-icone">${ico}</div><div class="rz-v-nom">${nom}</div><div class="rz-v-detail">${det}</div>`;
+    b.addEventListener("click", () => { selVeh.value = val; selVeh.dispatchEvent(new Event("change", { bubbles: true })); majVehicules(); });
+    grille.appendChild(b);
+  });
+  champVeh.style.display = "none";
+  etapes[2].appendChild(grille);
+  etapes[2].appendChild(champVeh);
+  if ($("champ-chauffeur-prefere")) etapes[2].appendChild($("champ-chauffeur-prefere"));
+  // Étape 4 : récap + notes + marché + envoyer
+  const recap = document.createElement("div"); recap.id = "rz-recap";
+  etapes[3].appendChild(recap);
+  etapes[3].appendChild(champDe("input-notes"));
+  etapes[3].appendChild(champDe("input-ouverte-marche"));
+  if (info) etapes[3].appendChild(info);
+  etapes[3].appendChild($("erreur-reservation"));
+  const btnReserver = $("btn-reserver");
+  const nav = document.createElement("div"); nav.className = "rz-nav";
+  nav.innerHTML = `<button type="button" class="rz-retour">← Retour</button><button type="button" class="rz-suivant">Continuer →</button>`;
+
+  // on vide la section et on remet tout dans l'ordre
+  const badge = section.querySelector(".badge-marque");
+  [...section.children].forEach(c => { if (c !== badge) c.style.display = "none"; });
+  section.appendChild(entete);
+  etapes.forEach(e => section.appendChild(e));
+  nav.appendChild(btnReserver);
+  section.appendChild(nav);
+  btnReserver.classList.add("rz-suivant");
+
+  const TITRES = [
+    ["Où allez-vous ?", "Tape l'adresse : des propositions s'affichent dès 3 lettres."],
+    ["Quand et combien ?", "Choisis l'heure de prise en charge et le nombre de personnes."],
+    ["Quel véhicule ?", "Choisis le type de voiture adapté à ton trajet."],
+    ["Récapitulatif", "Vérifie ta demande, puis envoie-la."]
+  ];
+  let etapeActuelle = 1;
+  function allerEtape(n) {
+    etapeActuelle = n;
+    etapes.forEach(e => e.classList.toggle("active", Number(e.dataset.n) === n));
+    entete.querySelectorAll(".rz-progress span").forEach((sp, i) => sp.classList.toggle("fait", i < n));
+    $("rz-titre").textContent = TITRES[n - 1][0];
+    $("rz-sous").textContent = "Étape " + n + " sur 4 · " + TITRES[n - 1][1];
+    nav.querySelector(".rz-retour").style.visibility = n === 1 ? "hidden" : "visible";
+    nav.querySelector("button.rz-suivant:not(#btn-reserver)").style.display = n === 4 ? "none" : "";
+    btnReserver.style.display = n === 4 ? "" : "none";
+    if (n === 1) setTimeout(() => { if (carte) carte.invalidateSize(); }, 50);
+    if (n === 3) { if (!selVeh.value && (parseInt($("input-passagers").value, 10) || 1) > 4) selVeh.value = "van"; majVehicules(); }
+    if (n === 4) majRecap();
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function erreur(msg) { const e = $("erreur-reservation"); if (etapeActuelle !== 4) alert(msg); else e.textContent = msg; }
+  nav.querySelector(".rz-retour").addEventListener("click", () => allerEtape(Math.max(1, etapeActuelle - 1)));
+  nav.querySelector("button.rz-suivant:not(#btn-reserver)").addEventListener("click", () => {
+    if (etapeActuelle === 1 && (!$("input-depart").value.trim() || !$("input-arrivee").value.trim())) { erreur("Indique l'adresse de départ et l'adresse d'arrivée."); return; }
+    if (etapeActuelle === 2) {
+      const v = $("input-date").value;
+      if (!v) { erreur("Choisis la date et l'heure (ou touche « Dans 1 h »)."); return; }
+      if (new Date(v).getTime() < Date.now() - 5 * 60000) { erreur("Cette heure est déjà passée : choisis une heure à venir."); return; }
+    }
+    allerEtape(Math.min(4, etapeActuelle + 1));
+  });
+  function majVehicules() { grille.querySelectorAll(".rz-vehicule").forEach(b => b.classList.toggle("choisi", b.dataset.val === selVeh.value)); }
+
+  // --- Carte du trajet (Leaflet + calcul de la route) ---
+  let carte = null, couche = null;
+  function initCarte() {
+    if (carte || typeof L === "undefined") return;
+    carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 10);
+    // Plan clair et moderne (style « Voyager ») + vue satellite au choix
+    // Plan Esri (sans clé) : les tuiles OpenStreetMap sont souvent bloquées dans l'application iPhone
+    const plan = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, attribution: "© Esri" });
+    const satellite = L.layerGroup([
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "© Esri" }),
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 })
+    ]);
+    plan.addTo(carte);
+    let enSatellite = false;
+    const bascule = L.control({ position: "topright" });
+    bascule.onAdd = () => {
+      const b = L.DomUtil.create("button", "rz-bouton-vue");
+      b.type = "button"; b.textContent = "🛰️ Satellite";
+      L.DomEvent.disableClickPropagation(b);
+      b.addEventListener("click", () => {
+        enSatellite = !enSatellite;
+        if (enSatellite) { carte.removeLayer(plan); satellite.addTo(carte); b.textContent = "🗺️ Plan"; }
+        else { carte.removeLayer(satellite); plan.addTo(carte); b.textContent = "🛰️ Satellite"; }
+      });
+      return b;
+    };
+    bascule.addTo(carte);
+    couche = L.layerGroup().addTo(carte);
+  }
+  async function geocoder(adresse) {
+    const r = await fetch("https://photon.komoot.io/api/?lang=fr&limit=1&lat=50.43&lon=3.83&q=" + encodeURIComponent(adresse));
+    const d = await r.json();
+    const f = d.features && d.features[0];
+    return f ? [f.geometry.coordinates[1], f.geometry.coordinates[0]] : null;
+  }
+  let minuterieCarte = null;
+  async function majCarte() {
+    initCarte();
+    const dep = $("input-depart").value.trim(), arr = $("input-arrivee").value.trim();
+    if (!carte) carteDiv.style.display = "none";   // carte indisponible : on garde quand même distance et durée
+    if (!dep || !arr) { trajetInfo.textContent = ""; return; }
+    trajetInfo.textContent = "Calcul du trajet…";
+    try {
+      const [a, b] = await Promise.all([geocoder(dep), geocoder(arr)]);
+      if (!a || !b) { trajetInfo.textContent = ""; return; }
+      let ligne = [a, b];
+      try {
+        const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`);
+        const d = await r.json();
+        const route = d.routes && d.routes[0];
+        if (route) {
+          ligne = route.geometry.coordinates.map(c => [c[1], c[0]]);
+          infoTrajet = { km: route.distance / 1000, min: route.duration / 60 };
+          window.__distanceTrajetKm = infoTrajet.km; window.__dureeTrajetMin = infoTrajet.min;
+        }
+      } catch (e) { infoTrajet = { km: null, min: null }; }
+      if (carte) {
+        carteDiv.style.display = "";
+        couche.clearLayers();
+        const pastille = (texte, couleur) => L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15],
+          html: `<div style="width:30px;height:30px;border-radius:50%;background:${couleur};color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);font-size:13px;">${texte}</div>` });
+        L.polyline(ligne, { color: "#ffffff", weight: 9, opacity: .9 }).addTo(couche);
+        L.polyline(ligne, { color: "#c81e2c", weight: 5, opacity: .95 }).addTo(couche);
+        L.marker(a, { icon: pastille("A", "#1f8a4c") }).addTo(couche).bindTooltip("Départ");
+        L.marker(b, { icon: pastille("B", "#c81e2c") }).addTo(couche).bindTooltip("Arrivée");
+        carte.invalidateSize();
+        carte.fitBounds(L.latLngBounds(ligne), { padding: [24, 24] });
+      }
+      trajetInfo.innerHTML = infoTrajet.km ? `📏 ${infoTrajet.km.toFixed(0)} km &nbsp;·&nbsp; ⏱️ ${Math.max(1, Math.round(infoTrajet.min))} min` : "";
+    } catch (e) { trajetInfo.textContent = ""; }
+  }
+  ["input-depart", "input-arrivee"].forEach(id => $(id).addEventListener("change", () => { clearTimeout(minuterieCarte); minuterieCarte = setTimeout(majCarte, 300); }));
+  $("rr-inverser") && $("rr-inverser").addEventListener("click", () => setTimeout(majCarte, 50));
+  $("rr-position-depart") && $("rr-position-depart").addEventListener("click", () => setTimeout(function attendre() { majCarte(); }, 4000));
+
+  // --- Récapitulatif + prix indicatif ---
+  let calculPrix = null;
+  async function lancerCalculPrix() {
+    const zone = $("rz-zone-prix");
+    if (!zone) return;
+    // Pas de prix calculé automatiquement : on montre seulement la distance, Taxi Wal envoie le prix
+    const km = infoTrajet.km;
+    zone.innerHTML = `<div class="rz-prix">${km ? `Distance entre les deux adresses : <b>${km.toFixed(1).replace(".", ",")} km</b>${infoTrajet.min ? ` · ⏱️ ${Math.max(1, Math.round(infoTrajet.min))} min` : ""}` : "<b>Distance en cours de calcul…</b>"}
+      <small>💶 Le <b>prix</b> de ta course t'est envoyé par notre équipe juste après ta demande (notification + e-mail). Tu l'acceptes ou non, sans engagement.</small></div>`;
+  }
+  function majRecap() {
+    const d = $("input-date").value ? new Date($("input-date").value) : null;
+    const veh = VEHICULES.find(v => v[0] === selVeh.value) || VEHICULES[0];
+    const p = null;
+    const e = s => String(s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    recap.innerHTML = `<div class="rz-recap">
+        <div class="rz-recap-ligne"><span>🟢</span><div>${e($("input-depart").value)}</div><a data-aller="1">Modifier</a></div>
+        <div class="rz-recap-ligne"><span>🔴</span><div>${e($("input-arrivee").value)}</div><a data-aller="1">Modifier</a></div>
+        <div class="rz-recap-ligne"><span>🕐</span><div>${d ? d.toLocaleString("fr-BE", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" }) : "—"}</div><a data-aller="2">Modifier</a></div>
+        <div class="rz-recap-ligne"><span>👥</span><div>${$("input-passagers").value || 1} passager(s) · ${$("input-bagages").value || 0} bagage(s)</div><a data-aller="2">Modifier</a></div>
+        <div class="rz-recap-ligne"><span>${$("rz-aller-retour").checked ? "🔁" : "➡️"}</span><div>${$("rz-aller-retour").checked ? "Aller-retour" : "Aller simple"}</div><a data-aller="2">Modifier</a></div>
+        <div class="rz-recap-ligne"><span>${veh[1]}</span><div>${veh[2]}</div><a data-aller="3">Modifier</a></div>
+      </div><div id="rz-zone-prix"></div>`;
+    lancerCalculPrix();
+    recap.querySelectorAll("[data-aller]").forEach(a => a.addEventListener("click", () => allerEtape(Number(a.dataset.aller))));
+  }
+
+  // Après l'envoi réussi (le formulaire se vide), on revient à l'étape 1
+  btnReserver.addEventListener("click", () => {
+    let essais = 0;
+    const t = setInterval(() => {
+      essais++;
+      if (!$("input-depart").value && !$("input-arrivee").value) { clearInterval(t); couche && couche.clearLayers(); trajetInfo.textContent = ""; infoTrajet = { km: null, min: null }; window.__distanceTrajetKm = null; window.__dureeTrajetMin = null; allerEtape(1); }
+      if (essais > 40) clearInterval(t);
+    }, 250);
+  });
+
+  allerEtape(1);
+  // La carte s'initialise quand l'onglet est visible
+  setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 400);
+  // Carte grise après connexion : on recalcule la taille dès que le cadre de la carte devient visible ou change de taille
+  try {
+    const elCarte = document.getElementById("rz-carte");
+    if (elCarte && "ResizeObserver" in window) {
+      new ResizeObserver(() => {
+        if (elCarte.offsetWidth > 0) {
+          initCarte();
+          if (carte) { carte.invalidateSize(); if (!couche || !couche.getLayers || couche.getLayers().length === 0) carte.setView([50.43, 3.83], 10); }
+        }
+      }).observe(elCarte);
+    }
+  } catch (e) {}
+  document.querySelectorAll('nav.onglets button[data-onglet="reserver"]').forEach(b => b.addEventListener("click", () => setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 150)));
+})();
+</script>
+<script>
+let _etatPaiement = null;
+async function etatPaiementEnLigne() {
+  if (_etatPaiement) return _etatPaiement;
+  try { const { data } = await supabase.rpc("paiement_en_ligne_etat"); _etatPaiement = data || "inactif"; } catch (e) { _etatPaiement = "inactif"; }
+  return _etatPaiement;
+}
+// Retour depuis la page de paiement
+(function () {
+  const p = new URLSearchParams(location.search);
+  if (p.get("paiement") !== "retour") return;
+  history.replaceState(null, "", location.pathname);
+  setTimeout(() => {
+    alert("Merci ! Ton paiement est en cours de vérification. Dès qu'il est reçu, ta course passe automatiquement en « Confirmée ».");
+    const b = document.querySelector('nav.onglets button[data-onglet="mes-courses"]'); if (b) b.click();
+  }, 1200);
+})();
+</script>
 </body>
 </html>
