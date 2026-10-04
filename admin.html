@@ -2019,11 +2019,52 @@ function construireCarteAdmin(course) {
     corps.appendChild(resume);
   }
 
+  if (course.origine === "client" && !["annulee", "refusee", "en_attente"].includes(course.statut)) {
+    const etat = document.createElement("div");
+    let txt, fond, coul;
+    if (course.acompte_paye) { txt = course.paiement_choisi === "total" ? "✅ PAYÉ EN TOTALITÉ" : "✅ ACOMPTE PAYÉ (" + Number(course.acompte_montant || 0).toFixed(2) + " €)"; fond = "#e7f5ec"; coul = "#1f6b3f"; }
+    else if (course.statut === "acompte_declare") { txt = "⏳ Le client DIT avoir payé — vérifie ton compte puis confirme"; fond = "#fdf1dc"; coul = "#8a5a00"; }
+    else if (course.sans_acompte_autorise) { txt = "🤝 Course autorisée SANS acompte (décision de la centrale)"; fond = "#eef4fb"; coul = "#1d4f86"; }
+    else if (course.statut === "prix_envoye") { txt = "💶 Prix envoyé — le client n'a pas encore répondu"; fond = "#f4f4f2"; coul = "#555"; }
+    else { txt = "❌ ACOMPTE NON PAYÉ — ne pas attribuer de chauffeur"; fond = "#fdecee"; coul = "#b3141b"; }
+    etat.style.cssText = `background:${fond}; color:${coul}; border-radius:10px; padding:10px 12px; margin:8px 0; font-weight:800; font-size:.88rem;`;
+    etat.textContent = txt;
+    if (course.chauffeur_prefere_id && !course.chauffeur_id) {
+      const nomPref = (chauffeursCache.find(c => c.id === course.chauffeur_prefere_id) || {}).nom;
+      if (nomPref) etat.innerHTML += `<div style="font-weight:600; font-size:.8rem; margin-top:4px;">Chauffeur choisi par le client : ${esc(nomPref)} (à attribuer après paiement)</div>`;
+    }
+    corps.insertBefore(etat, corps.firstChild);
+  }
   if (course.origine === "client" && (course.message_client_paiement || course.paiement_choisi === "total")) {
     const info = document.createElement("div");
     info.style.cssText = "background:#fff7e6; border:1px solid #f0d49a; border-radius:10px; padding:10px; margin:8px 0; font-size:.86rem;";
     info.innerHTML = (course.paiement_choisi === "total" ? `<div><b>💶 Le client a choisi de payer la TOTALITÉ</b> (${((Number(course.prix) || 0) + (Number(course.surprime) || 0)).toFixed(2)} €)</div>` : "") +
       (course.message_client_paiement ? `<div style="margin-top:4px;"><b>🙋 Message du client</b>${course.message_client_at ? " (" + new Date(course.message_client_at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + ")" : ""} : « ${esc(course.message_client_paiement)} »</div>` : "");
+    if (course.message_client_paiement) {
+      if (course.reponse_admin_paiement) {
+        info.innerHTML += `<div style="margin-top:6px; font-weight:700; color:${course.reponse_admin_paiement === "acceptee" ? "#1f6b3f" : "#b3141b"};">
+          ${course.reponse_admin_paiement === "acceptee" ? "✅ Tu as ACCEPTÉ (paiement en espèces / à bord)" : "❌ Tu as REFUSÉ (acompte obligatoire)"} — réponse envoyée au client.</div>`;
+      } else {
+        const zoneRep = document.createElement("div");
+        zoneRep.style.cssText = "display:flex; gap:8px; margin-top:10px;";
+        zoneRep.innerHTML = `<button type="button" class="rep-ok" style="flex:1; padding:11px 6px; border:none; border-radius:9px; background:var(--vert); color:#fff; font-weight:800;">✅ Accepter le paiement en cash</button>
+          <button type="button" class="rep-non" style="flex:1; padding:11px 6px; border:none; border-radius:9px; background:var(--rouge); color:#fff; font-weight:800;">❌ Refuser (acompte obligatoire)</button>`;
+        const repondre = async (accepte) => {
+          const defaut = accepte
+            ? "C'est d'accord : vous pourrez payer votre course en espèces directement au chauffeur. Votre réservation est confirmée."
+            : "Malheureusement, nous ne pouvons pas confirmer cette course sans acompte. Vous pouvez toujours payer l'acompte dans l'application pour la confirmer.";
+          const texte = prompt((accepte ? "Message envoyé au client (tu peux le modifier) :" : "Message de refus envoyé au client (tu peux le modifier) :"), defaut);
+          if (texte === null) return;
+          const { error } = await supabase.rpc("admin_repondre_paiement", { p_course: course.id, p_accepte: accepte, p_message: texte });
+          if (error) { alert("Erreur : " + error.message); return; }
+          alert(accepte ? "✅ Réponse envoyée : le client paiera en espèces. La course est confirmée, tu peux l'attribuer à un chauffeur." : "Réponse envoyée au client.");
+          chargerCoursesAdmin();
+        };
+        zoneRep.querySelector(".rep-ok").addEventListener("click", (e) => { e.stopPropagation(); repondre(true); });
+        zoneRep.querySelector(".rep-non").addEventListener("click", (e) => { e.stopPropagation(); repondre(false); });
+        info.appendChild(zoneRep);
+      }
+    }
     corps.appendChild(info);
   }
 
@@ -2142,7 +2183,14 @@ function construireCarteAdmin(course) {
       const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
       if (vehAttitre) maj.vehicule_id = vehAttitre.id;
     }
-    await supabase.from("courses").update(maj).eq("id", course.id);
+    // RÈGLE : demande d'un client → pas de chauffeur tant que l'acompte n'est pas payé
+    if (nouveauChauffeurId && course.origine === "client" && !course.acompte_paye && !course.sans_acompte_autorise) {
+      const ok = confirm("⚠️ Le client n'a PAS encore payé l'acompte.\n\nRègle Taxi Wal : on attribue un chauffeur seulement après le paiement.\n\nAttribuer quand même SANS acompte (par exemple : client de confiance, paiement à bord convenu) ?");
+      if (!ok) { e.target.value = course.chauffeur_id || ""; return; }
+      maj.sans_acompte_autorise = true;
+    }
+    const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
+    if (error) { alert(error.message.includes("ACOMPTE_NON_PAYE") ? "⚠️ Le client n'a pas encore payé l'acompte : confirme d'abord le paiement." : "Erreur : " + error.message); e.target.value = course.chauffeur_id || ""; return; }
     chargerCoursesAdmin();
   });
   corps.appendChild(selectChauffeur);

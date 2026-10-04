@@ -1196,6 +1196,15 @@ async function construireCarteCourseClient(course) {
     div.appendChild(bloc);
   }
 
+  // --- Réponse de Taxi Wal à la demande « je ne peux pas payer à l'avance » ---
+  if (course.reponse_admin_paiement && course.reponse_admin_message) {
+    const rep = document.createElement("div");
+    const ok = course.reponse_admin_paiement === "acceptee";
+    rep.style.cssText = `margin-top:10px; border-radius:12px; padding:12px 14px; font-size:.92rem; background:${ok ? "rgba(31,138,76,.12)" : "rgba(200,30,44,.08)"}; color:${ok ? "var(--vert)" : "#8a1520"};`;
+    rep.innerHTML = `<b>${ok ? "✅ Taxi Wal a accepté" : "ℹ️ Réponse de Taxi Wal"}</b><br>${esc(course.reponse_admin_message)}`;
+    div.appendChild(rep);
+  }
+
   // --- Paiement déclaré : en attente de vérification côté admin ---
   if (course.statut === "acompte_declare") {
     const bloc = document.createElement("div");
@@ -1208,7 +1217,9 @@ async function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-verif";
     bloc.style.background = "rgba(31,138,76,.12)"; bloc.style.color = "var(--vert)";
-    bloc.textContent = "Acompte reçu, ta course est confirmée ! Un chauffeur te sera assigné prochainement.";
+    bloc.textContent = course.sans_acompte_autorise && !course.acompte_paye
+      ? "Ta course est confirmée ! Tu paieras directement au chauffeur. Un chauffeur te sera assigné prochainement."
+      : "Acompte reçu, ta course est confirmée ! Un chauffeur te sera assigné prochainement.";
     div.appendChild(bloc);
   }
 
