@@ -573,6 +573,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button class="actif" data-onglet="courses">Courses</button>
     <button data-onglet="agenda">Agenda</button>
     <button data-onglet="carte">Carte chauffeurs</button>
+    <button data-onglet="demandes-clients">📲 Demandes clients</button>
     <button data-onglet="par-chauffeur">👤 Courses par chauffeur</button>
     <button data-onglet="horaires">🗓️ Horaires</button>
     <button data-onglet="feuilles">Feuilles de route</button>
@@ -667,6 +668,11 @@ window.onerror = function(msg, url, line, col, err) {
     <select id="select-chauffeur-historique"></select>
     <div id="liste-historique-fa"></div>
   </div>
+</section>
+
+<section id="section-demandes-clients">
+  <div id="dc-filtres" class="pc-puces"></div>
+  <div id="dc-liste"></div>
 </section>
 
 <section id="section-par-chauffeur">
@@ -1089,7 +1095,7 @@ function demarrerAdmin() {
 // la page pendant 30 s après, pour lui laisser le temps de modifier tranquillement.
 let derniereActiviteFeuilles = 0;
 ["pointerdown", "keydown", "input", "focusin", "change"].forEach(evt => document.addEventListener(evt, (e) => {
-  if (e.target && e.target.closest && e.target.closest("#section-courses, #section-par-chauffeur")) window.derniereActiviteCourses = Date.now();
+  if (e.target && e.target.closest && e.target.closest("#section-courses, #section-par-chauffeur, #section-demandes-clients")) window.derniereActiviteCourses = Date.now();
 }, true));
 ["pointerdown", "keydown", "input", "focusin", "change"].forEach(evt => document.addEventListener(evt, (e) => {
   const t = e.target;
@@ -1197,6 +1203,7 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "feuilles") chargerFeuillesAdmin();
     if (btn.dataset.onglet === "horaires") chargerHoraires();
     if (btn.dataset.onglet === "par-chauffeur") afficherCoursesParChauffeur();
+    if (btn.dataset.onglet === "demandes-clients") afficherDemandesClients();
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
@@ -1516,6 +1523,46 @@ document.getElementById("btn-assigner-groupe").addEventListener("click", async (
   chargerCoursesAdmin();
 });
 
+// ================== DEMANDES DES CLIENTS (app client) ==================
+const FILTRES_DEMANDES = [
+  ["nouvelles", "🆕 Nouvelles", c => c.statut === "en_attente"],
+  ["prix", "💶 Prix envoyé", c => c.statut === "prix_envoye"],
+  ["paiement", "⏳ Paiement en attente", c => ["attente_acompte", "acompte_declare"].includes(c.statut)],
+  ["confirmees", "✅ Confirmées / payées", c => ["confirmee", "assignee", "en_cours"].includes(c.statut) && c.acompte_paye],
+  ["annulees", "❌ Annulées / refusées", c => ["annulee", "refusee"].includes(c.statut) && new Date(c.date_heure) > new Date(Date.now() - 30 * 864e5)]
+];
+let dcFiltre = "nouvelles";
+function afficherDemandesClients() {
+  const zoneF = document.getElementById("dc-filtres"), zone = document.getElementById("dc-liste");
+  if (!zoneF) return;
+  const clients = dernieresCoursesAdmin.filter(c => c.origine === "client");
+  zoneF.innerHTML = "";
+  FILTRES_DEMANDES.forEach(([cle, nom, test]) => {
+    const nb = clients.filter(test).length;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = cle === dcFiltre ? "actif" : "";
+    b.innerHTML = `${nom}<span class="pc-nb">${nb}</span>`;
+    b.addEventListener("click", () => { dcFiltre = cle; afficherDemandesClients(); });
+    zoneF.appendChild(b);
+  });
+  const filtre = FILTRES_DEMANDES.find(x => x[0] === dcFiltre);
+  const sectionVisible = document.getElementById("section-demandes-clients").classList.contains("visible");
+  const enEdition = document.activeElement && document.activeElement.closest && document.activeElement.closest("#section-demandes-clients") && document.activeElement.tagName !== "BODY";
+  if (sectionVisible && !enEdition && !document.querySelector("#section-demandes-clients .carte-en-grand")) {
+  const liste = clients.filter(filtre[2]).sort((a, b) => dcFiltre === "annulees" ? new Date(b.date_heure) - new Date(a.date_heure) : new Date(a.date_heure) - new Date(b.date_heure));
+  zone.innerHTML = liste.length ? "" : `<p style="color:var(--gris); text-align:center; padding:20px 0;">Rien dans « ${filtre[1]} ».</p>`;
+  liste.forEach(c => zone.appendChild(construireCarteAdmin(c)));
+  }
+  // pastille sur le bouton du menu : demandes à traiter (nouvelles + paiements déclarés + messages)
+  const aTraiter = clients.filter(c => c.statut === "en_attente" || c.statut === "acompte_declare" || (c.message_client_paiement && c.statut === "attente_acompte")).length;
+  const btnNav = document.querySelector('nav button[data-onglet="demandes-clients"]');
+  if (btnNav) {
+    let p = btnNav.querySelector(".badge-demandes");
+    if (aTraiter) { if (!p) { p = document.createElement("span"); p.className = "badge-demandes"; btnNav.appendChild(p); } p.textContent = aTraiter; }
+    else if (p) p.remove();
+  }
+}
+
 // ================== COURSES PAR CHAUFFEUR ==================
 function estCourseAttribueeActive(c) {
   return !!c.chauffeur_id && ["assignee", "confirmee", "en_cours"].includes(c.statut);
@@ -1657,6 +1704,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   if (!enTrainDeSaisir) {
     afficherListeCoursesAdmin();
   }
+  afficherDemandesClients();
   if (document.getElementById("section-par-chauffeur").classList.contains("visible")) {
     const actifPc = document.activeElement;
     if (!(depuisAutoRafraichissement && actifPc && actifPc.closest && actifPc.closest("#section-par-chauffeur") && actifPc.tagName !== "BODY")) afficherCoursesParChauffeur();
@@ -1969,6 +2017,14 @@ function construireCarteAdmin(course) {
       return `${g.id === course.id ? "▶ " : ""}Véhicule ${g.rang_vehicule || "?"} (${type}${veh}) → ${ch}`;
     }).join("<br>");
     corps.appendChild(resume);
+  }
+
+  if (course.origine === "client" && (course.message_client_paiement || course.paiement_choisi === "total")) {
+    const info = document.createElement("div");
+    info.style.cssText = "background:#fff7e6; border:1px solid #f0d49a; border-radius:10px; padding:10px; margin:8px 0; font-size:.86rem;";
+    info.innerHTML = (course.paiement_choisi === "total" ? `<div><b>💶 Le client a choisi de payer la TOTALITÉ</b> (${((Number(course.prix) || 0) + (Number(course.surprime) || 0)).toFixed(2)} €)</div>` : "") +
+      (course.message_client_paiement ? `<div style="margin-top:4px;"><b>🙋 Message du client</b>${course.message_client_at ? " (" + new Date(course.message_client_at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + ")" : ""} : « ${esc(course.message_client_paiement)} »</div>` : "");
+    corps.appendChild(info);
   }
 
   // Outil km & prix : distance entre les 2 adresses + km d'approche depuis la gare choisie
@@ -3077,6 +3133,13 @@ async function chargerCarte() {
   if (!carteLeaflet) {
     carteLeaflet = L.map("carte").setView([50.45, 3.95], 10);
     const plan = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" });
+    // Si OpenStreetMap ne charge pas (app iPhone), on bascule tout seul sur le plan Esri
+    let erreursTuilesAdmin = 0, basculeAdmin = false;
+    plan.on("tileerror", () => {
+      if (basculeAdmin || ++erreursTuilesAdmin < 4) return;
+      basculeAdmin = true;
+      plan.setUrl("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}");
+    });
     const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "&copy; Esri" });
     plan.addTo(carteLeaflet);
     L.control.layers({ "🗺️ Plan": plan, "🛰️ Satellite": satellite }, null, { position: "topright" }).addTo(carteLeaflet);

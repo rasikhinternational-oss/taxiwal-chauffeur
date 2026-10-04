@@ -7,6 +7,13 @@ function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
+// État du paiement en ligne (défini tout en haut pour être disponible dès le premier affichage)
+var _etatPaiement = null;
+async function etatPaiementEnLigne() {
+  if (_etatPaiement) return _etatPaiement;
+  try { const { data } = await supabase.rpc("paiement_en_ligne_etat"); _etatPaiement = data || "inactif"; } catch (e) { _etatPaiement = "inactif"; }
+  return _etatPaiement;
+}
 
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
@@ -257,6 +264,11 @@ window.onerror = function(msg, url, line, col, err) {
   .btn-payer-en-ligne{ width:100%; padding:16px; border:none; border-radius:12px; background:#111; color:#fff; font-weight:800; font-size:1.05rem; margin-top:8px; cursor:pointer; }
   .payer-moyens{ font-size:.78rem; color:var(--gris); text-align:center; margin-top:6px; }
   .payer-ou{ font-size:.78rem; color:var(--gris); text-align:center; margin:12px 0 6px; }
+  .choix-paiement{ display:flex; gap:8px; }
+  .choix-paiement button{ flex:1; margin:0; padding:12px 6px; border-radius:12px; border:2px solid #dcdcda; background:#fff; color:#111; font-weight:700; font-size:.9rem; line-height:1.35; cursor:pointer; }
+  .choix-paiement button b{ font-size:1.15rem; }
+  .choix-paiement button small{ display:block; font-weight:400; color:var(--gris); font-size:.72rem; }
+  .choix-paiement button.actif{ border-color:var(--rouge); background:#fff5f5; }
 </style>
 </head>
 <body>
@@ -1079,16 +1091,25 @@ async function construireCarteCourseClient(course) {
   // --- Acompte à payer : QR code + IBAN + bouton "j'ai payé" ---
   if (course.statut === "attente_acompte") {
     const communication = communicationCourse(course);
+    // Le client choisit : l'acompte ou la totalité
+    const totalCourse = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+    const payeTout = course.paiement_choisi === "total";
+    const montantAPayer = (payeTout ? totalCourse : Number(course.acompte_montant) || 0).toFixed(2);
     const bloc = document.createElement("div");
     bloc.className = "bloc-paiement";
     bloc.innerHTML = `
-      <div style="font-weight:700; margin-bottom:4px;">Acompte à payer : ${esc(course.acompte_montant)} €</div>
+      <div style="font-weight:700; margin-bottom:8px;">Comment veux-tu payer ?</div>
+      <div class="choix-paiement">
+        <button type="button" data-choix="acompte" class="${payeTout ? "" : "actif"}">Acompte<br><b>${esc(Number(course.acompte_montant || 0).toFixed(2))} €</b><small>le reste au chauffeur</small></button>
+        <button type="button" data-choix="total" class="${payeTout ? "actif" : ""}">Totalité<br><b>${esc(totalCourse.toFixed(2))} €</b><small>tout est réglé</small></button>
+      </div>
+      <div style="font-weight:700; margin:10px 0 4px;">${payeTout ? "Montant total à payer" : "Acompte à payer"} : ${esc(montantAPayer)} €</div>
       <div class="zone-paiement-en-ligne" style="display:none;">
-        <button type="button" class="btn-payer-en-ligne">💳 Payer maintenant · ${esc(course.acompte_montant)} €</button>
+        <button type="button" class="btn-payer-en-ligne">💳 Payer maintenant · ${esc(montantAPayer)} €</button>
         <div class="payer-moyens"> Apple Pay · Bancontact (ouvre ton app bancaire) · carte</div>
         <div class="payer-ou">— ou par virement —</div>
       </div>
-      <img src="${urlQrPaiement({ montant: course.acompte_montant, communication })}" alt="QR code de paiement">
+      <img src="${urlQrPaiement({ montant: montantAPayer, communication })}" alt="QR code de paiement">
       <div class="ligne-info">Bénéficiaire<br><b>${esc(COMPTE_BENEFICIAIRE)}</b></div>
       <div class="ligne-info">IBAN<br><b>${esc(COMPTE_IBAN)}</b></div>
       <div class="ligne-info">Communication (important)<br><b>${esc(communication)}</b></div>
@@ -1099,14 +1120,18 @@ async function construireCarteCourseClient(course) {
         <div style="font-weight:700; margin:12px 0 6px;">📲 Tu réserves depuis ce téléphone ?</div>
         <div class="note-instant" style="color:var(--gris); margin-top:0;">Ouvre l'app de ta banque → <b>Virement</b>, puis colle les infos ci-dessous (ou enregistre le QR : la plupart des apps bancaires belges savent lire un QR depuis tes photos).</div>
         <button type="button" class="btn-copie" data-copie="iban">📋 Copier l'IBAN</button>
-        <button type="button" class="btn-copie" data-copie="montant">📋 Copier le montant (${esc(course.acompte_montant)} €)</button>
+        <button type="button" class="btn-copie" data-copie="montant">📋 Copier le montant (${esc(montantAPayer)} €)</button>
         <button type="button" class="btn-copie" data-copie="comm">📋 Copier la communication</button>
-        <a class="btn-copie" href="${urlQrPaiement({ montant: course.acompte_montant, communication })}" target="_blank" rel="noopener" style="display:block; text-decoration:none; text-align:center;">🖼️ Ouvrir le QR en grand (appui long → enregistrer)</a>
+        <a class="btn-copie" href="${urlQrPaiement({ montant: montantAPayer, communication })}" target="_blank" rel="noopener" style="display:block; text-decoration:none; text-align:center;">🖼️ Ouvrir le QR en grand (appui long → enregistrer)</a>
       </div>
-      <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">J'ai payé l'acompte</button>
+      <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">${payeTout ? "J'ai payé la totalité" : "J'ai payé l'acompte"}</button>
       <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;">🙋 Je ne peux pas payer à l'avance</button>
       <div class="bloc-contact-dispatch" style="display:none;">
-        <div class="note-instant" style="color:var(--gris);">Pas de souci : contacte notre dispatch, on trouve une solution ensemble (paiement à bord, facture…).</div>
+        <div class="note-instant" style="color:var(--gris);">Pas de souci, on reste ouverts : explique-nous ta situation, on trouve une solution ensemble (paiement à bord, facture…).</div>
+        <textarea class="message-paiement" rows="3" placeholder="Ex : je n'ai pas de carte bancaire, je préfère payer en espèces au chauffeur…" style="width:100%; box-sizing:border-box; margin-top:8px; padding:10px; border-radius:10px; border:1px solid #cfcfcd; font-size:.95rem;">${esc(course.message_client_paiement || "")}</textarea>
+        <button type="button" class="btn-envoyer-message-paiement vert" style="margin-top:8px;">📨 Envoyer mon message à Taxi Wal</button>
+        ${course.message_client_paiement ? `<div class="note-instant" style="color:var(--vert);">✅ Message envoyé. Notre équipe te recontacte rapidement.</div>` : ""}
+        <div class="note-instant" style="color:var(--gris); margin-top:10px;">Ou contacte-nous directement :</div>
         <a class="btn-contact wa" target="_blank" rel="noopener">💬 Écrire sur WhatsApp</a>
         <a class="btn-contact mail">✉️ Envoyer un e-mail</a>
       </div>
@@ -1121,7 +1146,7 @@ async function construireCarteCourseClient(course) {
         const btn = e.currentTarget; btn.disabled = true; btn.textContent = "Ouverture du paiement…";
         const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id } });
         if (error || !data || !data.url) {
-          btn.disabled = false; btn.textContent = "💳 Payer maintenant · " + course.acompte_montant + " €";
+          btn.disabled = false; btn.textContent = "💳 Payer maintenant · " + montantAPayer + " €";
           alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement ci-dessous.");
           return;
         }
@@ -1131,12 +1156,27 @@ async function construireCarteCourseClient(course) {
     const texteContact = `Bonjour Taxi Wal, j'ai une réservation (${communication}) de ${course.prix} € mais je ne peux pas payer l'acompte à l'avance. Pouvez-vous me contacter ?`;
     bloc.querySelector(".btn-contact.wa").href = `https://wa.me/${DISPATCH_WHATSAPP}?text=${encodeURIComponent(texteContact)}`;
     bloc.querySelector(".btn-contact.mail").href = `mailto:${DISPATCH_EMAIL}?subject=${encodeURIComponent("Paiement de ma réservation")}&body=${encodeURIComponent(texteContact)}`;
+    bloc.querySelectorAll(".choix-paiement button").forEach(b => b.addEventListener("click", async () => {
+      if (b.classList.contains("actif")) return;
+      const { error } = await supabase.rpc("client_choisir_paiement", { p_course: course.id, p_choix: b.dataset.choix });
+      if (error) { alert("Erreur : " + error.message); return; }
+      chargerMesCourses();
+    }));
+    bloc.querySelector(".btn-envoyer-message-paiement").addEventListener("click", async (e) => {
+      const texte = bloc.querySelector(".message-paiement").value.trim();
+      if (!texte) { alert("Écris d'abord ton message."); return; }
+      e.target.disabled = true; e.target.textContent = "Envoi…";
+      const { error } = await supabase.rpc("client_message_paiement", { p_course: course.id, p_message: texte });
+      if (error) { e.target.disabled = false; e.target.textContent = "📨 Envoyer mon message à Taxi Wal"; alert("Erreur : " + error.message); return; }
+      alert("✅ Message envoyé ! Notre équipe te recontacte rapidement.");
+      chargerMesCourses();
+    });
     bloc.querySelector("#btn-pas-moyen").addEventListener("click", () => {
       const z = bloc.querySelector(".bloc-contact-dispatch");
       z.style.display = z.style.display === "none" ? "block" : "none";
     });
     bloc.querySelectorAll("button.btn-copie[data-copie]").forEach(b => b.addEventListener("click", () => {
-      const v = { iban: COMPTE_IBAN_BRUT, montant: Number(course.acompte_montant).toFixed(2), comm: communication }[b.dataset.copie];
+      const v = { iban: COMPTE_IBAN_BRUT, montant: montantAPayer, comm: communication }[b.dataset.copie];
       copierTexte(v, b, "✅ Copié");
     }));
     bloc.querySelector("#btn-copier-iban").addEventListener("click", async (e) => {
@@ -1147,7 +1187,7 @@ async function construireCarteCourseClient(course) {
       } catch (err) { alert("IBAN : " + COMPTE_IBAN); }
     });
     bloc.querySelector("#btn-jai-paye").addEventListener("click", async () => {
-      if (!confirm("Confirmes-tu avoir déjà envoyé le virement de " + course.acompte_montant + " € ?")) return;
+      if (!confirm("Confirmes-tu avoir déjà envoyé le virement de " + montantAPayer + " € ?")) return;
       await supabase.from("courses").update({
         statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
       }).eq("id", course.id);
@@ -1642,9 +1682,16 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     if (carte || typeof L === "undefined") return;
     carte = L.map("rz-carte", { zoomControl: false, attributionControl: true }).setView([50.43, 3.83], 10);
     // Plan clair et moderne (style « Voyager ») + vue satellite au choix
-    // Plan Esri (sans clé) : les tuiles OpenStreetMap sont souvent bloquées dans l'application iPhone
+    // Plan Esri (sans clé) : les tuiles OpenStreetMap sont souvent bloquées dans l'application iPhone.
+    // Si Esri ne charge pas (navigateur), on bascule tout seul sur OpenStreetMap.
     const plan = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19, attribution: "© Esri" });
+    let erreursTuiles = 0, basculeFaite = false;
+    plan.on("tileerror", () => {
+      if (basculeFaite || ++erreursTuiles < 4) return;
+      basculeFaite = true;
+      plan.setUrl("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+    });
     const satellite = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "© Esri" }),
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 })
@@ -1768,12 +1815,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 })();
 </script>
 <script>
-let _etatPaiement = null;
-async function etatPaiementEnLigne() {
-  if (_etatPaiement) return _etatPaiement;
-  try { const { data } = await supabase.rpc("paiement_en_ligne_etat"); _etatPaiement = data || "inactif"; } catch (e) { _etatPaiement = "inactif"; }
-  return _etatPaiement;
-}
+
 // Retour depuis la page de paiement
 (function () {
   const p = new URLSearchParams(location.search);

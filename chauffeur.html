@@ -8,6 +8,13 @@ function dateLocaleISO(d) {
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
 
+// Le champ touché se place au MILIEU de l'écran (pas caché par le clavier ou par l'en-tête)
+document.addEventListener("focusin", (e) => {
+  const t = e.target;
+  if (!t || !["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || t.type === "checkbox") return;
+  setTimeout(() => { try { t.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {} }, 350);
+});
+
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
@@ -69,7 +76,7 @@ window.onerror = function(msg, url, line, col, err) {
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600;
     cursor:pointer;
   }
-  button.secondaire{ background:var(--noir-2); color:var(--blanc); border:1px solid #cfcfcd; margin-top:10px; }
+  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
   #erreur-login{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 
   #barre-dispo{
@@ -257,6 +264,7 @@ window.onerror = function(msg, url, line, col, err) {
     <span>🧾 <b id="gains-facture">0,00 €</b></span>
     <span>🚕 Uber : <b id="gains-uber">0</b></span>
   </div>
+  <div id="bandeau-suivi-direct" style="display:none; margin:10px 20px 0; background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; border-radius:12px; padding:10px 14px; font-weight:700; font-size:.88rem;">📍 Course en cours : la centrale te suit en direct. <span style="font-weight:400;">Garde l'app Taxi Wal ouverte à l'écran (l'écran reste allumé).</span></div>
   <div id="horaire-du-jour" style="display:none; margin:10px 20px 0; background:#eef4fb; border:1px solid #bcd3ee; color:#1d4f86; border-radius:12px; padding:11px 14px; font-weight:700; font-size:.92rem;"></div>
   <a href="feuille-de-route.html" id="btn-feuille-route" style="text-decoration:none; display:block; text-align:center;">📋 Ma feuille de route du jour</a>
 
@@ -804,6 +812,7 @@ async function demarrerEspaceChauffeur() {
   }
   activerNotificationsPushReelles();
   setTimeout(verifierEtatNotifications, 1500);
+  setTimeout(gererEcranAllume, 2000);
   chargerHoraireDuJour();
 
   // (plus de feuille créée automatiquement à l'ouverture de l'app : elle est créée quand le
@@ -1646,6 +1655,27 @@ function arreterPartagePosition() {
   metPositionIndisponible();
 }
 
+// Dès que l'app revient à l'écran : position envoyée tout de suite + écran gardé allumé si course en cours
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") { if (positionInterval) envoyerPosition(); gererEcranAllume(); }
+});
+let verrouEcran = null;
+async function gererEcranAllume() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("courses").select("id").eq("chauffeur_id", user.id).eq("statut", "en_cours").limit(1);
+    const enCourse = !!(data && data.length);
+    const bandeau = document.getElementById("bandeau-suivi-direct");
+    if (bandeau) bandeau.style.display = enCourse ? "block" : "none";
+    if (enCourse && "wakeLock" in navigator && !verrouEcran) {
+      verrouEcran = await navigator.wakeLock.request("screen");
+      verrouEcran.addEventListener("release", () => { verrouEcran = null; });
+    } else if (!enCourse && verrouEcran) { await verrouEcran.release(); verrouEcran = null; }
+  } catch (e) { /* pas bloquant */ }
+}
+setInterval(gererEcranAllume, 60000);
+
 async function envoyerPosition() {
   navigator.geolocation.getCurrentPosition(async (pos) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1658,7 +1688,7 @@ async function envoyerPosition() {
       disponible: true,
       updated_at: new Date().toISOString()
     });
-  }, (err) => console.error("Erreur GPS :", err));
+  }, (err) => console.error("Erreur GPS :", err), { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 }
 
 async function metPositionIndisponible() {
