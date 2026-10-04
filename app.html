@@ -652,6 +652,9 @@ document.getElementById("btn-creer-profil").addEventListener("click", async () =
   const tel = document.getElementById("profil-tel").value.trim();
   const erreur = document.getElementById("erreur-profil");
   if (!nom || !tel) { erreur.textContent = "Merci de remplir ton nom et ton téléphone."; return; }
+  const chiffresTel = tel.replace(/\D/g, "");
+  if (nom.length < 2) { erreur.textContent = "Merci d'indiquer ton nom et prénom."; return; }
+  if (chiffresTel.length < 9 || chiffresTel.length > 15) { erreur.textContent = "Ce numéro de téléphone n'est pas valide (ex : 0478 12 34 56)."; return; }
 
   const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase.from("profils").insert({
@@ -811,6 +814,7 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
     erreur.textContent = "Adresse de départ, d'arrivée et date/heure sont obligatoires.";
     return;
   }
+  if (window.validerDemandeClient && !(await window.validerDemandeClient())) return;
 
   const { data: { user } } = await supabase.auth.getUser();
   const { error } = await supabase.from("courses").insert({
@@ -1636,6 +1640,15 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   // Étape 4 : récap + notes + marché + envoyer
   const recap = document.createElement("div"); recap.id = "rz-recap";
   etapes[3].appendChild(recap);
+  const blocContact = document.createElement("div");
+  blocContact.className = "champ";
+  blocContact.innerHTML = `<div style="font-weight:800; margin:4px 0 6px;">📇 Tes coordonnées <span style="color:var(--rouge);">*</span></div>
+    <label for="rz-nom">Nom et prénom *</label>
+    <input type="text" id="rz-nom" autocomplete="name" placeholder="ex : Marie Dupont">
+    <label for="rz-tel" style="margin-top:8px;">Téléphone *</label>
+    <input type="tel" id="rz-tel" autocomplete="tel" inputmode="tel" placeholder="ex : 0478 12 34 56">
+    <div style="font-size:.78rem; color:var(--gris); margin-top:4px;">Le chauffeur t'appelle à ce numéro le jour de la course.</div>`;
+  etapes[3].appendChild(blocContact);
   etapes[3].appendChild(champDe("input-notes"));
   etapes[3].appendChild(champDe("input-ouverte-marche"));
   if (info) etapes[3].appendChild(info);
@@ -1671,7 +1684,11 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     btnReserver.style.display = n === 4 ? "" : "none";
     if (n === 1) setTimeout(() => { if (carte) carte.invalidateSize(); }, 50);
     if (n === 3) { if (!selVeh.value && (parseInt($("input-passagers").value, 10) || 1) > 4) selVeh.value = "van"; majVehicules(); }
-    if (n === 4) majRecap();
+    if (n === 4) {
+      majRecap();
+      if (!$("rz-nom").value && typeof monProfil !== "undefined" && monProfil) $("rz-nom").value = monProfil.nom || "";
+      if (!$("rz-tel").value && typeof monProfil !== "undefined" && monProfil) $("rz-tel").value = monProfil.telephone || "";
+    }
     section.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   function erreur(msg) { const e = $("erreur-reservation"); if (etapeActuelle !== 4) alert(msg); else e.textContent = msg; }
@@ -1796,6 +1813,45 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     lancerCalculPrix();
     recap.querySelectorAll("[data-aller]").forEach(a => a.addEventListener("click", () => allerEtape(Number(a.dataset.aller))));
   }
+
+  // ---- Vérification complète avant l'envoi : rien ne part s'il manque une information ----
+  function marquer(el, enErreur) {
+    if (!el) return;
+    el.style.borderColor = enErreur ? "var(--rouge)" : "";
+    el.style.boxShadow = enErreur ? "0 0 0 3px rgba(200,30,44,.15)" : "";
+  }
+  ["input-depart", "input-arrivee", "input-date", "input-passagers", "rz-nom", "rz-tel"].forEach(id => {
+    const el = $(id); if (el) el.addEventListener("input", () => marquer(el, false));
+  });
+  window.validerDemandeClient = async function () {
+    const manques = [];
+    const verif = (id, ok, message, etape) => { const el = $(id); marquer(el, !ok); if (!ok) manques.push({ id, message, etape }); };
+    verif("input-depart", $("input-depart").value.trim().length >= 4, "l'adresse de départ", 1);
+    verif("input-arrivee", $("input-arrivee").value.trim().length >= 4, "l'adresse d'arrivée", 1);
+    const d = $("input-date").value ? new Date($("input-date").value) : null;
+    verif("input-date", !!d && d.getTime() > Date.now() - 5 * 60000, "une date et une heure à venir", 2);
+    verif("input-passagers", (parseInt($("input-passagers").value, 10) || 0) >= 1, "le nombre de passagers", 2);
+    verif("rz-nom", $("rz-nom").value.trim().length >= 2, "ton nom et prénom", 4);
+    const chiffres = $("rz-tel").value.replace(/\D/g, "");
+    verif("rz-tel", chiffres.length >= 9 && chiffres.length <= 15, "un numéro de téléphone valide", 4);
+    const err = $("erreur-reservation");
+    if (manques.length) {
+      const texte = "⚠️ Merci de compléter : " + manques.map(m => m.message).join(", ") + ".";
+      if (manques[0].etape !== 4) { allerEtape(manques[0].etape); alert(texte); }
+      err.textContent = texte;
+      setTimeout(() => { const el = $(manques[0].id); if (el) el.focus(); }, 300);
+      return false;
+    }
+    err.textContent = "";
+    // On met à jour le profil si le nom ou le téléphone ont changé
+    const nom = $("rz-nom").value.trim(), tel = $("rz-tel").value.trim();
+    if (typeof monProfil !== "undefined" && monProfil && (monProfil.nom !== nom || monProfil.telephone !== tel)) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("profils").update({ nom, telephone: tel }).eq("id", user.id);
+      if (!error) { monProfil.nom = nom; monProfil.telephone = tel; }
+    }
+    return true;
+  };
 
   // Après l'envoi réussi (le formulaire se vide), on revient à l'étape 1
   btnReserver.addEventListener("click", () => {
