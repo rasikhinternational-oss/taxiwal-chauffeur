@@ -279,6 +279,19 @@ window.onerror = function(msg, url, line, col, err) {
   .resume-demande .rd-km{ color:var(--gris); }
   .resume-demande .rd-prix{ margin-top:6px; font-weight:700; color:#1f6b3f; }
   .resume-demande .rd-note{ margin-top:6px; font-size:.85rem; color:#555; }
+  .ev-barre{ display:flex; gap:8px; margin-bottom:12px; }
+  .ev-barre select{ width:auto; flex:0 0 110px; }
+  .ev-barre button{ flex:1; padding:12px; border:none; border-radius:10px; background:var(--vert); color:#fff; font-weight:800; }
+  #ev-prochains{ background:#fff8e6; border:1px solid #f0d49a; border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:.88rem; }
+  .ev-mois{ font-weight:800; margin:14px 0 6px; text-transform:capitalize; color:#555; }
+  .ev-item{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px 12px; margin-bottom:8px; cursor:pointer; }
+  .ev-date{ flex:0 0 52px; text-align:center; background:#f4f4f2; border-radius:10px; padding:6px 0; }
+  .ev-date b{ display:block; font-size:1.3rem; line-height:1; }
+  .ev-date span{ font-size:.7rem; text-transform:uppercase; color:var(--gris); }
+  .ev-texte{ flex:1; min-width:0; }
+  .ev-texte .ev-titre{ font-weight:800; }
+  .ev-texte .ev-info{ font-size:.82rem; color:var(--gris); margin-top:2px; }
+  .ev-passe{ opacity:.55; }
   .pc-puces{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
   .pc-puces button{ width:auto; padding:10px 14px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:var(--blanc); font-weight:700; font-size:.9rem; }
   .pc-puces button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
@@ -584,6 +597,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="demandes-clients">📲 Demandes clients</button>
     <button data-onglet="par-chauffeur">👤 Courses par chauffeur</button>
     <button data-onglet="horaires">🗓️ Horaires</button>
+    <button data-onglet="evenements">📅 Événements</button>
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
@@ -686,6 +700,15 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-par-chauffeur">
   <div id="pc-puces" class="pc-puces"></div>
   <div id="pc-liste"></div>
+</section>
+
+<section id="section-evenements">
+  <div class="ev-barre">
+    <select id="ev-annee"></select>
+    <button type="button" id="ev-ajouter">➕ Ajouter un événement</button>
+  </div>
+  <div id="ev-prochains"></div>
+  <div id="ev-liste"></div>
 </section>
 
 <section id="section-horaires">
@@ -1212,6 +1235,7 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "horaires") chargerHoraires();
     if (btn.dataset.onglet === "par-chauffeur") afficherCoursesParChauffeur();
     if (btn.dataset.onglet === "demandes-clients") afficherDemandesClients();
+    if (btn.dataset.onglet === "evenements") chargerEvenements();
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
@@ -1530,6 +1554,110 @@ document.getElementById("btn-assigner-groupe").addEventListener("click", async (
   mettreAJourBarreAssignationGroupee();
   chargerCoursesAdmin();
 });
+
+// ================== ÉVÉNEMENTS DE L'ANNÉE (avec rappel quelques jours avant) ==================
+const CATEGORIES_EV = { evenement: "🎉 Événement", salon: "🏛️ Salon / foire", vacances: "🏖️ Vacances scolaires", ferie: "🇧🇪 Jour férié", administratif: "📄 Administratif", controle: "🔧 Contrôle / entretien véhicule", anniversaire: "🎂 Anniversaire", autre: "📌 Autre" };
+let evenementsCache = [];
+async function chargerEvenements() {
+  const selAnnee = document.getElementById("ev-annee");
+  if (!selAnnee.options.length) {
+    const a = new Date().getFullYear();
+    for (let y = a - 1; y <= a + 3; y++) selAnnee.add(new Option(String(y), String(y), false, y === a));
+    selAnnee.addEventListener("change", afficherEvenements);
+  }
+  const { data, error } = await supabase.from("evenements").select("*").order("date_debut");
+  if (error) { document.getElementById("ev-liste").textContent = "Erreur : " + error.message; return; }
+  evenementsCache = data || [];
+  afficherEvenements();
+}
+function dateDansAnnee(ev, annee) {
+  if (!ev.chaque_annee) return ev.date_debut;
+  return annee + ev.date_debut.slice(4);
+}
+function afficherEvenements() {
+  const annee = parseInt(document.getElementById("ev-annee").value, 10);
+  const auj = dateLocaleISO();
+  const liste = evenementsCache
+    .filter(ev => ev.chaque_annee || ev.date_debut.slice(0, 4) === String(annee) || (ev.date_fin && ev.date_fin.slice(0, 4) === String(annee)))
+    .map(ev => ({ ...ev, dateAffichee: dateDansAnnee(ev, annee) }))
+    .sort((a, b) => a.dateAffichee.localeCompare(b.dateAffichee));
+  // prochains 30 jours (toutes années)
+  const dans30 = dateLocaleISO(new Date(Date.now() + 30 * 864e5));
+  const prochains = evenementsCache.map(ev => {
+    let d = ev.chaque_annee ? dateDansAnnee(ev, new Date().getFullYear()) : ev.date_debut;
+    if (ev.chaque_annee && d < auj) d = dateDansAnnee(ev, new Date().getFullYear() + 1);
+    return { ...ev, d };
+  }).filter(ev => ev.d >= auj && ev.d <= dans30).sort((a, b) => a.d.localeCompare(b.d));
+  document.getElementById("ev-prochains").innerHTML = "<b>⏰ Dans les 30 prochains jours :</b> " + (prochains.length
+    ? prochains.map(ev => `${new Date(ev.d + "T12:00:00").toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" })} · ${esc(ev.titre)}`).join(" — ")
+    : "rien de prévu.");
+  const zone = document.getElementById("ev-liste");
+  if (!liste.length) { zone.innerHTML = `<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun événement en ${annee}. Touche « ➕ Ajouter un événement ».</p>`; return; }
+  let moisCourant = "", html = "";
+  liste.forEach(ev => {
+    const d = new Date(ev.dateAffichee + "T12:00:00");
+    const mois = d.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+    if (mois !== moisCourant) { html += `<div class="ev-mois">${mois}</div>`; moisCourant = mois; }
+    const fin = ev.date_fin && ev.date_fin !== ev.date_debut ? " → " + new Date(ev.date_fin + "T12:00:00").toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" }) : "";
+    html += `<div class="ev-item ${ev.dateAffichee < auj ? "ev-passe" : ""}" data-id="${ev.id}">
+      <div class="ev-date"><b>${d.getDate()}</b><span>${d.toLocaleDateString("fr-BE", { weekday: "short" })}</span></div>
+      <div class="ev-texte"><div class="ev-titre">${esc(ev.titre)}</div>
+        <div class="ev-info">${CATEGORIES_EV[ev.categorie] || ""}${fin}${ev.heure ? " · " + String(ev.heure).slice(0, 5) : ""}${ev.lieu ? " · 📍 " + esc(ev.lieu) : ""}${ev.chaque_annee ? " · 🔁 chaque année" : ""} · 🔔 ${ev.rappel_jours === 0 ? "le jour même" : ev.rappel_jours + " j avant"}</div>
+        ${ev.note ? `<div class="ev-info">📝 ${esc(ev.note)}</div>` : ""}</div></div>`;
+  });
+  zone.innerHTML = html;
+  zone.querySelectorAll(".ev-item").forEach(el => el.addEventListener("click", () => ouvrirEditionEvenement(evenementsCache.find(e => e.id === el.dataset.id))));
+}
+function ouvrirEditionEvenement(ev) {
+  const fond = document.createElement("div");
+  fond.style.cssText = "position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:14px;";
+  const st = "width:100%; box-sizing:border-box; padding:11px; border-radius:8px; border:1px solid #cfcfcd; font-size:1rem;";
+  const lab = t => `<label style="display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px;">${t}</label>`;
+  fond.innerHTML = `<div style="background:#fff; border-radius:14px; padding:18px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto;">
+    <div style="font-weight:800; font-size:1.05rem;">${ev ? "✏️ Modifier l'événement" : "➕ Nouvel événement"}</div>
+    ${lab("Titre *")}<input id="evf-titre" style="${st}" placeholder="ex : Salon de l'auto, contrôle technique BMW…" value="${esc(ev?.titre || "")}">
+    ${lab("Catégorie")}<select id="evf-cat" style="${st}">${Object.entries(CATEGORIES_EV).map(([k, v]) => `<option value="${k}" ${ev?.categorie === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      <div>${lab("Date *")}<input id="evf-date" type="date" style="${st}" value="${esc(ev?.date_debut || "")}"></div>
+      <div>${lab("Jusqu'au (optionnel)")}<input id="evf-fin" type="date" style="${st}" value="${esc(ev?.date_fin || "")}"></div>
+    </div>
+    ${lab("Heure (optionnel)")}<input id="evf-heure" type="time" style="${st}" value="${ev?.heure ? String(ev.heure).slice(0, 5) : ""}">
+    ${lab("Lieu (optionnel)")}<input id="evf-lieu" style="${st}" value="${esc(ev?.lieu || "")}">
+    ${lab("Note (optionnel)")}<textarea id="evf-note" rows="2" style="${st}">${esc(ev?.note || "")}</textarea>
+    ${lab("🔔 Me rappeler")}<select id="evf-rappel" style="${st}">${[[0, "le jour même seulement"], [1, "1 jour avant"], [2, "2 jours avant"], [3, "3 jours avant"], [7, "1 semaine avant"], [14, "2 semaines avant"], [30, "1 mois avant"]].map(([v, t]) => `<option value="${v}" ${(ev ? ev.rappel_jours : 3) === v ? "selected" : ""}>${t}</option>`).join("")}</select>
+    <label style="display:flex; gap:10px; align-items:center; margin-top:12px; font-weight:700;"><input type="checkbox" id="evf-annuel" style="width:20px; height:20px;" ${ev?.chaque_annee ? "checked" : ""}> 🔁 Revient chaque année</label>
+    <div style="font-size:.78rem; color:var(--gris); margin-top:4px;">Tu reçois une notification + un e-mail à l'avance, puis le jour même.</div>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      ${ev ? `<button type="button" id="evf-suppr" style="flex:1; padding:13px; border-radius:10px; border:1px solid var(--rouge); background:#fff; color:var(--rouge); font-weight:700;">🗑️</button>` : ""}
+      <button type="button" id="evf-annuler" style="flex:1; padding:13px; border-radius:10px; border:none; background:#e3e3e0; font-weight:700;">Annuler</button>
+      <button type="button" id="evf-ok" style="flex:2; padding:13px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:800;">✅ Enregistrer</button>
+    </div></div>`;
+  document.body.appendChild(fond);
+  const fermer = () => fond.remove();
+  fond.querySelector("#evf-annuler").addEventListener("click", fermer);
+  fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
+  if (ev) fond.querySelector("#evf-suppr").addEventListener("click", async () => {
+    if (!confirm("Supprimer « " + ev.titre + " » ?")) return;
+    const { error } = await supabase.from("evenements").delete().eq("id", ev.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    fermer(); chargerEvenements();
+  });
+  fond.querySelector("#evf-ok").addEventListener("click", async () => {
+    const v = id => fond.querySelector(id).value.trim();
+    if (!v("#evf-titre") || !v("#evf-date")) { alert("Le titre et la date sont obligatoires."); return; }
+    const donnees = {
+      titre: v("#evf-titre"), categorie: v("#evf-cat"), date_debut: v("#evf-date"), date_fin: v("#evf-fin") || null,
+      heure: v("#evf-heure") || null, lieu: v("#evf-lieu") || null, note: v("#evf-note") || null,
+      rappel_jours: parseInt(v("#evf-rappel"), 10), chaque_annee: fond.querySelector("#evf-annuel").checked, dernier_rappel: null
+    };
+    const { error } = ev ? await supabase.from("evenements").update(donnees).eq("id", ev.id) : await supabase.from("evenements").insert(donnees);
+    if (error) { alert("Erreur : " + error.message); return; }
+    fermer();
+    document.getElementById("ev-annee").value = donnees.date_debut.slice(0, 4);
+    chargerEvenements();
+  });
+}
+document.getElementById("ev-ajouter").addEventListener("click", () => ouvrirEditionEvenement(null));
 
 // ================== DEMANDES DES CLIENTS (app client) ==================
 const FILTRES_DEMANDES = [
