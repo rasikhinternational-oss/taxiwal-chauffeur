@@ -271,6 +271,14 @@ window.onerror = function(msg, url, line, col, err) {
   .caisse-fond button{ width:auto; padding:10px 14px; font-size:.85rem; }
 
   /* Feuilles de route (admin) */
+  .resume-demande{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:12px 14px; margin:8px 0 10px; }
+  .resume-demande .rd-nom{ font-weight:800; font-size:1.05rem; }
+  .resume-demande .rd-nom a{ color:var(--bleu, #3b82c4); text-decoration:none; font-weight:700; }
+  .resume-demande .rd-quand{ margin:4px 0 6px; font-weight:600; color:#333; }
+  .resume-demande .rd-adr{ font-size:.92rem; margin-top:3px; }
+  .resume-demande .rd-km{ color:var(--gris); }
+  .resume-demande .rd-prix{ margin-top:6px; font-weight:700; color:#1f6b3f; }
+  .resume-demande .rd-note{ margin-top:6px; font-size:.85rem; color:#555; }
   .pc-puces{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
   .pc-puces button{ width:auto; padding:10px 14px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:var(--blanc); font-weight:700; font-size:.9rem; }
   .pc-puces button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
@@ -1551,7 +1559,24 @@ function afficherDemandesClients() {
   if (sectionVisible && !enEdition && !document.querySelector("#section-demandes-clients .carte-en-grand")) {
   const liste = clients.filter(filtre[2]).sort((a, b) => dcFiltre === "annulees" ? new Date(b.date_heure) - new Date(a.date_heure) : new Date(a.date_heure) - new Date(b.date_heure));
   zone.innerHTML = liste.length ? "" : `<p style="color:var(--gris); text-align:center; padding:20px 0;">Rien dans « ${filtre[1]} ».</p>`;
-  liste.forEach(c => zone.appendChild(construireCarteAdmin(c)));
+  liste.forEach(c => {
+    const carte = construireCarteAdmin(c);
+    // Résumé bien visible en haut : qui, quand, d'où, où
+    const resume = document.createElement("div");
+    resume.className = "resume-demande";
+    const quand = c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+    const tel = (c.client_telephone || "").replace(/\s/g, "");
+    resume.innerHTML = `
+      <div class="rd-nom">👤 ${esc(c.client_nom || "Client")}${tel ? ` · <a href="tel:${esc(tel)}" onclick="event.stopPropagation()">📞 ${esc(c.client_telephone)}</a>` : ""}</div>
+      <div class="rd-quand">🕐 ${esc(quand)} · 👥 ${c.passagers || 1}${c.bagages ? " · 🧳 " + c.bagages : ""}${c.aller_retour ? " · 🔁 aller-retour" : ""}</div>
+      <div class="rd-adr">🟢 ${esc(c.adresse_depart || "?")}</div>
+      <div class="rd-adr">🔴 ${esc(c.adresse_arrivee || "?")}${c.distance_km ? ` <span class="rd-km">· ${String(c.distance_km).replace(".", ",")} km</span>` : ""}</div>
+      ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} €${c.acompte_montant ? " (acompte " + Number(c.acompte_montant).toFixed(2) + " €)" : ""}</div>` : ""}
+      ${c.notes ? `<div class="rd-note">📝 ${esc(c.notes)}</div>` : ""}`;
+    const btnGrand = carte.querySelector(".btn-carte-grand");
+    if (btnGrand && btnGrand.nextSibling) carte.insertBefore(resume, btnGrand.nextSibling); else carte.insertBefore(resume, carte.firstChild);
+    zone.appendChild(carte);
+  });
   }
   // pastille sur le bouton du menu : demandes à traiter (nouvelles + paiements déclarés + messages)
   const aTraiter = clients.filter(c => c.statut === "en_attente" || c.statut === "acompte_declare" || (c.message_client_paiement && c.statut === "attente_acompte")).length;
@@ -4079,7 +4104,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.id = "overlay-plein-ecran-fa";
-      overlay.style.cssText = "position:fixed; inset:0; background:var(--noir); z-index:100; overflow-y:auto; padding:16px;";
+      overlay.style.cssText = "position:fixed; inset:0; background:var(--noir); z-index:760; overflow-y:auto; padding:16px;";
       document.body.appendChild(overlay);
     }
     overlay.innerHTML = "";
