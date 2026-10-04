@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taxi Wal</title>
+<script>
+  // Point d'entrée de l'application iPhone/Android Taxi Wal : on ouvre directement l'espace client
+  (function () {
+    var suite = window.location.search + window.location.hash;
+    window.location.replace("client.html" + suite);
+  })();
+</script>
+<style>
+  html, body { margin:0; height:100%; background:#fff; font-family:-apple-system, system-ui, sans-serif; }
+  .c { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#333; }
+  a { color:#c8102e; font-weight:600; }
+</style>
+</head>
+<body>
+  <div class="c">
+    <strong>Taxi Wal</strong>
+    <span>Chargement…</span>
+    <a href="client.html">Ouvrir l'application</a>
+  </div>
+</body>
+</html>
