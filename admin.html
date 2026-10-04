@@ -4577,9 +4577,9 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
     }
     .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
-    .page { width: 190mm; height: 276mm; overflow: hidden; display: flex; flex-direction: column; background: #fff; }
+    .page { width: 190mm; height: auto; display: flex; flex-direction: column; background: #fff; }
     .page-contenu { flex: 0 0 auto; }
-    .page-pied { margin-top: auto; }
+    .page-pied { margin-top: 18px; }
     .num-page { font-size: 8px; text-align: right; margin-top: 2px; }
     .courses-table tr { break-inside: avoid; page-break-inside: avoid; }
     @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 10mm solid #fff; } #pages { padding: 10mm 0; } }
@@ -4649,7 +4649,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     var source = document.getElementById("source"), zone = document.getElementById("pages");
     var tpl = document.getElementById("tpl-pied");
     var mesure = document.createElement("div");
-    mesure.style.cssText = "position:absolute;visibility:hidden;height:276mm;width:1px;";
+    mesure.style.cssText = "position:absolute;visibility:hidden;height:250mm;width:1px;";
     document.body.appendChild(mesure);
     var hauteurPage = mesure.getBoundingClientRect().height;
     mesure.parentNode.removeChild(mesure);
