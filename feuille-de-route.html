@@ -1190,6 +1190,13 @@ function construireLigneHtml(ligne, numeroAffiche) {
   else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
   if (ligne.mode_paiement === "qr") badge += " · 📱 QR";
   if (ligne.mode_paiement === "annulee") badge += " · ❌ annulée";
+  // Contrôle du compteur : l'index de départ doit suivre l'index de débarquement de la course précédente
+  const idxLigne = lignesActuelles.findIndex(x => x.id === ligne.id);
+  const precedente = idxLigne > 0 ? lignesActuelles[idxLigne - 1] : null;
+  if (precedente && precedente.debarquement_index != null && ligne.index_depart != null) {
+    const ecart = ((Number(ligne.index_depart) - Number(precedente.debarquement_index)) % 1000 + 1000) % 1000;
+    if (ecart > 500) badge += " · ⚠️ index en arrière (vérifie)";
+  }
   if (ligne.signalee_erreur) badge += " · 📨 demande envoyée à la centrale";
 
   const nbArrets = normaliserArrets(ligne.arrets).filter(a => a.adresse).length;
