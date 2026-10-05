@@ -19,6 +19,24 @@ function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
+
+// Toutes les listes de motifs finissent par « ✏️ Écrire mon propre texte… » (texte libre)
+function ajouterTexteLibre(select, valeurActuelle) {
+  if (![...select.options].some(o => o.value === "__ecrire__")) select.add(new Option("✏️ Écrire mon propre texte…", "__ecrire__"));
+  if (valeurActuelle && ![...select.options].some(o => o.value === valeurActuelle)) {
+    select.add(new Option("✏️ " + valeurActuelle, valeurActuelle), select.options.length - 1);
+  }
+  select.addEventListener("change", (ev) => {
+    if (select.value !== "__ecrire__") return;
+    ev.stopImmediatePropagation();
+    const texte = (prompt("Écris ton texte (il apparaîtra tel quel sur la feuille de route) :") || "").trim();
+    if (!texte) { select.value = valeurActuelle || ""; return; }
+    select.add(new Option("✏️ " + texte, texte), select.options.length - 1);
+    select.value = texte;
+    valeurActuelle = texte;
+    select.dispatchEvent(new Event("change"));
+  }, true);
+}
 // Index de compteur (3 chiffres) : 8 s'affiche « 008 », 22 « 022 »
 const CHAMPS_INDEX = ["index_depart", "embarquement_index", "debarquement_index"];
 function formatIndex(v) {
@@ -4433,21 +4451,8 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="Plein de carburant">⛽ Plein de carburant</option>
         <option value="Course gratuite / geste commercial">🎁 Course gratuite / geste commercial</option>
         <option value="Autre (voir note)">📝 Autre (voir note)</option>
-        <option value="__ecrire__">✏️ Écrire mon propre texte…</option>
       `;
-      // texte libre déjà enregistré : on l'ajoute à la liste
-      if (ligne.motif_sans_prix && ![...input.options].some(o => o.value === ligne.motif_sans_prix)) {
-        input.add(new Option("✏️ " + ligne.motif_sans_prix, ligne.motif_sans_prix), input.options.length - 1);
-      }
-      input.addEventListener("change", (ev) => {
-        if (input.value !== "__ecrire__") return;
-        ev.stopImmediatePropagation();
-        const texte = (prompt("Écris ce qui doit apparaître à la place du prix (ex : chercher la licence, dépôt véhicule au garage…)") || "").trim();
-        if (!texte) { input.value = ligne.motif_sans_prix || ""; return; }
-        input.add(new Option("✏️ " + texte, texte), input.options.length - 1);
-        input.value = texte;
-        input.dispatchEvent(new Event("change"));
-      }, true);
+      ajouterTexteLibre(input, ligne.motif_sans_prix);
     } else if (estMotif) {
       input.innerHTML = `
         <option value="">— Choisir le motif (obligatoire) —</option>
@@ -4459,6 +4464,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="Convention entreprise / école">Convention entreprise / école</option>
         <option value="Autre">Autre</option>
       `;
+      ajouterTexteLibre(input, ligne.motif_forfait);
     } else if (estTypeCourse) {
       input.innerHTML = `
         <option value="normale">Course normale (taximètre)</option>
@@ -4624,9 +4630,9 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
       <td>${(() => {
         if (estUber) return "Uber";
-          if (l.motif_sans_prix) return `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.motif_sans_prix)}</span>`;
+          if (l.motif_sans_prix) return `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
         if (l.mode_paiement === "annulee") return "—";
-        if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait)}</span>` : "");
+        if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
         if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : "");
         return esc(l.prix_taximetre);
       })()}</td>
