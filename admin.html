@@ -4425,6 +4425,30 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const estCheckbox = type === "checkbox";
     const wrap = document.createElement("div");
     wrapsParChampAdmin[champ] = wrap;
+    // « Sommes perçues » : on peut écrire un texte à la place du montant
+    if (champ === "sommes_percues") {
+      const zoneTexte = document.createElement("div");
+      zoneTexte.style.cssText = "margin-top:6px;";
+      const rendreTexte = () => {
+        zoneTexte.innerHTML = ligne.sommes_texte
+          ? `<div style="font-size:.85rem; color:#b3141b; font-weight:700;">✏️ ${String(ligne.sommes_texte).replace(/[<>&]/g, "")}</div>
+             <button type="button" class="st-mod" style="width:auto; padding:6px 10px; margin-top:4px; border-radius:8px; border:1px solid #ccc; background:#fff; font-size:.8rem;">Modifier / effacer le texte</button>`
+          : `<button type="button" class="st-mod" style="width:100%; padding:8px; border-radius:8px; border:1px dashed #b3141b; background:#fff; color:#b3141b; font-weight:700; font-size:.82rem;">✏️ Écrire un texte au lieu du montant</button>`;
+        zoneTexte.querySelector(".st-mod").addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          const t = prompt("Texte à la place du montant (laisse vide pour effacer) :", ligne.sommes_texte || "");
+          if (t === null) return;
+          const val = t.trim() || null;
+          const { error } = await supabase.from("lignes_feuille_route").update({ sommes_texte: val }).eq("id", ligne.id);
+          if (error) { alert("Erreur : " + error.message); return; }
+          ligne.sommes_texte = val;
+          rendreTexte();
+        });
+      };
+      rendreTexte();
+      wrap.appendChild(zoneTexte);
+    }
+
     if (estAdresse) wrap.style.gridColumn = "1 / -1";
     const lab = document.createElement("label"); lab.textContent = libelle;
     const input = (estPaiement || estTypeCourse || estMotif || estSansPrix) ? document.createElement("select") : document.createElement("input");
@@ -4441,6 +4465,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
         <option value="annulee">❌ Course annulée (rien encaissé)</option>
       `;
+      ajouterTexteLibre(input, ligne.mode_paiement);
     } else if (estSansPrix) {
       input.innerHTML = `
         <option value="">— (il y a un prix) —</option>
@@ -4618,7 +4643,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     l = l || {};
     const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
     const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-    const sommes = l.motif_sans_prix && l.sommes_percues == null ? "—" : l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+    const sommes = l.sommes_texte ? `<span style="color:#b3141b; font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>` : l.motif_sans_prix && l.sommes_percues == null ? "—" : l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
       : estUber ? "Payé sur Uber" : l.sommes_percues;
     return `<tr>
       <td>${i + 1}</td>
@@ -4639,8 +4664,9 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
           const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : "";
           return esc(l.prix_taximetre) + typeLibre;
       })()}</td>
-      <td>${fmtNombre(sommes)}${(() => {
-          const m = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH" }[l.mode_paiement];
+      <td>${l.sommes_texte ? sommes : fmtNombre(sommes)}${(() => {
+          const m = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH" }[l.mode_paiement]
+            || (l.mode_paiement && !["annulee", "facture", "uber"].includes(l.mode_paiement) ? esc(l.mode_paiement).toUpperCase() : null);
           return m && l.sommes_percues != null ? `<br><b style="font-size:8px; letter-spacing:.5px;">${m}</b>` : "";
         })()}</td>
     </tr>`;
