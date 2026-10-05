@@ -2172,6 +2172,40 @@ function construireCarteAdmin(course) {
     corps.appendChild(resume);
   }
 
+  // Course aller-retour : le RETOUR est une course à part → on l'affiche ici avec son propre chauffeur
+  if (course.aller_retour && !course.est_retour) {
+    const retour = dernieresCoursesAdmin.find(r => r.course_aller_id === course.id && r.statut !== "annulee");
+    const blocRetour = document.createElement("div");
+    blocRetour.style.cssText = "background:#eef4fb; border:1px solid #bcd3ee; border-radius:10px; padding:10px 12px; margin:8px 0; font-size:.88rem;";
+    if (!retour) {
+      blocRetour.innerHTML = `🔄 <b>Retour</b> : ${course.type_retour === "heure_precise" ? "pas encore créé (enregistre la course pour le créer)" : "après attente — heure à confirmer"}`;
+    } else {
+      const quandR = new Date(retour.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      blocRetour.innerHTML = `<div style="font-weight:800;">🔄 RETOUR (course séparée) · ${esc(quandR)}</div>
+        <div style="margin:3px 0 6px; color:#333;">${esc(retour.adresse_depart || "")} → ${esc(retour.adresse_arrivee || "")}</div>
+        <label style="display:block; font-size:.78rem; color:var(--gris); margin-bottom:3px;">Chauffeur du retour (indépendant de l'aller)</label>`;
+      const selR = document.createElement("select");
+      selR.innerHTML = `<option value="">— Pas encore attribué —</option>` + (chauffeursCache || []).map(c => `<option value="${c.id}" ${c.id === retour.chauffeur_id ? "selected" : ""}>${esc(c.nom)}</option>`).join("");
+      selR.addEventListener("click", e => e.stopPropagation());
+      selR.addEventListener("change", async (e) => {
+        e.stopPropagation();
+        const id = e.target.value || null;
+        const maj = { chauffeur_id: id, statut: id ? "assignee" : (retour.statut === "assignee" ? "confirmee" : retour.statut), accepte_chauffeur: false };
+        const veh = id ? vehiculesCache.find(v => v.chauffeur_id === id) : null;
+        if (veh) maj.vehicule_id = veh.id; else if (!id) maj.vehicule_id = null;
+        if (id && retour.origine === "client" && !retour.acompte_paye && !retour.sans_acompte_autorise && !course.acompte_paye) {
+          if (!confirm("⚠️ Le client n'a pas encore payé l'acompte. Attribuer le retour quand même ?")) { e.target.value = retour.chauffeur_id || ""; return; }
+          maj.sans_acompte_autorise = true;
+        } else if (id && retour.origine === "client" && course.acompte_paye) maj.sans_acompte_autorise = true;
+        const { error } = await supabase.from("courses").update(maj).eq("id", retour.id);
+        if (error) { alert("Erreur : " + error.message); e.target.value = retour.chauffeur_id || ""; return; }
+        chargerCoursesAdmin();
+      });
+      blocRetour.appendChild(selR);
+    }
+    corps.appendChild(blocRetour);
+  }
+
   if (course.origine === "client" && !["annulee", "refusee", "en_attente"].includes(course.statut)) {
     const etat = document.createElement("div");
     let txt, fond, coul;
