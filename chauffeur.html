@@ -7,6 +7,36 @@ function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 }
+// ================== « Y ALLER » : ouvrir l'adresse dans l'app GPS au choix ==================
+const APPS_GPS = {
+  google: { nom: "Google Maps", icone: "🗺️", url: (a, etapes) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a)}${etapes && etapes.length ? "&waypoints=" + encodeURIComponent(etapes.join("|")) : ""}&travelmode=driving` },
+  waze:   { nom: "Waze", icone: "🚙", url: (a) => `https://waze.com/ul?q=${encodeURIComponent(a)}&navigate=yes` },
+  apple:  { nom: "Plans (Apple)", icone: "🍎", url: (a) => `https://maps.apple.com/?daddr=${encodeURIComponent(a)}&dirflg=d` }
+};
+function ouvrirNavigation(adresse, etapes) {
+  if (!adresse || !String(adresse).trim()) { alert("Pas encore d'adresse."); return; }
+  let prefere = null;
+  try { prefere = localStorage.getItem("taxiwal_app_gps"); } catch (e) {}
+  const fond = document.createElement("div");
+  fond.style.cssText = "position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center;";
+  const ordre = Object.keys(APPS_GPS).sort((a, b) => (b === prefere) - (a === prefere));
+  fond.innerHTML = `<div style="background:#fff; color:#111; width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px);">
+    <div style="font-weight:800; font-size:1.05rem;">🧭 Y aller avec…</div>
+    <div style="font-size:.85rem; color:#555; margin:4px 0 12px;">${String(adresse).replace(/[<>&]/g, "")}</div>
+    ${ordre.map((k, i) => `<button type="button" data-app="${k}" style="display:flex; align-items:center; gap:12px; width:100%; margin:0 0 8px; padding:14px; border-radius:12px; border:${k === prefere ? "2px solid #1f8a4c" : "1px solid #ddd"}; background:${k === prefere ? "#e7f5ec" : "#fff"}; color:#111; font-size:1.05rem; font-weight:700; text-align:left;">
+      <span style="font-size:1.4rem;">${APPS_GPS[k].icone}</span> ${APPS_GPS[k].nom}${k === prefere ? ' <span style="margin-left:auto; font-size:.75rem; color:#1f8a4c;">habituel</span>' : ""}</button>`).join("")}
+    <button type="button" data-annuler style="width:100%; margin-top:4px; padding:13px; border-radius:12px; border:none; background:#eee; color:#111; font-weight:700;">Annuler</button>
+  </div>`;
+  document.body.appendChild(fond);
+  const fermer = () => fond.remove();
+  fond.addEventListener("click", (e) => { if (e.target === fond || e.target.hasAttribute("data-annuler")) fermer(); });
+  fond.querySelectorAll("[data-app]").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.app;
+    try { localStorage.setItem("taxiwal_app_gps", k); } catch (e) {}
+    fermer();
+    window.open(APPS_GPS[k].url(adresse, etapes), "_blank");
+  }));
+}
 
 // Le champ touché se place au MILIEU de l'écran (pas caché par le clavier ou par l'en-tête)
 document.addEventListener("focusin", (e) => {
@@ -1391,11 +1421,11 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
   }
 
   if (course.statut === "assignee" || course.statut === "en_cours") {
-    const btnGps = creerBouton("🧭 Itinéraire GPS", () => {
-      const dest = encodeURIComponent(course.adresse_arrivee);
-      const dep = encodeURIComponent(course.adresse_depart);
-      const etapes = (Array.isArray(course.arrets) ? course.arrets : []).filter(x => x && x.adresse).map(x => x.adresse).join("|");
-      window.open(`https://www.google.com/maps/dir/?api=1&origin=${dep}&destination=${dest}${etapes ? "&waypoints=" + encodeURIComponent(etapes) : ""}&travelmode=driving`, "_blank");
+    // Avant le départ : on va CHERCHER le client ; course démarrée : on va à la DESTINATION
+    const versClient = course.statut !== "en_cours";
+    const btnGps = creerBouton(versClient ? "🧭 Aller chercher le client" : "🧭 Y aller (destination)", () => {
+      const etapes = versClient ? [] : (Array.isArray(course.arrets) ? course.arrets : []).filter(x => x && x.adresse).map(x => x.adresse);
+      ouvrirNavigation(versClient ? course.adresse_depart : course.adresse_arrivee, etapes);
     });
     btnGps.style.background = "#3b82c4";
     actions.appendChild(btnGps);
