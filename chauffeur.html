@@ -2,6 +2,18 @@
 <html lang="fr">
 <head>
 <script>
+// En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
+window.addEventListener("error", function (e) {
+  try {
+    var b = document.getElementById("bandeau-erreur-js");
+    if (!b) { b = document.createElement("div"); b.id = "bandeau-erreur-js";
+      b.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#b3141b;color:#fff;padding:10px 12px;border-radius:10px;font:13px Arial,sans-serif;";
+      (document.body || document.documentElement).appendChild(b); }
+    b.textContent = "⚠️ Erreur : " + (e.message || "inconnue") + " — fais une capture et envoie-la. Recharge la page pour continuer.";
+  } catch (_) {}
+});
+</script>
+<script>
 // Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
 function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();

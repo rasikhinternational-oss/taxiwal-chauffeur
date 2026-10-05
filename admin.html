@@ -2,6 +2,18 @@
 <html lang="fr">
 <head>
 <script>
+// En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
+window.addEventListener("error", function (e) {
+  try {
+    var b = document.getElementById("bandeau-erreur-js");
+    if (!b) { b = document.createElement("div"); b.id = "bandeau-erreur-js";
+      b.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#b3141b;color:#fff;padding:10px 12px;border-radius:10px;font:13px Arial,sans-serif;";
+      (document.body || document.documentElement).appendChild(b); }
+    b.textContent = "⚠️ Erreur : " + (e.message || "inconnue") + " — fais une capture et envoie-la. Recharge la page pour continuer.";
+  } catch (_) {}
+});
+</script>
+<script>
 // Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
 function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
@@ -2365,7 +2377,16 @@ function construireCarteAdmin(course) {
   selectChauffeur.innerHTML = `<option value="">— ${course.chauffeur_id ? "Réassigner à" : "Assigner à"} —</option>` + optionsChauffeursEtPartenaires(course.chauffeur_id).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
-    const maj = { chauffeur_id: nouveauChauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null };
+    // Sécurité : jamais de course retirée à un chauffeur par erreur
+    if (course.chauffeur_id && course.chauffeur_id !== nouveauChauffeurId) {
+      const ancien = (chauffeursCache.find(c => c.id === course.chauffeur_id) || {}).nom || course.profils?.nom || "ce chauffeur";
+      const nouveau = nouveauChauffeurId ? ((chauffeursCache.find(c => c.id === nouveauChauffeurId) || {}).nom || "un autre chauffeur") : null;
+      const ok = confirm(nouveau
+        ? `Retirer cette course à ${ancien} et la donner à ${nouveau} ?\n\n${ancien} sera prévenu qu'elle ne lui est plus attribuée.`
+        : `Retirer cette course à ${ancien} ?\n\nElle disparaîtra de son application et reviendra « à attribuer ».`);
+      if (!ok) { e.target.value = course.chauffeur_id || ""; return; }
+    }
+    const maj = { chauffeur_id: nouveauChauffeurId, statut: nouveauChauffeurId ? "assignee" : "en_attente", accepte_chauffeur: false, accepte_a: null };
     if (!course.vehicule_id) {
       const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
       if (vehAttitre) maj.vehicule_id = vehAttitre.id;
@@ -3667,6 +3688,7 @@ const champsLigneFA = [
   ["motif_forfait", "Motif du forfait", "select_motif"],
   ["aller_retour", "Aller-retour ?", "checkbox"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
+  ["motif_sans_prix", "Pas de prix ? Choisis le motif", "select_sans_prix"],
   ["sommes_percues", "Sommes perçues (€)", "number"],
   ["mode_paiement", "Mode de paiement", "select"],
   ["numero_dossier", "N° de dossier (assurance)", "text"]
@@ -4219,7 +4241,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   totalPercuDiv.style.cssText = "font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:8px;";
   function calculerTotalPercuLignes(listeLignes) {
     return listeLignes.reduce((s, l) => {
-      if (l.type_course === "uber" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.mode_paiement === "annulee" || l.type_course === "prive") return s;
+      if (l.type_course === "uber" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.mode_paiement === "annulee" || l.type_course === "prive" || l.motif_sans_prix) return s;
       const v = parseFloat(l.sommes_percues ?? l.prix_taximetre ?? 0);
       return s + (isNaN(v) ? 0 : v);
     }, 0);
@@ -4379,6 +4401,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
   champsLigneFA.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
+    const estSansPrix = champ === "motif_sans_prix";
     const estMotif = champ === "motif_forfait";
     const estTypeCourse = champ === "type_course";
     const estCheckbox = type === "checkbox";
@@ -4386,7 +4409,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     wrapsParChampAdmin[champ] = wrap;
     if (estAdresse) wrap.style.gridColumn = "1 / -1";
     const lab = document.createElement("label"); lab.textContent = libelle;
-    const input = (estPaiement || estTypeCourse || estMotif) ? document.createElement("select") : document.createElement("input");
+    const input = (estPaiement || estTypeCourse || estMotif || estSansPrix) ? document.createElement("select") : document.createElement("input");
     inputsParChampAdmin[champ] = input;
     if (estPaiement) {
       input.innerHTML = `
@@ -4399,6 +4422,17 @@ function construireLigneAdmin(ligne, numeroAffiche) {
         <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
         <option value="annulee">❌ Course annulée (rien encaissé)</option>
+      `;
+    } else if (estSansPrix) {
+      input.innerHTML = `
+        <option value="">— (il y a un prix) —</option>
+        <option value="Trajet privé">🚗 Trajet privé</option>
+        <option value="Achat / course pour la société">🛒 Achat / course pour la société</option>
+        <option value="Déplacement à vide (garage, retour…)">↩️ Déplacement à vide (garage, retour…)</option>
+        <option value="Carwash / entretien">🧽 Carwash / entretien</option>
+        <option value="Plein de carburant">⛽ Plein de carburant</option>
+        <option value="Course gratuite / geste commercial">🎁 Course gratuite / geste commercial</option>
+        <option value="Autre (voir note)">📝 Autre (voir note)</option>
       `;
     } else if (estMotif) {
       input.innerHTML = `
@@ -4511,6 +4545,7 @@ function construireLigneAdmin(ligne, numeroAffiche) {
     const estForfait = typeCourse === "forfait";
     wrapsParChampAdmin["motif_forfait"].style.display = estForfait ? "" : "none";
     wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee || estForfait) ? "none" : "";
+    wrapsParChampAdmin["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
     wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
@@ -4562,7 +4597,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     l = l || {};
     const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
     const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-    const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+    const sommes = l.motif_sans_prix && l.sommes_percues == null ? "—" : l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
       : estUber ? "Payé sur Uber" : l.sommes_percues;
     return `<tr>
       <td>${i + 1}</td>
@@ -4575,6 +4610,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
       <td>${(() => {
         if (estUber) return "Uber";
+          if (l.motif_sans_prix) return `<span style="font-size:8px;">${esc(l.motif_sans_prix)}</span>`;
         if (l.mode_paiement === "annulee") return "—";
         if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait)}</span>` : "");
         if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : "");

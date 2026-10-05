@@ -2,6 +2,18 @@
 <html lang="fr">
 <head>
 <script>
+// En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
+window.addEventListener("error", function (e) {
+  try {
+    var b = document.getElementById("bandeau-erreur-js");
+    if (!b) { b = document.createElement("div"); b.id = "bandeau-erreur-js";
+      b.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#b3141b;color:#fff;padding:10px 12px;border-radius:10px;font:13px Arial,sans-serif;";
+      (document.body || document.documentElement).appendChild(b); }
+    b.textContent = "⚠️ Erreur : " + (e.message || "inconnue") + " — fais une capture et envoie-la. Recharge la page pour continuer.";
+  } catch (_) {}
+});
+</script>
+<script>
 // Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
 function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
@@ -319,7 +331,7 @@ window.onerror = function(msg, url, line, col, err) {
     <div class="sous-titre-mini">RECETTES (€)</div>
     <div class="grille3">
       <div><label>Début</label><input type="number" step="0.01" id="recettes-debut"></div>
-      <div><label>Fin</label><input type="number" step="0.01" id="recettes-fin"></div>
+      <div><label>Fin (auto)</label><input type="number" step="0.01" id="recettes-fin" readonly title="Calculé automatiquement avec les courses"></div>
       <div><label>Total</label><input class="total-ro" type="text" id="recettes-total" disabled></div>
     </div>
   </div>
@@ -1166,6 +1178,7 @@ const champsLigne = [
   ["motif_forfait", "Motif du forfait", "select_motif"],
   ["aller_retour", "Aller-retour ?", "checkbox"],
   ["prix_taximetre", "Prix taximètre (€)", "number"],
+  ["motif_sans_prix", "Pas de prix ? Choisis le motif", "select_sans_prix"],
   ["sommes_percues", "Sommes perçues (€)", "number"],
   ["mode_paiement", "Mode de paiement", "select"],
   ["numero_dossier", "N° de dossier (assurance)", "text"]
@@ -1236,6 +1249,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   champsLigne.forEach(([champ, libelle, type]) => {
     const estAdresse = champ === "embarquement_lieu" || champ === "debarquement_lieu";
     const estPaiement = champ === "mode_paiement";
+    const estSansPrix = champ === "motif_sans_prix";
     const estMotif = champ === "motif_forfait";
     const estTypeCourse = champ === "type_course";
     const estCheckbox = type === "checkbox";
@@ -1244,7 +1258,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     if (estAdresse) wrap.style.gridColumn = "1 / -1";
     const lab = document.createElement("label");
     lab.textContent = libelle;
-    const input = (estPaiement || estTypeCourse || estMotif) ? document.createElement("select") : document.createElement("input");
+    const input = (estPaiement || estTypeCourse || estMotif || estSansPrix) ? document.createElement("select") : document.createElement("input");
     inputsParChamp[champ] = input;
     if (estPaiement) {
       input.innerHTML = `
@@ -1257,6 +1271,17 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
         <option value="annulee">❌ Course annulée (rien encaissé)</option>
+      `;
+    } else if (estSansPrix) {
+      input.innerHTML = `
+        <option value="">— (il y a un prix) —</option>
+        <option value="Trajet privé">🚗 Trajet privé</option>
+        <option value="Achat / course pour la société">🛒 Achat / course pour la société</option>
+        <option value="Déplacement à vide (garage, retour…)">↩️ Déplacement à vide (garage, retour…)</option>
+        <option value="Carwash / entretien">🧽 Carwash / entretien</option>
+        <option value="Plein de carburant">⛽ Plein de carburant</option>
+        <option value="Course gratuite / geste commercial">🎁 Course gratuite / geste commercial</option>
+        <option value="Autre (voir note)">📝 Autre (voir note)</option>
       `;
     } else if (estMotif) {
       input.innerHTML = `
@@ -1501,13 +1526,13 @@ function construireLigneHtml(ligne, numeroAffiche) {
     btnCloturer.addEventListener("click", async () => {
       // Vérifie ce qui manque avant de clôturer
       const mode = ligne.mode_paiement || "";
-      const sansMontant = ["uber", "annulee", "facture"].includes(mode) || ligne.type_course === "uber" || ligne.type_course === "prive";
+      const sansMontant = ["uber", "annulee", "facture"].includes(mode) || ligne.type_course === "uber" || ligne.type_course === "prive" || !!ligne.motif_sans_prix;
       const manque = [];
       if (!ligne.embarquement_lieu) manque.push("lieu d'embarquement");
       if (!ligne.debarquement_lieu) manque.push("lieu de débarquement");
       if (!ligne.embarquement_heure) manque.push("heure d'embarquement");
       if (!ligne.debarquement_heure) manque.push("heure de débarquement");
-      if (!mode && ligne.type_course !== "prive") manque.push("mode de paiement");
+      if (!mode && ligne.type_course !== "prive" && !ligne.motif_sans_prix) manque.push("mode de paiement");
       if (!sansMontant && ligne.sommes_percues == null && ligne.prix_taximetre == null) manque.push("prix / sommes perçues");
       if (ligne.type_course === "forfait" && !ligne.motif_forfait) manque.push("motif du forfait");
       const message = manque.length
@@ -1583,6 +1608,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const estForfait = typeCourse === "forfait";
     wrapsParChamp["motif_forfait"].style.display = estForfait ? "" : "none";
     wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee || estForfait) ? "none" : "";
+    wrapsParChamp["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
     wrapsParChamp["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
@@ -1728,7 +1754,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};
       const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-      const sommes = l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
+      const sommes = l.motif_sans_prix && l.sommes_percues == null ? "—" : l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
         : estUber ? "Payé sur Uber" : l.sommes_percues;
       return `<tr>
         <td>${i + 1}</td>
@@ -1741,6 +1767,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${fmtVal(l.debarquement_heure)}</td>
         <td>${(() => {
           if (estUber) return "Uber";
+          if (l.motif_sans_prix) return `<span style="font-size:8px;">${esc(l.motif_sans_prix)}</span>`;
           if (l.mode_paiement === "annulee") return "—";
           if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait)}</span>` : "");
           if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : "");
