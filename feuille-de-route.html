@@ -1322,6 +1322,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="uber">🚕 Course Uber</option>
         <option value="prive">🔒 Trajet privé (non facturé)</option>
       `;
+      ajouterTexteLibre(input, ligne.type_course);
     } else if (estCheckbox) {
       input.type = "checkbox";
       input.style.cssText = "width:auto; margin-top:8px;";
@@ -1790,8 +1791,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
           if (l.motif_sans_prix) return `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
           if (l.mode_paiement === "annulee") return "—";
           if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : "");
-          return esc(l.prix_taximetre);
+          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : ""));
+          const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
+          const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : "";
+          return esc(l.prix_taximetre) + typeLibre;
         })()}</td>
         <td>${fmtVal(sommes)}${(() => {
           const m = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH" }[l.mode_paiement];
