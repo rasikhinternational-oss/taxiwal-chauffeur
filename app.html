@@ -270,6 +270,8 @@ window.onerror = function(msg, url, line, col, err) {
   .choix-paiement button small{ display:block; font-weight:400; color:var(--gris); font-size:.72rem; }
   .choix-paiement button.actif{ border-color:var(--rouge); background:#fff5f5; }
 </style>
+<!-- Générateur de QR code (côté navigateur) pour le QR de virement SEPA / EPC -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -503,15 +505,32 @@ async function copierTexte(texte, bouton, libelleOk) {
 // Construit le texte du QR code de paiement (norme européenne EPC069-12,
 // reconnue par le scanner intégré de toutes les applications bancaires belges)
 function genererPayloadEpcQr({ montant, communication }) {
+  const comm = String(communication || "").trim();
+  // Communication structurée belge (+++123/4567/89012+++) → ligne "référence structurée" (chiffres seuls)
+  // Sinon → ligne "communication libre" (max 140 caractères)
+  const estStructuree = /^(\+{3}|\*{3})?\s*\d{3}\s*\/\s*\d{4}\s*\/\s*\d{5}\s*(\+{3}|\*{3})?$/.test(comm);
+  const refStructuree = estStructuree ? comm.replace(/\D/g, "") : "";
+  const commLibre = estStructuree ? "" : comm.slice(0, 140);
   const lignes = [
     "BCD", "002", "1", "SCT", "",
     COMPTE_BENEFICIAIRE.slice(0, 70),
     COMPTE_IBAN_BRUT,
     "EUR" + Number(montant).toFixed(2),
-    "", "",
-    communication.slice(0, 140)
+    "", refStructuree,
+    commLibre
   ];
   return lignes.join("\n");
+}
+// QR code généré dans le navigateur (librairie qrcode-generator). Renvoie null si la librairie n'a pas pu se charger.
+function qrPaiementDataUrl({ montant, communication }) {
+  try {
+    if (typeof qrcode !== "function") return null;
+    qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"]; // accents dans la communication
+    const qr = qrcode(0, "M");
+    qr.addData(genererPayloadEpcQr({ montant, communication }), "Byte");
+    qr.make();
+    return qr.createDataURL(6, 0);
+  } catch (e) { return null; }
 }
 function urlQrPaiement({ montant, communication }) {
   const payload = genererPayloadEpcQr({ montant, communication });
@@ -1082,7 +1101,7 @@ async function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-prix-propose";
     bloc.innerHTML = `
-      <div class="montant">${esc(course.prix)} € — acompte de ${esc(course.acompte_montant)} €</div>
+      <div class="montant">${esc(course.prix)} €${course.paiement_exige === "total" ? " — à payer en totalité à l'avance" : course.paiement_exige === "choix" ? " — acompte de " + esc(course.acompte_montant) + " € ou totalité, au choix" : " — acompte de " + esc(course.acompte_montant) + " €"}</div>
       <button type="button">✅ Accepter ce prix</button>
     `;
     bloc.querySelector("button").addEventListener("click", async () => {
@@ -1097,29 +1116,40 @@ async function construireCarteCourseClient(course) {
     const communication = communicationCourse(course);
     // Le client choisit : l'acompte ou la totalité
     const totalCourse = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
-    const payeTout = course.paiement_choisi === "total";
+    const exige = course.paiement_exige || "choix";
+    const payeTout = exige === "total" || (exige === "choix" && course.paiement_choisi === "total");
     const montantAPayer = (payeTout ? totalCourse : Number(course.acompte_montant) || 0).toFixed(2);
     const bloc = document.createElement("div");
     bloc.className = "bloc-paiement";
     bloc.innerHTML = `
-      <div style="font-weight:700; margin-bottom:8px;">Comment veux-tu payer ?</div>
-      <div class="choix-paiement">
+      <div style="font-weight:700; margin-bottom:8px; ${exige === "choix" ? "" : "display:none;"}">Comment veux-tu payer ?</div>
+      <div class="choix-paiement" style="${exige === "choix" ? "" : "display:none;"}">
         <button type="button" data-choix="acompte" class="${payeTout ? "" : "actif"}">Acompte<br><b>${esc(Number(course.acompte_montant || 0).toFixed(2))} €</b><small>le reste au chauffeur</small></button>
         <button type="button" data-choix="total" class="${payeTout ? "actif" : ""}">Totalité<br><b>${esc(totalCourse.toFixed(2))} €</b><small>tout est réglé</small></button>
       </div>
-      <div style="font-weight:700; margin:10px 0 4px;">${payeTout ? "Montant total à payer" : "Acompte à payer"} : ${esc(montantAPayer)} €</div>
+      <div style="font-weight:700; margin:10px 0 4px;">${payeTout ? "Montant total à payer" : "Acompte à payer (30 %)"} : ${esc(montantAPayer)} €</div>
+      ${exige === "total" ? `<div class="note-instant" style="margin-top:0;">Pour cette course, Taxi Wal demande le paiement de la totalité à l'avance.</div>` : ""}
+      ${exige === "acompte" ? `<div class="note-instant" style="margin-top:0;">Le reste (${esc((totalCourse - Number(course.acompte_montant || 0)).toFixed(2))} €) se paie au chauffeur.</div>` : ""}
       <div class="zone-paiement-en-ligne" style="display:none;">
         <button type="button" class="btn-payer-en-ligne">💳 Payer maintenant · ${esc(montantAPayer)} €</button>
         <div class="payer-moyens"> Apple Pay · Bancontact (ouvre ton app bancaire) · carte</div>
         <div class="payer-ou">— ou par virement —</div>
       </div>
-      <img src="${urlQrPaiement({ montant: montantAPayer, communication })}" alt="QR code de paiement">
+      ${(() => {
+        const qrSrc = qrPaiementDataUrl({ montant: montantAPayer, communication });
+        if (!qrSrc) return "";
+        return `<div class="bloc-qr-epc">
+        <div style="font-weight:700; margin:12px 0 4px;">📱 Scanne avec ton appli bancaire</div>
+        <div class="note-instant" style="color:var(--gris); margin-top:0; text-align:center;">Le montant et la communication sont déjà remplis. Tu n'as qu'à valider.</div>
+        <img src="${qrSrc}" alt="QR code de virement (montant ${esc(montantAPayer)} €)" style="width:220px; height:220px; padding:14px; background:#fff; image-rendering:pixelated;">
+        <div class="note-instant" style="color:var(--gris);">Sur le même téléphone ? Fais une capture d'écran du QR et ouvre-la depuis ton appli bancaire (option « scanner depuis une image »).</div>
+      </div>`;
+      })()}
       <div class="ligne-info">Bénéficiaire<br><b>${esc(COMPTE_BENEFICIAIRE)}</b></div>
       <div class="ligne-info">IBAN<br><b>${esc(COMPTE_IBAN)}</b></div>
       <div class="ligne-info">Communication (important)<br><b>${esc(communication)}</b></div>
       <button type="button" id="btn-copier-iban">📋 Copier l'IBAN</button>
       <div class="note-instant">⚡ Merci de faire un virement instantané si ta banque le propose : on reçoit la confirmation en quelques secondes et on peut valider ta course tout de suite.</div>
-      <div class="note-instant" style="color:var(--gris);">Scanne ce QR code avec l'appareil photo ou l'app de ta banque : le montant et la communication se remplissent automatiquement.</div>
       <div class="bloc-payer-tel">
         <div style="font-weight:700; margin:12px 0 6px;">📲 Tu réserves depuis ce téléphone ?</div>
         <div class="note-instant" style="color:var(--gris); margin-top:0;">Ouvre l'app de ta banque → <b>Virement</b>, puis colle les infos ci-dessous (ou enregistre le QR : la plupart des apps bancaires belges savent lire un QR depuis tes photos).</div>
@@ -1224,6 +1254,30 @@ async function construireCarteCourseClient(course) {
     bloc.textContent = course.sans_acompte_autorise && !course.acompte_paye
       ? "Ta course est confirmée ! Tu paieras directement au chauffeur. Un chauffeur te sera assigné prochainement."
       : "Acompte reçu, ta course est confirmée ! Un chauffeur te sera assigné prochainement.";
+    div.appendChild(bloc);
+  }
+
+  // --- Course acceptée sans acompte : le client peut quand même signaler qu'il a déjà payé ---
+  if (["confirmee", "assignee", "en_route", "sur_place"].includes(course.statut)
+      && course.sans_acompte_autorise && !course.acompte_paye && Number(course.prix) > 0) {
+    const bloc = document.createElement("div");
+    bloc.className = "bloc-verif";
+    if (course.acompte_declare_client) {
+      bloc.textContent = "💶 Merci, tu nous as signalé ton paiement. Notre équipe le vérifie.";
+    } else {
+      bloc.innerHTML = `<div style="margin-bottom:8px">Tu as déjà fait un virement pour cette course ? Préviens-nous ici :</div>
+        <button type="button" class="btn-deja-paye" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--vert);color:#fff;font-weight:700;font-size:1rem">💶 J'ai déjà payé</button>`;
+      bloc.querySelector(".btn-deja-paye").addEventListener("click", async (e) => {
+        if (!confirm("Confirmes-tu avoir déjà envoyé ton paiement à Taxi Wal ?")) return;
+        e.target.disabled = true; e.target.textContent = "Envoi…";
+        const { error } = await supabase.from("courses").update({
+          acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
+        }).eq("id", course.id);
+        if (error) { e.target.disabled = false; e.target.textContent = "💶 J'ai déjà payé"; alert("Erreur : " + error.message); return; }
+        alert("✅ Merci ! Taxi Wal est prévenu.");
+        chargerMesCourses();
+      });
+    }
     div.appendChild(bloc);
   }
 

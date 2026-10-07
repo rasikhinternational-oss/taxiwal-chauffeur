@@ -1543,6 +1543,31 @@ function jouerSonAlerteAdmin() {
   }
 }
 
+// Grande alerte qui reste à l'écran jusqu'à ce que l'admin touche « Vu »
+function alerteImportanteAdmin(titre, texte, course, couleur, fond) {
+  jouerSonAlerteAdmin();
+  try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification(titre, { body: texte.replace(/<[^>]+>/g, " "), tag: "paiement-" + course.id, requireInteraction: true }); } catch (e) {}
+  }
+  let pile = document.getElementById("pile-alertes-admin");
+  if (!pile) {
+    pile = document.createElement("div");
+    pile.id = "pile-alertes-admin";
+    pile.style.cssText = "position:fixed; left:10px; right:10px; top:calc(env(safe-area-inset-top,0px) + 10px); z-index:5000; display:flex; flex-direction:column; gap:8px;";
+    document.body.appendChild(pile);
+  }
+  const quand = course.date_heure ? new Date(course.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const a = document.createElement("div");
+  a.style.cssText = `background:${fond}; border:3px solid ${couleur}; color:${couleur}; border-radius:14px; padding:14px 16px; box-shadow:0 10px 30px rgba(0,0,0,.25);`;
+  a.innerHTML = `<div style="font-weight:900; font-size:1.1rem;">${titre}</div>
+    <div style="margin-top:6px; color:#222; font-size:.95rem;">${texte}</div>
+    <div style="margin-top:4px; color:#555; font-size:.82rem;">Course ${esc(quand)} · ${esc(course.adresse_depart || "")} → ${esc(course.adresse_arrivee || "")}</div>
+    <button type="button" style="margin-top:10px; width:100%; padding:12px; border:none; border-radius:10px; background:${couleur}; color:#fff; font-weight:800;">👍 Vu</button>`;
+  a.querySelector("button").addEventListener("click", () => a.remove());
+  pile.appendChild(a);
+}
+
 function notifierNouvelleCourseAdmin(course) {
   jouerSonAlerteAdmin();
   if ("Notification" in window && Notification.permission === "granted") {
@@ -1829,7 +1854,7 @@ function afficherDemandesClients() {
       <div class="rd-quand">🕐 ${esc(quand)} · 👥 ${c.passagers || 1}${c.bagages ? " · 🧳 " + c.bagages : ""}${c.aller_retour ? " · 🔁 aller-retour" : ""}</div>
       <div class="rd-adr">🟢 ${esc(c.adresse_depart || "?")}</div>
       <div class="rd-adr">🔴 ${esc(c.adresse_arrivee || "?")}${c.distance_km ? ` <span class="rd-km">· ${String(c.distance_km).replace(".", ",")} km</span>` : ""}</div>
-      ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} €${c.acompte_montant ? " (acompte " + Number(c.acompte_montant).toFixed(2) + " €)" : ""}</div>` : ""}
+      ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} € · ${c.paiement_exige === "total" ? "totalité demandée" : c.paiement_exige === "choix" ? "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " € ou totalité, au choix du client" : "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " €"}</div>` : ""}
       ${c.notes ? `<div class="rd-note">📝 ${esc(c.notes)}</div>` : ""}`;
     const btnGrand = carte.querySelector(".btn-carte-grand");
     if (btnGrand && btnGrand.nextSibling) carte.insertBefore(resume, btnGrand.nextSibling); else carte.insertBefore(resume, carte.firstChild);
@@ -1946,15 +1971,22 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   if (error) { console.error(error); return; }
 
   if (idsCoursesConnusAdmin === null) {
-    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur }]));
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement }]));
   } else {
     (courses || []).forEach(c => {
       const ancien = idsCoursesConnusAdmin.get(c.id);
       if (ancien === undefined && c.origine === "client") {
         notifierNouvelleCourseAdmin(c);
       } else if (ancien) {
-        if (ancien.statut !== "acompte_declare" && c.statut === "acompte_declare") {
-          notifierNouvelleCourseAdmin({ ...c, adresse_depart: "💰 Acompte déclaré payé", adresse_arrivee: c.adresse_arrivee });
+        const montantPaiement = c.paiement_choisi === "total" ? ((Number(c.prix) || 0) + (Number(c.surprime) || 0)).toFixed(2) + " € (totalité)" : Number(c.acompte_montant || 0).toFixed(2) + " € (acompte)";
+        if (!ancien.declare && c.acompte_declare_client && !c.acompte_paye) {
+          alerteImportanteAdmin("💶 Paiement déclaré par le client", `${c.client_nom || "Le client"} dit avoir payé ${montantPaiement}.<br>Vérifie ton compte bancaire puis confirme le paiement sur la course.`, c, "#8a5a00", "#fff7e0");
+        }
+        if (!ancien.paye && c.acompte_paye) {
+          alerteImportanteAdmin("✅ PAIEMENT REÇU", `${c.client_nom || "Le client"} a payé ${montantPaiement}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.`, c, "#1f6b3f", "#e7f5ec");
+        }
+        if (!ancien.msg && c.message_client_paiement) {
+          alerteImportanteAdmin("🙋 Message du client sur le paiement", `${c.client_nom || "Le client"} : « ${esc(c.message_client_paiement)} »`, c, "#1d4f86", "#eef4fb");
         }
         if (!ancien.accepte && c.accepte_chauffeur) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: "✅ Course acceptée par le chauffeur", adresse_arrivee: c.adresse_arrivee });
@@ -1974,7 +2006,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: `❌ Course annulée — ${motifLisible} (${nomChauffeurPourNotif(c)})`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
-      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur });
+      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement });
     });
   }
 
@@ -2427,14 +2459,23 @@ function construireCarteAdmin(course) {
     blocPrix.className = "bloc-prix-admin";
     blocPrix.innerHTML = `
       <input type="number" step="0.5" placeholder="Prix à proposer (€)">
+      <select class="paiement-exige" style="margin-top:6px;">
+        <option value="acompte">💶 Le client paie un acompte (30 %)</option>
+        <option value="total">💳 Le client paie la totalité à l'avance</option>
+        <option value="choix">🔀 Le client choisit (acompte ou totalité)</option>
+      </select>
       <button type="button">Envoyer le prix</button>
     `;
     champPrixCible = blocPrix.querySelector("input");
     blocPrix.querySelector("button").addEventListener("click", async () => {
       const prix = parseFloat(blocPrix.querySelector("input").value);
       if (!prix || prix <= 0) { alert("Indique un prix valide."); return; }
+      const exige = blocPrix.querySelector(".paiement-exige").value;
       const acompte = Math.round(prix * 0.3 * 100) / 100;
-      await supabase.from("courses").update({ prix, acompte_montant: acompte, statut: "prix_envoye" }).eq("id", course.id);
+      await supabase.from("courses").update({
+        prix, acompte_montant: acompte, statut: "prix_envoye", paiement_exige: exige,
+        paiement_choisi: exige === "total" ? "total" : "acompte"
+      }).eq("id", course.id);
       notifierClientParEmail(course.id, "prix_envoye");
       chargerCoursesAdmin();
     });
