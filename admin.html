@@ -322,6 +322,15 @@ window.onerror = function(msg, url, line, col, err) {
   .ev-texte .ev-titre{ font-weight:800; }
   .ev-texte .ev-info{ font-size:.82rem; color:var(--gris); margin-top:2px; }
   .ev-passe{ opacity:.55; }
+  #cb-resume{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  #cb-resume div{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px; text-align:center; }
+  #cb-resume b{ display:block; font-size:1.25rem; }
+  #cb-resume span{ font-size:.72rem; color:var(--gris); }
+  .cb-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:.88rem; cursor:pointer; }
+  .cb-ligne .cb-haut{ display:flex; justify-content:space-between; gap:8px; font-weight:800; }
+  .cb-ligne .cb-roule{ color:#1d4f86; font-weight:700; margin-top:4px; }
+  .cb-ligne .cb-info{ color:var(--gris); font-size:.8rem; margin-top:2px; }
+  .cb-alerte{ color:#b3141b !important; }
   .pc-puces{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
   .pc-puces button{ width:auto; padding:10px 14px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:var(--blanc); font-weight:700; font-size:.9rem; }
   .pc-puces button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
@@ -628,6 +637,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="par-chauffeur">👤 Courses par chauffeur</button>
     <button data-onglet="horaires">🗓️ Horaires</button>
     <button data-onglet="evenements">📅 Événements</button>
+    <button data-onglet="carburant">⛽ Carburant</button>
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
@@ -730,6 +740,15 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-par-chauffeur">
   <div id="pc-puces" class="pc-puces"></div>
   <div id="pc-liste"></div>
+</section>
+
+<section id="section-carburant">
+  <div class="ev-barre">
+    <select id="cb-vehicule" style="flex:1;"></select>
+    <button type="button" id="cb-ajouter" style="flex:0 0 auto;">➕ Plein</button>
+  </div>
+  <div id="cb-resume"></div>
+  <div id="cb-liste"></div>
 </section>
 
 <section id="section-evenements">
@@ -1266,6 +1285,7 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "par-chauffeur") afficherCoursesParChauffeur();
     if (btn.dataset.onglet === "demandes-clients") afficherDemandesClients();
     if (btn.dataset.onglet === "evenements") chargerEvenements();
+    if (btn.dataset.onglet === "carburant") chargerCarburant();
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
@@ -1584,6 +1604,86 @@ document.getElementById("btn-assigner-groupe").addEventListener("click", async (
   mettreAJourBarreAssignationGroupee();
   chargerCoursesAdmin();
 });
+
+// ================== ⛽ CARBURANT : km entre deux pleins + consommation ==================
+let pleinsCache = [];
+async function chargerCarburant() {
+  const sel = document.getElementById("cb-vehicule");
+  if (!sel.options.length) {
+    (vehiculesCache || []).forEach(v => sel.add(new Option(v.nom + (v.plaque ? " · " + v.plaque : ""), v.id)));
+    sel.addEventListener("change", afficherCarburant);
+  }
+  const { data, error } = await supabase.from("pleins_carburant").select("*, profils:chauffeur_id(nom)").order("km_compteur", { ascending: true });
+  if (error) { document.getElementById("cb-liste").textContent = "Erreur : " + error.message; return; }
+  pleinsCache = data || [];
+  afficherCarburant();
+}
+function afficherCarburant() {
+  const vid = document.getElementById("cb-vehicule").value;
+  const liste = pleinsCache.filter(p => p.vehicule_id === vid);
+  const f1 = n => Number(n).toFixed(1).replace(".", ",");
+  // calcul : km roulés depuis le plein précédent ; consommation entre deux PLEINS COMPLETS
+  let dernierComplet = null, litresDepuis = 0, montantDepuis = 0;
+  const lignes = liste.map((p, i) => {
+    const prec = liste[i - 1];
+    const roule = prec ? p.km_compteur - prec.km_compteur : null;
+    litresDepuis += Number(p.litres || 0); montantDepuis += Number(p.montant || 0);
+    let conso = null, euroKm = null, kmConso = null;
+    if (p.plein_complet && dernierComplet && p.litres) {
+      kmConso = p.km_compteur - dernierComplet.km_compteur;
+      if (kmConso > 0) { conso = litresDepuis / kmConso * 100; euroKm = montantDepuis ? montantDepuis / kmConso * 100 : null; }
+    }
+    if (p.plein_complet) { dernierComplet = p; litresDepuis = 0; montantDepuis = 0; }
+    return { ...p, roule, conso, euroKm };
+  });
+  const avecConso = lignes.filter(l => l.conso);
+  const consoMoy = avecConso.length ? avecConso.reduce((s, l) => s + l.conso, 0) / avecConso.length : null;
+  const il30 = Date.now() - 30 * 864e5;
+  const recents = lignes.filter(l => new Date(l.fait_le).getTime() > il30);
+  const km30 = recents.reduce((s, l) => s + (l.roule > 0 ? l.roule : 0), 0);
+  const eur30 = recents.reduce((s, l) => s + Number(l.montant || 0), 0);
+  document.getElementById("cb-resume").innerHTML = `
+    <div><b>${consoMoy ? f1(consoMoy) : "—"}</b><span>L/100 km (moyenne)</span></div>
+    <div><b>${km30.toLocaleString("fr-BE")}</b><span>km entre pleins (30 j)</span></div>
+    <div><b>${eur30 ? eur30.toFixed(0) + " €" : "—"}</b><span>carburant (30 j)</span></div>`;
+  const z = document.getElementById("cb-liste");
+  if (!lignes.length) { z.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun plein enregistré pour ce véhicule.</p>'; return; }
+  z.innerHTML = lignes.slice().reverse().map(l => {
+    const anormal = l.conso && consoMoy && avecConso.length >= 3 && l.conso > consoMoy * 1.3;
+    return `<div class="cb-ligne" data-id="${l.id}">
+      <div class="cb-haut"><span>${new Date(l.fait_le).toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", year: "2-digit" })} · ${esc(l.profils?.nom || "—")}</span><span>${Number(l.km_compteur).toLocaleString("fr-BE")} km</span></div>
+      ${l.roule != null ? `<div class="cb-roule ${l.roule <= 0 ? "cb-alerte" : ""}">🚗 ${l.roule <= 0 ? "⚠️ kilométrage incohérent (" + l.roule + " km)" : l.roule.toLocaleString("fr-BE") + " km roulés depuis le plein précédent"}</div>` : `<div class="cb-roule">Premier plein enregistré</div>`}
+      <div class="cb-info">${l.litres ? f1(l.litres) + " L" : "litres ?"}${l.montant ? " · " + Number(l.montant).toFixed(2).replace(".", ",") + " €" : ""}${l.plein_complet ? "" : " · plein partiel"}${l.station ? " · " + esc(l.station) : ""}</div>
+      ${l.conso ? `<div class="cb-info ${anormal ? "cb-alerte" : ""}" style="font-weight:700;">⛽ ${f1(l.conso)} L/100 km${l.euroKm ? " · " + l.euroKm.toFixed(2).replace(".", ",") + " €/100 km" : ""}${anormal ? " · ⚠️ plus que d'habitude" : ""}</div>` : ""}
+      ${l.note ? `<div class="cb-info">📝 ${esc(l.note)}</div>` : ""}
+    </div>`;
+  }).join("");
+  z.querySelectorAll(".cb-ligne").forEach(el => el.addEventListener("click", () => editerPlein(pleinsCache.find(p => p.id === el.dataset.id))));
+}
+function editerPlein(p) {
+  const vid = document.getElementById("cb-vehicule").value;
+  const val = (q, d) => { const r = prompt(q, d ?? ""); return r; };
+  const km = val("Kilométrage au tableau de bord :", p?.km_compteur); if (km === null) return;
+  const litres = val("Litres :", p?.litres); if (litres === null) return;
+  const montant = val("Montant (€) :", p?.montant); if (montant === null) return;
+  const n = v => { const x = parseFloat(String(v).replace(",", ".")); return isNaN(x) ? null : x; };
+  if (!n(km)) { alert("Kilométrage invalide."); return; }
+  const donnees = { km_compteur: Math.round(n(km)), litres: n(litres), montant: n(montant) };
+  (async () => {
+    let error;
+    if (p) {
+      if (confirm("Supprimer ce plein au lieu de l'enregistrer ?\n\nOK = supprimer · Annuler = enregistrer les changements")) {
+        ({ error } = await supabase.from("pleins_carburant").delete().eq("id", p.id));
+      } else ({ error } = await supabase.from("pleins_carburant").update(donnees).eq("id", p.id));
+    } else {
+      const veh = vehiculesCache.find(v => v.id === vid);
+      ({ error } = await supabase.from("pleins_carburant").insert({ ...donnees, vehicule_id: vid, chauffeur_id: veh?.chauffeur_id || null, plein_complet: true }));
+    }
+    if (error) { alert("Erreur : " + error.message); return; }
+    chargerCarburant();
+  })();
+}
+document.getElementById("cb-ajouter").addEventListener("click", () => editerPlein(null));
 
 // ================== ÉVÉNEMENTS DE L'ANNÉE (avec rappel quelques jours avant) ==================
 const CATEGORIES_EV = { evenement: "🎉 Événement", salon: "🏛️ Salon / foire", vacances: "🏖️ Vacances scolaires", ferie: "🇧🇪 Jour férié", administratif: "📄 Administratif", controle: "🔧 Contrôle / entretien véhicule", anniversaire: "🎂 Anniversaire", autre: "📌 Autre" };
@@ -3502,7 +3602,8 @@ async function chargerCarteInterne() {
       popup = `<b>${esc(nom)}</b><br>✅ Disponible<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button>`;
     }
 
-    const ancienne = p.updated_at && (Date.now() - new Date(p.updated_at).getTime()) > 10 * 60000;
+    const ageSec = p.updated_at ? (Date.now() - new Date(p.updated_at).getTime()) / 1000 : 9999;
+    const ancienne = ageSec > 120;   // plus de 2 min sans nouvelle position : l'app du chauffeur n'est plus à l'écran
     const villeConnue = cacheVilleChauffeur[p.latitude.toFixed(3) + "," + p.longitude.toFixed(3)] || "";
     const fondPastille = ancienne ? "#9a9a9a" : ({ red: "#c81e2c", green: "#1f8a4c", gray: "#6b6b6b" }[couleur]);
     const icone = L.divIcon({
@@ -3510,7 +3611,7 @@ async function chargerCarteInterne() {
       iconSize: [0, 0], iconAnchor: [0, 0],
       html: `<div style="position:absolute; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto;">
         <div style="background:${fondPastille}; color:#fff; font-weight:800; font-size:12px; padding:4px 9px; border-radius:999px; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.35); border:2px solid #fff;">
-          ${courseActive ? "🚕" : (p.disponible ? "✅" : "⏸️")} ${esc(nom)}${villeConnue ? " · " + esc(villeConnue) : ""}${ancienne ? " · " + esc(ageMiseAJour(p.updated_at)) : ""}
+          ${courseActive ? "🚕" : (p.disponible ? "✅" : "⏸️")} ${esc(nom)}${villeConnue ? " · " + esc(villeConnue) : ""}${ageSec > 45 ? " · " + esc(ageMiseAJour(p.updated_at)) : " · en direct"}
         </div>
         <div style="width:14px; height:14px; margin-top:-2px; border-radius:50%; background:${fondPastille}; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>
       </div>`

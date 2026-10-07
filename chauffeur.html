@@ -258,6 +258,14 @@ window.onerror = function(msg, url, line, col, err) {
   .course.carte-en-grand .btn-carte-grand{ position:sticky; top:0; z-index:3; background:var(--rouge) !important; }
   body.carte-grand-ouverte{ overflow:hidden; }
   .btn-carte-grand{ display:block; width:100%; margin:0 0 10px; padding:9px; border:none; border-radius:9px; background:#3b82c4; color:#fff; font-weight:700; font-size:.88rem; cursor:pointer; }
+  #section-plein{ padding:4px 16px 40px; }
+  .form-plein label{ display:block; font-size:.85rem; color:var(--gris); margin:12px 0 4px; }
+  .form-plein input, .form-plein select{ width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; background:#fff; }
+  .form-plein .pl-case{ display:flex; gap:10px; align-items:center; color:#111; font-weight:600; font-size:.92rem; }
+  .form-plein .pl-case input{ width:22px; height:22px; flex-shrink:0; }
+  .pl-info{ font-size:.85rem; margin-top:6px; color:#1d4f86; font-weight:600; }
+  .pl-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:.88rem; }
+  .pl-ligne b{ font-size:.95rem; }
 </style>
 </head>
 <body>
@@ -317,6 +325,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="historique-feuilles">📁 Mes feuilles (30 jours)</button>
     <button data-onglet="mes-horaires">🗓️ Mes horaires</button>
     <button data-onglet="demande-client">📝 Demande d'un client</button>
+    <button data-onglet="plein">⛽ J'ai fait le plein</button>
   </nav>
 
   <section id="section-mes-courses" class="visible">
@@ -401,6 +410,31 @@ window.onerror = function(msg, url, line, col, err) {
       <p id="dc-erreur" style="color:var(--rouge); font-weight:600; min-height:1em;"></p>
       <button type="button" id="dc-envoyer" style="width:100%; padding:16px; border:none; border-radius:12px; background:var(--rouge); color:#fff; font-weight:800; font-size:1.08rem;">📨 Envoyer à la centrale</button>
     </div>
+  </section>
+
+  <section id="section-plein">
+    <div class="form-plein">
+      <p style="color:var(--gris); font-size:.88rem; margin:0 0 12px;">Après chaque plein, note le kilométrage du tableau de bord. La centrale voit combien de km tu as roulé avec le plein précédent.</p>
+      <label for="pl-vehicule">Véhicule *</label>
+      <select id="pl-vehicule"></select>
+      <div id="pl-dernier" class="pl-info"></div>
+      <label for="pl-km">Kilométrage au tableau de bord *</label>
+      <input id="pl-km" type="number" inputmode="numeric" placeholder="ex : 72540">
+      <div id="pl-calcul" class="pl-info"></div>
+      <label for="pl-litres">Litres mis</label>
+      <input id="pl-litres" type="text" inputmode="decimal" placeholder="ex : 45,30">
+      <label for="pl-montant">Montant payé (€)</label>
+      <input id="pl-montant" type="text" inputmode="decimal" placeholder="ex : 78,50">
+      <label class="pl-case"><input type="checkbox" id="pl-complet" checked> Plein complet (réservoir rempli jusqu'au bout)</label>
+      <label for="pl-station">Station (optionnel)</label>
+      <input id="pl-station" placeholder="ex : Total Boussu">
+      <label for="pl-note">Note (optionnel)</label>
+      <input id="pl-note" placeholder="ex : payé avec la carte carburant">
+      <p id="pl-erreur" style="color:var(--rouge); font-weight:600; min-height:1em;"></p>
+      <button type="button" id="pl-envoyer" style="width:100%; padding:16px; border:none; border-radius:12px; background:var(--vert); color:#fff; font-weight:800; font-size:1.05rem;">⛽ Enregistrer le plein</button>
+    </div>
+    <h3 style="margin:22px 0 8px; font-size:1rem;">Mes derniers pleins</h3>
+    <div id="pl-liste"></div>
   </section>
 
   <section id="section-mes-horaires">
@@ -1111,6 +1145,7 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
     if (btn.dataset.onglet === "demandes-ouvertes") chargerDemandesOuvertes();
     if (btn.dataset.onglet === "historique-feuilles") chargerHistoriqueFeuilles();
     if (btn.dataset.onglet === "mes-horaires") chargerMesHoraires();
+    if (btn.dataset.onglet === "plein") preparerPlein();
   });
 });
 
@@ -1797,6 +1832,80 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
   const { data: { session } } = await supabase.auth.getSession();
   if (session) demarrerEspaceChauffeur();
 })();
+</script>
+<script>
+// ================== ⛽ PLEINS DE CARBURANT ==================
+let plDernier = null;
+const plNombre = v => { const n = parseFloat(String(v || "").replace(",", ".")); return isNaN(n) ? null : n; };
+async function preparerPlein() {
+  const sel = document.getElementById("pl-vehicule");
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  if (!sel.options.length) {
+    const { data: vehs } = await supabase.from("vehicules").select("id, nom, plaque, chauffeur_id").eq("actif", true).order("nom");
+    (vehs || []).forEach(v => sel.add(new Option(v.nom + (v.plaque ? " · " + v.plaque : ""), v.id)));
+    const attitre = (vehs || []).find(v => v.chauffeur_id === user.id);
+    if (attitre) sel.value = attitre.id;
+    sel.addEventListener("change", majDernierPlein);
+    document.getElementById("pl-km").addEventListener("input", majCalculPlein);
+    document.getElementById("pl-litres").addEventListener("input", majCalculPlein);
+  }
+  majDernierPlein();
+  chargerMesPleins();
+}
+async function majDernierPlein() {
+  const vid = document.getElementById("pl-vehicule").value;
+  plDernier = null;
+  if (vid) {
+    const { data } = await supabase.rpc("dernier_plein_vehicule", { p_vehicule: vid });
+    plDernier = (data && data[0]) || null;
+  }
+  document.getElementById("pl-dernier").textContent = plDernier
+    ? `Dernier plein : ${Number(plDernier.km_compteur).toLocaleString("fr-BE")} km, le ${new Date(plDernier.fait_le).toLocaleDateString("fr-BE")}`
+    : "Premier plein enregistré pour ce véhicule.";
+  majCalculPlein();
+}
+function majCalculPlein() {
+  const km = plNombre(document.getElementById("pl-km").value), litres = plNombre(document.getElementById("pl-litres").value);
+  const z = document.getElementById("pl-calcul");
+  if (!plDernier || !km) { z.textContent = ""; return; }
+  const roule = km - plDernier.km_compteur;
+  if (roule <= 0) { z.style.color = "var(--rouge)"; z.textContent = "⚠️ Le kilométrage doit être plus grand que celui du dernier plein."; return; }
+  z.style.color = "";
+  z.textContent = `🚗 ${roule.toLocaleString("fr-BE")} km roulés depuis le dernier plein` + (litres ? ` · ≈ ${(litres / roule * 100).toFixed(1).replace(".", ",")} L/100 km` : "");
+}
+document.getElementById("pl-envoyer").addEventListener("click", async () => {
+  const err = document.getElementById("pl-erreur"); err.textContent = "";
+  const { data: { user } } = await supabase.auth.getUser();
+  const km = plNombre(document.getElementById("pl-km").value);
+  const vid = document.getElementById("pl-vehicule").value;
+  if (!vid) { err.textContent = "Choisis le véhicule."; return; }
+  if (!km || km < 1) { err.textContent = "Indique le kilométrage du tableau de bord."; return; }
+  if (plDernier && km <= plDernier.km_compteur) { err.textContent = "Le kilométrage est plus petit que celui du dernier plein (" + plDernier.km_compteur + " km). Vérifie le chiffre."; return; }
+  const btn = document.getElementById("pl-envoyer"); btn.disabled = true; btn.textContent = "Enregistrement…";
+  const { error } = await supabase.from("pleins_carburant").insert({
+    vehicule_id: vid, chauffeur_id: user.id, km_compteur: Math.round(km),
+    litres: plNombre(document.getElementById("pl-litres").value),
+    montant: plNombre(document.getElementById("pl-montant").value),
+    plein_complet: document.getElementById("pl-complet").checked,
+    station: document.getElementById("pl-station").value.trim() || null,
+    note: document.getElementById("pl-note").value.trim() || null
+  });
+  btn.disabled = false; btn.textContent = "⛽ Enregistrer le plein";
+  if (error) { err.textContent = "Erreur : " + error.message; return; }
+  const roule = plDernier ? Math.round(km) - plDernier.km_compteur : null;
+  alert("✅ Plein enregistré." + (roule ? "\n" + roule + " km roulés depuis le dernier plein." : ""));
+  ["pl-km", "pl-litres", "pl-montant", "pl-station", "pl-note"].forEach(id => document.getElementById(id).value = "");
+  majDernierPlein(); chargerMesPleins();
+});
+async function chargerMesPleins() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.from("pleins_carburant").select("*, vehicules:vehicule_id(nom)").eq("chauffeur_id", user.id).order("fait_le", { ascending: false }).limit(10);
+  const z = document.getElementById("pl-liste");
+  z.innerHTML = (data || []).length ? (data || []).map(p => `<div class="pl-ligne"><b>${new Date(p.fait_le).toLocaleDateString("fr-BE")} · ${esc(p.vehicules?.nom || "")}</b><br>
+    ${Number(p.km_compteur).toLocaleString("fr-BE")} km${p.litres ? " · " + String(p.litres).replace(".", ",") + " L" : ""}${p.montant ? " · " + String(p.montant).replace(".", ",") + " €" : ""}${p.plein_complet ? "" : " · plein partiel"}</div>`).join("")
+    : '<p style="color:var(--gris);">Aucun plein enregistré.</p>';
+}
 </script>
 </body>
 </html>
