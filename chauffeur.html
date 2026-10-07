@@ -1685,16 +1685,44 @@ switchDispo.addEventListener("click", () => {
   }
 });
 
+// Suivi GPS en continu : le téléphone donne sa position dès qu'il bouge,
+// et on l'envoie à la centrale toutes les 15 secondes (même si le chauffeur est à l'arrêt).
+let derniereLecturePosition = null, suiviGpsId = null, dernierEnvoiPosition = 0;
 function demarrerPartagePosition() {
   if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible sur cet appareil."); return; }
-
+  if (positionInterval) clearInterval(positionInterval);
+  if (suiviGpsId === null) {
+    suiviGpsId = navigator.geolocation.watchPosition(
+      (pos) => {
+        derniereLecturePosition = pos;
+        if (Date.now() - dernierEnvoiPosition > 14000) envoyerPositionLue(pos);
+      },
+      (err) => console.error("Erreur GPS :", err),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+    );
+  }
   envoyerPosition();
   positionInterval = setInterval(envoyerPosition, 15000);
 }
 
 function arreterPartagePosition() {
   if (positionInterval) clearInterval(positionInterval);
+  positionInterval = null;
+  if (suiviGpsId !== null) { navigator.geolocation.clearWatch(suiviGpsId); suiviGpsId = null; }
   metPositionIndisponible();
+}
+
+async function envoyerPositionLue(pos) {
+  dernierEnvoiPosition = Date.now();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("positions_chauffeurs").upsert({
+    chauffeur_id: user.id,
+    latitude: pos.coords.latitude,
+    longitude: pos.coords.longitude,
+    disponible: true,
+    updated_at: new Date().toISOString()
+  });
 }
 
 // Dès que l'app revient à l'écran : position envoyée tout de suite + écran gardé allumé si course en cours
@@ -1719,7 +1747,13 @@ async function gererEcranAllume() {
 setInterval(gererEcranAllume, 60000);
 
 async function envoyerPosition() {
+  // position récente déjà connue grâce au suivi continu : on l'envoie directement
+  if (derniereLecturePosition && Date.now() - derniereLecturePosition.timestamp < 20000) {
+    envoyerPositionLue(derniereLecturePosition);
+    return;
+  }
   navigator.geolocation.getCurrentPosition(async (pos) => {
+    derniereLecturePosition = pos; dernierEnvoiPosition = Date.now();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 

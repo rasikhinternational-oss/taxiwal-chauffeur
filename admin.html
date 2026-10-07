@@ -3440,9 +3440,9 @@ async function chargerCarte() {
 
   // Pas plus d'une mise à jour toutes les 8 secondes (sinon la carte rame)
   if (window.__carteEnCours) return;
-  if (window.__derniereCarte && Date.now() - window.__derniereCarte < 8000) {
+  if (window.__derniereCarte && Date.now() - window.__derniereCarte < 5000) {
     clearTimeout(window.__carteDiffere);
-    window.__carteDiffere = setTimeout(chargerCarte, 8000 - (Date.now() - window.__derniereCarte));
+    window.__carteDiffere = setTimeout(chargerCarte, 5000 - (Date.now() - window.__derniereCarte));
     return;
   }
   window.__carteEnCours = true; window.__derniereCarte = Date.now();
@@ -3459,10 +3459,16 @@ function centrerSurChauffeurs(meme) {
 }
 
 async function chargerCarteInterne() {
-  const { data: positions, error } = await supabase
+  const { data: positionsBrutes, error } = await supabase
     .from("positions_chauffeurs")
-    .select("*, profils:chauffeur_id(nom)");
+    .select("*, profils:chauffeur_id(nom, role)");
   if (error) { console.error(error); return; }
+  // seulement les chauffeurs / sous-traitants, et pas les positions de plus de 24 h
+  const positions = (positionsBrutes || []).filter(p =>
+    p.profils?.role !== "admin" && p.updated_at && Date.now() - new Date(p.updated_at).getTime() < 24 * 3600e3);
+  Object.keys(marqueurs).forEach(id => {
+    if (!positions.some(p => p.chauffeur_id === id)) { carteLeaflet.removeLayer(marqueurs[id]); delete marqueurs[id]; }
+  });
 
   const { data: coursesEnCours } = await supabase
     .from("courses")
@@ -3547,7 +3553,7 @@ async function chargerCarteInterne() {
 
 setInterval(() => {
   if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
-}, 20000);
+}, 15000);
 
 async function chargerCaisse() {
   const conteneur = document.getElementById("liste-caisse");
