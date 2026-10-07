@@ -11,7 +11,7 @@ function dateLocaleISO(d) {
 var _etatPaiement = null;
 async function etatPaiementEnLigne() {
   if (_etatPaiement) return _etatPaiement;
-  try { const { data } = await supabase.rpc("paiement_en_ligne_etat"); _etatPaiement = data || "inactif"; } catch (e) { _etatPaiement = "inactif"; }
+  try { const { data } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "etat" } }); _etatPaiement = (data && data.etat) || "inactif"; } catch (e) { _etatPaiement = "inactif"; }
   return _etatPaiement;
 }
 
@@ -269,6 +269,55 @@ window.onerror = function(msg, url, line, col, err) {
   .choix-paiement button b{ font-size:1.15rem; }
   .choix-paiement button small{ display:block; font-weight:400; color:var(--gris); font-size:.72rem; }
   .choix-paiement button.actif{ border-color:var(--rouge); background:#fff5f5; }
+
+  /* ---------- Conditions de paiement et d'annulation ---------- */
+  .lien-conditions{ background:none; border:none; color:var(--rouge); font-weight:600; text-decoration:underline; padding:0; width:auto; font-size:inherit; cursor:pointer; display:inline; }
+  #pied-conditions{ text-align:center; padding:6px 20px 20px; font-size:.85rem; }
+  #modal-conditions{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; display:none; align-items:flex-end; justify-content:center; }
+  #modal-conditions.ouvert{ display:flex; }
+  #modal-conditions .feuille{ background:#fff; width:100%; max-width:560px; max-height:88vh; overflow:auto; border-radius:16px 16px 0 0; padding:18px 18px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 -6px 24px rgba(0,0,0,.2); }
+  @media (min-width:600px){ #modal-conditions{ align-items:center; } #modal-conditions .feuille{ border-radius:16px; } }
+  #modal-conditions .entete-feuille{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px; }
+  #modal-conditions .entete-feuille h2{ font-size:1.05rem; margin:0; }
+  #modal-conditions .fermer{ width:auto; padding:6px 12px; background:#f0f0ee; color:var(--blanc); border-radius:8px; }
+  .conditions-texte h3{ font-size:.9rem; margin:16px 0 6px; color:var(--rouge); letter-spacing:.02em; }
+  .conditions-texte p{ margin:4px 0; font-size:.9rem; line-height:1.45; }
+  .conditions-texte ul{ margin:4px 0; padding-left:20px; font-size:.9rem; line-height:1.45; }
+  .conditions-texte li{ margin:3px 0; }
+  .conditions-texte .banque{ background:#f7f7f5; border-radius:10px; padding:10px 12px; font-size:.9rem; }
+  .accepte-conditions{ display:flex; gap:10px; align-items:flex-start; text-align:left; background:#fff; border:2px solid var(--rouge); border-radius:10px; padding:10px 12px; margin:12px 0 6px; font-size:.88rem; }
+  .accepte-conditions.ok{ border-color:var(--vert); }
+  .accepte-conditions input{ width:22px; height:22px; flex-shrink:0; margin:0; }
+  .echeance-paiement{ background:#fff7e6; border:1px solid #f0c36d; color:#7a4b00; border-radius:10px; padding:9px 12px; margin:8px 0; font-size:.88rem; font-weight:600; text-align:left; }
+  .echeance-paiement.urgent{ background:#fdecee; border-color:#f1a9b0; color:#8a1520; }
+  button:disabled{ opacity:.45; cursor:not-allowed; }
+  .mention-conditions{ font-size:.8rem; color:var(--gris); text-align:center; margin:8px 0 4px; }
+
+  /* ---------- Onglet Facture ---------- */
+  nav.onglets button[data-onglet="facture"]{ grid-column:1 / -1; }
+  .carte-facture{ background:#fff; border:1px solid #e2e2df; border-radius:12px; padding:14px; margin-bottom:16px; }
+  .carte-facture h2{ font-size:1rem; margin:0 0 10px; }
+  .champ .aide{ font-size:.75rem; color:var(--gris); margin-top:4px; }
+  .champ .msg-erreur{ font-size:.78rem; color:var(--rouge); margin-top:4px; min-height:0; }
+  .champ input.invalide, .champ select.invalide{ border-color:var(--rouge) !important; box-shadow:0 0 0 3px rgba(200,30,44,.12); }
+  .champ select{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:.95rem; }
+  .ligne-adresse{ display:flex; gap:8px; } .ligne-adresse .champ{ flex:1; min-width:0; } .ligne-adresse .champ.petit{ flex:0 0 28%; }
+  .lien-bce{ display:inline-block; margin-top:6px; font-size:.82rem; font-weight:600; color:var(--bleu); text-decoration:none; }
+  .liste-courses-facture{ max-height:320px; overflow:auto; border:1px solid #e2e2df; border-radius:10px; }
+  .ligne-course-facture{ display:flex; gap:10px; align-items:flex-start; padding:10px; border-bottom:1px solid #eee; font-size:.85rem; cursor:pointer; }
+  .ligne-course-facture:last-child{ border-bottom:none; }
+  .ligne-course-facture input{ width:20px; height:20px; flex-shrink:0; margin:2px 0 0; }
+  .ligne-course-facture .prix{ margin-left:auto; font-weight:700; white-space:nowrap; }
+  .ligne-course-facture small{ color:var(--gris); }
+  .demande-facture{ border:1px solid #e2e2df; border-radius:10px; padding:10px 12px; margin-bottom:10px; font-size:.88rem; }
+  .badge-facture{ display:inline-block; border-radius:20px; padding:3px 10px; font-size:.75rem; font-weight:700; }
+  .badge-facture.demandee{ background:#eef4fb; color:#1d4f87; }
+  .badge-facture.en_cours{ background:#fff7e6; color:#7a4b00; }
+  .badge-facture.envoyee{ background:rgba(31,138,76,.14); color:var(--vert); }
+  .badge-facture.refusee{ background:#fdecee; color:#8a1520; }
+  .actions-facture{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .actions-facture button{ flex:1; min-width:90px; padding:9px 6px; font-size:.85rem; background:var(--noir-2); color:var(--blanc); border:1px solid #cfcfcd; }
+  #toast-client{ position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:#1c1c1c; color:#fff; padding:12px 16px; border-radius:12px; font-size:.9rem; z-index:120; max-width:calc(100% - 32px); box-shadow:0 6px 18px rgba(0,0,0,.25); display:none; }
 </style>
 <!-- Générateur de QR code (côté navigateur) pour le QR de virement SEPA / EPC -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" crossorigin="anonymous"></script>
@@ -283,6 +332,8 @@ window.onerror = function(msg, url, line, col, err) {
   </div>
   <button id="btn-menu-client" style="display:none; width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
   <div id="menu-client-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
+    <button type="button" data-ouvrir-conditions style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">📄 Conditions de paiement et d'annulation</button>
+    <button type="button" id="btn-menu-facture" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">🧾 Demander une facture</button>
     <button id="btn-deconnexion-menu-client" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
   </div>
 </header>
@@ -324,6 +375,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="mes-courses">Mes courses</button>
     <button data-onglet="agenda">Agenda</button>
     <button data-onglet="profil">Profil</button>
+    <button data-onglet="facture">🧾 Facture</button>
   </nav>
 
   <!-- Onglet Réserver -->
@@ -420,6 +472,7 @@ window.onerror = function(msg, url, line, col, err) {
       </label>
     </div>
     <p id="erreur-reservation"></p>
+    <p class="mention-conditions" id="mention-conditions-reservation">En réservant, tu acceptes nos <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button>.</p>
     <button id="btn-reserver">Demander cette course</button>
   </section>
 
@@ -462,7 +515,71 @@ window.onerror = function(msg, url, line, col, err) {
       <p style="font-size:.78rem; color:var(--gris); margin-top:6px; text-align:center;">Supprime définitivement ton compte, tes adresses favorites et tes données personnelles. Tes demandes en attente sont annulées.</p>
     </div>
   </section>
+
+  <!-- Onglet Facture -->
+  <section id="section-facture">
+    <div class="carte-facture">
+      <h2>🏢 Mes coordonnées de facturation</h2>
+      <div class="champ"><label for="fa-nom">Nom (société) *</label><input type="text" id="fa-nom" autocomplete="organization" placeholder="ex : Dupont SRL"><div class="msg-erreur"></div></div>
+      <div class="champ">
+        <label for="fa-numero-entreprise">Numéro d'entreprise *</label>
+        <input type="text" id="fa-numero-entreprise" inputmode="text" placeholder="ex : BE0123.456.789">
+        <div class="aide">Numéro d'entreprise belge à 10 chiffres (utilisé pour la vérification PEPPOL)</div>
+        <div class="msg-erreur"></div>
+        <a class="lien-bce" id="fa-lien-bce" href="https://kbopub.economie.fgov.be/kbopub/zoeknummerform.html?lang=fr" target="_blank" rel="noopener">🔎 Rechercher BCE</a>
+      </div>
+      <div class="champ"><label for="fa-email">Email</label><input type="email" id="fa-email" autocomplete="email" placeholder="facturation@exemple.be"><div class="msg-erreur"></div></div>
+      <div class="champ"><label for="fa-telephone">Téléphone</label><input type="tel" id="fa-telephone" autocomplete="tel" placeholder="ex : 065 12 34 56"><div class="msg-erreur"></div></div>
+      <div class="champ"><label for="fa-contact">Personne de contact</label><input type="text" id="fa-contact" autocomplete="name"><div class="msg-erreur"></div></div>
+      <div style="font-weight:700; font-size:.88rem; margin:6px 0 8px;">📍 Adresse</div>
+      <div class="ligne-adresse">
+        <div class="champ"><label for="fa-rue">Nom de rue *</label><input type="text" id="fa-rue" autocomplete="address-line1"><div class="msg-erreur"></div></div>
+        <div class="champ petit"><label for="fa-numero">Numéro *</label><input type="text" id="fa-numero"><div class="msg-erreur"></div></div>
+      </div>
+      <div class="ligne-adresse">
+        <div class="champ petit"><label for="fa-boite">Boîte</label><input type="text" id="fa-boite"><div class="msg-erreur"></div></div>
+        <div class="champ"><label for="fa-ville">Ville *</label><input type="text" id="fa-ville" autocomplete="address-level2"><div class="msg-erreur"></div></div>
+      </div>
+      <div class="ligne-adresse">
+        <div class="champ petit"><label for="fa-code-postal">Code postal *</label><input type="text" id="fa-code-postal" inputmode="numeric" autocomplete="postal-code"><div class="msg-erreur"></div></div>
+        <div class="champ"><label for="fa-pays">Pays *</label>
+          <select id="fa-pays">
+            <option>Belgique</option><option>France</option><option>Pays-Bas</option><option>Luxembourg</option><option>Allemagne</option><option>Autre</option>
+          </select><div class="msg-erreur"></div></div>
+      </div>
+    </div>
+
+    <div class="carte-facture">
+      <h2>🚕 Pour quelles courses ?</h2>
+      <div id="fa-liste-courses" class="liste-courses-facture"><p style="padding:12px; color:var(--gris); margin:0;">Chargement…</p></div>
+      <div class="champ" style="margin-top:6px;"><div class="msg-erreur" id="fa-erreur-courses"></div></div>
+      <div class="champ"><label for="fa-message">Message (optionnel)</label><textarea id="fa-message" rows="3" placeholder="ex : référence de commande, bon de commande…"></textarea></div>
+      <p id="fa-erreur-envoi" style="color:var(--rouge); font-size:.85rem; min-height:1em; margin:4px 0;"></p>
+      <button type="button" id="fa-envoyer" class="vert">🧾 Envoyer ma demande de facture</button>
+      <p id="fa-succes" style="color:var(--vert); font-size:.9rem; font-weight:600; margin:10px 0 0; display:none;"></p>
+    </div>
+
+    <div class="carte-facture">
+      <h2>📂 Mes demandes de facture</h2>
+      <div id="fa-mes-demandes"><p style="color:var(--gris); margin:0;">Aucune demande pour le moment.</p></div>
+    </div>
+  </section>
+
+  <p id="pied-conditions"><button type="button" class="lien-conditions" data-ouvrir-conditions>📄 Conditions de paiement et d'annulation</button></p>
 </div>
+
+<!-- Fenêtre : conditions de paiement et d'annulation (le contenu est rempli par le script) -->
+<div id="modal-conditions" role="dialog" aria-modal="true" aria-labelledby="titre-modal-conditions">
+  <div class="feuille">
+    <div class="entete-feuille">
+      <h2 id="titre-modal-conditions">📄 Conditions de paiement et d'annulation</h2>
+      <button type="button" class="fermer" aria-label="Fermer">✕</button>
+    </div>
+    <div class="conditions-texte" id="contenu-modal-conditions"></div>
+    <button type="button" class="fermer" style="width:100%; margin-top:14px; padding:12px;">J'ai compris</button>
+  </div>
+</div>
+<div id="toast-client" role="status" aria-live="polite"></div>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
@@ -487,7 +604,7 @@ function esc(valeur) {
 }
 
 // ---------- COORDONNÉES BANCAIRES (acompte de réservation) ----------
-const COMPTE_BENEFICIAIRE = "Rasikh International";
+const COMPTE_BENEFICIAIRE = "RASIKH INTERNATIONAL SRL";
 const COMPTE_IBAN = "BE61 0019 7821 9717"; // affiché avec espaces
 const COMPTE_IBAN_BRUT = COMPTE_IBAN.replace(/\s/g, ""); // sans espaces, pour le QR et la copie
 
@@ -536,9 +653,94 @@ function urlQrPaiement({ montant, communication }) {
   const payload = genererPayloadEpcQr({ montant, communication });
   return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=M&data=" + encodeURIComponent(payload);
 }
+// Date/heure en heure belge (quel que soit le fuseau du téléphone) → { jj, mm, aaaa, hh, mi }
+function partiesDateBruxelles(date) {
+  const parts = {};
+  new Intl.DateTimeFormat("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(new Date(date)).forEach(p => { parts[p.type] = p.value; });
+  return { jj: parts.day, mm: parts.month, aaaa: parts.year, hh: parts.hour, mi: parts.minute };
+}
+// Communication du virement : "Nom Prénom - jj/mm/aaaa HH:MM - téléphone" (max 140 caractères, norme SEPA)
 function communicationCourse(course) {
-  const heure = new Date(course.date_heure).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  return `Course Taxi - ${course.adresse_depart} - ${course.adresse_arrivee} - ${heure}`;
+  const d = partiesDateBruxelles(course.date_heure);
+  const morceaux = [
+    String(course.client_nom || "").trim() || "Client",
+    `${d.jj}/${d.mm}/${d.aaaa} ${d.hh}:${d.mi}`,
+    String(course.client_telephone || "").trim()
+  ].filter(Boolean);
+  return morceaux.join(" - ").replace(/\s+/g, " ").slice(0, 140);
+}
+
+// ---------- CONDITIONS DE PAIEMENT ET D'ANNULATION (RASIKH INTERNATIONAL SRL) ----------
+const CONDITIONS_PAIEMENT_HTML = `
+  <h3>CONDITIONS DE PAIEMENT</h3>
+  <p>Le paiement se fait à l'avance, par lien de paiement ou par virement bancaire.</p>
+  <ul>
+    <li><b>Départ prévu dans moins de 24h :</b> paiement immédiat obligatoire pour confirmer la réservation.</li>
+    <li><b>Départ prévu dans plus de 24h :</b> paiement au plus tard 5 jours avant le départ.</li>
+    <li><b>Réservations de nuit ou tôt le matin (22h–6h) :</b> paiement intégral exigé au moment de la réservation, sans exception, la course n'étant confirmée qu'une fois le paiement reçu.</li>
+  </ul>
+  <h3>ANNULATION</h3>
+  <ul>
+    <li>Remboursement possible si annulation au moins 4h avant le départ (12h pour les réservations de nuit/tôt le matin, en raison du temps de mobilisation nécessaire).</li>
+    <li>En dessous de ce délai : aucun remboursement, la réservation ayant entraîné un blocage de créneau et une organisation du chauffeur.</li>
+    <li>Si le chauffeur est déjà en route : remboursement selon les kilomètres déjà parcourus.</li>
+  </ul>
+  <h3>RETARD</h3>
+  <ul>
+    <li>Le chauffeur attend maximum 15 minutes sur place. Passé ce délai, aucun remboursement.</li>
+    <li>Si le chauffeur a plus de 30 minutes de retard, vous êtes intégralement remboursé.</li>
+  </ul>
+  <h3>ABSENCE / NO-SHOW</h3>
+  <ul>
+    <li>Si vous ne vous présentez pas alors que le chauffeur est sur place, aucun remboursement, quelle que soit l'heure de la course.</li>
+  </ul>
+  <h3>COORDONNÉES BANCAIRES — RASIKH INTERNATIONAL SRL</h3>
+  <div class="banque">
+    <p><b>IBAN :</b> BE61 0019 7821 9717</p>
+    <p><b>Communication à indiquer :</b> nom, prénom, date et heure de la réservation, numéro de téléphone</p>
+  </div>`;
+
+function ouvrirConditionsPaiement() {
+  const m = document.getElementById("modal-conditions");
+  if (!m) return;
+  document.getElementById("contenu-modal-conditions").innerHTML = CONDITIONS_PAIEMENT_HTML;
+  m.classList.add("ouvert");
+  document.body.style.overflow = "hidden";
+}
+function fermerConditionsPaiement() {
+  const m = document.getElementById("modal-conditions");
+  if (!m) return;
+  m.classList.remove("ouvert");
+  document.body.style.overflow = "";
+}
+// Tout élément [data-ouvrir-conditions] (y compris ceux ajoutés plus tard) ouvre la fenêtre
+document.addEventListener("click", (e) => {
+  const lien = e.target.closest && e.target.closest("[data-ouvrir-conditions]");
+  if (lien) {
+    e.preventDefault(); e.stopPropagation();
+    const menu = document.getElementById("menu-client-deroulant"); if (menu) menu.style.display = "none";
+    ouvrirConditionsPaiement();
+  }
+}, true);
+(function () {
+  const m = document.getElementById("modal-conditions");
+  if (!m) return;
+  m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".fermer")) fermerConditionsPaiement(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") fermerConditionsPaiement(); });
+})();
+
+// Échéance de paiement selon les conditions : nuit/tôt le matin (22h–6h) → tout de suite ;
+// départ dans moins de 24h → immédiat ; sinon → au plus tard 5 jours avant le départ.
+function echeancePaiementCourse(course) {
+  const depart = new Date(course.date_heure);
+  const heure = parseInt(partiesDateBruxelles(depart).hh, 10);
+  if (heure >= 22 || heure < 6) return { urgent: true, texte: "🌙 Paiement intégral exigé maintenant (course de nuit/tôt le matin)" };
+  if (depart.getTime() - Date.now() < 24 * 3600 * 1000) return { urgent: true, texte: "⏱️ Paiement immédiat obligatoire (départ dans moins de 24h)" };
+  const limite = new Date(depart.getTime() - 5 * 24 * 3600 * 1000);
+  if (limite.getTime() <= Date.now()) return { urgent: true, texte: "⏱️ Paiement immédiat obligatoire (le délai de 5 jours avant le départ est dépassé)" };
+  const txt = limite.toLocaleString("fr-BE", { timeZone: "Europe/Brussels", weekday: "long", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return { urgent: false, texte: "📅 À payer au plus tard le " + txt };
 }
 
 if (!window.supabase) {
@@ -709,6 +911,7 @@ function demarrerEspaceClient() {
   setInterval(chargerMesCourses, 20000);
   chargerChauffeursDejaEus();
   chargerAdressesFavorites();
+  if (typeof window.initFactureClient === "function") window.initFactureClient();
 }
 
 // ---------- Adresses favorites (domicile, travail...) ----------
@@ -1130,10 +1333,16 @@ async function construireCarteCourseClient(course) {
       <div style="font-weight:700; margin:10px 0 4px;">${payeTout ? "Montant total à payer" : "Acompte à payer (30 %)"} : ${esc(montantAPayer)} €</div>
       ${exige === "total" ? `<div class="note-instant" style="margin-top:0;">Pour cette course, Taxi Wal demande le paiement de la totalité à l'avance.</div>` : ""}
       ${exige === "acompte" ? `<div class="note-instant" style="margin-top:0;">Le reste (${esc((totalCourse - Number(course.acompte_montant || 0)).toFixed(2))} €) se paie au chauffeur.</div>` : ""}
+      ${(() => { const ech = echeancePaiementCourse(course); return `<div class="echeance-paiement${ech.urgent ? " urgent" : ""}">${esc(ech.texte)}</div>`; })()}
+      <label class="accepte-conditions${course.conditions_acceptees_at ? " ok" : ""}">
+        <input type="checkbox" class="cb-accepte-conditions" ${course.conditions_acceptees_at ? "checked" : ""}>
+        <span>J'ai lu et j'accepte les <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button> <span style="color:var(--rouge);">*</span></span>
+      </label>
+      <div class="note-instant aide-conditions" style="color:var(--rouge); margin-top:0; ${course.conditions_acceptees_at ? "display:none;" : ""}">Coche la case ci-dessus pour pouvoir payer.</div>
       <div class="zone-paiement-en-ligne" style="display:none;">
-        <button type="button" class="btn-payer-en-ligne">💳 Payer maintenant · ${esc(montantAPayer)} €</button>
-        <div class="payer-moyens"> Apple Pay · Bancontact (ouvre ton app bancaire) · carte</div>
-        <div class="payer-ou">— ou par virement —</div>
+        <button type="button" class="btn-payer-en-ligne">📱 Payer avec Bancontact · ${esc(montantAPayer)} €</button>
+        <div class="payer-moyens">Paiement sécurisé : scanne le QR avec l'app Bancontact ou ton app bancaire</div>
+        <div class="payer-ou">— ou par virement (gratuit) —</div>
       </div>
       ${(() => {
         const qrSrc = qrPaiementDataUrl({ montant: montantAPayer, communication });
@@ -1170,22 +1379,41 @@ async function construireCarteCourseClient(course) {
         <a class="btn-contact mail">✉️ Envoyer un e-mail</a>
       </div>
     `;
-    // Paiement en ligne (Apple Pay / Bancontact / carte) si activé par la centrale
+    // Paiement en ligne (Stripe · Bancontact) si activé par la centrale
     etatPaiementEnLigne().then(etat => {
       if (etat !== "actif" && etat !== "test") return;
       const zp = bloc.querySelector(".zone-paiement-en-ligne");
       zp.style.display = "block";
       if (etat === "test") zp.querySelector(".payer-moyens").textContent += " (mode test)";
+      majBoutonsPaiement();
       zp.querySelector(".btn-payer-en-ligne").addEventListener("click", async (e) => {
+        if (!conditionsCochees()) { alert("Merci d'accepter d'abord les conditions de paiement et d'annulation."); return; }
         const btn = e.currentTarget; btn.disabled = true; btn.textContent = "Ouverture du paiement…";
-        const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id } });
+        const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id, retour: location.origin + location.pathname } });
         if (error || !data || !data.url) {
-          btn.disabled = false; btn.textContent = "💳 Payer maintenant · " + montantAPayer + " €";
+          btn.disabled = false; btn.textContent = "📱 Payer avec Bancontact · " + montantAPayer + " €";
           alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement ci-dessous.");
           return;
         }
         window.location.href = data.url;
       });
+    });
+    // --- Acceptation obligatoire des conditions avant de payer ---
+    const cbConditions = bloc.querySelector(".cb-accepte-conditions");
+    const conditionsCochees = () => !!(cbConditions && cbConditions.checked);
+    function majBoutonsPaiement() {
+      const ok = conditionsCochees();
+      bloc.querySelectorAll(".btn-payer-en-ligne, #btn-jai-paye").forEach(b => { if (b.textContent !== "Ouverture du paiement…") b.disabled = !ok; });
+      bloc.querySelector(".accepte-conditions").classList.toggle("ok", ok);
+      bloc.querySelector(".aide-conditions").style.display = ok ? "none" : "";
+    }
+    majBoutonsPaiement();
+    cbConditions.addEventListener("change", async () => {
+      majBoutonsPaiement();
+      const coche = cbConditions.checked;
+      const { data, error } = await supabase.rpc("client_accepter_conditions", { p_course: course.id, p_accepte: coche });
+      if (error) { console.error("conditions:", error.message); return; }
+      course.conditions_acceptees_at = coche ? (data || new Date().toISOString()) : null;
     });
     const texteContact = `Bonjour Taxi Wal, j'ai une réservation (${communication}) de ${course.prix} € mais je ne peux pas payer l'acompte à l'avance. Pouvez-vous me contacter ?`;
     bloc.querySelector(".btn-contact.wa").href = `https://wa.me/${DISPATCH_WHATSAPP}?text=${encodeURIComponent(texteContact)}`;
@@ -1221,9 +1449,11 @@ async function construireCarteCourseClient(course) {
       } catch (err) { alert("IBAN : " + COMPTE_IBAN); }
     });
     bloc.querySelector("#btn-jai-paye").addEventListener("click", async () => {
+      if (!conditionsCochees()) { alert("Merci d'accepter d'abord les conditions de paiement et d'annulation."); return; }
       if (!confirm("Confirmes-tu avoir déjà envoyé le virement de " + montantAPayer + " € ?")) return;
       await supabase.from("courses").update({
-        statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
+        statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString(),
+        conditions_acceptees_at: course.conditions_acceptees_at || new Date().toISOString()
       }).eq("id", course.id);
       chargerMesCourses();
     });
@@ -1281,28 +1511,14 @@ async function construireCarteCourseClient(course) {
     div.appendChild(bloc);
   }
 
-  // --- Course terminée : recevoir sa facture/reçu par email (idée reprise de Victor Cab) ---
+  // --- Course terminée : demander une facture (onglet « Facture », course pré-cochée) ---
   if (course.statut === "terminee") {
     const blocFacture = document.createElement("div");
     blocFacture.className = "bloc-facture";
-    if (course.facture_envoyee) {
-      blocFacture.innerHTML = `<p class="facture-envoyee-msg">📧 Facture envoyée par email.</p>`;
-    } else {
-      blocFacture.innerHTML = `
-        <label>Numéro d'entreprise (TVA) — optionnel, pour une vraie facture pro</label>
-        <input type="text" class="input-numero-entreprise" placeholder="ex: BE0123456789">
-        <button type="button" class="btn-demander-facture">📧 Recevoir ma facture par email</button>
-      `;
-      blocFacture.querySelector(".btn-demander-facture").addEventListener("click", async (e) => {
-        e.target.disabled = true; e.target.textContent = "Envoi en cours…";
-        const numeroEntreprise = blocFacture.querySelector(".input-numero-entreprise").value.trim();
-        const { error } = await supabase.functions.invoke("envoyer-facture-client", {
-          body: { courseId: course.id, numeroEntreprise: numeroEntreprise || undefined }
-        });
-        if (error) { alert("Erreur : " + error.message); e.target.disabled = false; e.target.textContent = "📧 Recevoir ma facture par email"; return; }
-        chargerMesCourses();
-      });
-    }
+    blocFacture.innerHTML = `<button type="button" class="btn-demander-facture">🧾 Demander une facture</button>`;
+    blocFacture.querySelector(".btn-demander-facture").addEventListener("click", () => {
+      if (typeof window.ouvrirFactureAvecCourse === "function") window.ouvrirFactureAvecCourse(course.id);
+    });
     div.appendChild(blocFacture);
   }
 
@@ -1707,6 +1923,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   etapes[3].appendChild(champDe("input-ouverte-marche"));
   if (info) etapes[3].appendChild(info);
   etapes[3].appendChild($("erreur-reservation"));
+  if ($("mention-conditions-reservation")) etapes[3].appendChild($("mention-conditions-reservation"));
   const btnReserver = $("btn-reserver");
   const nav = document.createElement("div"); nav.className = "rz-nav";
   nav.innerHTML = `<button type="button" class="rz-retour">← Retour</button><button type="button" class="rz-suivant">Continuer →</button>`;
@@ -1936,15 +2153,381 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 })();
 </script>
 <script>
+// ================== DEMANDES DE FACTURE (onglet « 🧾 Facture ») ==================
+// Fichiers : bucket privé « factures », chemin "<client_id>/<demande_id>/<nom du fichier>" (déposé par l'admin).
+(function () {
+  const $ = id => document.getElementById(id);
+  if (!$("section-facture") || typeof supabase === "undefined" || !supabase) return;
 
-// Retour depuis la page de paiement
+  let utilisateur = null, initFait = false, canalRealtime = null;
+  let coursesFacturables = [];
+  let demandesCache = [];
+  const statutsConnus = new Map();      // id demande → statut (pour le toast « facture disponible »)
+  const coursesCochees = new Set();
+
+  const STATUTS = {
+    demandee: { libelle: "Demandée", classe: "demandee" },
+    en_cours: { libelle: "En cours", classe: "en_cours" },
+    envoyee: { libelle: "✅ Facture disponible", classe: "envoyee" },
+    refusee: { libelle: "Refusée", classe: "refusee" }
+  };
+
+  // ---------- Petit message en bas de l'écran ----------
+  let minuterieToast = null;
+  function toast(texte) {
+    const t = $("toast-client"); if (!t) return;
+    t.textContent = texte; t.style.display = "block";
+    clearTimeout(minuterieToast);
+    minuterieToast = setTimeout(() => { t.style.display = "none"; }, 6000);
+  }
+  window.toastClient = toast;
+
+  // ---------- Numéro d'entreprise belge (BCE / KBO) ----------
+  function chiffresNumeroEntreprise(v) {
+    let c = String(v || "").replace(/\D/g, "");
+    if (c.length === 9) c = "0" + c;   // ancien format à 9 chiffres
+    return c;
+  }
+  function numeroEntrepriseBelgeValide(v) {
+    const c = chiffresNumeroEntreprise(v);
+    if (!/^[01]\d{9}$/.test(c)) return false;
+    const base = parseInt(c.slice(0, 8), 10);
+    return 97 - (base % 97) === parseInt(c.slice(8), 10);
+  }
+  function majLienBce() {
+    const c = chiffresNumeroEntreprise($("fa-numero-entreprise").value);
+    $("fa-lien-bce").href = c.length === 10
+      ? "https://kbopub.economie.fgov.be/kbopub/zoeknummerform.html?nummer=" + c + "&actionLu=Zoek&lang=fr"
+      : "https://kbopub.economie.fgov.be/kbopub/zoeknummerform.html?lang=fr";
+  }
+
+  // ---------- Validation des champs ----------
+  function poserErreur(id, message) {
+    const el = $(id); if (!el) return;
+    el.classList.toggle("invalide", !!message);
+    const zone = el.closest(".champ") && el.closest(".champ").querySelector(".msg-erreur");
+    if (zone) zone.textContent = message || "";
+  }
+  function lireFormulaire() {
+    const v = id => $(id).value.trim();
+    return {
+      nom: v("fa-nom"), numero_entreprise: v("fa-numero-entreprise"), email: v("fa-email"), telephone: v("fa-telephone"),
+      personne_contact: v("fa-contact"), rue: v("fa-rue"), numero: v("fa-numero"), boite: v("fa-boite"),
+      ville: v("fa-ville"), code_postal: v("fa-code-postal"), pays: $("fa-pays").value || "Belgique"
+    };
+  }
+  function validerFormulaire(afficher) {
+    const f = lireFormulaire();
+    const erreurs = {};
+    if (f.nom.length < 2) erreurs["fa-nom"] = "Le nom est obligatoire.";
+    if (!f.numero_entreprise) erreurs["fa-numero-entreprise"] = "Le numéro d'entreprise est obligatoire.";
+    else if (f.pays === "Belgique" && !numeroEntrepriseBelgeValide(f.numero_entreprise))
+      erreurs["fa-numero-entreprise"] = "Numéro d'entreprise invalide : 10 chiffres commençant par 0 ou 1 (ex : 0123.456.749), clé de contrôle incorrecte.";
+    else if (f.pays !== "Belgique" && f.numero_entreprise.replace(/[^0-9a-z]/gi, "").length < 4)
+      erreurs["fa-numero-entreprise"] = "Numéro d'entreprise / TVA trop court.";
+    if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email)) erreurs["fa-email"] = "Adresse email invalide.";
+    if (f.telephone) { const n = f.telephone.replace(/\D/g, "").length; if (n < 8 || n > 15) erreurs["fa-telephone"] = "Numéro de téléphone invalide."; }
+    if (!f.rue) erreurs["fa-rue"] = "Le nom de rue est obligatoire.";
+    if (!f.numero) erreurs["fa-numero"] = "Obligatoire.";
+    if (!f.ville) erreurs["fa-ville"] = "La ville est obligatoire.";
+    if (!f.code_postal) erreurs["fa-code-postal"] = "Obligatoire.";
+    else if (f.pays === "Belgique" && !/^\d{4}$/.test(f.code_postal)) erreurs["fa-code-postal"] = "4 chiffres.";
+    if (!f.pays) erreurs["fa-pays"] = "Le pays est obligatoire.";
+    if (afficher) ["fa-nom", "fa-numero-entreprise", "fa-email", "fa-telephone", "fa-contact", "fa-rue", "fa-numero", "fa-boite", "fa-ville", "fa-code-postal", "fa-pays"]
+      .forEach(id => poserErreur(id, erreurs[id]));
+    // Normalisation
+    if (f.pays === "Belgique" && numeroEntrepriseBelgeValide(f.numero_entreprise)) f.numero_entreprise = chiffresNumeroEntreprise(f.numero_entreprise);
+    else f.numero_entreprise = f.numero_entreprise.toUpperCase().replace(/\s+/g, "");
+    ["email", "telephone", "personne_contact", "boite"].forEach(k => { if (!f[k]) f[k] = null; });
+    return { ok: Object.keys(erreurs).length === 0, erreurs, donnees: f };
+  }
+  ["fa-nom", "fa-numero-entreprise", "fa-email", "fa-telephone", "fa-contact", "fa-rue", "fa-numero", "fa-boite", "fa-ville", "fa-code-postal"].forEach(id => {
+    $(id).addEventListener("input", () => { poserErreur(id, ""); if (id === "fa-numero-entreprise") majLienBce(); });
+  });
+  $("fa-numero-entreprise").addEventListener("blur", () => {
+    const f = validerFormulaire(false);
+    if (f.erreurs["fa-numero-entreprise"] && $("fa-numero-entreprise").value.trim()) poserErreur("fa-numero-entreprise", f.erreurs["fa-numero-entreprise"]);
+    else if ($("fa-pays").value === "Belgique" && numeroEntrepriseBelgeValide($("fa-numero-entreprise").value)) {
+      const c = chiffresNumeroEntreprise($("fa-numero-entreprise").value);
+      $("fa-numero-entreprise").value = "BE" + c.slice(0, 4) + "." + c.slice(4, 7) + "." + c.slice(7);
+    }
+  });
+  $("fa-pays").addEventListener("change", () => { poserErreur("fa-pays", ""); poserErreur("fa-code-postal", ""); poserErreur("fa-numero-entreprise", ""); });
+
+  // ---------- Pré-remplissage ----------
+  async function chargerCoordonnees() {
+    const { data } = await supabase.from("clients_facturation").select("*").eq("client_id", utilisateur.id).maybeSingle();
+    const mettre = (id, v) => { if (v !== null && v !== undefined) $(id).value = v; };
+    if (data) {
+      mettre("fa-nom", data.nom);
+      const c = chiffresNumeroEntreprise(data.numero_entreprise);
+      mettre("fa-numero-entreprise", data.pays === "Belgique" && c.length === 10 ? "BE" + c.slice(0, 4) + "." + c.slice(4, 7) + "." + c.slice(7) : data.numero_entreprise);
+      mettre("fa-email", data.email); mettre("fa-telephone", data.telephone); mettre("fa-contact", data.personne_contact);
+      mettre("fa-rue", data.rue); mettre("fa-numero", data.numero); mettre("fa-boite", data.boite);
+      mettre("fa-ville", data.ville); mettre("fa-code-postal", data.code_postal);
+      $("fa-pays").value = data.pays || "Belgique";
+    } else {
+      if (!$("fa-email").value) $("fa-email").value = utilisateur.email || "";
+      if (typeof monProfil !== "undefined" && monProfil) {
+        if (!$("fa-telephone").value) $("fa-telephone").value = monProfil.telephone || "";
+        if (!$("fa-contact").value) $("fa-contact").value = monProfil.nom || "";
+      }
+    }
+    majLienBce();
+  }
+
+  // ---------- Liste des courses à facturer ----------
+  async function chargerCourses() {
+    const { data, error } = await supabase.from("courses")
+      .select("id, date_heure, adresse_depart, adresse_arrivee, prix, surprime, statut")
+      .eq("client_id", utilisateur.id)
+      .not("statut", "in", "(annulee,refusee)")
+      .order("date_heure", { ascending: false });
+    if (error) { console.error("courses facture:", error.message); return; }
+    coursesFacturables = (data || []).sort((a, b) => {
+      const ta = a.statut === "terminee" ? 0 : 1, tb = b.statut === "terminee" ? 0 : 1;
+      return ta - tb || new Date(b.date_heure) - new Date(a.date_heure);
+    });
+    rendreCourses();
+  }
+  function rendreCourses() {
+    const zone = $("fa-liste-courses");
+    if (!coursesFacturables.length) { zone.innerHTML = '<p style="padding:12px; color:var(--gris); margin:0;">Aucune course à facturer pour le moment.</p>'; return; }
+    const dejaDemandees = new Set();
+    demandesCache.filter(d => d.statut !== "refusee").forEach(d => (d.course_ids || []).forEach(id => dejaDemandees.add(id)));
+    zone.innerHTML = coursesFacturables.map(c => {
+      const quand = new Date(c.date_heure).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      const total = (Number(c.prix) || 0) + (Number(c.surprime) || 0);
+      return `<label class="ligne-course-facture">
+        <input type="checkbox" data-course="${esc(c.id)}" ${coursesCochees.has(c.id) ? "checked" : ""}>
+        <div><b>${esc(quand)}</b>${c.statut !== "terminee" ? ` <small>(${esc(c.statut === "confirmee" ? "confirmée" : c.statut.replace(/_/g, " "))})</small>` : ""}<br>
+          ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)}
+          ${dejaDemandees.has(c.id) ? '<br><small>🧾 Facture déjà demandée pour cette course</small>' : ""}</div>
+        <span class="prix">${c.prix ? esc(total.toFixed(2)) + " €" : "—"}</span>
+      </label>`;
+    }).join("");
+    zone.querySelectorAll("input[data-course]").forEach(cb => cb.addEventListener("change", () => {
+      if (cb.checked) coursesCochees.add(cb.dataset.course); else coursesCochees.delete(cb.dataset.course);
+      $("fa-erreur-courses").textContent = "";
+    }));
+  }
+
+  // ---------- Mes demandes ----------
+  async function chargerDemandes() {
+    const { data, error } = await supabase.from("demandes_facture").select("*").eq("client_id", utilisateur.id).order("created_at", { ascending: false });
+    if (error) { console.error("demandes facture:", error.message); return; }
+    demandesCache = data || [];
+    demandesCache.forEach(d => statutsConnus.set(d.id, d.statut));
+    rendreDemandes();
+    rendreCourses();
+  }
+  function rendreDemandes() {
+    const zone = $("fa-mes-demandes");
+    if (!demandesCache.length) { zone.innerHTML = '<p style="color:var(--gris); margin:0;">Aucune demande pour le moment.</p>'; return; }
+    zone.innerHTML = demandesCache.map(d => {
+      const st = STATUTS[d.statut] || { libelle: d.statut, classe: "" };
+      const quand = new Date(d.created_at).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      const nb = (d.course_ids || []).length;
+      return `<div class="demande-facture" data-id="${esc(d.id)}">
+        <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
+          <div><b>${esc(quand)}</b><br><small style="color:var(--gris);">${nb} course${nb > 1 ? "s" : ""} · ${esc(d.nom)}</small></div>
+          <span class="badge-facture ${st.classe}">${esc(st.libelle)}</span>
+        </div>
+        ${d.reponse_admin ? `<div style="margin-top:6px; font-size:.85rem;">💬 ${esc(d.reponse_admin)}</div>` : ""}
+        ${d.fichier_path ? `<div class="actions-facture">
+          <button type="button" data-action="ouvrir">📄 Ouvrir</button>
+          <button type="button" data-action="imprimer">🖨️ Imprimer</button>
+          <button type="button" data-action="partager">📤 Partager</button>
+        </div>` : ""}
+      </div>`;
+    }).join("");
+    zone.querySelectorAll(".actions-facture button").forEach(b => b.addEventListener("click", () => {
+      const d = demandesCache.find(x => x.id === b.closest(".demande-facture").dataset.id);
+      if (d) actionFichier(b.dataset.action, d, b);
+    }));
+  }
+
+  // ---------- Ouvrir / imprimer / partager le fichier ----------
+  async function urlSignee(d) {
+    const { data, error } = await supabase.storage.from("factures").createSignedUrl(d.fichier_path, 3600);
+    if (error || !data || !data.signedUrl) throw new Error((error && error.message) || "Lien indisponible");
+    return data.signedUrl;
+  }
+  const estIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  async function actionFichier(action, d, bouton) {
+    const avant = bouton.textContent;
+    const nomFichier = d.fichier_nom || (d.fichier_path.split("/").pop()) || "facture-taxi-wal.pdf";
+    // Fenêtre ouverte tout de suite (sinon bloquée par le navigateur après l'attente du lien)
+    let fenetre = null;
+    if (action === "ouvrir" || (action === "imprimer" && estIOS)) fenetre = window.open("", "_blank");
+    try {
+      bouton.disabled = true; bouton.textContent = "…";
+      const url = await urlSignee(d);
+      if (action === "ouvrir" || (action === "imprimer" && estIOS)) {
+        if (fenetre) fenetre.location.href = url; else window.location.href = url;
+        if (action === "imprimer") toast("Utilise le bouton Partager → Imprimer de ton téléphone.");
+        return;
+      }
+      if (action === "imprimer") {
+        try {
+          const blob = await (await fetch(url)).blob();
+          const urlLocale = URL.createObjectURL(blob);
+          const cadre = document.createElement("iframe");
+          cadre.style.cssText = "position:fixed; right:0; bottom:0; width:0; height:0; border:0;";
+          cadre.src = urlLocale;
+          cadre.onload = () => {
+            setTimeout(() => {
+              try { cadre.contentWindow.focus(); cadre.contentWindow.print(); }
+              catch (e) { const w = window.open(url, "_blank"); if (!w) window.location.href = url; }
+              setTimeout(() => { cadre.remove(); URL.revokeObjectURL(urlLocale); }, 60000);
+            }, 300);
+          };
+          document.body.appendChild(cadre);
+        } catch (e) {
+          const w = window.open(url, "_blank"); if (!w) window.location.href = url;
+        }
+        return;
+      }
+      if (action === "partager") {
+        try {
+          const blob = await (await fetch(url)).blob();
+          const fichier = new File([blob], nomFichier, { type: blob.type || "application/pdf" });
+          if (navigator.canShare && navigator.canShare({ files: [fichier] })) {
+            await navigator.share({ files: [fichier], title: "Facture Taxi Wal", text: "Facture Taxi Wal" });
+            return;
+          }
+        } catch (e) { if (e && e.name === "AbortError") return; }
+        if (navigator.share) {
+          try { await navigator.share({ title: "Facture Taxi Wal", url }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+        }
+        try { await navigator.clipboard.writeText(url); toast("🔗 Lien de la facture copié (valable 1 heure)."); }
+        catch (e) { prompt("Lien de la facture (valable 1 heure) :", url); }
+      }
+    } catch (e) {
+      if (fenetre) fenetre.close();
+      alert("Impossible d'ouvrir la facture : " + e.message);
+    } finally {
+      bouton.disabled = false; bouton.textContent = avant;
+    }
+  }
+
+  // ---------- Envoi de la demande ----------
+  $("fa-envoyer").addEventListener("click", async () => {
+    const btn = $("fa-envoyer");
+    $("fa-erreur-envoi").textContent = ""; $("fa-succes").style.display = "none";
+    const v = validerFormulaire(true);
+    const ids = [...coursesCochees].filter(id => coursesFacturables.some(c => c.id === id));
+    $("fa-erreur-courses").textContent = ids.length ? "" : "Choisis au moins une course.";
+    if (!v.ok || !ids.length) {
+      $("fa-erreur-envoi").textContent = "⚠️ Merci de corriger les champs en rouge.";
+      const premier = document.querySelector("#section-facture .invalide") || (!ids.length ? $("fa-liste-courses") : null);
+      if (premier) { premier.scrollIntoView({ behavior: "smooth", block: "center" }); if (premier.focus) setTimeout(() => premier.focus(), 300); }
+      return;
+    }
+    btn.disabled = true; btn.textContent = "Envoi…";
+    try {
+      const f = v.donnees;
+      const { error: e1 } = await supabase.from("clients_facturation").upsert({ client_id: utilisateur.id, ...f, updated_at: new Date().toISOString() }, { onConflict: "client_id" });
+      if (e1) throw e1;
+      const message = $("fa-message").value.trim() || null;
+      const { error: e2 } = await supabase.from("demandes_facture").insert({ client_id: utilisateur.id, course_ids: ids, ...f, message });
+      if (e2) throw e2;
+      coursesCochees.clear();
+      $("fa-message").value = "";
+      $("fa-succes").textContent = "✅ Demande envoyée ! Tu seras prévenu dès que ta facture sera disponible ici.";
+      $("fa-succes").style.display = "block";
+      await chargerDemandes();
+      $("fa-mes-demandes").scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e) {
+      $("fa-erreur-envoi").textContent = "Erreur : " + (e.message || e);
+    } finally {
+      btn.disabled = false; btn.textContent = "🧾 Envoyer ma demande de facture";
+    }
+  });
+
+  // ---------- Temps réel : statut des demandes ----------
+  function abonnerRealtime() {
+    if (canalRealtime) return;
+    canalRealtime = supabase.channel("demandes-facture-" + utilisateur.id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "demandes_facture", filter: "client_id=eq." + utilisateur.id }, (payload) => {
+        const n = payload.new;
+        if (n && n.id) {
+          const avant = statutsConnus.get(n.id);
+          if (n.statut === "envoyee" && avant && avant !== "envoyee") {
+            toast("🧾 Ta facture Taxi Wal est disponible (onglet « Facture »).");
+            if ("Notification" in window && Notification.permission === "granted") {
+              try { new Notification("Taxi Wal", { body: "🧾 Ta facture est disponible dans l'application.", tag: "facture-" + n.id }); } catch (e) {}
+            }
+          } else if (n.statut === "refusee" && avant && avant !== "refusee") {
+            toast("ℹ️ Ta demande de facture a reçu une réponse (onglet « Facture »).");
+          }
+        }
+        chargerDemandes();
+      })
+      .subscribe();
+  }
+
+  // ---------- Démarrage / navigation ----------
+  let promesseInit = null;
+  window.initFactureClient = function () {
+    if (promesseInit) return promesseInit;
+    promesseInit = (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { promesseInit = null; return; }
+      utilisateur = user;
+      await Promise.all([chargerCoordonnees(), chargerDemandes(), chargerCourses()]);
+      initFait = true;
+      abonnerRealtime();
+    })();
+    return promesseInit;
+  };
+  window.ouvrirFactureAvecCourse = async function (courseId) {
+    if (courseId) coursesCochees.add(courseId);
+    const b = document.querySelector('nav.onglets button[data-onglet="facture"]');
+    if (b) b.click();
+    if (!initFait) await window.initFactureClient(); else await chargerCourses();
+    rendreCourses();
+    const cb = document.querySelector(`#fa-liste-courses input[data-course="${courseId}"]`);
+    (cb ? cb.closest(".ligne-course-facture") : $("section-facture")).scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  document.querySelectorAll('nav.onglets button[data-onglet="facture"]').forEach(b => b.addEventListener("click", () => {
+    if (initFait) { chargerCourses(); chargerDemandes(); } else window.initFactureClient();
+  }));
+  const btnMenu = $("btn-menu-facture");
+  if (btnMenu) btnMenu.addEventListener("click", () => window.ouvrirFactureAvecCourse(null));
+})();
+</script>
+<script>
+
+// Retour depuis la page de paiement (Stripe)
 (function () {
   const p = new URLSearchParams(location.search);
-  if (p.get("paiement") !== "retour") return;
+  const etat = p.get("paiement");
+  if (!etat) return;
+  const courseId = p.get("course");
   history.replaceState(null, "", location.pathname);
-  setTimeout(() => {
-    alert("Merci ! Ton paiement est en cours de vérification. Dès qu'il est reçu, ta course passe automatiquement en « Confirmée ».");
-    const b = document.querySelector('nav.onglets button[data-onglet="mes-courses"]'); if (b) b.click();
+  const ouvrirMesCourses = () => { const b = document.querySelector('nav.onglets button[data-onglet="mes-courses"]'); if (b) b.click(); };
+  if (etat === "annule") {
+    setTimeout(() => { alert("Paiement annulé. Tu peux réessayer ou payer par virement."); ouvrirMesCourses(); }, 1200);
+    return;
+  }
+  if (etat !== "ok" && etat !== "retour") return;
+  setTimeout(async () => {
+    let paye = false;
+    if (courseId) {
+      try {
+        await supabase.auth.getSession();
+        for (let i = 0; i < 3 && !paye; i++) {
+          const { data } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "verifier", course_id: courseId } });
+          paye = !!(data && data.paye);
+          if (!paye) await new Promise(r => setTimeout(r, 2500));
+        }
+      } catch (e) {}
+    }
+    if (typeof chargerMesCourses === "function") { try { await chargerMesCourses(); } catch (e) {} }
+    ouvrirMesCourses();
+    alert(paye ? "✅ Paiement reçu, merci ! Ta course est confirmée."
+               : "Merci ! Ton paiement est en cours de vérification. Dès qu'il est reçu, ta course passe automatiquement en « Confirmée ».");
   }, 1200);
 })();
 </script>

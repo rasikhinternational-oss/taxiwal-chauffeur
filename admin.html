@@ -330,6 +330,64 @@ window.onerror = function(msg, url, line, col, err) {
   .cb-ligne .cb-haut{ display:flex; justify-content:space-between; gap:8px; font-weight:800; }
   .cb-ligne .cb-roule{ color:#1d4f86; font-weight:700; margin-top:4px; }
   .cb-ligne .cb-info{ color:var(--gris); font-size:.8rem; margin-top:2px; }
+  .fa-carte{ background:#fff; border:1px solid #ddd; border-left:5px solid #1d4ed8; border-radius:12px; padding:14px; margin-bottom:14px; color:#222; }
+  .fa-carte.fa-envoyee{ border-left-color:#16a34a; } .fa-carte.fa-refusee{ border-left-color:#999; opacity:.85; } .fa-carte.fa-en_cours{ border-left-color:#d97706; }
+  .fa-entete{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .fa-nom{ font-weight:800; font-size:1.05rem; } .fa-date{ font-size:.8rem; color:#666; margin-top:2px; }
+  .fa-statut{ flex:0 0 auto; font-size:.78rem; font-weight:700; background:#f3f3f1; border-radius:999px; padding:4px 10px; }
+  .fa-bloc{ margin-top:12px; background:#fafaf8; border:1px solid #eee; border-radius:10px; padding:10px; }
+  .fa-titre{ font-weight:800; margin-bottom:6px; }
+  .fa-ligne{ display:flex; gap:8px; font-size:.9rem; padding:2px 0; } .fa-ligne span{ flex:0 0 110px; color:#666; } .fa-ligne b{ font-weight:600; word-break:break-word; }
+  .fa-message{ margin-top:10px; padding:10px; border-radius:10px; background:#fff8e6; font-size:.9rem; white-space:pre-wrap; } .fa-reponse{ background:#f1f1f1; }
+  .fa-course{ border:1px solid #e6e6e3; background:#fff; border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:.88rem; cursor:pointer; }
+  .fa-course:hover{ border-color:#1d4ed8; } .fa-c-quand{ font-weight:700; } .fa-c-info{ color:#555; font-size:.82rem; margin-top:2px; } .fa-c-prix{ margin-top:4px; }
+  .fa-c-statut{ font-weight:500; font-size:.75rem; color:#666; background:#f1f1f1; border-radius:6px; padding:1px 6px; }
+  .fa-somme{ font-weight:800; text-align:right; margin:6px 0; } .fa-note{ font-size:.82rem; color:#8a6100; margin-top:6px; }
+  .fa-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .fa-btn{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:#222; font-weight:700; font-size:.85rem; cursor:pointer; margin-top:8px; }
+  .fa-actions .fa-btn{ margin-top:0; flex:1 1 auto; } .fa-btn.fa-principal{ background:#1d4ed8; color:#fff; border-color:#1d4ed8; } .fa-btn.fa-danger{ color:#b91c1c; }
+  .fa-btn:disabled{ opacity:.5; }
+  .pm-filtres{ display:flex; gap:6px; overflow-x:auto; margin-bottom:8px; padding-bottom:2px; }
+  .pm-filtres button{ flex:0 0 auto; width:auto; padding:8px 12px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:#333; font-weight:700; font-size:.82rem; cursor:pointer; }
+  .pm-filtres button.actif{ background:var(--noir); color:var(--blanc); border-color:var(--noir); }
+  .pm-btn-ajout{ width:100%; padding:12px; border:none; border-radius:10px; background:var(--vert); color:#fff; font-weight:800; margin:4px 0 12px; cursor:pointer; }
+  #pm-resume{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:8px; }
+  #pm-resume div{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px; text-align:center; }
+  #pm-resume b{ display:block; font-size:1.2rem; }
+  #pm-resume span{ font-size:.72rem; color:var(--gris); }
+  #pm-resume .pm-bc b{ color:#1f6b3f; }
+  #pm-resume .pm-vir b{ color:#1d4f86; }
+  #pm-frais{ background:#fff7e0; border:1px solid #f0d58a; color:#6b4a00; border-radius:10px; padding:8px 12px; font-size:.8rem; margin-bottom:14px; }
+  .pm-jour{ margin-bottom:16px; }
+  .pm-jour-titre{ font-weight:900; font-size:.95rem; margin:0 0 2px; text-transform:capitalize; }
+  .pm-jour-totaux{ font-size:.8rem; color:var(--gris); margin-bottom:6px; }
+  .pm-jour-totaux b{ color:#222; }
+  .pm-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px 12px; margin-bottom:6px; font-size:.88rem; display:flex; gap:10px; align-items:flex-start; }
+  .pm-ligne .pm-corps{ flex:1; min-width:0; cursor:pointer; }
+  .pm-ligne .pm-haut{ display:flex; justify-content:space-between; gap:8px; font-weight:800; }
+  .pm-ligne .pm-info{ color:var(--gris); font-size:.78rem; margin-top:3px; overflow-wrap:anywhere; }
+  .pm-badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:800; margin-right:4px; }
+  .pm-badge.bancontact{ background:#e7f5ec; color:#1f6b3f; }
+  .pm-badge.virement{ background:#eef4fb; color:#1d4f86; }
+  .pm-badge.autre{ background:#f1f1ef; color:#555; }
+  .pm-suppr{ flex:0 0 auto; width:auto; background:transparent; border:none; font-size:1.05rem; padding:4px; cursor:pointer; }
+  .pm-versement{ font-size:.8rem; font-weight:700; margin-top:4px; }
+  .pm-versement.verse{ color:#1f6b3f; }
+  .pm-versement.route{ color:#1d4f86; }
+  .pm-versement.attente{ color:#8a6100; }
+  .pm-versement.echoue{ color:#b3261e; }
+  .pm-actualiser{ width:100%; padding:10px; border:1px solid #cfcfcd; border-radius:10px; background:#fff; color:#333; font-weight:800; margin:0 0 6px; cursor:pointer; }
+  #pm-synchro{ font-size:.75rem; color:var(--gris); text-align:center; margin-bottom:10px; min-height:1em; }
+  #pm-resume .pm-verse b{ color:#1f6b3f; }
+  #pm-resume .pm-attente b{ color:#8a6100; }
+  .pm-po{ background:#fff; border:2px solid #cfe9d8; border-radius:12px; padding:10px 12px; margin-bottom:12px; }
+  .pm-po.route{ border-color:#cddff3; }
+  .pm-po.attente{ border-color:#f0d58a; }
+  .pm-po.echoue{ border-color:#f2c1bd; }
+  .pm-po-titre{ display:flex; justify-content:space-between; gap:8px; font-weight:900; font-size:.95rem; }
+  .pm-po-sous{ font-size:.76rem; color:var(--gris); margin:2px 0 8px; }
+  .pm-po-ligne{ display:flex; justify-content:space-between; gap:8px; font-size:.82rem; padding:5px 0; border-top:1px dashed #e3e3e0; cursor:pointer; }
+  .pm-po-ligne span:first-child{ min-width:0; overflow-wrap:anywhere; }
   .cb-alerte{ color:#b3141b !important; }
   .pc-puces{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
   .pc-puces button{ width:auto; padding:10px 14px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:var(--blanc); font-weight:700; font-size:.9rem; }
@@ -625,7 +683,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button id="btn-menu-admin" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
     <div id="menu-admin-deroulant" style="display:none; position:absolute; top:46px; right:0; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
       <button id="btn-email-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">✉️ E-mails (codes clients, Brevo)</button>
-      <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Apple Pay…)</button>
+      <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Stripe · Bancontact)</button>
       <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
     </div>
   </div>
@@ -638,6 +696,8 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="horaires">🗓️ Horaires</button>
     <button data-onglet="evenements">📅 Événements</button>
     <button data-onglet="carburant">⛽ Carburant</button>
+    <button data-onglet="paiements">💳 Paiements</button>
+    <button data-onglet="factures">🧾 Factures</button>
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
@@ -749,6 +809,41 @@ window.onerror = function(msg, url, line, col, err) {
   </div>
   <div id="cb-resume"></div>
   <div id="cb-liste"></div>
+</section>
+
+<section id="section-factures">
+  <div class="pm-filtres" id="fa-filtres">
+    <button type="button" data-f="a_traiter" class="actif">À traiter</button>
+    <button type="button" data-f="envoyee">Envoyées</button>
+    <button type="button" data-f="refusee">Refusées</button>
+    <button type="button" data-f="toutes">Toutes</button>
+  </div>
+  <div id="fa-liste"></div>
+</section>
+
+<section id="section-paiements">
+  <div class="pm-filtres" id="pm-periodes">
+    <button type="button" data-p="jour">Aujourd'hui</button>
+    <button type="button" data-p="7j">7 jours</button>
+    <button type="button" data-p="mois" class="actif">Ce mois</button>
+    <button type="button" data-p="mois-1">Mois précédent</button>
+    <button type="button" data-p="tout">Tout</button>
+  </div>
+  <div class="pm-filtres" id="pm-methodes">
+    <button type="button" data-m="" class="actif">Tous</button>
+    <button type="button" data-m="bancontact">📱 Bancontact</button>
+    <button type="button" data-m="virement">🏦 Virement</button>
+  </div>
+  <div class="pm-filtres" id="pm-vues">
+    <button type="button" data-v="jour" class="actif">📅 Par jour de paiement</button>
+    <button type="button" data-v="versement">🏦 Vue par versement bancaire</button>
+  </div>
+  <button type="button" id="pm-ajouter" class="pm-btn-ajout">➕ Ajouter un paiement</button>
+  <button type="button" id="pm-actualiser" class="pm-actualiser">🔄 Actualiser les versements</button>
+  <div id="pm-synchro"></div>
+  <div id="pm-resume"></div>
+  <div id="pm-frais"></div>
+  <div id="pm-liste"></div>
 </section>
 
 <section id="section-evenements">
@@ -1160,6 +1255,7 @@ function demarrerAdmin() {
   chargerCarnet();
   chargerCoursesAdmin();
   setInterval(() => chargerCoursesAdmin(true), 20000);
+  try { demarrerFacturesAdmin(); } catch (e) { console.warn("factures :", e); }
   setInterval(() => {
     if (document.getElementById("section-caisse").classList.contains("visible")) chargerCaisse();
   }, 20000);
@@ -1255,15 +1351,30 @@ document.getElementById("btn-email-admin").addEventListener("click", async () =>
   if (error) { alert("Erreur : " + error.message); return; }
   alert(cle.trim() ? "✅ Clé enregistrée. Les clients reçoivent maintenant « Ton code Taxi Wal » en français." : "Envoi d'e-mails désactivé.");
 });
+async function lireErreurFonction(err) {
+  try { const j = await err.context.json(); if (j && j.erreur) return j.erreur; } catch (e) {}
+  return (err && err.message) || "erreur inconnue";
+}
 document.getElementById("btn-paiement-en-ligne-admin").addEventListener("click", async () => {
-  const { data: etat } = await supabase.rpc("paiement_en_ligne_etat");
-  const txt = { actif: "✅ ACTIF (paiements réels)", test: "🧪 MODE TEST (aucun vrai paiement)", inactif: "❌ PAS ACTIVÉ" }[etat] || etat;
-  const cle = prompt("Paiement en ligne des acomptes (Apple Pay, Bancontact, carte) via Mollie.\n\nÉtat actuel : " + txt +
-    "\n\nColle ta clé API Mollie (commence par live_ ou test_).\nLaisse vide et valide pour DÉSACTIVER.");
+  const { data: etat } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "etat_admin" } });
+  let txt = "❌ PAS ACTIVÉ";
+  if (etat && etat.configuree) {
+    txt = (etat.mode === "actif" ? "✅ ACTIF (paiements réels)" : etat.mode === "test" ? "🧪 MODE TEST (aucun vrai paiement)" : "⚠️ clé inconnue") +
+      "\nClé enregistrée : …" + etat.fin + (etat.webhook ? "\nConfirmation automatique (webhook) : ✅ installée" : "\nConfirmation automatique (webhook) : ❌ pas encore installée");
+  }
+  const cle = prompt("Paiement en ligne des courses par Bancontact (app Bancontact / QR) via Stripe.\n\nÉtat actuel : " + txt +
+    "\n\nClé secrète Stripe (commence par sk_live_ ou sk_test_).\nLaisse vide et valide pour DÉSACTIVER.");
   if (cle === null) return;
-  const { error } = await supabase.rpc("admin_definir_cle_paiement", { p_cle: cle });
-  if (error) { alert("Erreur : " + error.message); return; }
-  alert(cle.trim() ? "✅ Clé enregistrée. Les clients voient maintenant le bouton « 💳 Payer maintenant »." : "Paiement en ligne désactivé.");
+  const k = cle.trim();
+  if (k && !/^(sk|rk)_/.test(k)) { alert("Clé Stripe invalide : elle commence par sk_live_ ou sk_test_ (Stripe → Développeurs → Clés API → Clé secrète)."); return; }
+  const r1 = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "enregistrer_cle", cle: k } });
+  const e1 = (r1.data && r1.data.erreur) || (r1.error && await lireErreurFonction(r1.error));
+  if (e1) { alert("Erreur : " + e1); return; }
+  if (!k) { alert("Paiement en ligne désactivé."); return; }
+  const r2 = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "installer_webhook" } });
+  const e2 = (r2.data && r2.data.erreur) || (r2.error && await lireErreurFonction(r2.error));
+  if (e2) { alert("⚠️ Clé enregistrée, mais la confirmation automatique n'a pas pu être installée chez Stripe :\n" + e2 + "\n\nLes paiements seront quand même confirmés quand le client revient sur l'app après avoir payé. Réessaie plus tard via ce menu."); return; }
+  alert("✅ Clé Stripe enregistrée (" + (r1.data.mode === "actif" ? "paiements réels" : "mode test") + ") et confirmation automatique installée.\nLes clients voient maintenant le bouton « 📱 Payer avec Bancontact ».");
 });
 document.getElementById("btn-deconnexion-admin").addEventListener("click", async () => {
   if (!confirm("Se déconnecter de l'administration Taxi Wal ?")) return;
@@ -1286,6 +1397,8 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "demandes-clients") afficherDemandesClients();
     if (btn.dataset.onglet === "evenements") chargerEvenements();
     if (btn.dataset.onglet === "carburant") chargerCarburant();
+    if (btn.dataset.onglet === "paiements") { chargerPaiements(); pmSynchroniser(true); }
+    if (btn.dataset.onglet === "factures") chargerFacturesAdmin();
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
@@ -1548,7 +1661,7 @@ function alerteImportanteAdmin(titre, texte, course, couleur, fond) {
   jouerSonAlerteAdmin();
   try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
   if ("Notification" in window && Notification.permission === "granted") {
-    try { new Notification(titre, { body: texte.replace(/<[^>]+>/g, " "), tag: "paiement-" + course.id, requireInteraction: true }); } catch (e) {}
+    try { new Notification(titre, { body: texte.replace(/<[^>]+>/g, " "), tag: course ? "paiement-" + course.id : "alerte-" + Date.now(), requireInteraction: true }); } catch (e) {}
   }
   let pile = document.getElementById("pile-alertes-admin");
   if (!pile) {
@@ -1557,12 +1670,12 @@ function alerteImportanteAdmin(titre, texte, course, couleur, fond) {
     pile.style.cssText = "position:fixed; left:10px; right:10px; top:calc(env(safe-area-inset-top,0px) + 10px); z-index:5000; display:flex; flex-direction:column; gap:8px;";
     document.body.appendChild(pile);
   }
-  const quand = course.date_heure ? new Date(course.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const quand = course && course.date_heure ? new Date(course.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
   const a = document.createElement("div");
   a.style.cssText = `background:${fond}; border:3px solid ${couleur}; color:${couleur}; border-radius:14px; padding:14px 16px; box-shadow:0 10px 30px rgba(0,0,0,.25);`;
   a.innerHTML = `<div style="font-weight:900; font-size:1.1rem;">${titre}</div>
     <div style="margin-top:6px; color:#222; font-size:.95rem;">${texte}</div>
-    <div style="margin-top:4px; color:#555; font-size:.82rem;">Course ${esc(quand)} · ${esc(course.adresse_depart || "")} → ${esc(course.adresse_arrivee || "")}</div>
+    ${course ? `<div style="margin-top:4px; color:#555; font-size:.82rem;">Course ${esc(quand)} · ${esc(course.adresse_depart || "")} → ${esc(course.adresse_arrivee || "")}</div>` : ""}
     <button type="button" style="margin-top:10px; width:100%; padding:12px; border:none; border-radius:10px; background:${couleur}; color:#fff; font-weight:800;">👍 Vu</button>`;
   a.querySelector("button").addEventListener("click", () => a.remove());
   pile.appendChild(a);
@@ -1709,6 +1822,311 @@ function editerPlein(p) {
   })();
 }
 document.getElementById("cb-ajouter").addEventListener("click", () => editerPlein(null));
+
+// ================== 💳 PAIEMENTS REÇUS (Bancontact en ligne + virements confirmés) ==================
+let paiementsCache = [];
+let pmPeriode = "mois", pmMethode = "";
+let pmTempsReelActif = false;
+let pmVue = "jour", pmSynchroEnCours = false;
+const PM_TZ = "Europe/Brussels";
+const PM_FRAIS_ESTIME = 0.35;
+// Frais Stripe (réels si connus, sinon estimation) et net d'un paiement Bancontact
+const pmFrais = p => p.frais_reels != null ? Number(p.frais_reels) : (p.methode === "bancontact" ? PM_FRAIS_ESTIME : 0);
+const pmNet = p => p.net != null ? Number(p.net) : Number(p.montant || 0) - pmFrais(p);
+// "AAAA-MM-JJ" -> "jeudi 10/10"
+const pmJourCourt = k => k ? new Date(k + "T12:00:00Z").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "2-digit", timeZone: "UTC" }) : "";
+function pmLigneVersement(p) {
+  if (p.methode !== "bancontact") return "";
+  let h;
+  if (p.versement_statut === "verse" && p.verse_le) h = `<div class="pm-versement verse">🏦 Versé sur ton compte le ${esc(pmJourCourt(p.verse_le))}</div>`;
+  else if (p.versement_statut === "en_route") h = `<div class="pm-versement route">🚚 En route vers ton compte${p.verse_le ? " — arrivée prévue le " + esc(pmJourCourt(p.verse_le)) : ""}</div>`;
+  else if (p.versement_statut === "echoue") h = `<div class="pm-versement echoue">⚠️ Versement échoué${p.verse_le ? " (prévu le " + esc(pmJourCourt(p.verse_le)) + ")" : ""} — vérifie ton compte Stripe</div>`;
+  else if (p.versement_statut === "en_attente" && p.disponible_le) h = `<div class="pm-versement attente">⏳ Pas encore versé — disponible le ${esc(pmJourCourt(p.disponible_le))} (environ)</div>`;
+  else h = `<div class="pm-versement attente">⏳ Versement en attente</div>`;
+  if (p.frais_reels != null) h += `<div class="pm-info">Frais Stripe ${pmEur(p.frais_reels)} · net ${pmEur(pmNet(p))}</div>`;
+  return h;
+}
+// Demande à la fonction d'aller chercher chez Stripe les versements (payouts) et de les rattacher aux paiements
+async function pmSynchroniser(silencieux) {
+  if (pmSynchroEnCours) return;
+  pmSynchroEnCours = true;
+  const info = document.getElementById("pm-synchro"), btn = document.getElementById("pm-actualiser");
+  if (!silencieux) { btn.disabled = true; btn.textContent = "⏳ Actualisation…"; }
+  info.textContent = "Vérification des versements Stripe…";
+  try {
+    const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "synchroniser_versements" } });
+    if (error || data?.erreur) {
+      info.textContent = "⚠️ Versements non actualisés" + (data?.erreur ? " : " + data.erreur : "");
+    } else if (data?.inactif) {
+      info.textContent = "Paiement en ligne Stripe non activé.";
+    } else {
+      info.textContent = "Versements à jour · " + new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: PM_TZ });
+      await chargerPaiements();
+    }
+  } catch (e) {
+    info.textContent = "⚠️ Versements non actualisés";
+  } finally {
+    pmSynchroEnCours = false;
+    btn.disabled = false; btn.textContent = "🔄 Actualiser les versements";
+  }
+}
+const pmCleJour = d => new Date(d).toLocaleDateString("en-CA", { timeZone: PM_TZ }); // AAAA-MM-JJ
+const pmEur = n => (Math.round(Number(n || 0) * 100) / 100).toFixed(2).replace(".", ",") + " €";
+const PM_METHODES = { bancontact: "📱 Bancontact", virement: "🏦 Virement", especes: "💶 Espèces", autre: "💳 Autre" };
+const PM_TYPES = { acompte: "acompte", total: "totalité", autre: "autre" };
+
+function pmBornes() {
+  const auj = pmCleJour(new Date());
+  const [a, m] = auj.split("-").map(Number);
+  const moisPrec = m === 1 ? (a - 1) + "-12" : a + "-" + String(m - 1).padStart(2, "0");
+  if (pmPeriode === "jour") return { depuis: auj, test: k => k === auj };
+  if (pmPeriode === "7j") { const d = pmCleJour(Date.now() - 6 * 864e5); return { depuis: d, test: k => k >= d }; }
+  if (pmPeriode === "mois") return { depuis: auj.slice(0, 7) + "-01", test: k => k.startsWith(auj.slice(0, 7)) };
+  if (pmPeriode === "mois-1") return { depuis: moisPrec + "-01", test: k => k.startsWith(moisPrec) };
+  return { depuis: null, test: () => true };
+}
+
+async function chargerPaiements() {
+  if (!pmTempsReelActif) {
+    pmTempsReelActif = true;
+    try {
+      supabase.channel("admin-paiements")
+        .on("postgres_changes", { event: "*", schema: "public", table: "paiements" }, () => {
+          clearTimeout(window.minuteriePaiements);
+          window.minuteriePaiements = setTimeout(() => {
+            if (document.getElementById("section-paiements").classList.contains("visible")) chargerPaiements();
+          }, 800);
+        })
+        .subscribe();
+    } catch (e) { console.warn("temps réel paiements :", e); }
+  }
+  const { depuis } = pmBornes();
+  let q = supabase.from("paiements")
+    .select("*, courses:course_id(id, adresse_depart, adresse_arrivee, date_heure, client_nom)")
+    .order("recu_at", { ascending: false });
+  // marge de 14 jours (fuseau horaire + paiements reçus avant la période mais versés pendant) ;
+  // le filtre exact se fait par jour (heure de Bruxelles)
+  if (depuis) q = q.gte("recu_at", new Date(new Date(depuis + "T00:00:00Z").getTime() - 14 * 864e5).toISOString());
+  const { data, error } = await q;
+  if (error) { document.getElementById("pm-liste").textContent = "Erreur : " + error.message; return; }
+  paiementsCache = data || [];
+  afficherPaiements();
+}
+
+function afficherPaiements() {
+  const { test } = pmBornes();
+  const periode = paiementsCache.filter(p => test(pmCleJour(p.recu_at)));
+  const liste = periode.filter(p => !pmMethode || p.methode === pmMethode);
+  const somme = (arr, m) => arr.filter(p => !m || p.methode === m).reduce((s, p) => s + Number(p.montant || 0), 0);
+  const totBc = somme(liste, "bancontact"), totVir = somme(liste, "virement"), totAll = somme(liste);
+  const bcs = liste.filter(p => p.methode === "bancontact");
+  const nbBc = bcs.length;
+  const totVerse = bcs.filter(p => p.versement_statut === "verse").reduce((s, p) => s + pmNet(p), 0);
+  const totPasVerse = bcs.filter(p => p.versement_statut !== "verse").reduce((s, p) => s + pmNet(p), 0);
+  document.getElementById("pm-resume").innerHTML = `
+    <div class="pm-bc"><b>${pmEur(totBc)}</b><span>📱 Bancontact</span></div>
+    <div class="pm-vir"><b>${pmEur(totVir)}</b><span>🏦 Virement</span></div>
+    <div><b>${pmEur(totAll)}</b><span>Total reçu</span></div>
+    <div><b>${liste.length}</b><span>paiement(s)</span></div>
+    ${pmMethode === "virement" ? "" : `<div class="pm-verse"><b>${pmEur(totVerse)}</b><span>🏦 Déjà versé sur ton compte</span></div>
+    <div class="pm-attente"><b>${pmEur(totPasVerse)}</b><span>⏳ Pas encore versé</span></div>`}`;
+  const nbReels = bcs.filter(p => p.frais_reels != null).length;
+  const frais = bcs.reduce((s, p) => s + pmFrais(p), 0);
+  document.getElementById("pm-frais").innerHTML = nbBc
+    ? `💡 Frais Stripe${nbReels === nbBc ? " (réels)" : nbReels ? ` (${nbReels} réel(s), ${nbBc - nbReels} estimé(s) à 0,35 €)` : " estimés : 0,35 € × " + nbBc + " paiement(s) Bancontact"} = <b>${pmEur(frais)}</b> · Net Bancontact ${nbReels === nbBc ? "=" : "≈"} <b>${pmEur(totBc - frais)}</b>`
+    : `💡 Frais Stripe estimés : 0,35 € par paiement Bancontact (aucun sur la période).`;
+  document.getElementById("pm-frais").style.display = pmMethode === "virement" ? "none" : "";
+
+  if (pmVue === "versement") { afficherVersements(test); return; }
+
+  const z = document.getElementById("pm-liste");
+  if (!liste.length) { z.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun paiement sur cette période.</p>'; return; }
+  const parJour = new Map();
+  liste.forEach(p => { const k = pmCleJour(p.recu_at); if (!parJour.has(k)) parJour.set(k, []); parJour.get(k).push(p); });
+  z.innerHTML = [...parJour.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([k, ps]) => {
+    const titre = new Date(k + "T12:00:00Z").toLocaleDateString("fr-BE", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    const autres = somme(ps) - somme(ps, "bancontact") - somme(ps, "virement");
+    return `<div class="pm-jour">
+      <div class="pm-jour-titre">${esc(titre)}</div>
+      <div class="pm-jour-totaux">Bancontact : <b>${pmEur(somme(ps, "bancontact"))}</b> · Virement : <b>${pmEur(somme(ps, "virement"))}</b>${autres ? ` · Autres : <b>${pmEur(autres)}</b>` : ""} · Total : <b>${pmEur(somme(ps))}</b></div>
+      ${ps.map(p => {
+        const c = p.courses;
+        const heure = new Date(p.recu_at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: PM_TZ });
+        const trajet = c ? `🚕 ${esc(c.adresse_depart || "?")} → ${esc(c.adresse_arrivee || "?")}${c.date_heure ? " · " + new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: PM_TZ }) : ""}` : (p.course_id ? "🚕 course supprimée" : "✍️ saisi à la main");
+        const cls = p.methode === "bancontact" || p.methode === "virement" ? p.methode : "autre";
+        return `<div class="pm-ligne" data-id="${p.id}">
+          <div class="pm-corps">
+            <div class="pm-haut"><span>${heure} · ${esc(p.client_nom || c?.client_nom || "Client")}</span><span>${pmEur(p.montant)}</span></div>
+            <div class="pm-info"><span class="pm-badge ${cls}">${PM_METHODES[p.methode] || esc(p.methode)}</span>${p.type ? esc(PM_TYPES[p.type] || p.type) : ""}</div>
+            <div class="pm-info">${trajet}</div>
+            ${pmLigneVersement(p)}
+            ${p.note ? `<div class="pm-info">📝 ${esc(p.note)}</div>` : ""}
+          </div>
+          <button type="button" class="pm-suppr" title="Supprimer">🗑</button>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+  z.querySelectorAll(".pm-ligne").forEach(el => {
+    const p = paiementsCache.find(x => x.id === el.dataset.id);
+    el.querySelector(".pm-corps").addEventListener("click", () => ouvrirCourseDepuisPaiement(p));
+    el.querySelector(".pm-suppr").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Supprimer ce paiement de ${pmEur(p.montant)} (${p.client_nom || "client"}) du journal ?\n\n(La course elle-même n'est pas modifiée.)`)) return;
+      const { error } = await supabase.from("paiements").delete().eq("id", p.id);
+      if (error) { alert("Erreur : " + error.message); return; }
+      chargerPaiements();
+    });
+  });
+}
+
+// Vue par versement bancaire : regroupe les paiements Bancontact par versement Stripe (date d'arrivée sur le compte),
+// pour comparer directement avec les lignes "Stripe" du relevé bancaire.
+function afficherVersements(test) {
+  const z = document.getElementById("pm-liste");
+  const bcs = paiementsCache.filter(p => p.methode === "bancontact");
+  const groupes = new Map();
+  bcs.filter(p => p.versement_id && p.verse_le && test(p.verse_le)).forEach(p => {
+    if (!groupes.has(p.versement_id)) groupes.set(p.versement_id, []);
+    groupes.get(p.versement_id).push(p);
+  });
+  const attente = bcs.filter(p => !p.versement_id && p.versement_statut !== "verse")
+    .sort((a, b) => String(a.disponible_le || "9999").localeCompare(String(b.disponible_le || "9999")));
+  const ligne = p => {
+    const c = p.courses;
+    const quand = new Date(p.recu_at).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", timeZone: PM_TZ });
+    const trajet = c ? ` · ${esc(c.adresse_depart || "?")} → ${esc(c.adresse_arrivee || "?")}` : "";
+    const det = p.frais_reels != null ? `${pmEur(p.montant)} − ${pmEur(p.frais_reels)} = ` : "";
+    return `<div class="pm-po-ligne" data-id="${p.id}"><span>${quand} · ${esc(p.client_nom || c?.client_nom || "Client")}${trajet}</span><span>${det}<b>${pmEur(pmNet(p))}</b></span></div>`;
+  };
+  const LIB = { verse: ["", "🏦 Versé le"], en_route: ["route", "🚚 Arrivée prévue le"], echoue: ["echoue", "⚠️ Versement échoué —"] };
+  let html = [...groupes.entries()].sort((a, b) => String(b[1][0].verse_le).localeCompare(String(a[1][0].verse_le))).map(([id, ps]) => {
+    const st = ps[0].versement_statut;
+    const [cls, lib] = LIB[st] || ["route", "🚚 Prévu le"];
+    const total = ps.reduce((s, p) => s + pmNet(p), 0);
+    const estimes = ps.filter(p => p.frais_reels == null).length;
+    return `<div class="pm-po ${cls}">
+      <div class="pm-po-titre"><span>${lib} ${esc(pmJourCourt(ps[0].verse_le))}</span><span>${pmEur(total)}</span></div>
+      <div class="pm-po-sous">Virement « Stripe » sur ton relevé · ${ps.length} course(s)${estimes ? ` · ${estimes} frais estimé(s)` : ""} · réf. ${esc(id)}</div>
+      ${ps.sort((a, b) => String(a.recu_at).localeCompare(String(b.recu_at))).map(ligne).join("")}
+    </div>`;
+  }).join("");
+  if (attente.length) {
+    const total = attente.reduce((s, p) => s + pmNet(p), 0);
+    html = `<div class="pm-po attente">
+      <div class="pm-po-titre"><span>⏳ Pas encore versé</span><span>${pmEur(total)}</span></div>
+      <div class="pm-po-sous">${attente.length} paiement(s) Bancontact en attente de versement Stripe</div>
+      ${attente.map(p => ligne(p).replace("</span><span>", `${p.disponible_le ? " · dispo. ~" + esc(pmJourCourt(p.disponible_le)) : ""}</span><span>`)).join("")}
+    </div>` + html;
+  }
+  z.innerHTML = html || '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun versement Stripe sur cette période.</p>';
+  z.querySelectorAll(".pm-po-ligne").forEach(el => {
+    const p = paiementsCache.find(x => x.id === el.dataset.id);
+    el.addEventListener("click", () => ouvrirCourseDepuisPaiement(p));
+  });
+}
+
+// Ouvre la course liée en plein écran (même carte que dans l'onglet Courses)
+function ouvrirCourseDepuisPaiement(p) {
+  if (!p?.course_id) return;
+  const course = (typeof dernieresCoursesAdmin !== "undefined" ? dernieresCoursesAdmin : []).find(c => c.id === p.course_id);
+  if (!course) {
+    const c = p.courses;
+    if (c) alert(`Course liée :\n${c.adresse_depart || "?"} → ${c.adresse_arrivee || "?"}\n${c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { timeZone: PM_TZ }) : ""}`);
+    return;
+  }
+  document.querySelectorAll(".carte-en-grand").forEach(x => x.classList.remove("carte-en-grand"));
+  const dejaOuverte = coursesOuvertes.has(course.id);
+  coursesOuvertes.add(course.id);
+  const carte = construireCarteAdmin(course);
+  if (!dejaOuverte) coursesOuvertes.delete(course.id);
+  carte.classList.add("carte-en-grand");
+  document.body.classList.add("carte-grand-ouverte");
+  const btn = carte.querySelector(".btn-carte-grand");
+  if (btn) {
+    btn.textContent = "✕ Fermer (retour aux paiements)";
+    btn.addEventListener("click", () => { if (!carte.classList.contains("carte-en-grand")) carte.remove(); });
+  }
+  document.body.appendChild(carte);
+  carte.scrollTop = 0;
+}
+
+// Journalise un virement confirmé à la main (n'interrompt jamais la confirmation)
+async function journaliserVirement(course) {
+  try {
+    const exige = course.paiement_exige || "choix";
+    const estTotal = exige === "total" || (exige === "choix" && course.paiement_choisi === "total");
+    const montant = estTotal ? (Number(course.prix) || 0) + (Number(course.surprime) || 0) : Number(course.acompte_montant || 0);
+    if (!(montant > 0)) return;
+    const { error } = await supabase.from("paiements").upsert({
+      course_id: course.id, client_nom: course.client_nom || null, montant: Math.round(montant * 100) / 100,
+      methode: "virement", type: estTotal ? "total" : "acompte", reference: "virement-" + course.id,
+      statut: "recu", recu_at: new Date().toISOString()
+    }, { onConflict: "reference", ignoreDuplicates: true });
+    if (error) console.warn("journal virement :", error.message);
+  } catch (e) { console.warn("journal virement :", e); }
+}
+
+function ouvrirAjoutPaiement() {
+  const fond = document.createElement("div");
+  fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:700; display:flex; align-items:flex-end;";
+  const maintenant = new Date(); maintenant.setMinutes(maintenant.getMinutes() - maintenant.getTimezoneOffset());
+  const st = "width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-size:1rem; box-sizing:border-box;";
+  const lb = "display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px;";
+  fond.innerHTML = `<div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:20px; max-height:90vh; overflow-y:auto; box-sizing:border-box;">
+    <h2 style="margin:0 0 6px; font-size:1.1rem;">➕ Ajouter un paiement</h2>
+    <label style="${lb}">Date et heure de réception</label><input type="datetime-local" class="pa-date" style="${st}" value="${maintenant.toISOString().slice(0, 16)}">
+    <label style="${lb}">Client</label><input type="text" class="pa-client" style="${st}" placeholder="Nom du client">
+    <label style="${lb}">Montant (€)</label><input type="text" inputmode="decimal" class="pa-montant" style="${st}" placeholder="ex : 25,50">
+    <label style="${lb}">Méthode</label><select class="pa-methode" style="${st}"><option value="bancontact">📱 Bancontact</option><option value="virement">🏦 Virement</option><option value="especes">💶 Espèces</option><option value="autre">💳 Autre</option></select>
+    <label style="${lb}">Type</label><select class="pa-type" style="${st}"><option value="acompte">Acompte</option><option value="total">Totalité</option><option value="autre">Autre</option></select>
+    <label style="${lb}">Note (facultatif)</label><input type="text" class="pa-note" style="${st}">
+    <div style="display:flex; gap:10px; margin-top:16px;">
+      <button type="button" class="pa-annuler" style="flex:1; padding:13px; border-radius:10px; border:none; background:#dcdcda; font-weight:700;">Annuler</button>
+      <button type="button" class="pa-ok" style="flex:1; padding:13px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:800;">Enregistrer</button>
+    </div></div>`;
+  document.body.appendChild(fond);
+  const $ = s => fond.querySelector(s);
+  $(".pa-methode").value = pmMethode || "bancontact";
+  fond.addEventListener("click", e => { if (e.target === fond) fond.remove(); });
+  $(".pa-annuler").addEventListener("click", () => fond.remove());
+  $(".pa-ok").addEventListener("click", async () => {
+    const montant = parseFloat(String($(".pa-montant").value).replace(",", "."));
+    if (!(montant > 0)) { alert("Indique un montant valide."); return; }
+    const d = $(".pa-date").value ? new Date($(".pa-date").value) : new Date();
+    if (isNaN(d.getTime())) { alert("Date invalide."); return; }
+    $(".pa-ok").disabled = true;
+    const { error } = await supabase.from("paiements").insert({
+      client_nom: $(".pa-client").value.trim() || null, montant: Math.round(montant * 100) / 100,
+      methode: $(".pa-methode").value, type: $(".pa-type").value, recu_at: d.toISOString(),
+      note: $(".pa-note").value.trim() || null, statut: "recu"
+    });
+    if (error) { $(".pa-ok").disabled = false; alert("Erreur : " + error.message); return; }
+    fond.remove();
+    chargerPaiements();
+  });
+}
+
+document.querySelectorAll("#pm-periodes button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#pm-periodes button").forEach(x => x.classList.toggle("actif", x === b));
+  pmPeriode = b.dataset.p; chargerPaiements();
+}));
+document.querySelectorAll("#pm-methodes button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#pm-methodes button").forEach(x => x.classList.toggle("actif", x === b));
+  pmMethode = b.dataset.m; afficherPaiements();
+}));
+document.getElementById("pm-ajouter").addEventListener("click", ouvrirAjoutPaiement);
+document.querySelectorAll("#pm-vues button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#pm-vues button").forEach(x => x.classList.toggle("actif", x === b));
+  pmVue = b.dataset.v;
+  if (pmVue === "versement" && pmMethode) {
+    pmMethode = "";
+    document.querySelectorAll("#pm-methodes button").forEach(x => x.classList.toggle("actif", x.dataset.m === ""));
+  }
+  document.getElementById("pm-methodes").style.display = pmVue === "versement" ? "none" : "";
+  afficherPaiements();
+}));
+document.getElementById("pm-actualiser").addEventListener("click", () => pmSynchroniser(false));
 
 // ================== ÉVÉNEMENTS DE L'ANNÉE (avec rappel quelques jours avant) ==================
 const CATEGORIES_EV = { evenement: "🎉 Événement", salon: "🏛️ Salon / foire", vacances: "🏖️ Vacances scolaires", ferie: "🇧🇪 Jour férié", administratif: "📄 Administratif", controle: "🔧 Contrôle / entretien véhicule", anniversaire: "🎂 Anniversaire", autre: "📌 Autre" };
@@ -1871,6 +2289,318 @@ function afficherDemandesClients() {
   }
 }
 
+// ================== 🧾 FACTURES : demandes de facture des clients ==================
+let facturesCache = [];
+let faFiltre = "a_traiter";
+let faTempsReelActif = false;
+const FA_LIBELLES = { demandee: "🆕 Demandée", en_cours: "⏳ En cours", envoyee: "✅ Envoyée", refusee: "❌ Refusée" };
+
+function faNumeroChiffres(n) {
+  let d = String(n || "").replace(/\D/g, "");
+  if (d.length === 9) d = "0" + d;
+  return d;
+}
+function faFormaterNumero(n) {
+  const d = faNumeroChiffres(n);
+  if (d.length !== 10) return String(n || "");
+  return `BE${d.slice(0, 4)}.${d.slice(4, 7)}.${d.slice(7)}`;
+}
+function faAdresseLigne(d) {
+  const rue = [d.rue, d.numero].filter(Boolean).join(" ") + (d.boite ? ` (boîte ${d.boite})` : "");
+  const ville = [d.code_postal, d.ville].filter(Boolean).join(" ");
+  return [rue.trim(), ville, d.pays].filter(Boolean).join(", ");
+}
+function faCopier(texte, btn) {
+  const ok = () => { if (btn) { const t = btn.textContent; btn.textContent = "✅ Copié !"; setTimeout(() => btn.textContent = t, 1500); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texte).then(ok, () => faCopierSecours(texte, ok));
+  } else faCopierSecours(texte, ok);
+}
+function faCopierSecours(texte, ok) {
+  const ta = document.createElement("textarea");
+  ta.value = texte; ta.style.cssText = "position:fixed; left:-9999px; top:0;";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); ok(); } catch (e) { prompt("Copie ce texte :", texte); }
+  ta.remove();
+}
+function faQuand(iso, avecJour) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", weekday: avecJour ? "short" : undefined, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function faNomChauffeur(id) {
+  if (!id) return "";
+  const ch = (typeof chauffeursCache !== "undefined" ? chauffeursCache : []).find(c => c.id === id)
+    || (typeof partenairesCache !== "undefined" ? partenairesCache : []).find(p => p.id === id);
+  return ch ? (ch.nom || ch.telephone || "") : "";
+}
+function faTotalCourse(c) { return (Number(c.prix) || 0) + (Number(c.surprime) || 0); }
+function faStatutPaiement(c) {
+  if (c.mode_paiement === "uber") return "🚕 payé sur Uber";
+  const total = faTotalCourse(c);
+  const estTotal = c.paiement_exige === "total" || c.paiement_choisi === "total";
+  if (c.acompte_paye) {
+    if (estTotal) return "✅ Payé intégralement à l'avance";
+    const ac = Number(c.acompte_montant) || 0;
+    return `✅ Acompte payé ${ac.toFixed(2)} € · reste ${(total - ac).toFixed(2)} € (à bord)`;
+  }
+  if (c.acompte_declare_client) return "💰 Paiement déclaré par le client (à vérifier)";
+  return "⏳ Pas de paiement à l'avance enregistré";
+}
+function faRetourTexte(c) {
+  const parts = [];
+  if (c.est_retour) parts.push("↩️ Trajet retour");
+  if (c.aller_retour) {
+    let t = "🔄 Aller-retour";
+    if (c.type_retour === "immediat") t += " (retour immédiat, ≤15 min)";
+    else if (c.type_retour === "attente") t += ` (avec attente${c.duree_attente_estimee ? " ~" + c.duree_attente_estimee : " >15 min"})`;
+    else if (c.type_retour === "heure_precise" && c.heure_retour_prevue) t += ` (retour à ${new Date(c.heure_retour_prevue).toLocaleTimeString("fr-BE", { timeZone: "Europe/Brussels", hour: "2-digit", minute: "2-digit" })})`;
+    parts.push(t);
+  }
+  if (!c.aller_retour && c.duree_attente_estimee) parts.push(`⏱️ Attente : ${c.duree_attente_estimee}`);
+  return parts.join(" · ");
+}
+function faArrets(c) {
+  const a = Array.isArray(c.arrets) ? c.arrets : [];
+  return a.map(x => typeof x === "string" ? x : (x && (x.adresse || x.label || x.nom)) || "").filter(Boolean);
+}
+function faTexteCoordonnees(d) {
+  const lignes = [d.nom];
+  if (d.numero_entreprise) lignes.push("N° d'entreprise : " + faFormaterNumero(d.numero_entreprise));
+  const rue = [d.rue, d.numero].filter(Boolean).join(" ") + (d.boite ? ` boîte ${d.boite}` : "");
+  if (rue.trim()) lignes.push(rue.trim());
+  const ville = [d.code_postal, d.ville].filter(Boolean).join(" ");
+  if (ville) lignes.push(ville);
+  if (d.pays) lignes.push(d.pays);
+  if (d.personne_contact) lignes.push("À l'attention de : " + d.personne_contact);
+  if (d.email) lignes.push("E-mail : " + d.email);
+  if (d.telephone) lignes.push("Tél. : " + d.telephone);
+  return lignes.filter(Boolean).join("\n");
+}
+function faTexteCourses(courses) {
+  const lignes = courses.map((c, i) => {
+    const l = [`${i + 1}. ${faQuand(c.date_heure)} — ${c.adresse_depart || "?"} → ${c.adresse_arrivee || "?"}`];
+    const arr = faArrets(c); if (arr.length) l.push(`   Arrêts : ${arr.join(" ; ")}`);
+    const rt = faRetourTexte(c); if (rt) l.push("   " + rt.replace(/[🔄↩️⏱️]️?\s?/gu, ""));
+    const inf = [`${c.passagers || 1} passager(s)`];
+    if (c.distance_km) inf.push(`${String(c.distance_km).replace(".", ",")} km`);
+    if (c.duree_min) inf.push(`${Math.round(c.duree_min)} min`);
+    const ch = faNomChauffeur(c.chauffeur_id); if (ch) inf.push("chauffeur : " + ch);
+    l.push("   " + inf.join(" · "));
+    l.push(`   Prix : ${(Number(c.prix) || 0).toFixed(2)} €` + (Number(c.surprime) ? ` + surprime ${Number(c.surprime).toFixed(2)} €` : "") + ` = ${faTotalCourse(c).toFixed(2)} € TTC`);
+    return l.join("\n");
+  });
+  const somme = courses.reduce((s, c) => s + faTotalCourse(c), 0);
+  lignes.push(`\nTOTAL : ${somme.toFixed(2)} € TTC (${courses.length} course${courses.length > 1 ? "s" : ""})`);
+  return lignes.join("\n");
+}
+function faNomFichierSur(nom) {
+  const p = String(nom || "facture").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return p.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").slice(-100) || "facture.pdf";
+}
+
+function demarrerFacturesAdmin() {
+  majBadgeFactures();
+  if (faTempsReelActif) return;
+  faTempsReelActif = true;
+  try {
+    supabase.channel("admin-demandes-facture")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "demandes_facture" }, (payload) => {
+        const d = payload.new || {};
+        const n = Array.isArray(d.course_ids) ? d.course_ids.length : 0;
+        alerteImportanteAdmin("🧾 Nouvelle demande de facture", `${esc(d.nom || "Client")} – ${n} course(s)`, null, "#1d4ed8", "#eef4ff");
+        majBadgeFactures();
+        if (document.getElementById("section-factures").classList.contains("visible")) chargerFacturesAdmin();
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "demandes_facture" }, () => {
+        majBadgeFactures();
+        clearTimeout(window.minuterieFactures);
+        window.minuterieFactures = setTimeout(() => {
+          if (document.getElementById("section-factures").classList.contains("visible")) chargerFacturesAdmin();
+        }, 800);
+      })
+      .subscribe();
+  } catch (e) { console.warn("temps réel factures :", e); }
+}
+
+async function majBadgeFactures() {
+  const { count, error } = await supabase.from("demandes_facture").select("id", { count: "exact", head: true }).eq("statut", "demandee");
+  if (error) return;
+  const btnNav = document.querySelector('nav button[data-onglet="factures"]');
+  if (!btnNav) return;
+  let p = btnNav.querySelector(".badge-demandes");
+  if (count) { if (!p) { p = document.createElement("span"); p.className = "badge-demandes"; btnNav.appendChild(p); } p.textContent = count; }
+  else if (p) p.remove();
+}
+
+async function chargerFacturesAdmin() {
+  const zone = document.getElementById("fa-liste");
+  if (!facturesCache.length) zone.innerHTML = `<p style="color:#666;">Chargement…</p>`;
+  const { data, error } = await supabase.from("demandes_facture").select("*").order("created_at", { ascending: false });
+  if (error) { zone.textContent = "Erreur : " + error.message; return; }
+  facturesCache = data || [];
+  const ids = [...new Set(facturesCache.flatMap(d => d.course_ids || []))];
+  const coursesParId = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data: cs } = await supabase.from("courses").select("*").in("id", ids.slice(i, i + 100));
+    (cs || []).forEach(c => coursesParId.set(c.id, c));
+  }
+  facturesCache.forEach(d => {
+    d._courses = (d.course_ids || []).map(id => coursesParId.get(id)).filter(Boolean)
+      .sort((a, b) => new Date(a.date_heure) - new Date(b.date_heure));
+  });
+  afficherFacturesAdmin();
+  majBadgeFactures();
+}
+
+function afficherFacturesAdmin() {
+  const zone = document.getElementById("fa-liste");
+  const liste = facturesCache.filter(d =>
+    faFiltre === "toutes" ? true
+    : faFiltre === "a_traiter" ? (d.statut === "demandee" || d.statut === "en_cours")
+    : d.statut === faFiltre);
+  zone.innerHTML = "";
+  if (!liste.length) { zone.innerHTML = `<p style="color:#666; text-align:center; padding:20px;">Aucune demande de facture ici.</p>`; return; }
+  liste.forEach(d => zone.appendChild(construireCarteFacture(d)));
+}
+
+function construireCarteFacture(d) {
+  const carte = document.createElement("div");
+  carte.className = "fa-carte fa-" + d.statut;
+  const num = faNumeroChiffres(d.numero_entreprise);
+  const lienBce = num.length === 10
+    ? ` <a href="https://kbopub.economie.fgov.be/kbopub/zoeknummerform.html?nummer=${num}&actionLu=Zoek&lang=fr" target="_blank" rel="noopener">🔎 BCE</a>` : "";
+  const courses = d._courses || [];
+  const somme = courses.reduce((s, c) => s + faTotalCourse(c), 0);
+  const manquantes = (d.course_ids || []).length - courses.length;
+  const ligne = (lab, val) => val ? `<div class="fa-ligne"><span>${lab}</span><b>${val}</b></div>` : "";
+  carte.innerHTML = `
+    <div class="fa-entete">
+      <div><div class="fa-nom">${esc(d.nom || "Client")}</div>
+        <div class="fa-date">Demandée le ${esc(faQuand(d.created_at, true))}${d.envoyee_at ? " · envoyée le " + esc(faQuand(d.envoyee_at)) : ""}</div></div>
+      <span class="fa-statut">${FA_LIBELLES[d.statut] || esc(d.statut)}</span>
+    </div>
+    <div class="fa-bloc">
+      <div class="fa-titre">🏢 Coordonnées de facturation</div>
+      ${ligne("Nom", esc(d.nom))}
+      ${ligne("N° d'entreprise", d.numero_entreprise ? esc(faFormaterNumero(d.numero_entreprise)) + lienBce : "")}
+      ${ligne("E-mail", d.email ? `<a href="mailto:${esc(d.email)}">${esc(d.email)}</a>` : "")}
+      ${ligne("Téléphone", d.telephone ? `<a href="tel:${esc(d.telephone)}">${esc(d.telephone)}</a>` : "")}
+      ${ligne("Contact", esc(d.personne_contact))}
+      ${ligne("Adresse", esc(faAdresseLigne(d)))}
+      <button type="button" class="fa-btn fa-copier-coord">📋 Copier les coordonnées</button>
+    </div>
+    ${d.message ? `<div class="fa-message">💬 ${esc(d.message)}</div>` : ""}
+    ${d.reponse_admin ? `<div class="fa-message fa-reponse">↩️ Ta réponse : ${esc(d.reponse_admin)}</div>` : ""}
+    <div class="fa-bloc">
+      <div class="fa-titre">🚕 Courses concernées (${courses.length})</div>
+      <div class="fa-courses"></div>
+      ${manquantes > 0 ? `<div class="fa-note">⚠️ ${manquantes} course(s) introuvable(s) (supprimée(s) ?)</div>` : ""}
+      <div class="fa-somme">Total : ${somme.toFixed(2)} € TTC</div>
+      ${courses.length ? `<button type="button" class="fa-btn fa-copier-courses">📋 Copier le détail des courses</button>` : ""}
+    </div>
+    <div class="fa-actions"></div>`;
+
+  const zc = carte.querySelector(".fa-courses");
+  courses.forEach(c => {
+    const el = document.createElement("div");
+    el.className = "fa-course";
+    const arr = faArrets(c);
+    const rt = faRetourTexte(c);
+    const inf = [`👥 ${c.passagers || 1}`];
+    if (c.bagages) inf.push(`🧳 ${c.bagages}`);
+    if (c.distance_km) inf.push(`📏 ${String(c.distance_km).replace(".", ",")} km`);
+    if (c.duree_min) inf.push(`⏱️ ${Math.round(c.duree_min)} min`);
+    const ch = faNomChauffeur(c.chauffeur_id); if (ch) inf.push(`🚖 ${esc(ch)}`);
+    el.innerHTML = `
+      <div class="fa-c-quand">🕐 ${esc(faQuand(c.date_heure, true))}${c.statut ? ` <span class="fa-c-statut">${esc(c.statut)}</span>` : ""}</div>
+      <div>🟢 ${esc(c.adresse_depart || "?")}</div>
+      ${arr.map(a => `<div>🟡 ${esc(a)}</div>`).join("")}
+      <div>🔴 ${esc(c.adresse_arrivee || "?")}</div>
+      ${rt ? `<div class="fa-c-info">${esc(rt)}</div>` : ""}
+      <div class="fa-c-info">${inf.join(" · ")}</div>
+      <div class="fa-c-prix">💶 ${(Number(c.prix) || 0).toFixed(2)} €${Number(c.surprime) ? ` + surprime ${Number(c.surprime).toFixed(2)} €` : ""} = <b>${faTotalCourse(c).toFixed(2)} €</b></div>
+      <div class="fa-c-info">${esc(faStatutPaiement(c))}</div>`;
+    el.addEventListener("click", () => faOuvrirCourse(c));
+    zc.appendChild(el);
+  });
+
+  carte.querySelector(".fa-copier-coord").addEventListener("click", (e) => faCopier(faTexteCoordonnees(d), e.currentTarget));
+  const bc = carte.querySelector(".fa-copier-courses");
+  if (bc) bc.addEventListener("click", (e) => faCopier(faTexteCourses(courses), e.currentTarget));
+
+  const actions = carte.querySelector(".fa-actions");
+  const bouton = (txt, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "fa-btn " + (cls || ""); b.textContent = txt; b.addEventListener("click", fn); actions.appendChild(b); return b; };
+  const entree = document.createElement("input");
+  entree.type = "file"; entree.accept = "application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"; entree.style.display = "none";
+  actions.appendChild(entree);
+  entree.addEventListener("change", () => { const f = entree.files && entree.files[0]; entree.value = ""; if (f) faEnvoyerFichier(d, f, carte); });
+
+  if (d.statut === "demandee") bouton("⏳ Marquer en cours", "", () => faChangerStatut(d, { statut: "en_cours" }));
+  if (d.statut === "envoyee" && d.fichier_path) {
+    bouton("📄 Voir la facture", "fa-principal", () => faVoirFichier(d));
+    bouton("🔁 Remplacer le fichier", "", () => entree.click());
+  } else {
+    bouton("📎 Joindre la facture (PDF)", "fa-principal", () => entree.click());
+  }
+  if (d.statut === "demandee" || d.statut === "en_cours") {
+    bouton("❌ Refuser", "fa-danger", () => {
+      const motif = prompt("Motif du refus (sera visible par le client) :", "");
+      if (motif === null) return;
+      faChangerStatut(d, { statut: "refusee", reponse_admin: motif.trim() || null });
+    });
+  }
+  return carte;
+}
+
+async function faChangerStatut(d, maj) {
+  const { error } = await supabase.from("demandes_facture").update(maj).eq("id", d.id);
+  if (error) { alert("Erreur : " + error.message); return; }
+  chargerFacturesAdmin();
+}
+
+async function faEnvoyerFichier(d, fichier, carte) {
+  const okType = ["application/pdf", "image/jpeg", "image/png"].includes(fichier.type) || /\.(pdf|jpe?g|png)$/i.test(fichier.name);
+  if (!okType) { alert("Format accepté : PDF, JPG ou PNG."); return; }
+  if (fichier.size > 10 * 1024 * 1024) { alert("Fichier trop lourd (max 10 Mo)."); return; }
+  if (!d.client_id) { alert("Demande sans client associé : impossible d'envoyer le fichier."); return; }
+  const remplacement = d.statut === "envoyee" && !!d.fichier_path;
+  const chemin = `${d.client_id}/${d.id}/${faNomFichierSur(fichier.name)}`;
+  const type = fichier.type || (/\.pdf$/i.test(fichier.name) ? "application/pdf" : /\.png$/i.test(fichier.name) ? "image/png" : "image/jpeg");
+  carte.querySelectorAll(".fa-actions button").forEach(b => b.disabled = true);
+  const info = document.createElement("div"); info.className = "fa-note"; info.textContent = "⏫ Envoi du fichier…";
+  carte.querySelector(".fa-actions").appendChild(info);
+  const { error: errUp } = await supabase.storage.from("factures").upload(chemin, fichier, { upsert: true, contentType: type });
+  if (errUp) { alert("Erreur d'envoi du fichier : " + errUp.message); chargerFacturesAdmin(); return; }
+  const maj = { fichier_path: chemin, fichier_nom: fichier.name, statut: "envoyee" };
+  if (!remplacement) maj.envoyee_at = new Date().toISOString();
+  const { error } = await supabase.from("demandes_facture").update(maj).eq("id", d.id);
+  if (error) { alert("Fichier envoyé mais erreur de mise à jour : " + error.message); chargerFacturesAdmin(); return; }
+  if (remplacement && d.fichier_path && d.fichier_path !== chemin) {
+    try { await supabase.storage.from("factures").remove([d.fichier_path]); } catch (e) {}
+  }
+  alert(remplacement ? "✅ Fichier de la facture remplacé" : "✅ Facture envoyée au client");
+  chargerFacturesAdmin();
+}
+
+async function faVoirFichier(d) {
+  const fen = window.open("", "_blank");
+  const { data, error } = await supabase.storage.from("factures").createSignedUrl(d.fichier_path, 3600);
+  if (error || !data?.signedUrl) { if (fen) fen.close(); alert("Impossible d'ouvrir la facture : " + (error?.message || "lien introuvable")); return; }
+  if (fen) fen.location.href = data.signedUrl; else window.location.href = data.signedUrl;
+}
+
+function faOuvrirCourse(c) {
+  ouvrirCourseDepuisPaiement({ course_id: c.id, courses: c });
+  const carte = document.querySelector("body > .carte-en-grand");
+  const btn = carte && carte.querySelector(".btn-carte-grand");
+  if (btn) btn.textContent = "✕ Fermer (retour aux factures)";
+}
+
+document.querySelectorAll("#fa-filtres button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#fa-filtres button").forEach(x => x.classList.toggle("actif", x === b));
+  faFiltre = b.dataset.f; afficherFacturesAdmin();
+}));
+
 // ================== COURSES PAR CHAUFFEUR ==================
 function estCourseAttribueeActive(c) {
   return !!c.chauffeur_id && ["assignee", "confirmee", "en_cours"].includes(c.statut);
@@ -1984,6 +2714,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
         }
         if (!ancien.paye && c.acompte_paye) {
           alerteImportanteAdmin("✅ PAIEMENT REÇU", `${c.client_nom || "Le client"} a payé ${montantPaiement}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.`, c, "#1f6b3f", "#e7f5ec");
+          if (document.getElementById("section-paiements")?.classList.contains("visible")) setTimeout(chargerPaiements, 1500);
         }
         if (!ancien.msg && c.message_client_paiement) {
           alerteImportanteAdmin("🙋 Message du client sur le paiement", `${c.client_nom || "Le client"} : « ${esc(c.message_client_paiement)} »`, c, "#1d4f86", "#eef4fb");
@@ -2229,6 +2960,15 @@ async function supprimerCourse(course) {
   chargerCoursesAdmin();
 }
 
+// Course entre 22:00 et 05:59 (heure de Bruxelles) → paiement intégral exigé par défaut
+function estCourseDeNuit(dateHeure) {
+  if (!dateHeure) return false;
+  const d = new Date(dateHeure);
+  if (isNaN(d.getTime())) return false;
+  const h = parseInt(new Intl.DateTimeFormat("fr-BE", { timeZone: "Europe/Brussels", hour: "2-digit", hourCycle: "h23" }).format(d), 10);
+  return h >= 22 || h < 6;
+}
+
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -2464,9 +3204,14 @@ function construireCarteAdmin(course) {
         <option value="total">💳 Le client paie la totalité à l'avance</option>
         <option value="choix">🔀 Le client choisit (acompte ou totalité)</option>
       </select>
+      <div class="note-nuit-paiement" style="display:none; margin-top:6px; font-size:.82rem; color:#4338ca; background:#eef2ff; border-radius:8px; padding:6px 8px;">🌙 Course de nuit/tôt le matin : paiement intégral exigé (conditions)</div>
       <button type="button">Envoyer le prix</button>
     `;
     champPrixCible = blocPrix.querySelector("input");
+    if (estCourseDeNuit(course.date_heure)) {
+      blocPrix.querySelector(".paiement-exige").value = "total";
+      blocPrix.querySelector(".note-nuit-paiement").style.display = "block";
+    }
     blocPrix.querySelector("button").addEventListener("click", async () => {
       const prix = parseFloat(blocPrix.querySelector("input").value);
       if (!prix || prix <= 0) { alert("Indique un prix valide."); return; }
@@ -2491,9 +3236,10 @@ function construireCarteAdmin(course) {
       <button type="button">✅ Confirmer la réception de l'acompte</button>
     `;
     blocVerif.querySelector("button").addEventListener("click", async () => {
-      await supabase.from("courses").update({
+      const { error: errConf } = await supabase.from("courses").update({
         statut: "confirmee", acompte_paye: true, acompte_confirme_at: new Date().toISOString()
       }).eq("id", course.id);
+      if (!errConf) journaliserVirement(course);
       notifierClientParEmail(course.id, "acompte_confirme");
       chargerCoursesAdmin();
     });
