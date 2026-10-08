@@ -212,6 +212,13 @@ window.onerror = function(msg, url, line, col, err) {
 
   section{ display:none; padding:20px; }
   section.visible{ display:block; }
+  /* Menu en grille ↔ section plein écran */
+  body.mode-section-admin header nav{ display:none; }
+  #barre-section-admin{ display:none; align-items:center; gap:10px; margin-top:10px; }
+  body.mode-section-admin #barre-section-admin{ display:flex; }
+  #btn-retour-menu{ width:auto; flex-shrink:0; padding:11px 16px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-size:1rem; font-weight:800; cursor:pointer; }
+  #titre-section-admin{ flex:1; min-width:0; font-weight:800; font-size:1.05rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #titre-section-admin .badge-demandes{ display:inline-block; min-width:20px; padding:1px 7px; margin-left:8px; border-radius:999px; background:var(--rouge); color:#fff; font-size:.8rem; font-weight:800; text-align:center; }
 
   /* Agenda / calendrier */
   .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; }
@@ -783,6 +790,10 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="carnet">📇 Carnet clients</button>
     <button data-onglet="clients">👥 Comptes clients app</button>
   </nav>
+  <div id="barre-section-admin">
+    <button type="button" id="btn-retour-menu">← Menu</button>
+    <span id="titre-section-admin"></span>
+  </div>
   <button id="btn-installer-app" style="display:none; margin-top:10px; background:var(--vert); border:none; border-radius:8px; color:#fff; padding:10px; font-weight:600; cursor:pointer;">📲 Installer l'application</button>
 </header>
 
@@ -1524,6 +1535,80 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "carnet") chargerCarnet();
   });
 });
+
+// ================== MENU EN GRILLE ↔ SECTION PLEIN ÉCRAN ==================
+// Au démarrage : seule la grille de tuiles est visible. Toucher une tuile ouvre sa section
+// seule (la grille disparaît) avec une barre « ← Menu » en haut. Le geste/bouton retour du
+// téléphone ferme d'abord ce qui est ouvert en grand, puis revient à la grille.
+let ongletAdminOuvert = null;
+function majBarreSectionAdmin() {
+  const titre = document.getElementById("titre-section-admin");
+  if (!titre) return;
+  const btn = ongletAdminOuvert && document.querySelector('nav button[data-onglet="' + ongletAdminOuvert + '"]');
+  if (!btn) { titre.textContent = ""; return; }
+  let nom = "";
+  btn.childNodes.forEach(n => { if (!(n.nodeType === 1 && n.classList.contains("badge-demandes"))) nom += n.textContent; });
+  titre.textContent = nom.trim();
+  const badge = btn.querySelector(".badge-demandes");
+  if (badge && badge.textContent.trim()) {
+    const b = document.createElement("span");
+    b.className = "badge-demandes";
+    b.textContent = badge.textContent.trim();
+    titre.appendChild(b);
+  }
+}
+function ouvrirSectionAdminPleinEcran(onglet) {
+  const etaitEnSection = !!ongletAdminOuvert;
+  ongletAdminOuvert = onglet;
+  document.body.classList.add("mode-section-admin");
+  majBarreSectionAdmin();
+  try {
+    if (etaitEnSection && history.state && history.state.sectionAdmin) history.replaceState({ sectionAdmin: onglet }, "");
+    else history.pushState({ sectionAdmin: onglet }, "");
+  } catch (e) {}
+  window.scrollTo(0, 0);
+}
+function revenirAuMenuAdmin() {
+  ongletAdminOuvert = null;
+  document.body.classList.remove("mode-section-admin");
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("actif"));
+  document.querySelectorAll("section").forEach(s => s.classList.remove("visible"));
+  majBarreSectionAdmin();
+  window.scrollTo(0, 0);
+}
+// Ferme l'élément ouvert « en grand » le plus haut (carte de course, feuille plein écran,
+// ligne en grand, conversation sur téléphone). Renvoie true si quelque chose a été fermé.
+function fermerElementEnGrandAdmin() {
+  const fermerFa = document.querySelector("#overlay-plein-ecran-fa button");
+  if (document.getElementById("overlay-plein-ecran-fa") && fermerFa) { fermerFa.click(); return true; }
+  const ligne = document.querySelector(".plein-ecran-ligne .btn-grand-ligne");
+  if (ligne) { ligne.click(); return true; }
+  const carte = document.querySelector(".carte-en-grand .btn-carte-grand");
+  if (carte) { carte.click(); return true; }
+  const chat = document.querySelector("#section-messages.visible .chat-admin.conv-ouverte .chat-retour");
+  if (chat && window.innerWidth < 900) { chat.click(); return true; }
+  return false;
+}
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => ouvrirSectionAdminPleinEcran(btn.dataset.onglet));
+});
+document.getElementById("btn-retour-menu").addEventListener("click", () => {
+  if (history.state && history.state.sectionAdmin) history.back();   // → popstate → grille
+  else revenirAuMenuAdmin();
+});
+window.addEventListener("popstate", () => {
+  if (!ongletAdminOuvert) return;
+  if (fermerElementEnGrandAdmin()) {
+    // on reste dans la section : on remet l'entrée d'historique pour le prochain « retour »
+    try { history.pushState({ sectionAdmin: ongletAdminOuvert }, ""); } catch (e) {}
+    return;
+  }
+  revenirAuMenuAdmin();
+});
+// Pastilles (messages non lus, factures, demandes…) : recopiées dans la barre de la section
+new MutationObserver(() => { if (ongletAdminOuvert) majBarreSectionAdmin(); })
+  .observe(document.querySelector("header nav"), { childList: true, subtree: true, characterData: true });
+revenirAuMenuAdmin();   // démarrage : grille des tuiles
 
 // ================== HORAIRES DES CHAUFFEURS (planning semaine) ==================
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
