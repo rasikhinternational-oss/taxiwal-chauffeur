@@ -82,6 +82,17 @@ function formatIndex(v) {
   if (Number.isInteger(n) && n >= 0 && n < 1000) return String(n).padStart(3, "0");
   return String(v);
 }
+
+// Impression : adresse raccourcie (sans « , Région wallonne », « , Hainaut », « , Belgique »… ni « Notes: … »),
+// limitée à ~70 caractères et à 2 lignes (CSS .lieu-l).
+function lieuImpression(v, prefixe) {
+  if (v === null || v === undefined || v === "") return "";
+  let s = String(v).replace(/\s+notes?\s*:[\s\S]*$/i, "");
+  s = s.replace(/,\s*(r[ée]gion wallonne|wallonie|hainaut|province de hainaut|belgique|belgium|belgi[ëe])\b\.?/gi, "");
+  s = s.replace(/\s+/g, " ").replace(/[\s,]+$/, "").trim();
+  if (s.length > 70) s = s.slice(0, 69).replace(/[\s,]+$/, "") + "…";
+  return '<span class="lieu-l">' + (prefixe || "") + esc(s) + "</span>";
+}
 // ================== PLUSIEURS ADRESSES (arrêts : autres prises en charge / déposes) ==================
 function normaliserArrets(liste) {
   return (Array.isArray(liste) ? liste : []).map(a => ({ type: a && a.type === "prise" ? "prise" : "depose", adresse: String((a && a.adresse) || "").trim() }));
@@ -1082,7 +1093,7 @@ Object.keys(champsEntete).forEach(idHtml => {
 async function chargerLignes() {
   const { data, error } = await supabase
     .from("lignes_feuille_route")
-    .select("*, courses(statut, notes)")
+    .select("*, courses(statut, notes, numero_reservation)")
     .eq("feuille_route_id", feuilleActuelle.id)
     .order("n_ordre", { ascending: true });
 
@@ -1229,6 +1240,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     if (ecart > 500) badge += " · ⚠️ index en arrière (vérifie)";
   }
   if (ligne.signalee_erreur) badge += " · 📨 demande envoyée à la centrale";
+  if (ligne.courses?.numero_reservation) badge += " · N° " + String(ligne.courses.numero_reservation).replace(/[^A-Za-z0-9-]/g, "");
 
   const nbArrets = normaliserArrets(ligne.arrets).filter(a => a.adresse).length;
   const resume = ([ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis") + (nbArrets ? ` (+${nbArrets} adresse${nbArrets > 1 ? "s" : ""})` : "");
@@ -1806,10 +1818,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${i + 1}</td>
         <td>${formatIndex(l.index_depart)}</td>
         <td>${formatIndex(l.embarquement_index)}</td>
-        <td>${fmtVal(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => "<br>+ " + esc(a.adresse)).join("")}</td>
+        <td class="lieu">${lieuImpression(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => lieuImpression(a.adresse, "+ ")).join("")}</td>
         <td>${fmtVal(l.embarquement_heure)}</td>
         <td>${formatIndex(l.debarquement_index)}</td>
-        <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtVal(l.debarquement_lieu)}</td>
+        <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure)}</td>
         <td>${(() => {
           if (estUber) return "Uber";
@@ -1871,32 +1883,41 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
   <title>Feuille de route — ${esc(document.getElementById("identite-chauffeur").textContent)} — ${esc(document.getElementById("identite-date").textContent)}</title>
   <style>
-    @page { size: A4; margin: 10mm; }
+    @page { size: A4; margin: 8mm; }
     * { box-sizing: border-box; }
-    body { font-family: Georgia, 'Times New Roman', serif; color: #000; font-size: 11px; margin: 0; }
-    h1 { text-align: center; text-decoration: underline; font-size: 18px; margin: 0 0 12px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    td, th { border: 1px solid #000; padding: 4px 6px; }
-    h2 { font-size: 12px; text-align: center; margin: 8px 0 4px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 0; }
-    .mini { font-size: 9px; color: #444; text-transform: uppercase; }
+    body { font-family: Georgia, 'Times New Roman', serif; color: #000; font-size: 8.5pt; line-height: 1.15; margin: 0; }
+    h1 { text-align: center; text-decoration: underline; font-size: 14pt; margin: 0 0 5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    td, th { border: 1px solid #000; padding: 2px 4px; }
+    h2 { font-size: 9pt; text-align: center; margin: 4px 0 3px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 1px 0; }
+    .mini { font-size: 6.5pt; color: #444; text-transform: uppercase; }
     .valeur { font-weight: bold; }
-    .courses-table th { font-size: 9px; }
-    .courses-table td { font-size: 10px; text-align: center; height: 22px; }
-    .signature { margin-top: 16px; }
-    .note-bas { font-size: 8px; margin-top: 4px; }
+    .courses-table thead { display: table-header-group; }
+    .courses-table th { font-size: 7.5pt; padding: 1px 2px; }
+    .courses-table td { font-size: 8pt; text-align: center; height: 16px; padding: 1px 3px; }
+    .courses-table td:nth-child(1) { width: 4%; }
+    .courses-table td:nth-child(2), .courses-table td:nth-child(3), .courses-table td:nth-child(6) { width: 6%; }
+    .courses-table td:nth-child(5), .courses-table td:nth-child(8) { width: 5%; }
+    .courses-table td:nth-child(9) { width: 7%; }
+    .courses-table td:nth-child(10) { width: 11%; }
+    .courses-table td.lieu { width: 25%; text-align: left; }
+    .courses-table td b { white-space: nowrap; letter-spacing: 0 !important; }
+    .lieu-l { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; word-break: break-word; }
+    .signature { margin-top: 10px; }
+    .note-bas { font-size: 7pt; margin-top: 3px; }
     .barre-actions-impression { display: flex; gap: 8px; margin-bottom: 10px; }
     .barre-actions-impression button {
       padding: 8px 14px; border-radius: 6px; border: 1px solid #999; background: #f2f2f2;
       color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
     }
     .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
-    .page { width: 190mm; height: auto; display: flex; flex-direction: column; background: #fff; }
+    .page { width: 194mm; height: auto; display: flex; flex-direction: column; background: #fff; }
     .page-contenu { flex: 0 0 auto; }
-    .page-pied { margin-top: 18px; }
-    .num-page { font-size: 8px; text-align: right; margin-top: 2px; }
+    .page-pied { margin-top: 6px; }
+    .num-page { font-size: 7pt; text-align: right; margin-top: 2px; }
     .courses-table tr { break-inside: avoid; page-break-inside: avoid; }
-    @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 10mm solid #fff; } #pages { padding: 10mm 0; } }
-    @media print { #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } }
+    @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 8mm solid #fff; } #pages { padding: 8mm 0; } }
+    @media print { #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } .page + .page { break-before: page; page-break-before: always; } }
     @media print { .btn-print, .barre-actions-impression { display: none; } }
   </style></head>
   <body>
@@ -1923,25 +1944,36 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     </template>
     <script>
 (function(){
+  // Mise en page : tout sur UNE page A4 si possible, sinon recto-verso propre.
+  // On mesure la vraie hauteur disponible (A4 297 mm − 2×8 mm de marges − 5 mm de sécurité)
+  // et on remplit les lignes une à une. Repli sur un nombre fixe de lignes si la mesure échoue.
+  var CAP_RECTO = 22, CAP_VERSO = 40;
   function paginer(){
     var source = document.getElementById("source"), zone = document.getElementById("pages");
     var tpl = document.getElementById("tpl-pied");
     var mesure = document.createElement("div");
-    mesure.style.cssText = "position:absolute;visibility:hidden;height:250mm;width:1px;";
+    mesure.style.cssText = "position:absolute;visibility:hidden;height:276mm;width:1px;";
     document.body.appendChild(mesure);
     var hauteurPage = mesure.getBoundingClientRect().height;
     mesure.parentNode.removeChild(mesure);
+    var mesureOk = isFinite(hauteurPage) && hauteurPage > 300;
     var pages = [], page = null, contenu = null;
     function nouvellePage(){
       page = document.createElement("div"); page.className = "page";
       contenu = document.createElement("div"); contenu.className = "page-contenu";
       var pied = document.createElement("div"); pied.className = "page-pied"; pied.innerHTML = tpl.innerHTML;
+      // La signature n'apparaît qu'une fois, sur le recto.
+      if (pages.length > 0){ var s = pied.querySelector(".signature"); if (s) s.parentNode.removeChild(s); }
       page.appendChild(contenu); page.appendChild(pied);
       zone.appendChild(page); pages.push(page);
     }
     function tient(){
+      if (!mesureOk){
+        var n = contenu.querySelectorAll(".courses-table tbody tr").length;
+        return n <= (pages.length === 1 ? CAP_RECTO : CAP_VERSO);
+      }
       var pied = page.querySelector(".page-pied");
-      return contenu.offsetHeight + pied.offsetHeight + 14 <= hauteurPage;
+      return contenu.offsetHeight + pied.offsetHeight <= hauteurPage;
     }
     nouvellePage();
     var elements = [].slice.call(source.children);
@@ -1957,7 +1989,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
           titreCourant = null;
           if (titre){
             titreCourant = titre.cloneNode(true);
-            if (suite) titreCourant.textContent = titre.textContent + " (suite)";
+            if (suite) titreCourant.textContent = titre.textContent.replace(/\s+$/, "") + " (suite)";
             contenu.appendChild(titreCourant);
           }
           table = el.cloneNode(false);
@@ -1985,8 +2017,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       }
     }
     pages.forEach(function(p, k){
+      // La note de bas de page n'apparaît qu'une fois, à la fin du document.
+      if (k < pages.length - 1){ var nb = p.querySelector(".note-bas"); if (nb) nb.parentNode.removeChild(nb); }
       var n = p.querySelector(".num-page");
-      if (n) n.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length + (k === 0 ? " — recto" : (k === 1 ? " — verso" : ""))) : "";
+      if (n) n.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length + (k % 2 === 0 ? " — recto" : " — verso")) : "";
     });
     source.parentNode.removeChild(source);
   }

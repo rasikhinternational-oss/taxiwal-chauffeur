@@ -293,8 +293,40 @@ window.onerror = function(msg, url, line, col, err) {
   button:disabled{ opacity:.45; cursor:not-allowed; }
   .mention-conditions{ font-size:.8rem; color:var(--gris); text-align:center; margin:8px 0 4px; }
 
+  .num-resa{ font-size:.75rem; font-weight:700; color:#1d4f86; letter-spacing:.3px; margin-bottom:4px; }
+  .tag-resa{ display:inline-block; font-size:.72rem; font-weight:700; color:#1d4f86; background:#eef4fb; border:1px solid #c7dbf0; border-radius:8px; padding:1px 7px; margin-right:4px; }
+  .chat-choix-resa{ margin-bottom:6px; font-size:.85rem; }
+  .chat-choix-resa label{ display:block; font-weight:700; color:#1d4f86; margin-bottom:4px; }
+  .chat-choix-resa select{ width:100%; padding:9px 10px; border-radius:10px; border:1px solid #c7dbf0; background:#eef4fb; color:#1d4f86; font-weight:700; font-size:.88rem; }
   /* ---------- Onglet Facture ---------- */
-  nav.onglets button[data-onglet="facture"]{ grid-column:1 / -1; }
+  nav.onglets button{ position:relative; }
+
+  /* ---------- Onglet Messages (chat avec Taxi Wal) ---------- */
+  .badge-chat{ position:absolute; top:6px; right:8px; min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:var(--rouge); color:#fff; font-size:.75rem; font-weight:800; line-height:20px; text-align:center; box-shadow:0 0 0 2px #fff; }
+  nav.onglets button.actif .badge-chat{ background:#fff; color:var(--rouge); }
+  .chat-entete{ font-weight:700; font-size:1rem; margin-bottom:4px; }
+  .chat-entete small{ display:block; font-weight:400; font-size:.8rem; color:var(--gris); margin-top:2px; }
+  .chat-entete a{ color:var(--bleu); }
+  .chat-fil{ background:#f1f1ee; border:1px solid #e2e2df; border-radius:14px; padding:12px 10px; height:min(58vh, 520px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+  .chat-vide{ color:var(--gris); font-size:.9rem; text-align:center; margin:auto 10px; line-height:1.45; }
+  .chat-jour{ align-self:center; font-size:.72rem; color:var(--gris); background:#fff; border-radius:10px; padding:2px 10px; margin:4px 0; }
+  .bulle{ max-width:82%; padding:8px 11px 6px; border-radius:14px; font-size:.93rem; line-height:1.4; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:anywhere; box-shadow:0 1px 1px rgba(0,0,0,.06); }
+  .bulle.moi{ align-self:flex-end; background:#dcf3e4; border-bottom-right-radius:4px; }
+  .bulle.eux{ align-self:flex-start; background:#fff; border-bottom-left-radius:4px; }
+  .bulle .qui{ font-size:.72rem; font-weight:800; color:var(--rouge); margin-bottom:2px; }
+  .bulle .meta{ font-size:.7rem; color:var(--gris); text-align:right; margin-top:3px; white-space:nowrap; }
+  .bulle .tag-course{ display:inline-block; font-size:.72rem; font-weight:700; background:rgba(0,0,0,.06); border-radius:8px; padding:2px 7px; margin-bottom:4px; white-space:nowrap; }
+  .chat-composer{ margin-top:10px; }
+  .chat-ferme{ margin-top:10px; background:#ececea; border:1px solid #d6d6d3; color:#555; border-radius:12px; padding:12px 14px; font-size:.9rem; line-height:1.45; }
+  .chat-ferme button{ display:block; width:100%; margin-top:10px; padding:11px; border-radius:10px; font-weight:700; }
+  .chat-chip{ display:inline-flex; align-items:center; gap:6px; background:#eef4fb; color:#1d4f86; border:1px solid #c7dbf0; border-radius:16px; padding:4px 6px 4px 10px; font-size:.8rem; font-weight:700; margin-bottom:6px; }
+  .chat-chip button{ width:auto; padding:0 7px; border-radius:10px; background:transparent; color:#1d4f86; font-size:1rem; line-height:1.3; }
+  .chat-saisie{ display:flex; gap:8px; align-items:flex-end; }
+  .chat-saisie textarea{ flex:1; min-width:0; resize:none; padding:11px 12px; border-radius:12px; border:1px solid #cfcfcd; background:var(--noir-2); color:var(--blanc); font-size:1rem; font-family:inherit; max-height:140px; box-sizing:border-box; }
+  .chat-saisie button{ width:auto; flex:0 0 auto; padding:12px 16px; border-radius:12px; }
+  .btn-chat-course{ width:100%; margin-top:10px; padding:10px; border-radius:10px; background:var(--noir-2); color:var(--blanc); border:1px solid #cfcfcd; font-size:.88rem; font-weight:600; }
+  .lien-chat-paiement{ background:#eef4fb; border:1px solid #c7dbf0; color:#1d4f86; border-radius:10px; padding:9px 12px; margin-top:10px; font-size:.86rem; font-weight:600; }
+  .lien-chat-paiement button{ margin-top:8px; padding:10px; font-size:.88rem; background:#1d4f86; }
   .carte-facture{ background:#fff; border:1px solid #e2e2df; border-radius:12px; padding:14px; margin-bottom:16px; }
   .carte-facture h2{ font-size:1rem; margin:0 0 10px; }
   .champ .aide{ font-size:.75rem; color:var(--gris); margin-top:4px; }
@@ -334,6 +366,7 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="menu-client-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
     <button type="button" data-ouvrir-conditions style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">📄 Conditions de paiement et d'annulation</button>
     <button type="button" id="btn-menu-facture" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">🧾 Demander une facture</button>
+    <button type="button" id="btn-menu-messages" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">💬 Messages avec Taxi Wal <span id="badge-menu-messages" style="display:none; background:var(--rouge); color:#fff; border-radius:10px; padding:1px 7px; font-size:.75rem; margin-left:4px;"></span></button>
     <button id="btn-deconnexion-menu-client" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
   </div>
 </header>
@@ -376,6 +409,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="agenda">Agenda</button>
     <button data-onglet="profil">Profil</button>
     <button data-onglet="facture">🧾 Facture</button>
+    <button data-onglet="messages">💬 Messages</button>
   </nav>
 
   <!-- Onglet Réserver -->
@@ -562,6 +596,25 @@ window.onerror = function(msg, url, line, col, err) {
     <div class="carte-facture">
       <h2>📂 Mes demandes de facture</h2>
       <div id="fa-mes-demandes"><p style="color:var(--gris); margin:0;">Aucune demande pour le moment.</p></div>
+    </div>
+  </section>
+
+  <!-- Onglet Messages (chat avec Taxi Wal) -->
+  <section id="section-messages">
+    <div class="chat-entete">💬 Discussion avec Taxi Wal
+      <small>Écris-nous ici, on te répond directement dans l'application. Urgence : <a href="tel:+32495353594">0495 35 35 94</a></small>
+    </div>
+    <div id="chat-fil" class="chat-fil"><div class="chat-vide">Chargement…</div></div>
+    <div id="chat-ferme" class="chat-ferme" style="display:none;">🔒 Le chat est fermé : tu n'as pas de réservation en cours. Pour discuter avec Taxi Wal, fais une nouvelle réservation — le chat se rouvrira automatiquement.
+      <button type="button" id="chat-btn-reserver" class="vert">🚖 Réserver une course</button>
+    </div>
+    <div class="chat-composer" id="chat-composer">
+      <div id="chat-chip" class="chat-chip" style="display:none;"></div>
+      <div class="chat-saisie">
+        <textarea id="chat-texte" rows="1" maxlength="2000" placeholder="Écris ton message…"></textarea>
+        <button type="button" id="chat-envoyer" class="vert">Envoyer</button>
+      </div>
+      <p id="chat-erreur" style="color:var(--rouge); font-size:.85rem; margin:6px 0 0; min-height:0;"></p>
     </div>
   </section>
 
@@ -912,6 +965,7 @@ function demarrerEspaceClient() {
   chargerChauffeursDejaEus();
   chargerAdressesFavorites();
   if (typeof window.initFactureClient === "function") window.initFactureClient();
+  if (typeof window.initChatClient === "function") window.initChatClient();
 }
 
 // ---------- Adresses favorites (domicile, travail...) ----------
@@ -1039,7 +1093,7 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
   if (window.validerDemandeClient && !(await window.validerDemandeClient())) return;
 
   const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase.from("courses").insert({
+  const { data: nouvelleCourse, error } = await supabase.from("courses").insert({
     client_id: user.id,
     origine: "client",
     statut: "en_attente",
@@ -1058,16 +1112,17 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
     distance_km: (window.__distanceTrajetKm ? Math.round(window.__distanceTrajetKm * 10) / 10 : null),
     duree_min: (window.__dureeTrajetMin ? Math.round(window.__dureeTrajetMin) : null),
     notes: document.getElementById("input-notes").value.trim()
-  });
+  }).select("id, numero_reservation").maybeSingle();
 
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+  const numeroResa = nouvelleCourse && nouvelleCourse.numero_reservation ? nouvelleCourse.numero_reservation : "";
 
   document.getElementById("input-depart").value = "";
   document.getElementById("input-arrivee").value = "";
   document.getElementById("input-vehicule-souhaite").value = "";
   document.getElementById("input-chauffeur-prefere").value = "";
   document.getElementById("input-notes").value = "";
-  alert("Demande envoyée ! Elle doit être confirmée par notre équipe. Tu vas d'abord recevoir un prix à accepter, puis un acompte de 30% te sera demandé pour confirmer la course. Suis l'avancement dans \"Mes courses\".");
+  alert("Demande envoyée !" + (numeroResa ? " Ton numéro de réservation : " + numeroResa + "." : "") + " Elle doit être confirmée par notre équipe. Tu vas d'abord recevoir un prix à accepter, puis un acompte de 30% te sera demandé pour confirmer la course. Suis l'avancement dans \"Mes courses\".");
   document.querySelector('[data-onglet="mes-courses"]').click();
   chargerMesCourses();
 });
@@ -1106,6 +1161,7 @@ async function chargerMesCourses() {
 
   dernieresCoursesClient = courses || [];
   rendreCalendrierClient();
+  if (typeof window.majEtatChatClient === "function") window.majEtatChatClient(chatOuvertDepuisCourses(dernieresCoursesClient), dernieresCoursesClient.filter(courseOuvreChat));
 
   if (!courses || courses.length === 0) {
     videMsg.style.display = "block";
@@ -1118,6 +1174,12 @@ async function chargerMesCourses() {
 
 // ---------- AGENDA / CALENDRIER (mes réservations) ----------
 let dernieresCoursesClient = [];
+// Le chat n'est ouvert au client que s'il a une réservation en cours (ni terminée, ni annulée).
+const STATUTS_CHAT_FERME = ["terminee", "annulee", "refusee", "expiree", "no_show"];
+// Une demande jamais confirmée (en attente / prix envoyé / attente d'acompte) dont l'heure est passée de plus de 12 h ne garde pas le chat ouvert.
+const courseOuvreChat = (c) => !!c && !STATUTS_CHAT_FERME.includes(c.statut)
+  && !(["en_attente", "prix_envoye", "attente_acompte"].includes(c.statut) && c.date_heure && new Date(c.date_heure).getTime() < Date.now() - 12 * 3600 * 1000);
+const chatOuvertDepuisCourses = (liste) => (liste || []).some(courseOuvreChat);
 let calMoisAffiche = new Date();
 calMoisAffiche.setDate(1);
 let calJourSelectionne = dateLocaleISO();
@@ -1206,6 +1268,28 @@ document.getElementById("cal-next").addEventListener("click", () => {
   rendreCalendrierClient();
 });
 
+// Ligne « Prix » de la carte : prix (ancien prix barré s'il a été corrigé) + déjà payé + reste à payer
+function lignePrixClient(course) {
+  if (!course.prix && course.reste_a_payer == null) return "";
+  const eu = (n) => { const v = Math.round((Number(n) || 0) * 100) / 100; return (Number.isInteger(v) ? String(v) : v.toFixed(2).replace(".", ",")) + " €"; };
+  const total = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+  const ancien = course.prix_precedent != null && Number(course.prix_precedent) !== Number(course.prix)
+    ? `<s style="opacity:.6;">${esc(eu(Number(course.prix_precedent) + (Number(course.surprime) || 0)))}</s> ` : "";
+  let deja = 0, reste = null;
+  if (course.reste_a_payer != null) { reste = Number(course.reste_a_payer); deja = total - reste; }
+  else if (course.acompte_paye) { deja = course.paiement_choisi === "total" ? total : (Number(course.acompte_montant) || 0); reste = total - deja; }
+  let txt = `<br><b>Prix :</b> ${ancien}${esc(eu(total))}`;
+  if (course.statut !== "annulee" && reste !== null && deja > 0) {
+    txt += ` · ${course.paiement_choisi === "total" && !(reste > 0) ? "Payé" : "Acompte payé"} : ${esc(eu(deja))}`;
+    if (reste > 0) txt += ` · <b>Reste à payer : ${esc(eu(reste))}</b>`;
+    else if (reste < 0) txt += ` · <b>À te rembourser : ${esc(eu(-reste))}</b>`;
+  } else if (course.statut !== "annulee" && reste !== null && reste > 0 && course.prix_precedent != null) {
+    txt += ` · <b>Reste à payer : ${esc(eu(reste))}</b>`;
+  }
+  if (course.prix_precedent != null && course.prix_modifie_motif) txt += `<br><small>Prix corrigé : ${esc(course.prix_modifie_motif)}</small>`;
+  return txt;
+}
+
 async function construireCarteCourseClient(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -1225,12 +1309,13 @@ async function construireCarteCourseClient(course) {
   }[course.statut] || course.statut;
 
   div.innerHTML = `
+    ${course.numero_reservation ? `<div class="num-resa">N° ${esc(course.numero_reservation)}</div>` : ""}
     <span class="statut-label ${course.statut}">${esc(labelStatut)}</span>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}
-      ${course.prix ? `<br><b>Prix :</b> ${esc(course.prix)} €` : ""}
+      ${lignePrixClient(course)}
     </div>
   `;
 
@@ -1369,6 +1454,7 @@ async function construireCarteCourseClient(course) {
       </div>
       <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">${payeTout ? "J'ai payé la totalité" : "J'ai payé l'acompte"}</button>
       <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;">🙋 Je ne peux pas payer à l'avance</button>
+      ${course.message_client_paiement ? `<div class="lien-chat-paiement">✅ Ton message a été envoyé. Ta conversation est dans l'onglet 💬 Messages : Taxi Wal te répond là.<button type="button" class="btn-ouvrir-chat-paiement">💬 Ouvrir mes messages</button></div>` : ""}
       <div class="bloc-contact-dispatch" style="display:none;">
         <div class="note-instant" style="color:var(--gris);">Pas de souci, on reste ouverts : explique-nous ta situation, on trouve une solution ensemble (paiement à bord, facture…).</div>
         <textarea class="message-paiement" rows="3" placeholder="Ex : je n'ai pas de carte bancaire, je préfère payer en espèces au chauffeur…" style="width:100%; box-sizing:border-box; margin-top:8px; padding:10px; border-radius:10px; border:1px solid #cfcfcd; font-size:.95rem;">${esc(course.message_client_paiement || "")}</textarea>
@@ -1430,9 +1516,13 @@ async function construireCarteCourseClient(course) {
       e.target.disabled = true; e.target.textContent = "Envoi…";
       const { error } = await supabase.rpc("client_message_paiement", { p_course: course.id, p_message: texte });
       if (error) { e.target.disabled = false; e.target.textContent = "📨 Envoyer mon message à Taxi Wal"; alert("Erreur : " + error.message); return; }
-      alert("✅ Message envoyé ! Notre équipe te recontacte rapidement.");
       chargerMesCourses();
+      if (confirm("✅ Message envoyé ! Notre équipe te répond rapidement.\n\nTa conversation est dans l'onglet 💬 Messages. L'ouvrir maintenant ?")) {
+        if (typeof window.ouvrirChatClient === "function") window.ouvrirChatClient(course.id);
+      }
     });
+    const btnChatPaiement = bloc.querySelector(".btn-ouvrir-chat-paiement");
+    if (btnChatPaiement) btnChatPaiement.addEventListener("click", () => { if (typeof window.ouvrirChatClient === "function") window.ouvrirChatClient(course.id); });
     bloc.querySelector("#btn-pas-moyen").addEventListener("click", () => {
       const z = bloc.querySelector(".bloc-contact-dispatch");
       z.style.display = z.style.display === "none" ? "block" : "none";
@@ -1563,6 +1653,16 @@ async function construireCarteCourseClient(course) {
       chargerMesCourses();
     });
     div.appendChild(btn);
+  }
+
+  // --- Écrire à Taxi Wal à propos de cette course (onglet « 💬 Messages ») ---
+  if (courseOuvreChat(course)) {
+    const btnChat = document.createElement("button");
+    btnChat.type = "button";
+    btnChat.className = "btn-chat-course";
+    btnChat.textContent = "💬 Écrire à Taxi Wal à propos de cette course";
+    btnChat.addEventListener("click", (e) => { e.stopPropagation(); if (typeof window.ouvrirChatClient === "function") window.ouvrirChatClient(course.id, course); });
+    div.appendChild(btnChat);
   }
 
   return div;
@@ -2279,7 +2379,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   // ---------- Liste des courses à facturer ----------
   async function chargerCourses() {
     const { data, error } = await supabase.from("courses")
-      .select("id, date_heure, adresse_depart, adresse_arrivee, prix, surprime, statut")
+      .select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, prix, surprime, statut")
       .eq("client_id", utilisateur.id)
       .not("statut", "in", "(annulee,refusee)")
       .order("date_heure", { ascending: false });
@@ -2289,6 +2389,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       return ta - tb || new Date(b.date_heure) - new Date(a.date_heure);
     });
     rendreCourses();
+    if (demandesCache.length) rendreDemandes();
   }
   function rendreCourses() {
     const zone = $("fa-liste-courses");
@@ -2300,7 +2401,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       const total = (Number(c.prix) || 0) + (Number(c.surprime) || 0);
       return `<label class="ligne-course-facture">
         <input type="checkbox" data-course="${esc(c.id)}" ${coursesCochees.has(c.id) ? "checked" : ""}>
-        <div><b>${esc(quand)}</b>${c.statut !== "terminee" ? ` <small>(${esc(c.statut === "confirmee" ? "confirmée" : c.statut.replace(/_/g, " "))})</small>` : ""}<br>
+        <div>${c.numero_reservation ? `<span class="tag-resa">N° ${esc(c.numero_reservation)}</span> ` : ""}<b>${esc(quand)}</b>${c.statut !== "terminee" ? ` <small>(${esc(c.statut === "confirmee" ? "confirmée" : c.statut.replace(/_/g, " "))})</small>` : ""}<br>
           ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)}
           ${dejaDemandees.has(c.id) ? '<br><small>🧾 Facture déjà demandée pour cette course</small>' : ""}</div>
         <span class="prix">${c.prix ? esc(total.toFixed(2)) + " €" : "—"}</span>
@@ -2330,7 +2431,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       const nb = (d.course_ids || []).length;
       return `<div class="demande-facture" data-id="${esc(d.id)}">
         <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
-          <div><b>${esc(quand)}</b><br><small style="color:var(--gris);">${nb} course${nb > 1 ? "s" : ""} · ${esc(d.nom)}</small></div>
+          <div><b>${esc(quand)}</b><br><small style="color:var(--gris);">${nb} course${nb > 1 ? "s" : ""} · ${esc(d.nom)}</small>${(() => { const nums = (d.course_ids || []).map(id => (coursesFacturables.find(c => c.id === id) || {}).numero_reservation).filter(Boolean); return nums.length ? `<br><small style="color:#1d4f86; font-weight:700;">N° ${esc(nums.join(", "))}</small>` : ""; })()}</div>
           <span class="badge-facture ${st.classe}">${esc(st.libelle)}</span>
         </div>
         ${d.reponse_admin ? `<div style="margin-top:6px; font-size:.85rem;">💬 ${esc(d.reponse_admin)}</div>` : ""}
@@ -2495,6 +2596,271 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   }));
   const btnMenu = $("btn-menu-facture");
   if (btnMenu) btnMenu.addEventListener("click", () => window.ouvrirFactureAvecCourse(null));
+})();
+</script>
+<script>
+// ================== 💬 MESSAGES : chat client ↔ Taxi Wal (table messages_chat) ==================
+(function () {
+  const $ = id => document.getElementById(id);
+  if (!$("section-messages") || typeof supabase === "undefined" || !supabase) return;
+  const TZ = "Europe/Brussels";
+  const escH = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  let utilisateur = null, messages = [], canal = null, promesseInit = null, courseChoisie = null;
+  const infosCourses = new Map();   // course_id → { numero_reservation, date_heure, adresse_depart, adresse_arrivee }
+  let coursesActives = [];          // réservations en cours (le message est toujours lié à l'une d'elles)
+  const STATUTS_FERMES = ["terminee", "annulee", "refusee", "expiree", "no_show"];
+  const estActive = c => !!c && !STATUTS_FERMES.includes(c.statut)
+    && !(["en_attente", "prix_envoye", "attente_acompte"].includes(c.statut) && c.date_heure && new Date(c.date_heure).getTime() < Date.now() - 12 * 3600 * 1000);
+  // ordre : d'abord la prochaine à venir (ou en cours depuis < 3 h), sinon la plus récente
+  function trierActives(liste) {
+    const seuil = Date.now() - 3 * 3600 * 1000;
+    const t = c => c.date_heure ? new Date(c.date_heure).getTime() : 0;
+    const aVenir = liste.filter(c => t(c) >= seuil).sort((a, b) => t(a) - t(b));
+    const passees = liste.filter(c => t(c) < seuil).sort((a, b) => t(b) - t(a));
+    return aVenir.concat(passees);
+  }
+  function definirActives(liste) {
+    coursesActives = trierActives((liste || []).filter(estActive));
+    coursesActives.forEach(c => infosCourses.set(c.id, { ...(infosCourses.get(c.id) || {}), ...c }));
+    if (!courseChoisie || !coursesActives.some(c => c.id === courseChoisie)) courseChoisie = coursesActives.length ? coursesActives[0].id : null;
+    majChip();
+  }
+  async function chargerCoursesActives() {
+    if (!utilisateur) return;
+    const { data, error } = await supabase.from("courses")
+      .select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, statut")
+      .eq("client_id", utilisateur.id)
+      .not("statut", "in", "(" + STATUTS_FERMES.join(",") + ")");
+    if (!error) definirActives(data || []);
+  }
+  const libelleResa = c => c ? ("Réservation " + (c.numero_reservation || "") + (c.date_heure ? " · " + fmtCourse(c) : "")).replace("Réservation  · ", "Réservation · ") : "Réservation";
+
+  const fmtCourse = c => c && c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "") : "";
+  const fmtHeure = iso => new Date(iso).toLocaleTimeString("fr-BE", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+  const cleJour = iso => new Date(iso).toLocaleDateString("fr-BE", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
+  const ongletOuvert = () => $("section-messages").classList.contains("visible") && document.visibilityState === "visible";
+  const nonLus = () => messages.filter(m => m.auteur === "admin" && !m.lu_par_client_at).length;
+
+  function majBadge() {
+    const n = nonLus();
+    document.querySelectorAll('nav.onglets button[data-onglet="messages"]').forEach(b => {
+      let p = b.querySelector(".badge-chat");
+      if (n) { if (!p) { p = document.createElement("span"); p.className = "badge-chat"; b.appendChild(p); } p.textContent = n > 99 ? "99+" : n; }
+      else if (p) p.remove();
+    });
+    const bm = $("badge-menu-messages");
+    if (bm) { bm.style.display = n ? "inline" : "none"; bm.textContent = n; }
+  }
+
+  async function chargerInfosCourses() {
+    const manquantes = [...new Set(messages.map(m => m.course_id).filter(id => id && !infosCourses.has(id)))];
+    if (!manquantes.length) return;
+    const { data } = await supabase.from("courses").select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee").in("id", manquantes);
+    (data || []).forEach(c => infosCourses.set(c.id, c));
+    manquantes.forEach(id => { if (!infosCourses.has(id)) infosCourses.set(id, null); });
+  }
+
+  function rendre() {
+    const fil = $("chat-fil");
+    if (!messages.length) {
+      fil.innerHTML = `<div class="chat-vide">👋 Une question sur une course, un paiement, un horaire ?<br>Écris-nous ici : Taxi Wal te répond directement dans l'application.</div>`;
+      return;
+    }
+    const enBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80;
+    let html = "", jourPrec = "";
+    const dernierMoi = [...messages].reverse().find(m => m.auteur === "client");
+    messages.forEach(m => {
+      const j = cleJour(m.created_at);
+      if (j !== jourPrec) { html += `<div class="chat-jour">${escH(j)}</div>`; jourPrec = j; }
+      const moi = m.auteur === "client";
+      const c = m.course_id ? infosCourses.get(m.course_id) : null;
+      const tag = m.course_id ? `<div><span class="tag-course">🚖 ${c && c.numero_reservation ? escH(libelleResa(c)) : "Course" + (c ? " du " + escH(fmtCourse(c)) : "")}</span></div>` : "";
+      const vu = moi && dernierMoi && m.id === dernierMoi.id && m.lu_par_admin_at ? " · ✓ Vu" : "";
+      html += `<div class="bulle ${moi ? "moi" : "eux"}">${moi ? "" : `<div class="qui">🚕 Taxi Wal</div>`}${tag}${escH(m.texte)}<div class="meta">${fmtHeure(m.created_at)}${vu}</div></div>`;
+    });
+    fil.innerHTML = html;
+    if (enBas || rendre.premier !== false) { fil.scrollTop = fil.scrollHeight; rendre.premier = false; }
+  }
+
+  // ---- Chat ouvert / fermé (ouvert seulement pendant une réservation en cours) ----
+  let chatOuvert = null; // null = inconnu (on laisse la saisie visible en attendant)
+  function appliquerEtatChat() {
+    const ferme = chatOuvert === false;
+    $("chat-ferme").style.display = ferme ? "block" : "none";
+    $("chat-composer").style.display = ferme ? "none" : "";
+    if (ferme) { courseChoisie = null; majChip(); }
+    else if (!courseChoisie && coursesActives.length) { courseChoisie = coursesActives[0].id; majChip(); }
+  }
+  window.majEtatChatClient = function (ouvert, actives) { chatOuvert = !!ouvert; if (Array.isArray(actives)) definirActives(actives); appliquerEtatChat(); };
+  async function verifierEtatChat() {
+    if (!utilisateur) return;
+    try {
+      const { data, error } = await supabase.rpc("chat_client_ouvert", { p_client: utilisateur.id });
+      if (!error && typeof data === "boolean") window.majEtatChatClient(data);
+    } catch (e) {}
+  }
+  $("chat-btn-reserver").addEventListener("click", () => {
+    const b = document.querySelector('nav.onglets button[data-onglet="reserver"]');
+    if (b) b.click();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  async function charger() {
+    verifierEtatChat();
+    chargerCoursesActives();
+    const { data, error } = await supabase.from("messages_chat").select("*").eq("client_id", utilisateur.id).order("created_at", { ascending: true }).limit(500);
+    if (error) { $("chat-fil").innerHTML = `<div class="chat-vide">Erreur : ${escH(error.message)}</div>`; return; }
+    messages = data || [];
+    await chargerInfosCourses();
+    rendre(); majBadge();
+    if (ongletOuvert()) marquerLu();
+  }
+
+  let marquageEnCours = false;
+  async function marquerLu() {
+    if (!nonLus() || marquageEnCours) return;
+    marquageEnCours = true;
+    const maintenant = new Date().toISOString();
+    messages.forEach(m => { if (m.auteur === "admin" && !m.lu_par_client_at) m.lu_par_client_at = maintenant; });
+    majBadge();
+    try { await supabase.rpc("chat_marquer_lu_client"); } catch (e) {} finally { marquageEnCours = false; }
+  }
+
+  function majChip() {
+    const chip = $("chat-chip");
+    if (!chip) return;
+    if (!courseChoisie) { chip.style.display = "none"; chip.innerHTML = ""; return; }
+    if (coursesActives.length > 1) {
+      // plusieurs réservations en cours : le client choisit (par défaut la prochaine)
+      chip.className = "chat-choix-resa";
+      chip.innerHTML = `<label for="chat-select-resa">À propos de quelle réservation ?</label><select id="chat-select-resa">${coursesActives.map(c =>
+        `<option value="${escH(c.id)}" ${c.id === courseChoisie ? "selected" : ""}>🚖 ${escH(libelleResa(c))}</option>`).join("")}</select>`;
+      chip.style.display = "block";
+      chip.querySelector("select").addEventListener("change", (e) => { courseChoisie = e.target.value; });
+      return;
+    }
+    const c = infosCourses.get(courseChoisie);
+    chip.className = "chat-chip";
+    chip.innerHTML = `🚖 ${escH(libelleResa(c))}`;
+    chip.style.display = "inline-flex";
+  }
+
+  function ajouterMessage(m) {
+    const i = messages.findIndex(x => x.id === m.id);
+    if (i >= 0) messages[i] = { ...messages[i], ...m };
+    else { messages.push(m); messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); }
+  }
+
+  async function envoyer() {
+    const zone = $("chat-texte"), btn = $("chat-envoyer"), err = $("chat-erreur");
+    const texte = zone.value.trim();
+    err.textContent = "";
+    if (!texte) { zone.focus(); return; }
+    if (chatOuvert === false) { appliquerEtatChat(); return; }
+    if (!utilisateur) { err.textContent = "Connexion en cours, réessaie dans un instant."; return; }
+    btn.disabled = true; btn.textContent = "…";
+    const { data, error } = await supabase.from("messages_chat")
+      .insert({ client_id: utilisateur.id, auteur: "client", auteur_id: utilisateur.id, course_id: courseChoisie, texte: texte.slice(0, 2000) })
+      .select().single();
+    btn.disabled = false; btn.textContent = "Envoyer";
+    if (error) {
+      if (error.code === "42501" || /row-level security/i.test(error.message || "")) {
+        window.majEtatChatClient(false);
+        err.textContent = "";
+        return;
+      }
+      err.textContent = "Erreur : " + error.message; return;
+    }
+    zone.value = ""; ajusterHauteur();
+    ajouterMessage(data);
+    await chargerInfosCourses();
+    rendre.premier = true; rendre();
+  }
+
+  function ajusterHauteur() {
+    const z = $("chat-texte");
+    z.style.height = "auto";
+    z.style.height = Math.min(z.scrollHeight + 2, 140) + "px";
+  }
+
+  function nouveauMessageAdmin(m) {
+    if (ongletOuvert()) { marquerLu(); return; }
+    const extrait = m.texte.length > 90 ? m.texte.slice(0, 90) + "…" : m.texte;
+    if (typeof window.toastClient === "function") window.toastClient("💬 Taxi Wal t'a répondu : " + extrait);
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+    if (document.visibilityState !== "visible" && "Notification" in window && Notification.permission === "granted") {
+      try { new Notification("💬 Taxi Wal t'a répondu", { body: extrait, tag: "chat-" + m.id }); } catch (e) {}
+    }
+  }
+
+  function abonner() {
+    if (canal) return;
+    canal = supabase.channel("chat-client-" + utilisateur.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages_chat", filter: "client_id=eq." + utilisateur.id }, async (payload) => {
+        const m = payload.new; if (!m || !m.id) return;
+        const nouveau = !messages.some(x => x.id === m.id);
+        ajouterMessage(m);
+        await chargerInfosCourses();
+        rendre(); majBadge();
+        if (nouveau && m.auteur === "admin") nouveauMessageAdmin(m);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages_chat", filter: "client_id=eq." + utilisateur.id }, (payload) => {
+        const m = payload.new; if (!m || !m.id) return;
+        ajouterMessage(m); rendre(); majBadge();
+      })
+      .subscribe((statut) => { if (statut === "SUBSCRIBED" && messages.length) charger(); });
+  }
+
+  window.initChatClient = function () {
+    if (promesseInit) return promesseInit;
+    promesseInit = (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { promesseInit = null; return; }
+      utilisateur = user;
+      await charger();
+      abonner();
+      // filet de sécurité si le temps réel est coupé (mise en veille du téléphone…)
+      setInterval(() => { if (document.visibilityState === "visible") charger(); }, 60000);
+    })();
+    return promesseInit;
+  };
+
+  window.ouvrirChatClient = async function (courseId, course) {
+    const b = document.querySelector('nav.onglets button[data-onglet="messages"]');
+    if (b) b.click();
+    await window.initChatClient();
+    if (courseId) {
+      if (course && course.date_heure && !infosCourses.get(courseId)) infosCourses.set(courseId, course);
+      if (!infosCourses.get(courseId)) {
+        const { data } = await supabase.from("courses").select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, statut").eq("id", courseId).maybeSingle();
+        if (data) infosCourses.set(courseId, data);
+      }
+      const ci = infosCourses.get(courseId);
+      if (ci && ci.statut && estActive(ci) && !coursesActives.some(c => c.id === courseId)) coursesActives = trierActives(coursesActives.concat([ci]));
+      courseChoisie = courseId;
+    } else if (!courseChoisie && coursesActives.length) courseChoisie = coursesActives[0].id;
+    if (chatOuvert === false) courseChoisie = null;
+    majChip();
+    rendre.premier = true; rendre();
+    setTimeout(() => { $("section-messages").scrollIntoView({ behavior: "smooth", block: "start" }); if (chatOuvert !== false) $("chat-texte").focus(); }, 150);
+  };
+
+  document.querySelectorAll('nav.onglets button[data-onglet="messages"]').forEach(b => b.addEventListener("click", () => {
+    if (!promesseInit) window.initChatClient().then(() => { rendre.premier = true; rendre(); marquerLu(); });
+    else { rendre.premier = true; rendre(); marquerLu(); }
+  }));
+  const btnMenu = $("btn-menu-messages");
+  if (btnMenu) btnMenu.addEventListener("click", () => window.ouvrirChatClient(null));
+  document.addEventListener("visibilitychange", () => { if (ongletOuvert()) marquerLu(); });
+  // au cas où l'écran principal est déjà affiché avant le chargement de ce script
+  setTimeout(() => { const ep = $("ecran-principal"); if (ep && ep.style.display !== "none") window.initChatClient(); }, 1500);
+
+  $("chat-envoyer").addEventListener("click", envoyer);
+  $("chat-texte").addEventListener("input", ajusterHauteur);
+  $("chat-texte").addEventListener("keydown", (e) => {
+    const ordinateur = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && ordinateur) { e.preventDefault(); envoyer(); }
+  });
 })();
 </script>
 <script>
