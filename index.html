@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taxi Wal</title>
+<style>
+  html,body{margin:0;height:100%;background:#f7f7f5;font-family:-apple-system,system-ui,sans-serif;color:#1c1c1c}
+  .c{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+  img{width:72px;height:72px;border-radius:16px}
+  a{color:#c81e2c;font-weight:600}
+</style>
+</head>
+<body>
+<div class="c">
+  <img src="icon-192.png" alt="Taxi Wal">
+  <div>Chargement…</div>
+  <a href="driver.html">Ouvrir Taxi Wal</a>
+</div>
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script>
+// Page d'accueil du site : renvoie chacun vers la bonne page.
+// Sert quand une notification est touchée (l'app ou le site ouvre l'adresse du dossier)
+// au lieu d'afficher l'erreur « 404 File not found ».
+(async function () {
+  var suite = location.search + location.hash;
+  function aller(page) { location.replace(page + suite); }
+  var natif = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  try {
+    if (!window.supabase) return aller("driver.html");
+    var sb = window.supabase.createClient("https://dgtsgylgqucyzujvfkgo.supabase.co", "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp",
+      { auth: { persistSession: true, autoRefreshToken: false, detectSessionInUrl: false } });
+    var s = await sb.auth.getSession();
+    var user = s && s.data && s.data.session && s.data.session.user;
+    if (!user) return aller("driver.html");
+    var r = await sb.from("profils").select("role").eq("id", user.id).maybeSingle();
+    var role = r && r.data && r.data.role;
+    if (role === "admin") return aller("admin.html");
+    if (role === "chauffeur" || role === "partenaire") return aller("chauffeur.html");
+    if (role === "client" && !natif) return aller("client.html");
+    aller("driver.html");
+  } catch (e) { aller("driver.html"); }
+})();
+</script>
+</body>
+</html>
