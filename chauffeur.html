@@ -795,11 +795,12 @@ async function reinscrireNotifications(bouton) {
   }
 }
 document.getElementById("btn-reactiver-notifs").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
-document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
+document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => { if (window.TaxiWalPush) { window.TaxiWalPush.activer(); alert("✅ Notifications vérifiées. Si l'iPhone le demande, choisis « Autoriser »."); return; } reinscrireNotifications(e.currentTarget); });
 
 // Affiche le bandeau rouge si les notifications sont bloquées, ou si les derniers envois ont échoué
 async function verifierEtatNotifications() {
   const bandeau = document.getElementById("bandeau-notifs");
+  if (window.TAXIWAL_PUSH_NATIF) { if (bandeau) bandeau.style.display = "none"; return; } // app Taxi Wal Driver : notifications natives
   const texte = document.getElementById("bandeau-notifs-texte");
   try {
     if (!("Notification" in window) || Notification.permission !== "granted") {
@@ -1779,5 +1780,6 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
 })();
 </script>
 <script src="gps-natif.js"></script>
+<script src="push-natif.js"></script>
 </body>
 </html>
