@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taxi Wal Driver</title>
+<meta name="theme-color" content="#f7f7f5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Taxi Wal Driver">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{ --fond:#f7f7f5; --carte:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c; --gris:#6b6b6b; --texte:#1c1c1c; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--fond); color:var(--texte);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh; }
+  header{
+    display:flex; align-items:center; gap:12px;
+    padding:calc(16px + env(safe-area-inset-top)) 20px 14px;
+    background:#fff;
+    border-bottom:3px solid transparent;
+    border-image:linear-gradient(90deg, var(--rouge), var(--vert)) 1;
+  }
+  header img{ width:44px; height:44px; border-radius:12px; flex-shrink:0; }
+  header h1{ margin:0; font-size:1.1rem; font-weight:700; }
+  header p{ margin:2px 0 0; color:var(--gris); font-size:.85rem; }
+  main{ padding:28px 20px calc(30px + env(safe-area-inset-bottom)); max-width:380px; margin:0 auto; }
+  .carte{ background:var(--carte); border:1px solid #e3e3e0; border-radius:14px; padding:20px; }
+  label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
+  input{ width:100%; padding:14px; margin-bottom:14px; border-radius:10px; border:1px solid #cfcfcd;
+    background:#fff; color:var(--texte); font-size:1rem; }
+  input#code{ letter-spacing:.35em; font-size:1.3rem; text-align:center; }
+  button{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--rouge); color:#fff;
+    font-size:1rem; font-weight:600; cursor:pointer; }
+  button:disabled{ opacity:.6; }
+  button.secondaire{ background:#fff; color:var(--texte); border:1px solid #cfcfcd; margin-top:10px; }
+  .erreur{ color:var(--rouge); font-size:.9rem; margin-top:10px; min-height:1em; }
+  .info{ color:var(--vert); font-size:.9rem; margin:0 0 12px; }
+  .cache{ display:none; }
+  .centre{ text-align:center; color:var(--gris); padding:30px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="icon-192.png" alt="Taxi Wal">
+  <div>
+    <h1>Taxi Wal Driver</h1>
+    <p id="sous-titre">Connexion</p>
+  </div>
+</header>
+
+<main>
+  <!-- Pendant la vérification de la session -->
+  <div id="ecran-chargement" class="centre">Chargement…</div>
+
+  <!-- Formulaire de connexion -->
+  <div id="ecran-login" class="carte cache">
+    <div id="etape-email">
+      <label for="email">Adresse email</label>
+      <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email" autocapitalize="off" inputmode="email">
+      <button id="btn-code" type="button">Recevoir un code</button>
+    </div>
+    <div id="etape-code" class="cache">
+      <p class="info" id="msg-code-envoye"></p>
+      <label for="code">Code à 6 chiffres reçu par email</label>
+      <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      <button id="btn-connexion" type="button">Se connecter</button>
+      <button id="btn-changer-email" type="button" class="secondaire">Changer d'adresse email</button>
+    </div>
+    <div class="erreur" id="erreur"></div>
+  </div>
+
+  <!-- Compte sans accès -->
+  <div id="ecran-refus" class="carte cache">
+    <p id="msg-refus" style="margin-top:0; font-weight:600;">Ce compte n'a pas accès à Taxi Wal Driver</p>
+    <button id="btn-deconnexion" type="button">Se déconnecter</button>
+  </div>
+</main>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script>
+// ================== Configuration Supabase (identique aux autres pages) ==================
+const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
+
+const $ = (id) => document.getElementById(id);
+
+function afficher(ecran) {
+  ["ecran-chargement", "ecran-login", "ecran-refus"].forEach((id) => $(id).classList.toggle("cache", id !== ecran));
+}
+
+if (!window.supabase) {
+  $("ecran-chargement").textContent = "Pas de connexion internet — recharge la page.";
+  throw new Error("supabase-js non chargé (pas de connexion internet ?)");
+}
+
+// Stockage de la session : localStorage, avec repli en mémoire si indisponible
+const stockageMemoire = {};
+const stockageSecurise = {
+  getItem: (cle) => { try { return window.localStorage.getItem(cle); } catch (e) { return stockageMemoire[cle] || null; } },
+  setItem: (cle, valeur) => { try { window.localStorage.setItem(cle, valeur); } catch (e) { stockageMemoire[cle] = valeur; } },
+  removeItem: (cle) => { try { window.localStorage.removeItem(cle); } catch (e) { delete stockageMemoire[cle]; } }
+};
+
+// Même clé de stockage par défaut que admin.html / chauffeur.html → session partagée entre les pages
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage: stockageSecurise }
+});
+
+// ================== Redirection selon le rôle ==================
+async function redirigerSelonRole(user) {
+  afficher("ecran-chargement");
+  $("ecran-chargement").textContent = "Ouverture de votre espace…";
+  const { data: profil, error } = await supabase.from("profils").select("role, actif").eq("id", user.id).maybeSingle();
+
+  if (error) {
+    afficher("ecran-refus");
+    $("msg-refus").textContent = "Impossible de lire votre profil (" + error.message + "). Vérifiez votre connexion et réessayez.";
+    return;
+  }
+  if (profil && profil.actif === false) {
+    afficher("ecran-refus");
+    $("msg-refus").textContent = "Ce compte est désactivé. Contactez Taxi Wal.";
+    return;
+  }
+  const role = profil && profil.role;
+  if (role === "admin") { location.replace("admin.html"); return; }
+  if (role === "chauffeur" || role === "partenaire") { location.replace("chauffeur.html"); return; }
+
+  // Client ou pas de profil
+  afficher("ecran-refus");
+  $("msg-refus").textContent = "Ce compte n'a pas accès à Taxi Wal Driver";
+}
+
+// ================== Étape 1 : envoi du code ==================
+$("btn-code").addEventListener("click", async () => {
+  const btn = $("btn-code");
+  const email = $("email").value.trim().toLowerCase();
+  $("erreur").textContent = "";
+  if (!email || !email.includes("@")) { $("erreur").textContent = "Entrez votre adresse email."; return; }
+
+  btn.disabled = true;
+  btn.textContent = "Envoi en cours…";
+  try {
+    // shouldCreateUser: false → une adresse inconnue ne crée PAS de compte
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    if (error) {
+      const m = (error.message || "").toLowerCase();
+      if (error.status === 422 || m.includes("signups not allowed") || m.includes("not found") || m.includes("user not")) {
+        $("erreur").textContent = "Cette adresse email n'est pas enregistrée chez Taxi Wal. Vérifiez l'orthographe ou contactez l'administrateur.";
+      } else if (error.status === 429 || m.includes("rate") || m.includes("seconds")) {
+        $("erreur").textContent = "Trop de demandes. Attendez une minute avant de redemander un code.";
+      } else {
+        $("erreur").textContent = "Erreur : " + error.message;
+      }
+      return;
+    }
+    $("msg-code-envoye").textContent = "Un code a été envoyé à " + email + ".";
+    $("etape-email").classList.add("cache");
+    $("etape-code").classList.remove("cache");
+    $("code").value = "";
+    $("code").focus();
+  } catch (e) {
+    $("erreur").textContent = "Connexion impossible. Vérifiez votre connexion internet et réessayez.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Recevoir un code";
+  }
+});
+
+// ================== Étape 2 : vérification du code ==================
+$("btn-connexion").addEventListener("click", async () => {
+  const btn = $("btn-connexion");
+  const email = $("email").value.trim().toLowerCase();
+  const token = $("code").value.replace(/\D/g, "");
+  $("erreur").textContent = "";
+  if (token.length !== 6) { $("erreur").textContent = "Le code doit contenir 6 chiffres."; return; }
+
+  btn.disabled = true;
+  btn.textContent = "Connexion…";
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    if (error || !data || !data.user) { $("erreur").textContent = "Code invalide ou expiré."; return; }
+    await redirigerSelonRole(data.user);
+  } catch (e) {
+    $("erreur").textContent = "Connexion impossible. Vérifiez votre connexion internet et réessayez.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Se connecter";
+  }
+});
+
+$("code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-connexion").click(); });
+$("email").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-code").click(); });
+
+$("btn-changer-email").addEventListener("click", () => {
+  $("etape-code").classList.add("cache");
+  $("etape-email").classList.remove("cache");
+  $("erreur").textContent = "";
+});
+
+// ================== Déconnexion ==================
+$("btn-deconnexion").addEventListener("click", async () => {
+  try { await supabase.auth.signOut(); } catch (e) { /* on continue quand même */ }
+  $("etape-code").classList.add("cache");
+  $("etape-email").classList.remove("cache");
+  afficher("ecran-login");
+});
+
+// ================== Démarrage : session existante ? ==================
+(async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user) { await redirigerSelonRole(session.user); return; }
+  } catch (e) { /* pas de session lisible → formulaire */ }
+  afficher("ecran-login");
+})();
+</script>
+</body>
+</html>
