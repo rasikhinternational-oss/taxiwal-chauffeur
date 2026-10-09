@@ -63,8 +63,8 @@
     </div>
     <div id="etape-code" class="cache">
       <p class="info" id="msg-code-envoye"></p>
-      <label for="code">Code à 6 chiffres reçu par email</label>
-      <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      <label for="code">Code reçu par email</label>
+      <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code reçu">
       <button id="btn-connexion" type="button">Se connecter</button>
       <button id="btn-changer-email" type="button" class="secondaire">Changer d'adresse email</button>
     </div>
@@ -175,7 +175,7 @@ $("btn-connexion").addEventListener("click", async () => {
   const email = $("email").value.trim().toLowerCase();
   const token = $("code").value.replace(/\D/g, "");
   $("erreur").textContent = "";
-  if (token.length !== 6) { $("erreur").textContent = "Le code doit contenir 6 chiffres."; return; }
+  if (token.length < 6) { $("erreur").textContent = "Tape le code complet reçu par email."; return; }
 
   btn.disabled = true;
   btn.textContent = "Connexion…";
