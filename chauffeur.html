@@ -557,6 +557,7 @@ function esc(valeur) {
 }
 
 let positionInterval = null;
+let derniereLecturePosition = null; // dernière position lue par le suivi GPS (déclarée tôt : utilisée par obtenirPosition)
 
 document.getElementById("btn-envoyer-code").addEventListener("click", async () => {
   const btn = document.getElementById("btn-envoyer-code");
@@ -697,6 +698,32 @@ function attacherSuggestionsAdresse(input, conteneur) {
 
 
 // ================== DEMANDE D'UN CLIENT → CENTRALE (remplissage rapide) ==================
+// Position ponctuelle robuste (iPhone) : position récente du suivi si < 60 s, sinon GPS précis,
+// et en cas de délai dépassé / position indisponible, nouvel essai en précision réduite.
+function obtenirPosition() {
+  return new Promise((resoudre, rejeter) => {
+    if (!navigator.geolocation) { rejeter({ code: 2, message: "Géolocalisation non disponible" }); return; }
+    const recente = derniereLecturePosition;
+    if (recente && Date.now() - recente.timestamp < 60000) { resoudre(recente); return; }
+    navigator.geolocation.getCurrentPosition(resoudre, (err) => {
+      if (err && (err.code === 2 || err.code === 3)) {
+        navigator.geolocation.getCurrentPosition(resoudre, rejeter,
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+      } else rejeter(err);
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+  });
+}
+function messageErreurPosition(err) {
+  const code = err && err.code;
+  let msg;
+  if (code === 1) msg = "📍 La localisation est bloquée pour Taxi Wal.\n\nSur iPhone : Réglages → Confidentialité et sécurité → Service de localisation → activé, puis « Sites web Safari » → « Lorsque l'app est active ». Puis dans Safari : touche « aA » dans la barre d'adresse → Réglages du site web → Position → Autoriser. Ensuite ferme et rouvre l'application.";
+  else if (code === 2) msg = "📍 Position indisponible pour le moment (pas de signal GPS). Réessaie dehors ou tape l'adresse à la main.";
+  else if (code === 3) msg = "📍 Le GPS met trop de temps à répondre. Réessaie dans quelques secondes ou tape l'adresse à la main.";
+  else msg = "📍 Impossible d'obtenir ta position. Réessaie ou tape l'adresse à la main.";
+  if (!window.isSecureContext) msg += "\n\n⚠️ La page n'est pas ouverte en connexion sécurisée (https) : le téléphone refuse alors de donner la position. Ouvre l'application via son adresse https.";
+  return msg;
+}
+
 (function preparerFormulaireDemande() {
   const $ = id => document.getElementById(id);
   ["dc-depart", "dc-arrivee"].forEach(id => attacherSuggestionsAdresse($(id), $(id).parentNode));
@@ -709,7 +736,7 @@ function attacherSuggestionsAdresse(input, conteneur) {
     const cible = $(b.dataset.pos);
     if (!navigator.geolocation) { alert("Localisation indisponible sur ce téléphone."); return; }
     const avant = b.textContent; b.disabled = true; b.textContent = "📍 Recherche…";
-    navigator.geolocation.getCurrentPosition(async (pos) => {
+    obtenirPosition().then(async (pos) => {
       try {
         const r = await fetch(`https://photon.komoot.io/reverse?lang=fr&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
         const d = await r.json();
@@ -717,8 +744,7 @@ function attacherSuggestionsAdresse(input, conteneur) {
         if (lib) cible.value = lib; else alert("Adresse introuvable, tape-la à la main.");
       } catch (e) { alert("Adresse introuvable, tape-la à la main."); }
       b.disabled = false; b.textContent = avant;
-    }, () => { b.disabled = false; b.textContent = avant; alert("Position introuvable (autorise la localisation pour Taxi Wal)."); },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 20000 });
+    }, (err) => { b.disabled = false; b.textContent = avant; alert(messageErreurPosition(err)); });
   }));
   $("dc-inverser").addEventListener("click", () => { const a = $("dc-depart").value; $("dc-depart").value = $("dc-arrivee").value; $("dc-arrivee").value = a; });
   $("dc-carte").addEventListener("click", () => {
@@ -1838,6 +1864,7 @@ switchDispo.addEventListener("click", () => {
   switchDispo.classList.toggle("actif", dispoActive);
 
   if (dispoActive) {
+    alertePermissionSuiviMontree = false;
     demarrerPartagePosition();
   } else {
     arreterPartagePosition();
@@ -1846,7 +1873,18 @@ switchDispo.addEventListener("click", () => {
 
 // Suivi GPS en continu : le téléphone donne sa position dès qu'il bouge,
 // et on l'envoie à la centrale toutes les 15 secondes (même si le chauffeur est à l'arrêt).
-let derniereLecturePosition = null, suiviGpsId = null, dernierEnvoiPosition = 0;
+let suiviGpsId = null, dernierEnvoiPosition = 0, alertePermissionSuiviMontree = false;
+// Erreur du suivi GPS : permission refusée -> message une seule fois + interrupteur remis sur OFF ;
+// délai dépassé / position indisponible -> silencieux (le suivi continue).
+function gererErreurSuiviGps(err) {
+  console.error("Erreur GPS :", err);
+  if (!err || err.code !== 1 || !dispoActive || alertePermissionSuiviMontree) return;
+  alertePermissionSuiviMontree = true;
+  dispoActive = false;
+  switchDispo.classList.remove("actif");
+  arreterPartagePosition();
+  alert(messageErreurPosition(err));
+}
 function demarrerPartagePosition() {
   if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible sur cet appareil."); return; }
   if (positionInterval) clearInterval(positionInterval);
@@ -1856,7 +1894,7 @@ function demarrerPartagePosition() {
         derniereLecturePosition = pos;
         if (Date.now() - dernierEnvoiPosition > 14000) envoyerPositionLue(pos);
       },
-      (err) => console.error("Erreur GPS :", err),
+      gererErreurSuiviGps,
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
     );
   }
@@ -1923,7 +1961,7 @@ async function envoyerPosition() {
       disponible: true,
       updated_at: new Date().toISOString()
     });
-  }, (err) => console.error("Erreur GPS :", err), { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
+  }, gererErreurSuiviGps, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 }
 
 async function metPositionIndisponible() {
