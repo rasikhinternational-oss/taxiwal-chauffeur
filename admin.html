@@ -45,17 +45,6 @@ function formatIndex(v) {
   if (Number.isInteger(n) && n >= 0 && n < 1000) return String(n).padStart(3, "0");
   return String(v);
 }
-
-// Impression : adresse raccourcie (sans « , Région wallonne », « , Hainaut », « , Belgique »… ni « Notes: … »),
-// limitée à ~70 caractères et à 2 lignes (CSS .lieu-l).
-function lieuImpression(v, prefixe) {
-  if (v === null || v === undefined || v === "") return "";
-  let s = String(v).replace(/\s+notes?\s*:[\s\S]*$/i, "");
-  s = s.replace(/,\s*(r[ée]gion wallonne|wallonie|hainaut|province de hainaut|belgique|belgium|belgi[ëe])\b\.?/gi, "");
-  s = s.replace(/\s+/g, " ").replace(/[\s,]+$/, "").trim();
-  if (s.length > 70) s = s.slice(0, 69).replace(/[\s,]+$/, "") + "…";
-  return '<span class="lieu-l">' + (prefixe || "") + esc(s) + "</span>";
-}
 // ================== PLUSIEURS ADRESSES (arrêts : autres prises en charge / déposes) ==================
 // ================== CALCUL DU PRIX CONSEILLÉ (tarif officiel + km d'approche Mons-Borinage) ==================
 // Tarif officiel : prise en charge 3,10 € (jour) / 6,20 € (nuit 22h-6h), 2,50 €/km aller simple,
@@ -212,13 +201,6 @@ window.onerror = function(msg, url, line, col, err) {
 
   section{ display:none; padding:20px; }
   section.visible{ display:block; }
-  /* Menu en grille ↔ section plein écran */
-  body.mode-section-admin header nav{ display:none; }
-  #barre-section-admin{ display:none; align-items:center; gap:10px; margin-top:10px; }
-  body.mode-section-admin #barre-section-admin{ display:flex; }
-  #btn-retour-menu{ width:auto; flex-shrink:0; padding:11px 16px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-size:1rem; font-weight:800; cursor:pointer; }
-  #titre-section-admin{ flex:1; min-width:0; font-weight:800; font-size:1.05rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #titre-section-admin .badge-demandes{ display:inline-block; min-width:20px; padding:1px 7px; margin-left:8px; border-radius:999px; background:var(--rouge); color:#fff; font-size:.8rem; font-weight:800; text-align:center; }
 
   /* Agenda / calendrier */
   .calendrier{ background:var(--noir-2); border-radius:12px; padding:14px; margin-bottom:16px; }
@@ -340,73 +322,6 @@ window.onerror = function(msg, url, line, col, err) {
   .ev-texte .ev-titre{ font-weight:800; }
   .ev-texte .ev-info{ font-size:.82rem; color:var(--gris); margin-top:2px; }
   .ev-passe{ opacity:.55; }
-  #cb-resume{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
-  #cb-resume div{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px; text-align:center; }
-  #cb-resume b{ display:block; font-size:1.25rem; }
-  #cb-resume span{ font-size:.72rem; color:var(--gris); }
-  .cb-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:.88rem; cursor:pointer; }
-  .cb-ligne .cb-haut{ display:flex; justify-content:space-between; gap:8px; font-weight:800; }
-  .cb-ligne .cb-roule{ color:#1d4f86; font-weight:700; margin-top:4px; }
-  .cb-ligne .cb-info{ color:var(--gris); font-size:.8rem; margin-top:2px; }
-  .fa-carte{ background:#fff; border:1px solid #ddd; border-left:5px solid #1d4ed8; border-radius:12px; padding:14px; margin-bottom:14px; color:#222; }
-  .fa-carte.fa-envoyee{ border-left-color:#16a34a; } .fa-carte.fa-refusee{ border-left-color:#999; opacity:.85; } .fa-carte.fa-en_cours{ border-left-color:#d97706; }
-  .fa-entete{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
-  .fa-nom{ font-weight:800; font-size:1.05rem; } .fa-date{ font-size:.8rem; color:#666; margin-top:2px; }
-  .fa-statut{ flex:0 0 auto; font-size:.78rem; font-weight:700; background:#f3f3f1; border-radius:999px; padding:4px 10px; }
-  .fa-bloc{ margin-top:12px; background:#fafaf8; border:1px solid #eee; border-radius:10px; padding:10px; }
-  .fa-titre{ font-weight:800; margin-bottom:6px; }
-  .fa-ligne{ display:flex; gap:8px; font-size:.9rem; padding:2px 0; } .fa-ligne span{ flex:0 0 110px; color:#666; } .fa-ligne b{ font-weight:600; word-break:break-word; }
-  .fa-message{ margin-top:10px; padding:10px; border-radius:10px; background:#fff8e6; font-size:.9rem; white-space:pre-wrap; } .fa-reponse{ background:#f1f1f1; }
-  .fa-course{ border:1px solid #e6e6e3; background:#fff; border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:.88rem; cursor:pointer; }
-  .fa-course:hover{ border-color:#1d4ed8; } .fa-c-quand{ font-weight:700; } .fa-c-info{ color:#555; font-size:.82rem; margin-top:2px; } .fa-c-prix{ margin-top:4px; }
-  .fa-c-statut{ font-weight:500; font-size:.75rem; color:#666; background:#f1f1f1; border-radius:6px; padding:1px 6px; }
-  .fa-somme{ font-weight:800; text-align:right; margin:6px 0; } .fa-note{ font-size:.82rem; color:#8a6100; margin-top:6px; }
-  .fa-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-  .fa-btn{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:#222; font-weight:700; font-size:.85rem; cursor:pointer; margin-top:8px; }
-  .fa-actions .fa-btn{ margin-top:0; flex:1 1 auto; } .fa-btn.fa-principal{ background:#1d4ed8; color:#fff; border-color:#1d4ed8; } .fa-btn.fa-danger{ color:#b91c1c; }
-  .fa-btn:disabled{ opacity:.5; }
-  .pm-filtres{ display:flex; gap:6px; overflow-x:auto; margin-bottom:8px; padding-bottom:2px; }
-  .pm-filtres button{ flex:0 0 auto; width:auto; padding:8px 12px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:#333; font-weight:700; font-size:.82rem; cursor:pointer; }
-  .pm-filtres button.actif{ background:var(--noir); color:var(--blanc); border-color:var(--noir); }
-  .pm-btn-ajout{ width:100%; padding:12px; border:none; border-radius:10px; background:var(--vert); color:#fff; font-weight:800; margin:4px 0 12px; cursor:pointer; }
-  #pm-resume{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:8px; }
-  #pm-resume div{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px; text-align:center; }
-  #pm-resume b{ display:block; font-size:1.2rem; }
-  #pm-resume span{ font-size:.72rem; color:var(--gris); }
-  #pm-resume .pm-bc b{ color:#1f6b3f; }
-  #pm-resume .pm-vir b{ color:#1d4f86; }
-  #pm-frais{ background:#fff7e0; border:1px solid #f0d58a; color:#6b4a00; border-radius:10px; padding:8px 12px; font-size:.8rem; margin-bottom:14px; }
-  .pm-jour{ margin-bottom:16px; }
-  .pm-jour-titre{ font-weight:900; font-size:.95rem; margin:0 0 2px; text-transform:capitalize; }
-  .pm-jour-totaux{ font-size:.8rem; color:var(--gris); margin-bottom:6px; }
-  .pm-jour-totaux b{ color:#222; }
-  .pm-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px 12px; margin-bottom:6px; font-size:.88rem; display:flex; gap:10px; align-items:flex-start; }
-  .pm-ligne .pm-corps{ flex:1; min-width:0; cursor:pointer; }
-  .pm-ligne .pm-haut{ display:flex; justify-content:space-between; gap:8px; font-weight:800; }
-  .pm-ligne .pm-info{ color:var(--gris); font-size:.78rem; margin-top:3px; overflow-wrap:anywhere; }
-  .pm-badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:800; margin-right:4px; }
-  .pm-badge.bancontact{ background:#e7f5ec; color:#1f6b3f; }
-  .pm-badge.virement{ background:#eef4fb; color:#1d4f86; }
-  .pm-badge.autre{ background:#f1f1ef; color:#555; }
-  .pm-suppr{ flex:0 0 auto; width:auto; background:transparent; border:none; font-size:1.05rem; padding:4px; cursor:pointer; }
-  .pm-versement{ font-size:.8rem; font-weight:700; margin-top:4px; }
-  .pm-versement.verse{ color:#1f6b3f; }
-  .pm-versement.route{ color:#1d4f86; }
-  .pm-versement.attente{ color:#8a6100; }
-  .pm-versement.echoue{ color:#b3261e; }
-  .pm-actualiser{ width:100%; padding:10px; border:1px solid #cfcfcd; border-radius:10px; background:#fff; color:#333; font-weight:800; margin:0 0 6px; cursor:pointer; }
-  #pm-synchro{ font-size:.75rem; color:var(--gris); text-align:center; margin-bottom:10px; min-height:1em; }
-  #pm-resume .pm-verse b{ color:#1f6b3f; }
-  #pm-resume .pm-attente b{ color:#8a6100; }
-  .pm-po{ background:#fff; border:2px solid #cfe9d8; border-radius:12px; padding:10px 12px; margin-bottom:12px; }
-  .pm-po.route{ border-color:#cddff3; }
-  .pm-po.attente{ border-color:#f0d58a; }
-  .pm-po.echoue{ border-color:#f2c1bd; }
-  .pm-po-titre{ display:flex; justify-content:space-between; gap:8px; font-weight:900; font-size:.95rem; }
-  .pm-po-sous{ font-size:.76rem; color:var(--gris); margin:2px 0 8px; }
-  .pm-po-ligne{ display:flex; justify-content:space-between; gap:8px; font-size:.82rem; padding:5px 0; border-top:1px dashed #e3e3e0; cursor:pointer; }
-  .pm-po-ligne span:first-child{ min-width:0; overflow-wrap:anywhere; }
-  .cb-alerte{ color:#b3141b !important; }
   .pc-puces{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
   .pc-puces button{ width:auto; padding:10px 14px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:var(--blanc); font-weight:700; font-size:.9rem; }
   .pc-puces button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
@@ -466,72 +381,6 @@ window.onerror = function(msg, url, line, col, err) {
   #demandes-chauffeurs-fa .dc-actions .dc-suppr{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   nav button .badge-demandes{ display:inline-block; min-width:20px; padding:1px 6px; margin-left:6px; border-radius:999px; background:#fff; color:var(--rouge); font-size:.75rem; font-weight:800; }
   nav button.actif .badge-demandes{ background:#fff; }
-  nav button[data-onglet="messages"] .badge-demandes{ background:var(--rouge); color:#fff; }
-  nav button.actif[data-onglet="messages"] .badge-demandes{ background:#fff; color:var(--rouge); }
-
-  .num-resa-tag{ display:inline-block; font-size:.72rem; font-weight:800; color:#1d4f86; background:#eef4fb; border:1px solid #c7dbf0; border-radius:8px; padding:1px 7px; margin:0 6px 4px 0; letter-spacing:.3px; vertical-align:middle; }
-  .chat-resas-entete{ display:flex; flex-wrap:wrap; gap:6px; padding:6px 0 2px; }
-  .chat-resas-entete button{ width:auto; padding:3px 9px; border-radius:12px; border:1px solid #c7dbf0; background:#eef4fb; color:#1d4f86; font-size:.78rem; font-weight:800; cursor:pointer; }
-  #chat-recherche{ width:100%; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1px solid #cfcfcd; font-size:.95rem; margin-bottom:10px; background:#fff; }
-  .chat-chip select{ border:none; background:transparent; color:#1d4f86; font-weight:700; font-size:.8rem; max-width:240px; }
-  /* ---------- 💬 Messages clients (chat) ---------- */
-  .chat-admin{ display:grid; grid-template-columns:1fr; gap:14px; }
-  @media (min-width: 900px){ .chat-admin{ grid-template-columns:minmax(280px, 360px) 1fr; } .chat-admin .chat-retour{ display:none; } }
-  @media (max-width: 899px){ .chat-admin.conv-ouverte .chat-liste-zone{ display:none; } .chat-admin:not(.conv-ouverte) .chat-conv-zone{ display:none; } }
-  .chat-liste-zone h2, .chat-conv-zone h2{ font-size:1rem; margin:0 0 10px; }
-  .chat-conv-item{ display:flex; gap:10px; align-items:flex-start; background:#fff; border:1px solid #e2e2df; border-radius:12px; padding:11px 12px; margin-bottom:8px; cursor:pointer; }
-  .chat-conv-item.active{ border-color:var(--rouge); box-shadow:0 0 0 2px rgba(200,30,44,.15); }
-  .chat-conv-item.non-lu{ background:#fff7f7; border-color:#f1a9b0; }
-  .chat-conv-item .cc-corps{ flex:1; min-width:0; }
-  .chat-conv-item .cc-nom{ font-weight:800; font-size:.95rem; }
-  .chat-conv-item .cc-tel{ font-size:.78rem; color:var(--gris); }
-  .chat-conv-item .cc-apercu{ font-size:.85rem; color:#444; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px; }
-  .chat-conv-item.non-lu .cc-apercu{ font-weight:700; color:#111; }
-  .chat-conv-item .cc-droite{ text-align:right; flex-shrink:0; font-size:.75rem; color:var(--gris); }
-  .chat-conv-item .cc-nb{ display:inline-block; margin-top:4px; min-width:20px; padding:1px 7px; border-radius:999px; background:var(--rouge); color:#fff; font-weight:800; font-size:.75rem; }
-  .chat-conv-entete{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
-  .chat-conv-entete .ce-nom{ font-weight:800; font-size:1.05rem; flex:1; min-width:150px; }
-  .chat-conv-entete .ce-nom small{ display:block; font-weight:400; font-size:.8rem; color:var(--gris); }
-  .chat-conv-entete a, .chat-conv-entete button{ width:auto; padding:9px 12px; border-radius:10px; font-weight:700; font-size:.85rem; text-decoration:none; border:1px solid #cfcfcd; background:#fff; color:#1c1c1c; cursor:pointer; }
-  .chat-conv-entete a.wa{ background:#25d366; border-color:#25d366; color:#fff; }
-  .chat-conv-entete a.tel{ background:var(--vert); border-color:var(--vert); color:#fff; }
-  .chat-fil-admin{ background:#f1f1ee; border:1px solid #e2e2df; border-radius:14px; padding:12px 10px; height:min(60vh, 560px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
-  .chat-fil-admin .chat-jour{ align-self:center; font-size:.72rem; color:var(--gris); background:#fff; border-radius:10px; padding:2px 10px; margin:4px 0; }
-  .chat-fil-admin .bulle{ max-width:80%; padding:8px 11px 6px; border-radius:14px; font-size:.93rem; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; box-shadow:0 1px 1px rgba(0,0,0,.06); }
-  .chat-fil-admin .bulle.admin{ align-self:flex-end; background:#dcf3e4; border-bottom-right-radius:4px; }
-  .chat-fil-admin .bulle.client{ align-self:flex-start; background:#fff; border-bottom-left-radius:4px; }
-  .chat-fil-admin .bulle .meta{ font-size:.7rem; color:var(--gris); text-align:right; margin-top:3px; }
-  .chat-fil-admin .tag-course{ display:inline-block; font-size:.74rem; font-weight:700; background:#eef4fb; color:#1d4f86; border:1px solid #c7dbf0; border-radius:8px; padding:2px 7px; margin-bottom:4px; cursor:pointer; }
-  .chat-composer-admin{ margin-top:10px; }
-  .chat-etat-pill{ display:inline-block; margin:0 0 8px; padding:4px 10px; border-radius:14px; font-size:.8rem; font-weight:700; }
-  .chat-etat-pill.ouvert{ background:rgba(31,138,76,.14); color:#1f8a4c; }
-  .chat-etat-pill.ferme{ background:#ececea; color:#555; border:1px solid #d6d6d3; }
-  .chat-note-ferme{ font-size:.8rem; color:#666; margin:0 0 6px; }
-  .chat-composer-admin .chat-chip{ display:inline-flex; align-items:center; gap:6px; background:#eef4fb; color:#1d4f86; border:1px solid #c7dbf0; border-radius:16px; padding:4px 6px 4px 10px; font-size:.8rem; font-weight:700; margin-bottom:6px; }
-  .chat-composer-admin .chat-chip button{ width:auto; padding:0 7px; border:none; border-radius:10px; background:transparent; color:#1d4f86; font-size:1rem; cursor:pointer; }
-  .chat-composer-admin .chat-saisie{ display:flex; gap:8px; align-items:flex-end; }
-  .chat-composer-admin textarea{ flex:1; min-width:0; resize:none; padding:11px 12px; border-radius:12px; border:1px solid #cfcfcd; background:#fff; font-size:1rem; font-family:inherit; max-height:160px; box-sizing:border-box; }
-  .chat-composer-admin .chat-saisie button{ width:auto; flex:0 0 auto; padding:12px 18px; border-radius:12px; border:none; background:var(--vert); color:#fff; font-weight:800; cursor:pointer; }
-  /* ---------- 💬 Messages : bascule Clients / Chauffeurs + nouveau message ---------- */
-  .chat-seg{ display:flex; gap:0; margin-bottom:10px; border:1px solid #cfcfcd; border-radius:12px; overflow:hidden; background:#fff; }
-  .chat-seg button{ flex:1; width:auto; padding:11px 8px; border:none; background:#fff; color:#333; font-weight:800; font-size:.92rem; cursor:pointer; border-radius:0; }
-  .chat-seg button + button{ border-left:1px solid #cfcfcd; }
-  .chat-seg button.actif{ background:var(--rouge); color:#fff; }
-  .chat-seg .seg-nb{ display:inline-block; margin-left:5px; min-width:18px; padding:1px 6px; border-radius:999px; background:var(--rouge); color:#fff; font-size:.75rem; }
-  .chat-seg button.actif .seg-nb{ background:#fff; color:var(--rouge); }
-  .chat-seg .seg-nb:empty{ display:none; }
-  .btn-nouveau-message{ display:block; width:100%; margin:0 0 10px; padding:11px; border-radius:10px; border:2px dashed #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:800; font-size:.95rem; cursor:pointer; }
-  #modale-nouveau-message{ display:none; position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.55); align-items:flex-start; justify-content:center; padding:calc(env(safe-area-inset-top,0px) + 20px) 12px 20px; overflow-y:auto; }
-  #modale-nouveau-message .nm-boite{ background:#fff; color:#1c1c1c; width:100%; max-width:520px; border-radius:16px; padding:16px; box-shadow:0 14px 40px rgba(0,0,0,.3); }
-  #modale-nouveau-message h2{ margin:0 0 10px; font-size:1.1rem; }
-  #modale-nouveau-message input[type=search]{ width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; margin-bottom:10px; }
-  #nm-liste{ max-height:55vh; overflow-y:auto; }
-  #nm-liste .nm-item{ display:block; width:100%; text-align:left; background:#fff; border:1px solid #e2e2df; border-radius:10px; padding:10px 12px; margin-bottom:6px; cursor:pointer; color:#1c1c1c; }
-  #nm-liste .nm-item:hover{ border-color:var(--rouge); }
-  #nm-liste .nm-item b{ display:block; font-size:.95rem; }
-  #nm-liste .nm-item small{ display:block; color:var(--gris); font-size:.8rem; margin-top:2px; }
-  .btn-chat-carte.chauffeur{ border-color:#5a3d8a; background:#f3eefb; color:#5a3d8a; }
-  .btn-chat-carte{ display:block; width:100%; margin-top:8px; padding:10px; border-radius:9px; border:1px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:800; cursor:pointer; }
   #feuilles-sous-onglets{ display:flex; gap:8px; margin-bottom:14px; }
   #feuilles-sous-onglets button{ width:auto; padding:9px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
   #feuilles-sous-onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
@@ -767,7 +616,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button id="btn-menu-admin" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
     <div id="menu-admin-deroulant" style="display:none; position:absolute; top:46px; right:0; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
       <button id="btn-email-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">✉️ E-mails (codes clients, Brevo)</button>
-      <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Stripe · Bancontact)</button>
+      <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Apple Pay…)</button>
       <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
     </div>
   </div>
@@ -779,10 +628,6 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="par-chauffeur">👤 Courses par chauffeur</button>
     <button data-onglet="horaires">🗓️ Horaires</button>
     <button data-onglet="evenements">📅 Événements</button>
-    <button data-onglet="carburant">⛽ Carburant</button>
-    <button data-onglet="paiements">💳 Paiements</button>
-    <button data-onglet="factures">🧾 Factures</button>
-    <button data-onglet="messages">💬 Messages</button>
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
@@ -790,17 +635,13 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="carnet">📇 Carnet clients</button>
     <button data-onglet="clients">👥 Comptes clients app</button>
   </nav>
-  <div id="barre-section-admin">
-    <button type="button" id="btn-retour-menu">← Menu</button>
-    <span id="titre-section-admin"></span>
-  </div>
   <button id="btn-installer-app" style="display:none; margin-top:10px; background:var(--vert); border:none; border-radius:8px; color:#fff; padding:10px; font-weight:600; cursor:pointer;">📲 Installer l'application</button>
 </header>
 
 <section id="section-courses" class="visible">
   <button id="btn-nouvelle-course">+ Nouvelle course</button>
   <button id="btn-toggle-historique" style="width:100%; padding:12px; border-radius:10px; background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
-  <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse, N° TW-…)">
+  <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse...)">
   <div id="barre-assignation-groupee" style="display:none;">
     <span id="nb-courses-selectionnees">0</span> course(s) sélectionnée(s) —
     <select id="select-assignation-groupee"></select>
@@ -829,6 +670,20 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-carte">
   <div id="carte"></div>
   <div id="carte-liste-chauffeurs"></div>
+
+  <div id="outil-trajet-jour" style="background:#fff; border-radius:12px; padding:14px; margin:12px 0; box-shadow:0 1px 6px rgba(0,0,0,.08);">
+    <h3 style="margin-top:0;">🛣️ Trajet d'une journée</h3>
+    <p style="margin:4px 0 10px; font-size:.85rem; color:#555;">Revoir tout le chemin d'un chauffeur, ses arrêts et leur durée.</p>
+    <label>Chauffeur</label>
+    <select id="tj-chauffeur"></select>
+    <label>Date</label>
+    <input type="date" id="tj-date">
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button id="tj-afficher" style="flex:1;">Afficher le trajet</button>
+      <button id="tj-effacer" class="secondaire" style="flex:0 0 auto; width:auto; padding:0 14px;">Effacer</button>
+    </div>
+    <div id="tj-resultat" style="margin-top:10px; font-size:.9rem;"></div>
+  </div>
 
   <div id="outil-calcul">
     <h3>🧭 Calculer un trajet</h3>
@@ -889,89 +744,6 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-par-chauffeur">
   <div id="pc-puces" class="pc-puces"></div>
   <div id="pc-liste"></div>
-</section>
-
-<section id="section-carburant">
-  <div class="ev-barre">
-    <select id="cb-vehicule" style="flex:1;"></select>
-    <button type="button" id="cb-ajouter" style="flex:0 0 auto;">➕ Plein</button>
-  </div>
-  <div id="cb-resume"></div>
-  <div id="cb-liste"></div>
-</section>
-
-<section id="section-messages">
-  <div class="chat-admin" id="chat-admin">
-    <div class="chat-liste-zone">
-      <div class="chat-seg" id="chat-seg">
-        <button type="button" data-mode="clients" class="actif">👤 Clients<span class="seg-nb" id="seg-nb-clients"></span></button>
-        <button type="button" data-mode="chauffeurs">🚖 Chauffeurs<span class="seg-nb" id="seg-nb-chauffeurs"></span></button>
-      </div>
-      <button type="button" class="btn-nouveau-message" id="btn-nouveau-message">✏️ Nouveau message</button>
-      <div id="chat-mode-clients">
-        <h2>💬 Conversations clients</h2>
-        <input type="search" id="chat-recherche" placeholder="🔍 Nom, téléphone ou N° de réservation" autocomplete="off">
-        <div id="chat-liste"><p style="color:#666;">Chargement…</p></div>
-      </div>
-      <div id="chat-mode-chauffeurs" style="display:none;">
-        <h2>🚖 Conversations chauffeurs</h2>
-        <input type="search" id="chch-recherche" placeholder="🔍 Nom ou téléphone du chauffeur" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1px solid #cfcfcd; font-size:.95rem; margin-bottom:10px; background:#fff;">
-        <div id="chch-liste"><p style="color:#666;">Chargement…</p></div>
-      </div>
-    </div>
-    <div class="chat-conv-zone" id="chat-conv-zone">
-      <p style="color:#666; text-align:center; padding:30px 10px;">Choisis une conversation à gauche.</p>
-    </div>
-  </div>
-</section>
-
-<div id="modale-nouveau-message">
-  <div class="nm-boite">
-    <h2>✏️ Nouveau message</h2>
-    <div class="chat-seg" id="nm-seg">
-      <button type="button" data-type="client" class="actif">👤 Client</button>
-      <button type="button" data-type="chauffeur">🚖 Chauffeur</button>
-    </div>
-    <input type="search" id="nm-recherche" placeholder="🔍 Nom, téléphone ou e-mail" autocomplete="off">
-    <div id="nm-liste"><p style="color:#666;">Chargement…</p></div>
-    <p style="font-size:.78rem; color:var(--gris); margin:8px 0 0;">Seuls les clients qui ont un compte dans l'application peuvent recevoir un message (onglet « 💬 Messages » de leur app + e-mail).</p>
-    <button type="button" id="nm-fermer" style="margin-top:12px; width:100%; padding:12px; border-radius:10px; border:1px solid #cfcfcd; background:#f1f1ee; color:#1c1c1c; font-weight:700;">Fermer</button>
-  </div>
-</div>
-
-<section id="section-factures">
-  <div class="pm-filtres" id="fa-filtres">
-    <button type="button" data-f="a_traiter" class="actif">À traiter</button>
-    <button type="button" data-f="envoyee">Envoyées</button>
-    <button type="button" data-f="refusee">Refusées</button>
-    <button type="button" data-f="toutes">Toutes</button>
-  </div>
-  <div id="fa-liste"></div>
-</section>
-
-<section id="section-paiements">
-  <div class="pm-filtres" id="pm-periodes">
-    <button type="button" data-p="jour">Aujourd'hui</button>
-    <button type="button" data-p="7j">7 jours</button>
-    <button type="button" data-p="mois" class="actif">Ce mois</button>
-    <button type="button" data-p="mois-1">Mois précédent</button>
-    <button type="button" data-p="tout">Tout</button>
-  </div>
-  <div class="pm-filtres" id="pm-methodes">
-    <button type="button" data-m="" class="actif">Tous</button>
-    <button type="button" data-m="bancontact">📱 Bancontact</button>
-    <button type="button" data-m="virement">🏦 Virement</button>
-  </div>
-  <div class="pm-filtres" id="pm-vues">
-    <button type="button" data-v="jour" class="actif">📅 Par jour de paiement</button>
-    <button type="button" data-v="versement">🏦 Vue par versement bancaire</button>
-  </div>
-  <button type="button" id="pm-ajouter" class="pm-btn-ajout">➕ Ajouter un paiement</button>
-  <button type="button" id="pm-actualiser" class="pm-actualiser">🔄 Actualiser les versements</button>
-  <div id="pm-synchro"></div>
-  <div id="pm-resume"></div>
-  <div id="pm-frais"></div>
-  <div id="pm-liste"></div>
 </section>
 
 <section id="section-evenements">
@@ -1057,7 +829,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <section id="section-clients">
   <div id="bloc-leads-site"></div>
-  <input type="text" id="recherche-client" placeholder="🔍 Rechercher un client (nom, téléphone ou N° de réservation)">
+  <input type="text" id="recherche-client" placeholder="🔍 Rechercher un client (nom ou téléphone)">
   <div id="liste-clients-admin"></div>
 </section>
 
@@ -1383,8 +1155,6 @@ function demarrerAdmin() {
   chargerCarnet();
   chargerCoursesAdmin();
   setInterval(() => chargerCoursesAdmin(true), 20000);
-  try { demarrerFacturesAdmin(); } catch (e) { console.warn("factures :", e); }
-  try { demarrerChatAdmin(); } catch (e) { console.warn("chat :", e); }
   setInterval(() => {
     if (document.getElementById("section-caisse").classList.contains("visible")) chargerCaisse();
   }, 20000);
@@ -1480,30 +1250,15 @@ document.getElementById("btn-email-admin").addEventListener("click", async () =>
   if (error) { alert("Erreur : " + error.message); return; }
   alert(cle.trim() ? "✅ Clé enregistrée. Les clients reçoivent maintenant « Ton code Taxi Wal » en français." : "Envoi d'e-mails désactivé.");
 });
-async function lireErreurFonction(err) {
-  try { const j = await err.context.json(); if (j && j.erreur) return j.erreur; } catch (e) {}
-  return (err && err.message) || "erreur inconnue";
-}
 document.getElementById("btn-paiement-en-ligne-admin").addEventListener("click", async () => {
-  const { data: etat } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "etat_admin" } });
-  let txt = "❌ PAS ACTIVÉ";
-  if (etat && etat.configuree) {
-    txt = (etat.mode === "actif" ? "✅ ACTIF (paiements réels)" : etat.mode === "test" ? "🧪 MODE TEST (aucun vrai paiement)" : "⚠️ clé inconnue") +
-      "\nClé enregistrée : …" + etat.fin + (etat.webhook ? "\nConfirmation automatique (webhook) : ✅ installée" : "\nConfirmation automatique (webhook) : ❌ pas encore installée");
-  }
-  const cle = prompt("Paiement en ligne des courses par Bancontact (app Bancontact / QR) via Stripe.\n\nÉtat actuel : " + txt +
-    "\n\nClé secrète Stripe (commence par sk_live_ ou sk_test_).\nLaisse vide et valide pour DÉSACTIVER.");
+  const { data: etat } = await supabase.rpc("paiement_en_ligne_etat");
+  const txt = { actif: "✅ ACTIF (paiements réels)", test: "🧪 MODE TEST (aucun vrai paiement)", inactif: "❌ PAS ACTIVÉ" }[etat] || etat;
+  const cle = prompt("Paiement en ligne des acomptes (Apple Pay, Bancontact, carte) via Mollie.\n\nÉtat actuel : " + txt +
+    "\n\nColle ta clé API Mollie (commence par live_ ou test_).\nLaisse vide et valide pour DÉSACTIVER.");
   if (cle === null) return;
-  const k = cle.trim();
-  if (k && !/^(sk|rk)_/.test(k)) { alert("Clé Stripe invalide : elle commence par sk_live_ ou sk_test_ (Stripe → Développeurs → Clés API → Clé secrète)."); return; }
-  const r1 = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "enregistrer_cle", cle: k } });
-  const e1 = (r1.data && r1.data.erreur) || (r1.error && await lireErreurFonction(r1.error));
-  if (e1) { alert("Erreur : " + e1); return; }
-  if (!k) { alert("Paiement en ligne désactivé."); return; }
-  const r2 = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "installer_webhook" } });
-  const e2 = (r2.data && r2.data.erreur) || (r2.error && await lireErreurFonction(r2.error));
-  if (e2) { alert("⚠️ Clé enregistrée, mais la confirmation automatique n'a pas pu être installée chez Stripe :\n" + e2 + "\n\nLes paiements seront quand même confirmés quand le client revient sur l'app après avoir payé. Réessaie plus tard via ce menu."); return; }
-  alert("✅ Clé Stripe enregistrée (" + (r1.data.mode === "actif" ? "paiements réels" : "mode test") + ") et confirmation automatique installée.\nLes clients voient maintenant le bouton « 📱 Payer avec Bancontact ».");
+  const { error } = await supabase.rpc("admin_definir_cle_paiement", { p_cle: cle });
+  if (error) { alert("Erreur : " + error.message); return; }
+  alert(cle.trim() ? "✅ Clé enregistrée. Les clients voient maintenant le bouton « 💳 Payer maintenant »." : "Paiement en ligne désactivé.");
 });
 document.getElementById("btn-deconnexion-admin").addEventListener("click", async () => {
   if (!confirm("Se déconnecter de l'administration Taxi Wal ?")) return;
@@ -1525,90 +1280,12 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "par-chauffeur") afficherCoursesParChauffeur();
     if (btn.dataset.onglet === "demandes-clients") afficherDemandesClients();
     if (btn.dataset.onglet === "evenements") chargerEvenements();
-    if (btn.dataset.onglet === "carburant") chargerCarburant();
-    if (btn.dataset.onglet === "paiements") { chargerPaiements(); pmSynchroniser(true); }
-    if (btn.dataset.onglet === "factures") chargerFacturesAdmin();
-    if (btn.dataset.onglet === "messages") { chargerConversationsAdmin(); chargerConversationsChauffeursAdmin(); if (chatClientOuvert) chatMarquerLuAdmin(); if (chchOuvert) chchMarquerLu(); }
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
     if (btn.dataset.onglet === "carnet") chargerCarnet();
   });
 });
-
-// ================== MENU EN GRILLE ↔ SECTION PLEIN ÉCRAN ==================
-// Au démarrage : seule la grille de tuiles est visible. Toucher une tuile ouvre sa section
-// seule (la grille disparaît) avec une barre « ← Menu » en haut. Le geste/bouton retour du
-// téléphone ferme d'abord ce qui est ouvert en grand, puis revient à la grille.
-let ongletAdminOuvert = null;
-function majBarreSectionAdmin() {
-  const titre = document.getElementById("titre-section-admin");
-  if (!titre) return;
-  const btn = ongletAdminOuvert && document.querySelector('nav button[data-onglet="' + ongletAdminOuvert + '"]');
-  if (!btn) { titre.textContent = ""; return; }
-  let nom = "";
-  btn.childNodes.forEach(n => { if (!(n.nodeType === 1 && n.classList.contains("badge-demandes"))) nom += n.textContent; });
-  titre.textContent = nom.trim();
-  const badge = btn.querySelector(".badge-demandes");
-  if (badge && badge.textContent.trim()) {
-    const b = document.createElement("span");
-    b.className = "badge-demandes";
-    b.textContent = badge.textContent.trim();
-    titre.appendChild(b);
-  }
-}
-function ouvrirSectionAdminPleinEcran(onglet) {
-  const etaitEnSection = !!ongletAdminOuvert;
-  ongletAdminOuvert = onglet;
-  document.body.classList.add("mode-section-admin");
-  majBarreSectionAdmin();
-  try {
-    if (etaitEnSection && history.state && history.state.sectionAdmin) history.replaceState({ sectionAdmin: onglet }, "");
-    else history.pushState({ sectionAdmin: onglet }, "");
-  } catch (e) {}
-  window.scrollTo(0, 0);
-}
-function revenirAuMenuAdmin() {
-  ongletAdminOuvert = null;
-  document.body.classList.remove("mode-section-admin");
-  document.querySelectorAll("nav button").forEach(b => b.classList.remove("actif"));
-  document.querySelectorAll("section").forEach(s => s.classList.remove("visible"));
-  majBarreSectionAdmin();
-  window.scrollTo(0, 0);
-}
-// Ferme l'élément ouvert « en grand » le plus haut (carte de course, feuille plein écran,
-// ligne en grand, conversation sur téléphone). Renvoie true si quelque chose a été fermé.
-function fermerElementEnGrandAdmin() {
-  const fermerFa = document.querySelector("#overlay-plein-ecran-fa button");
-  if (document.getElementById("overlay-plein-ecran-fa") && fermerFa) { fermerFa.click(); return true; }
-  const ligne = document.querySelector(".plein-ecran-ligne .btn-grand-ligne");
-  if (ligne) { ligne.click(); return true; }
-  const carte = document.querySelector(".carte-en-grand .btn-carte-grand");
-  if (carte) { carte.click(); return true; }
-  const chat = document.querySelector("#section-messages.visible .chat-admin.conv-ouverte .chat-retour");
-  if (chat && window.innerWidth < 900) { chat.click(); return true; }
-  return false;
-}
-document.querySelectorAll("nav button").forEach(btn => {
-  btn.addEventListener("click", () => ouvrirSectionAdminPleinEcran(btn.dataset.onglet));
-});
-document.getElementById("btn-retour-menu").addEventListener("click", () => {
-  if (history.state && history.state.sectionAdmin) history.back();   // → popstate → grille
-  else revenirAuMenuAdmin();
-});
-window.addEventListener("popstate", () => {
-  if (!ongletAdminOuvert) return;
-  if (fermerElementEnGrandAdmin()) {
-    // on reste dans la section : on remet l'entrée d'historique pour le prochain « retour »
-    try { history.pushState({ sectionAdmin: ongletAdminOuvert }, ""); } catch (e) {}
-    return;
-  }
-  revenirAuMenuAdmin();
-});
-// Pastilles (messages non lus, factures, demandes…) : recopiées dans la barre de la section
-new MutationObserver(() => { if (ongletAdminOuvert) majBarreSectionAdmin(); })
-  .observe(document.querySelector("header nav"), { childList: true, subtree: true, characterData: true });
-revenirAuMenuAdmin();   // démarrage : grille des tuiles
 
 // ================== HORAIRES DES CHAUFFEURS (planning semaine) ==================
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -1765,59 +1442,6 @@ let vehiculesCache = [];
 let dernieresCoursesAdmin = [];
 const coursesOuvertes = new Set();
 
-// ---------- Numéro de réservation (TW-10023) : recherche avec ou sans « TW- » ----------
-// Texte indexable d'un numéro : "tw-10023 tw10023 10023"
-function texteNumeroResa(num) {
-  if (!num) return "";
-  const n = String(num).toLowerCase(), chiffres = n.replace(/\D/g, "");
-  return `${n} ${n.replace(/[^a-z0-9]/g, "")} ${chiffres}`;
-}
-// Normalise une saisie de recherche : "TW 10023" / "tw_10023" → "tw-10023" (le reste est inchangé, en minuscules)
-function normaliserRechercheResa(q) {
-  const t = String(q || "").trim().toLowerCase();
-  const m = t.match(/^tw[\s_\-.]*(\d+)$/);
-  return m ? "tw-" + m[1] : t;
-}
-// La saisie ressemble-t-elle à un numéro de réservation ? → renvoie "TW-10023" (sinon null)
-function numeroResaDepuisSaisie(q) {
-  const m = String(q || "").trim().match(/^(?:tw)?[\s_\-.]*(\d{5,6})$/i);
-  return m ? "TW-" + m[1] : null;
-}
-const correspondNumeroResa = (num, q) => !!num && !!q && texteNumeroResa(num).includes(normaliserRechercheResa(q));
-const badgeNumeroResa = (num) => num ? `<span class="num-resa-tag" title="Numéro de réservation">N° ${esc(num)}</span>` : "";
-
-// Ouvre la carte d'une course en plein écran à partir de son numéro (même si elle n'est pas dans la liste chargée)
-async function ouvrirCourseParNumero(numero, texteFermer) {
-  const num = String(numero || "").toUpperCase();
-  let course = dernieresCoursesAdmin.find(c => String(c.numero_reservation || "").toUpperCase() === num);
-  if (!course) {
-    const { data, error } = await supabase.from("courses")
-      .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom), vehicules:vehicule_id(nom, plaque, places)")
-      .eq("numero_reservation", num).maybeSingle();
-    if (error || !data) return false;
-    course = data;
-  }
-  ouvrirCarteCourseEnGrand(course, texteFermer || "✕ Fermer");
-  return true;
-}
-function ouvrirCarteCourseEnGrand(course, texteFermer) {
-  document.querySelectorAll("body > .carte-en-grand").forEach(c => c.remove());
-  document.querySelectorAll(".carte-en-grand").forEach(x => x.classList.remove("carte-en-grand"));
-  const dejaOuverte = coursesOuvertes.has(course.id);
-  coursesOuvertes.add(course.id);
-  const carte = construireCarteAdmin(course);
-  if (!dejaOuverte) coursesOuvertes.delete(course.id);
-  carte.classList.add("carte-en-grand");
-  document.body.classList.add("carte-grand-ouverte");
-  const btn = carte.querySelector(".btn-carte-grand");
-  if (btn) {
-    btn.textContent = texteFermer || "✕ Fermer";
-    btn.addEventListener("click", () => { if (!carte.classList.contains("carte-en-grand")) carte.remove(); });
-  }
-  document.body.appendChild(carte);
-  carte.scrollTop = 0;
-}
-
 function optionsChauffeursEtPartenaires(idSelectionne) {
   let html = `<option value="">— Aucun (à attribuer plus tard) —</option>`;
   if (chauffeursCache.length) {
@@ -1913,36 +1537,11 @@ function jouerSonAlerteAdmin() {
   }
 }
 
-// Grande alerte qui reste à l'écran jusqu'à ce que l'admin touche « Vu »
-function alerteImportanteAdmin(titre, texte, course, couleur, fond) {
-  jouerSonAlerteAdmin();
-  try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
-  if ("Notification" in window && Notification.permission === "granted") {
-    try { new Notification(titre, { body: texte.replace(/<[^>]+>/g, " "), tag: course ? "paiement-" + course.id : "alerte-" + Date.now(), requireInteraction: true }); } catch (e) {}
-  }
-  let pile = document.getElementById("pile-alertes-admin");
-  if (!pile) {
-    pile = document.createElement("div");
-    pile.id = "pile-alertes-admin";
-    pile.style.cssText = "position:fixed; left:10px; right:10px; top:calc(env(safe-area-inset-top,0px) + 10px); z-index:5000; display:flex; flex-direction:column; gap:8px;";
-    document.body.appendChild(pile);
-  }
-  const quand = course && course.date_heure ? new Date(course.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
-  const a = document.createElement("div");
-  a.style.cssText = `background:${fond}; border:3px solid ${couleur}; color:${couleur}; border-radius:14px; padding:14px 16px; box-shadow:0 10px 30px rgba(0,0,0,.25);`;
-  a.innerHTML = `<div style="font-weight:900; font-size:1.1rem;">${titre}</div>
-    <div style="margin-top:6px; color:#222; font-size:.95rem;">${texte}</div>
-    ${course ? `<div style="margin-top:4px; color:#555; font-size:.82rem;">Course ${course.numero_reservation ? esc(course.numero_reservation) + " · " : ""}${esc(quand)} · ${esc(course.adresse_depart || "")} → ${esc(course.adresse_arrivee || "")}</div>` : ""}
-    <button type="button" style="margin-top:10px; width:100%; padding:12px; border:none; border-radius:10px; background:${couleur}; color:#fff; font-weight:800;">👍 Vu</button>`;
-  a.querySelector("button").addEventListener("click", () => a.remove());
-  pile.appendChild(a);
-}
-
 function notifierNouvelleCourseAdmin(course) {
   jouerSonAlerteAdmin();
   if ("Notification" in window && Notification.permission === "granted") {
     new Notification("🚕 Nouvelle demande de course — vérifie vite !", {
-      body: `${course.numero_reservation ? course.numero_reservation + " · " : ""}${course.client_nom || "Client"} — ${course.adresse_depart} → ${course.adresse_arrivee}`,
+      body: `${course.client_nom || "Client"} — ${course.adresse_depart} → ${course.adresse_arrivee}`,
       tag: "admin-course-" + course.id,
       requireInteraction: true
     });
@@ -1999,391 +1598,6 @@ document.getElementById("btn-assigner-groupe").addEventListener("click", async (
   mettreAJourBarreAssignationGroupee();
   chargerCoursesAdmin();
 });
-
-// ================== ⛽ CARBURANT : km entre deux pleins + consommation ==================
-let pleinsCache = [];
-async function chargerCarburant() {
-  const sel = document.getElementById("cb-vehicule");
-  if (!sel.options.length) {
-    (vehiculesCache || []).forEach(v => sel.add(new Option(v.nom + (v.plaque ? " · " + v.plaque : ""), v.id)));
-    sel.addEventListener("change", afficherCarburant);
-  }
-  const { data, error } = await supabase.from("pleins_carburant").select("*, profils:chauffeur_id(nom)").order("km_compteur", { ascending: true });
-  if (error) { document.getElementById("cb-liste").textContent = "Erreur : " + error.message; return; }
-  pleinsCache = data || [];
-  afficherCarburant();
-}
-function afficherCarburant() {
-  const vid = document.getElementById("cb-vehicule").value;
-  const liste = pleinsCache.filter(p => p.vehicule_id === vid);
-  const f1 = n => Number(n).toFixed(1).replace(".", ",");
-  // calcul : km roulés depuis le plein précédent ; consommation entre deux PLEINS COMPLETS
-  let dernierComplet = null, litresDepuis = 0, montantDepuis = 0;
-  const lignes = liste.map((p, i) => {
-    const prec = liste[i - 1];
-    const roule = prec ? p.km_compteur - prec.km_compteur : null;
-    litresDepuis += Number(p.litres || 0); montantDepuis += Number(p.montant || 0);
-    let conso = null, euroKm = null, kmConso = null;
-    if (p.plein_complet && dernierComplet && p.litres) {
-      kmConso = p.km_compteur - dernierComplet.km_compteur;
-      if (kmConso > 0) { conso = litresDepuis / kmConso * 100; euroKm = montantDepuis ? montantDepuis / kmConso * 100 : null; }
-    }
-    if (p.plein_complet) { dernierComplet = p; litresDepuis = 0; montantDepuis = 0; }
-    return { ...p, roule, conso, euroKm };
-  });
-  const avecConso = lignes.filter(l => l.conso);
-  const consoMoy = avecConso.length ? avecConso.reduce((s, l) => s + l.conso, 0) / avecConso.length : null;
-  const il30 = Date.now() - 30 * 864e5;
-  const recents = lignes.filter(l => new Date(l.fait_le).getTime() > il30);
-  const km30 = recents.reduce((s, l) => s + (l.roule > 0 ? l.roule : 0), 0);
-  const eur30 = recents.reduce((s, l) => s + Number(l.montant || 0), 0);
-  document.getElementById("cb-resume").innerHTML = `
-    <div><b>${consoMoy ? f1(consoMoy) : "—"}</b><span>L/100 km (moyenne)</span></div>
-    <div><b>${km30.toLocaleString("fr-BE")}</b><span>km entre pleins (30 j)</span></div>
-    <div><b>${eur30 ? eur30.toFixed(0) + " €" : "—"}</b><span>carburant (30 j)</span></div>`;
-  const z = document.getElementById("cb-liste");
-  if (!lignes.length) { z.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun plein enregistré pour ce véhicule.</p>'; return; }
-  z.innerHTML = lignes.slice().reverse().map(l => {
-    const anormal = l.conso && consoMoy && avecConso.length >= 3 && l.conso > consoMoy * 1.3;
-    return `<div class="cb-ligne" data-id="${l.id}">
-      <div class="cb-haut"><span>${new Date(l.fait_le).toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", year: "2-digit" })} · ${esc(l.profils?.nom || "—")}</span><span>${Number(l.km_compteur).toLocaleString("fr-BE")} km</span></div>
-      ${l.roule != null ? `<div class="cb-roule ${l.roule <= 0 ? "cb-alerte" : ""}">🚗 ${l.roule <= 0 ? "⚠️ kilométrage incohérent (" + l.roule + " km)" : l.roule.toLocaleString("fr-BE") + " km roulés depuis le plein précédent"}</div>` : `<div class="cb-roule">Premier plein enregistré</div>`}
-      <div class="cb-info">${l.litres ? f1(l.litres) + " L" : "litres ?"}${l.montant ? " · " + Number(l.montant).toFixed(2).replace(".", ",") + " €" : ""}${l.plein_complet ? "" : " · plein partiel"}${l.station ? " · " + esc(l.station) : ""}</div>
-      ${l.conso ? `<div class="cb-info ${anormal ? "cb-alerte" : ""}" style="font-weight:700;">⛽ ${f1(l.conso)} L/100 km${l.euroKm ? " · " + l.euroKm.toFixed(2).replace(".", ",") + " €/100 km" : ""}${anormal ? " · ⚠️ plus que d'habitude" : ""}</div>` : ""}
-      ${l.note ? `<div class="cb-info">📝 ${esc(l.note)}</div>` : ""}
-    </div>`;
-  }).join("");
-  z.querySelectorAll(".cb-ligne").forEach(el => el.addEventListener("click", () => editerPlein(pleinsCache.find(p => p.id === el.dataset.id))));
-}
-function editerPlein(p) {
-  const vid = document.getElementById("cb-vehicule").value;
-  const val = (q, d) => { const r = prompt(q, d ?? ""); return r; };
-  const km = val("Kilométrage au tableau de bord :", p?.km_compteur); if (km === null) return;
-  const litres = val("Litres :", p?.litres); if (litres === null) return;
-  const montant = val("Montant (€) :", p?.montant); if (montant === null) return;
-  const n = v => { const x = parseFloat(String(v).replace(",", ".")); return isNaN(x) ? null : x; };
-  if (!n(km)) { alert("Kilométrage invalide."); return; }
-  const donnees = { km_compteur: Math.round(n(km)), litres: n(litres), montant: n(montant) };
-  (async () => {
-    let error;
-    if (p) {
-      if (confirm("Supprimer ce plein au lieu de l'enregistrer ?\n\nOK = supprimer · Annuler = enregistrer les changements")) {
-        ({ error } = await supabase.from("pleins_carburant").delete().eq("id", p.id));
-      } else ({ error } = await supabase.from("pleins_carburant").update(donnees).eq("id", p.id));
-    } else {
-      const veh = vehiculesCache.find(v => v.id === vid);
-      ({ error } = await supabase.from("pleins_carburant").insert({ ...donnees, vehicule_id: vid, chauffeur_id: veh?.chauffeur_id || null, plein_complet: true }));
-    }
-    if (error) { alert("Erreur : " + error.message); return; }
-    chargerCarburant();
-  })();
-}
-document.getElementById("cb-ajouter").addEventListener("click", () => editerPlein(null));
-
-// ================== 💳 PAIEMENTS REÇUS (Bancontact en ligne + virements confirmés) ==================
-let paiementsCache = [];
-let pmPeriode = "mois", pmMethode = "";
-let pmTempsReelActif = false;
-let pmVue = "jour", pmSynchroEnCours = false;
-const PM_TZ = "Europe/Brussels";
-const PM_FRAIS_ESTIME = 0.35;
-// Frais Stripe (réels si connus, sinon estimation) et net d'un paiement Bancontact
-const pmFrais = p => p.frais_reels != null ? Number(p.frais_reels) : (p.methode === "bancontact" ? PM_FRAIS_ESTIME : 0);
-const pmNet = p => p.net != null ? Number(p.net) : Number(p.montant || 0) - pmFrais(p);
-// "AAAA-MM-JJ" -> "jeudi 10/10"
-const pmJourCourt = k => k ? new Date(k + "T12:00:00Z").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "2-digit", timeZone: "UTC" }) : "";
-function pmLigneVersement(p) {
-  if (p.methode !== "bancontact") return "";
-  let h;
-  if (p.versement_statut === "verse" && p.verse_le) h = `<div class="pm-versement verse">🏦 Versé sur ton compte le ${esc(pmJourCourt(p.verse_le))}</div>`;
-  else if (p.versement_statut === "en_route") h = `<div class="pm-versement route">🚚 En route vers ton compte${p.verse_le ? " — arrivée prévue le " + esc(pmJourCourt(p.verse_le)) : ""}</div>`;
-  else if (p.versement_statut === "echoue") h = `<div class="pm-versement echoue">⚠️ Versement échoué${p.verse_le ? " (prévu le " + esc(pmJourCourt(p.verse_le)) + ")" : ""} — vérifie ton compte Stripe</div>`;
-  else if (p.versement_statut === "en_attente" && p.disponible_le) h = `<div class="pm-versement attente">⏳ Pas encore versé — disponible le ${esc(pmJourCourt(p.disponible_le))} (environ)</div>`;
-  else h = `<div class="pm-versement attente">⏳ Versement en attente</div>`;
-  if (p.frais_reels != null) h += `<div class="pm-info">Frais Stripe ${pmEur(p.frais_reels)} · net ${pmEur(pmNet(p))}</div>`;
-  return h;
-}
-// Demande à la fonction d'aller chercher chez Stripe les versements (payouts) et de les rattacher aux paiements
-async function pmSynchroniser(silencieux) {
-  if (pmSynchroEnCours) return;
-  pmSynchroEnCours = true;
-  const info = document.getElementById("pm-synchro"), btn = document.getElementById("pm-actualiser");
-  if (!silencieux) { btn.disabled = true; btn.textContent = "⏳ Actualisation…"; }
-  info.textContent = "Vérification des versements Stripe…";
-  try {
-    const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "synchroniser_versements" } });
-    if (error || data?.erreur) {
-      info.textContent = "⚠️ Versements non actualisés" + (data?.erreur ? " : " + data.erreur : "");
-    } else if (data?.inactif) {
-      info.textContent = "Paiement en ligne Stripe non activé.";
-    } else {
-      info.textContent = "Versements à jour · " + new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: PM_TZ });
-      await chargerPaiements();
-    }
-  } catch (e) {
-    info.textContent = "⚠️ Versements non actualisés";
-  } finally {
-    pmSynchroEnCours = false;
-    btn.disabled = false; btn.textContent = "🔄 Actualiser les versements";
-  }
-}
-const pmCleJour = d => new Date(d).toLocaleDateString("en-CA", { timeZone: PM_TZ }); // AAAA-MM-JJ
-const pmEur = n => (Math.round(Number(n || 0) * 100) / 100).toFixed(2).replace(".", ",") + " €";
-const PM_METHODES = { bancontact: "📱 Bancontact", virement: "🏦 Virement", especes: "💶 Espèces", autre: "💳 Autre" };
-const PM_TYPES = { acompte: "acompte", total: "totalité", autre: "autre" };
-
-function pmBornes() {
-  const auj = pmCleJour(new Date());
-  const [a, m] = auj.split("-").map(Number);
-  const moisPrec = m === 1 ? (a - 1) + "-12" : a + "-" + String(m - 1).padStart(2, "0");
-  if (pmPeriode === "jour") return { depuis: auj, test: k => k === auj };
-  if (pmPeriode === "7j") { const d = pmCleJour(Date.now() - 6 * 864e5); return { depuis: d, test: k => k >= d }; }
-  if (pmPeriode === "mois") return { depuis: auj.slice(0, 7) + "-01", test: k => k.startsWith(auj.slice(0, 7)) };
-  if (pmPeriode === "mois-1") return { depuis: moisPrec + "-01", test: k => k.startsWith(moisPrec) };
-  return { depuis: null, test: () => true };
-}
-
-async function chargerPaiements() {
-  if (!pmTempsReelActif) {
-    pmTempsReelActif = true;
-    try {
-      supabase.channel("admin-paiements")
-        .on("postgres_changes", { event: "*", schema: "public", table: "paiements" }, () => {
-          clearTimeout(window.minuteriePaiements);
-          window.minuteriePaiements = setTimeout(() => {
-            if (document.getElementById("section-paiements").classList.contains("visible")) chargerPaiements();
-          }, 800);
-        })
-        .subscribe();
-    } catch (e) { console.warn("temps réel paiements :", e); }
-  }
-  const { depuis } = pmBornes();
-  let q = supabase.from("paiements")
-    .select("*, courses:course_id(id, numero_reservation, adresse_depart, adresse_arrivee, date_heure, client_nom)")
-    .order("recu_at", { ascending: false });
-  // marge de 14 jours (fuseau horaire + paiements reçus avant la période mais versés pendant) ;
-  // le filtre exact se fait par jour (heure de Bruxelles)
-  if (depuis) q = q.gte("recu_at", new Date(new Date(depuis + "T00:00:00Z").getTime() - 14 * 864e5).toISOString());
-  const { data, error } = await q;
-  if (error) { document.getElementById("pm-liste").textContent = "Erreur : " + error.message; return; }
-  paiementsCache = data || [];
-  afficherPaiements();
-}
-
-function afficherPaiements() {
-  const { test } = pmBornes();
-  const periode = paiementsCache.filter(p => test(pmCleJour(p.recu_at)));
-  const liste = periode.filter(p => !pmMethode || p.methode === pmMethode);
-  const somme = (arr, m) => arr.filter(p => !m || p.methode === m).reduce((s, p) => s + Number(p.montant || 0), 0);
-  const totBc = somme(liste, "bancontact"), totVir = somme(liste, "virement"), totAll = somme(liste);
-  const bcs = liste.filter(p => p.methode === "bancontact");
-  const nbBc = bcs.length;
-  const totVerse = bcs.filter(p => p.versement_statut === "verse").reduce((s, p) => s + pmNet(p), 0);
-  const totPasVerse = bcs.filter(p => p.versement_statut !== "verse").reduce((s, p) => s + pmNet(p), 0);
-  document.getElementById("pm-resume").innerHTML = `
-    <div class="pm-bc"><b>${pmEur(totBc)}</b><span>📱 Bancontact</span></div>
-    <div class="pm-vir"><b>${pmEur(totVir)}</b><span>🏦 Virement</span></div>
-    <div><b>${pmEur(totAll)}</b><span>Total reçu</span></div>
-    <div><b>${liste.length}</b><span>paiement(s)</span></div>
-    ${pmMethode === "virement" ? "" : `<div class="pm-verse"><b>${pmEur(totVerse)}</b><span>🏦 Déjà versé sur ton compte</span></div>
-    <div class="pm-attente"><b>${pmEur(totPasVerse)}</b><span>⏳ Pas encore versé</span></div>`}`;
-  const nbReels = bcs.filter(p => p.frais_reels != null).length;
-  const frais = bcs.reduce((s, p) => s + pmFrais(p), 0);
-  document.getElementById("pm-frais").innerHTML = nbBc
-    ? `💡 Frais Stripe${nbReels === nbBc ? " (réels)" : nbReels ? ` (${nbReels} réel(s), ${nbBc - nbReels} estimé(s) à 0,35 €)` : " estimés : 0,35 € × " + nbBc + " paiement(s) Bancontact"} = <b>${pmEur(frais)}</b> · Net Bancontact ${nbReels === nbBc ? "=" : "≈"} <b>${pmEur(totBc - frais)}</b>`
-    : `💡 Frais Stripe estimés : 0,35 € par paiement Bancontact (aucun sur la période).`;
-  document.getElementById("pm-frais").style.display = pmMethode === "virement" ? "none" : "";
-
-  if (pmVue === "versement") { afficherVersements(test); return; }
-
-  const z = document.getElementById("pm-liste");
-  if (!liste.length) { z.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun paiement sur cette période.</p>'; return; }
-  const parJour = new Map();
-  liste.forEach(p => { const k = pmCleJour(p.recu_at); if (!parJour.has(k)) parJour.set(k, []); parJour.get(k).push(p); });
-  z.innerHTML = [...parJour.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([k, ps]) => {
-    const titre = new Date(k + "T12:00:00Z").toLocaleDateString("fr-BE", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-    const autres = somme(ps) - somme(ps, "bancontact") - somme(ps, "virement");
-    return `<div class="pm-jour">
-      <div class="pm-jour-titre">${esc(titre)}</div>
-      <div class="pm-jour-totaux">Bancontact : <b>${pmEur(somme(ps, "bancontact"))}</b> · Virement : <b>${pmEur(somme(ps, "virement"))}</b>${autres ? ` · Autres : <b>${pmEur(autres)}</b>` : ""} · Total : <b>${pmEur(somme(ps))}</b></div>
-      ${ps.map(p => {
-        const c = p.courses;
-        const heure = new Date(p.recu_at).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: PM_TZ });
-        const trajet = c ? `🚕 ${esc(c.adresse_depart || "?")} → ${esc(c.adresse_arrivee || "?")}${c.date_heure ? " · " + new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: PM_TZ }) : ""}` : (p.course_id ? "🚕 course supprimée" : "✍️ saisi à la main");
-        const cls = p.methode === "bancontact" || p.methode === "virement" ? p.methode : "autre";
-        return `<div class="pm-ligne" data-id="${p.id}">
-          <div class="pm-corps">
-            <div class="pm-haut"><span>${heure} · ${c?.numero_reservation ? badgeNumeroResa(c.numero_reservation) : ""}${esc(p.client_nom || c?.client_nom || "Client")}</span><span>${pmEur(p.montant)}</span></div>
-            <div class="pm-info"><span class="pm-badge ${cls}">${PM_METHODES[p.methode] || esc(p.methode)}</span>${p.type ? esc(PM_TYPES[p.type] || p.type) : ""}</div>
-            <div class="pm-info">${trajet}</div>
-            ${pmLigneVersement(p)}
-            ${p.note ? `<div class="pm-info">📝 ${esc(p.note)}</div>` : ""}
-          </div>
-          <button type="button" class="pm-suppr" title="Supprimer">🗑</button>
-        </div>`;
-      }).join("")}
-    </div>`;
-  }).join("");
-  z.querySelectorAll(".pm-ligne").forEach(el => {
-    const p = paiementsCache.find(x => x.id === el.dataset.id);
-    el.querySelector(".pm-corps").addEventListener("click", () => ouvrirCourseDepuisPaiement(p));
-    el.querySelector(".pm-suppr").addEventListener("click", async (e) => {
-      e.stopPropagation();
-      if (!confirm(`Supprimer ce paiement de ${pmEur(p.montant)} (${p.client_nom || "client"}) du journal ?\n\n(La course elle-même n'est pas modifiée.)`)) return;
-      const { error } = await supabase.from("paiements").delete().eq("id", p.id);
-      if (error) { alert("Erreur : " + error.message); return; }
-      chargerPaiements();
-    });
-  });
-}
-
-// Vue par versement bancaire : regroupe les paiements Bancontact par versement Stripe (date d'arrivée sur le compte),
-// pour comparer directement avec les lignes "Stripe" du relevé bancaire.
-function afficherVersements(test) {
-  const z = document.getElementById("pm-liste");
-  const bcs = paiementsCache.filter(p => p.methode === "bancontact");
-  const groupes = new Map();
-  bcs.filter(p => p.versement_id && p.verse_le && test(p.verse_le)).forEach(p => {
-    if (!groupes.has(p.versement_id)) groupes.set(p.versement_id, []);
-    groupes.get(p.versement_id).push(p);
-  });
-  const attente = bcs.filter(p => !p.versement_id && p.versement_statut !== "verse")
-    .sort((a, b) => String(a.disponible_le || "9999").localeCompare(String(b.disponible_le || "9999")));
-  const ligne = p => {
-    const c = p.courses;
-    const quand = new Date(p.recu_at).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", timeZone: PM_TZ });
-    const trajet = c ? ` · ${esc(c.adresse_depart || "?")} → ${esc(c.adresse_arrivee || "?")}` : "";
-    const det = p.frais_reels != null ? `${pmEur(p.montant)} − ${pmEur(p.frais_reels)} = ` : "";
-    return `<div class="pm-po-ligne" data-id="${p.id}"><span>${quand} · ${c?.numero_reservation ? esc(c.numero_reservation) + " · " : ""}${esc(p.client_nom || c?.client_nom || "Client")}${trajet}</span><span>${det}<b>${pmEur(pmNet(p))}</b></span></div>`;
-  };
-  const LIB = { verse: ["", "🏦 Versé le"], en_route: ["route", "🚚 Arrivée prévue le"], echoue: ["echoue", "⚠️ Versement échoué —"] };
-  let html = [...groupes.entries()].sort((a, b) => String(b[1][0].verse_le).localeCompare(String(a[1][0].verse_le))).map(([id, ps]) => {
-    const st = ps[0].versement_statut;
-    const [cls, lib] = LIB[st] || ["route", "🚚 Prévu le"];
-    const total = ps.reduce((s, p) => s + pmNet(p), 0);
-    const estimes = ps.filter(p => p.frais_reels == null).length;
-    return `<div class="pm-po ${cls}">
-      <div class="pm-po-titre"><span>${lib} ${esc(pmJourCourt(ps[0].verse_le))}</span><span>${pmEur(total)}</span></div>
-      <div class="pm-po-sous">Virement « Stripe » sur ton relevé · ${ps.length} course(s)${estimes ? ` · ${estimes} frais estimé(s)` : ""} · réf. ${esc(id)}</div>
-      ${ps.sort((a, b) => String(a.recu_at).localeCompare(String(b.recu_at))).map(ligne).join("")}
-    </div>`;
-  }).join("");
-  if (attente.length) {
-    const total = attente.reduce((s, p) => s + pmNet(p), 0);
-    html = `<div class="pm-po attente">
-      <div class="pm-po-titre"><span>⏳ Pas encore versé</span><span>${pmEur(total)}</span></div>
-      <div class="pm-po-sous">${attente.length} paiement(s) Bancontact en attente de versement Stripe</div>
-      ${attente.map(p => ligne(p).replace("</span><span>", `${p.disponible_le ? " · dispo. ~" + esc(pmJourCourt(p.disponible_le)) : ""}</span><span>`)).join("")}
-    </div>` + html;
-  }
-  z.innerHTML = html || '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucun versement Stripe sur cette période.</p>';
-  z.querySelectorAll(".pm-po-ligne").forEach(el => {
-    const p = paiementsCache.find(x => x.id === el.dataset.id);
-    el.addEventListener("click", () => ouvrirCourseDepuisPaiement(p));
-  });
-}
-
-// Ouvre la course liée en plein écran (même carte que dans l'onglet Courses)
-function ouvrirCourseDepuisPaiement(p) {
-  if (!p?.course_id) return;
-  const course = (typeof dernieresCoursesAdmin !== "undefined" ? dernieresCoursesAdmin : []).find(c => c.id === p.course_id);
-  if (!course) {
-    const c = p.courses;
-    if (c) alert(`Course liée :\n${c.adresse_depart || "?"} → ${c.adresse_arrivee || "?"}\n${c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { timeZone: PM_TZ }) : ""}`);
-    return;
-  }
-  document.querySelectorAll(".carte-en-grand").forEach(x => x.classList.remove("carte-en-grand"));
-  const dejaOuverte = coursesOuvertes.has(course.id);
-  coursesOuvertes.add(course.id);
-  const carte = construireCarteAdmin(course);
-  if (!dejaOuverte) coursesOuvertes.delete(course.id);
-  carte.classList.add("carte-en-grand");
-  document.body.classList.add("carte-grand-ouverte");
-  const btn = carte.querySelector(".btn-carte-grand");
-  if (btn) {
-    btn.textContent = "✕ Fermer (retour aux paiements)";
-    btn.addEventListener("click", () => { if (!carte.classList.contains("carte-en-grand")) carte.remove(); });
-  }
-  document.body.appendChild(carte);
-  carte.scrollTop = 0;
-}
-
-// Journalise un virement confirmé à la main (n'interrompt jamais la confirmation)
-async function journaliserVirement(course) {
-  try {
-    const exige = course.paiement_exige || "choix";
-    const estTotal = exige === "total" || (exige === "choix" && course.paiement_choisi === "total");
-    const montant = estTotal ? (Number(course.prix) || 0) + (Number(course.surprime) || 0) : Number(course.acompte_montant || 0);
-    if (!(montant > 0)) return;
-    const { error } = await supabase.from("paiements").upsert({
-      course_id: course.id, client_nom: course.client_nom || null, montant: Math.round(montant * 100) / 100,
-      methode: "virement", type: estTotal ? "total" : "acompte", reference: "virement-" + course.id,
-      statut: "recu", recu_at: new Date().toISOString()
-    }, { onConflict: "reference", ignoreDuplicates: true });
-    if (error) console.warn("journal virement :", error.message);
-  } catch (e) { console.warn("journal virement :", e); }
-}
-
-function ouvrirAjoutPaiement() {
-  const fond = document.createElement("div");
-  fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:700; display:flex; align-items:flex-end;";
-  const maintenant = new Date(); maintenant.setMinutes(maintenant.getMinutes() - maintenant.getTimezoneOffset());
-  const st = "width:100%; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-size:1rem; box-sizing:border-box;";
-  const lb = "display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px;";
-  fond.innerHTML = `<div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:20px; max-height:90vh; overflow-y:auto; box-sizing:border-box;">
-    <h2 style="margin:0 0 6px; font-size:1.1rem;">➕ Ajouter un paiement</h2>
-    <label style="${lb}">Date et heure de réception</label><input type="datetime-local" class="pa-date" style="${st}" value="${maintenant.toISOString().slice(0, 16)}">
-    <label style="${lb}">Client</label><input type="text" class="pa-client" style="${st}" placeholder="Nom du client">
-    <label style="${lb}">Montant (€)</label><input type="text" inputmode="decimal" class="pa-montant" style="${st}" placeholder="ex : 25,50">
-    <label style="${lb}">Méthode</label><select class="pa-methode" style="${st}"><option value="bancontact">📱 Bancontact</option><option value="virement">🏦 Virement</option><option value="especes">💶 Espèces</option><option value="autre">💳 Autre</option></select>
-    <label style="${lb}">Type</label><select class="pa-type" style="${st}"><option value="acompte">Acompte</option><option value="total">Totalité</option><option value="autre">Autre</option></select>
-    <label style="${lb}">Note (facultatif)</label><input type="text" class="pa-note" style="${st}">
-    <div style="display:flex; gap:10px; margin-top:16px;">
-      <button type="button" class="pa-annuler" style="flex:1; padding:13px; border-radius:10px; border:none; background:#dcdcda; font-weight:700;">Annuler</button>
-      <button type="button" class="pa-ok" style="flex:1; padding:13px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:800;">Enregistrer</button>
-    </div></div>`;
-  document.body.appendChild(fond);
-  const $ = s => fond.querySelector(s);
-  $(".pa-methode").value = pmMethode || "bancontact";
-  fond.addEventListener("click", e => { if (e.target === fond) fond.remove(); });
-  $(".pa-annuler").addEventListener("click", () => fond.remove());
-  $(".pa-ok").addEventListener("click", async () => {
-    const montant = parseFloat(String($(".pa-montant").value).replace(",", "."));
-    if (!(montant > 0)) { alert("Indique un montant valide."); return; }
-    const d = $(".pa-date").value ? new Date($(".pa-date").value) : new Date();
-    if (isNaN(d.getTime())) { alert("Date invalide."); return; }
-    $(".pa-ok").disabled = true;
-    const { error } = await supabase.from("paiements").insert({
-      client_nom: $(".pa-client").value.trim() || null, montant: Math.round(montant * 100) / 100,
-      methode: $(".pa-methode").value, type: $(".pa-type").value, recu_at: d.toISOString(),
-      note: $(".pa-note").value.trim() || null, statut: "recu"
-    });
-    if (error) { $(".pa-ok").disabled = false; alert("Erreur : " + error.message); return; }
-    fond.remove();
-    chargerPaiements();
-  });
-}
-
-document.querySelectorAll("#pm-periodes button").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll("#pm-periodes button").forEach(x => x.classList.toggle("actif", x === b));
-  pmPeriode = b.dataset.p; chargerPaiements();
-}));
-document.querySelectorAll("#pm-methodes button").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll("#pm-methodes button").forEach(x => x.classList.toggle("actif", x === b));
-  pmMethode = b.dataset.m; afficherPaiements();
-}));
-document.getElementById("pm-ajouter").addEventListener("click", ouvrirAjoutPaiement);
-document.querySelectorAll("#pm-vues button").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll("#pm-vues button").forEach(x => x.classList.toggle("actif", x === b));
-  pmVue = b.dataset.v;
-  if (pmVue === "versement" && pmMethode) {
-    pmMethode = "";
-    document.querySelectorAll("#pm-methodes button").forEach(x => x.classList.toggle("actif", x.dataset.m === ""));
-  }
-  document.getElementById("pm-methodes").style.display = pmVue === "versement" ? "none" : "";
-  afficherPaiements();
-}));
-document.getElementById("pm-actualiser").addEventListener("click", () => pmSynchroniser(false));
 
 // ================== ÉVÉNEMENTS DE L'ANNÉE (avec rappel quelques jours avant) ==================
 const CATEGORIES_EV = { evenement: "🎉 Événement", salon: "🏛️ Salon / foire", vacances: "🏖️ Vacances scolaires", ferie: "🇧🇪 Jour férié", administratif: "📄 Administratif", controle: "🔧 Contrôle / entretien véhicule", anniversaire: "🎂 Anniversaire", autre: "📌 Autre" };
@@ -2525,11 +1739,11 @@ function afficherDemandesClients() {
     const quand = c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
     const tel = (c.client_telephone || "").replace(/\s/g, "");
     resume.innerHTML = `
-      <div class="rd-nom">${badgeNumeroResa(c.numero_reservation)}👤 ${esc(c.client_nom || "Client")}${tel ? ` · <a href="tel:${esc(tel)}" onclick="event.stopPropagation()">📞 ${esc(c.client_telephone)}</a>` : ""}</div>
+      <div class="rd-nom">👤 ${esc(c.client_nom || "Client")}${tel ? ` · <a href="tel:${esc(tel)}" onclick="event.stopPropagation()">📞 ${esc(c.client_telephone)}</a>` : ""}</div>
       <div class="rd-quand">🕐 ${esc(quand)} · 👥 ${c.passagers || 1}${c.bagages ? " · 🧳 " + c.bagages : ""}${c.aller_retour ? " · 🔁 aller-retour" : ""}</div>
       <div class="rd-adr">🟢 ${esc(c.adresse_depart || "?")}</div>
       <div class="rd-adr">🔴 ${esc(c.adresse_arrivee || "?")}${c.distance_km ? ` <span class="rd-km">· ${String(c.distance_km).replace(".", ",")} km</span>` : ""}</div>
-      ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} € · ${c.paiement_exige === "total" ? "totalité demandée" : c.paiement_exige === "choix" ? "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " € ou totalité, au choix du client" : "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " €"}</div>` : ""}
+      ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} €${c.acompte_montant ? " (acompte " + Number(c.acompte_montant).toFixed(2) + " €)" : ""}</div>` : ""}
       ${c.notes ? `<div class="rd-note">📝 ${esc(c.notes)}</div>` : ""}`;
     const btnGrand = carte.querySelector(".btn-carte-grand");
     if (btnGrand && btnGrand.nextSibling) carte.insertBefore(resume, btnGrand.nextSibling); else carte.insertBefore(resume, carte.firstChild);
@@ -2545,1055 +1759,6 @@ function afficherDemandesClients() {
     else if (p) p.remove();
   }
 }
-
-// ================== 💬 MESSAGES CLIENTS : chat client ↔ Taxi Wal (table messages_chat) ==================
-const CHAT_TZ = "Europe/Brussels";
-let chatConvs = [];                 // [{ client_id, nom, telephone, dernier_texte, dernier_auteur, dernier_at, non_lus }]
-let chatClientOuvert = null;        // client_id de la conversation affichée
-let chchConvs = [];                 // conversations chauffeurs (voir « MESSAGES CHAUFFEURS » plus bas)
-let chchOuvert = null;              // chauffeur_id de la conversation chauffeur affichée
-let chatMessages = [];
-let chatCourseChoisie = null;
-let chatTempsReelActif = false;
-let chatMonId = null;
-const chatInfosCourses = new Map();
-const chatFmtCourse = c => c && c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { timeZone: CHAT_TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "") : "";
-const chatFmtHeure = iso => new Date(iso).toLocaleTimeString("fr-BE", { timeZone: CHAT_TZ, hour: "2-digit", minute: "2-digit" });
-const chatCleJour = iso => new Date(iso).toLocaleDateString("fr-BE", { timeZone: CHAT_TZ, weekday: "long", day: "numeric", month: "long" });
-function chatFmtQuand(iso) {
-  const d = new Date(iso), auj = new Date();
-  const memeJour = d.toLocaleDateString("fr-BE", { timeZone: CHAT_TZ }) === auj.toLocaleDateString("fr-BE", { timeZone: CHAT_TZ });
-  return memeJour ? chatFmtHeure(iso) : d.toLocaleDateString("fr-BE", { timeZone: CHAT_TZ, day: "2-digit", month: "2-digit" });
-}
-const chatSectionVisible = () => document.getElementById("section-messages").classList.contains("visible") && document.visibilityState === "visible";
-
-function majBadgeChatAdmin() {
-  const nbClients = chatConvs.reduce((s, c) => s + (c.non_lus || 0), 0);
-  const nbChauffeurs = chchConvs.reduce((s, c) => s + (c.non_lus || 0), 0);
-  const total = nbClients + nbChauffeurs;
-  const sc = document.getElementById("seg-nb-clients"), sh = document.getElementById("seg-nb-chauffeurs");
-  if (sc) sc.textContent = nbClients || "";
-  if (sh) sh.textContent = nbChauffeurs || "";
-  const btnNav = document.querySelector('nav button[data-onglet="messages"]');
-  if (!btnNav) return;
-  let p = btnNav.querySelector(".badge-demandes");
-  if (total) { if (!p) { p = document.createElement("span"); p.className = "badge-demandes"; btnNav.appendChild(p); } p.textContent = total; }
-  else if (p) p.remove();
-}
-
-// Chat ouvert côté client = le client a une réservation en cours (ni terminée, ni annulée)
-const CHAT_STATUTS_FERMES = ["terminee", "annulee", "refusee", "expiree", "no_show"];
-let chatEtatsOuverts = new Map(); // client_id → true/false
-const chatActivesParClient = new Map(); // client_id → [courses en cours triées : prochaine d'abord]
-// Une demande jamais confirmée dont l'heure est passée de plus de 12 h ne compte plus (même règle que chat_client_ouvert)
-const chatCourseActive = c => !!c && !CHAT_STATUTS_FERMES.includes(c.statut)
-  && !(["en_attente", "prix_envoye", "attente_acompte"].includes(c.statut) && c.date_heure && new Date(c.date_heure).getTime() < Date.now() - 12 * 3600 * 1000);
-function chatTrierActives(liste) {
-  const seuil = Date.now() - 3 * 3600 * 1000, t = c => c.date_heure ? new Date(c.date_heure).getTime() : 0;
-  return liste.filter(c => t(c) >= seuil).sort((a, b) => t(a) - t(b)).concat(liste.filter(c => t(c) < seuil).sort((a, b) => t(b) - t(a)));
-}
-async function chatChargerEtatsOuverts(ids) {
-  ids = [...new Set((ids || []).filter(Boolean))];
-  if (!ids.length) return;
-  const { data, error } = await supabase.from("courses").select("id, client_id, numero_reservation, date_heure, statut, adresse_depart, adresse_arrivee, client_nom")
-    .in("client_id", ids).not("statut", "in", "(" + CHAT_STATUTS_FERMES.join(",") + ")");
-  if (error) { console.warn("état chat :", error.message); return; }
-  const parClient = new Map();
-  (data || []).filter(chatCourseActive).forEach(r => {
-    if (!parClient.has(r.client_id)) parClient.set(r.client_id, []);
-    parClient.get(r.client_id).push(r);
-    if (!chatInfosCourses.get(r.id)) chatInfosCourses.set(r.id, r);
-  });
-  ids.forEach(id => {
-    chatActivesParClient.set(id, chatTrierActives(parClient.get(id) || []));
-    chatEtatsOuverts.set(id, parClient.has(id));
-  });
-}
-const chatLibelleResa = c => c ? `Réservation ${c.numero_reservation || ""}${c.date_heure ? " · " + chatFmtCourse(c) : ""}`.replace("Réservation  · ", "Réservation · ") : "Réservation";
-
-// ---- Recherche dans les conversations (nom, téléphone, N° de réservation) ----
-let chatRechercheClientsResa = new Set(); // client_id trouvés en base via un numéro de réservation
-let chatRechercheMinuterie = null;
-function chatConvCorrespond(c, q) {
-  if (!q) return true;
-  const qn = normaliserRechercheResa(q), qTel = q.replace(/[^\d+]/g, "");
-  if ((c.nom || "").toLowerCase().includes(qn)) return true;
-  if (qTel.length >= 3 && String(c.telephone || "").replace(/[^\d+]/g, "").includes(qTel)) return true;
-  if ((chatActivesParClient.get(c.client_id) || []).some(x => correspondNumeroResa(x.numero_reservation, qn))) return true;
-  return chatRechercheClientsResa.has(c.client_id);
-}
-document.getElementById("chat-recherche").addEventListener("input", () => {
-  afficherListeConversationsAdmin();
-  clearTimeout(chatRechercheMinuterie);
-  const q = document.getElementById("chat-recherche").value.trim();
-  const qn = normaliserRechercheResa(q);
-  if (!/\d{3,}/.test(qn)) { if (chatRechercheClientsResa.size) { chatRechercheClientsResa = new Set(); afficherListeConversationsAdmin(); } return; }
-  chatRechercheMinuterie = setTimeout(async () => {
-    const chiffres = qn.replace(/\D/g, "");
-    const { data } = await supabase.from("courses").select("client_id").ilike("numero_reservation", "%" + chiffres + "%").not("client_id", "is", null).limit(50);
-    if (normaliserRechercheResa(document.getElementById("chat-recherche").value.trim()) !== qn) return;
-    chatRechercheClientsResa = new Set((data || []).map(r => r.client_id));
-    afficherListeConversationsAdmin();
-  }, 400);
-});
-
-async function chargerConversationsAdmin() {
-  const { data, error } = await supabase.rpc("chat_conversations_admin");
-  if (error) { document.getElementById("chat-liste").innerHTML = `<p style="color:var(--rouge);">Erreur : ${esc(error.message)}</p>`; return; }
-  chatConvs = data || [];
-  await chatChargerEtatsOuverts(chatConvs.map(c => c.client_id));
-  // la conversation ouverte est lue en direct : pas de compteur
-  if (chatClientOuvert && chatSectionVisible()) chatConvs.forEach(c => { if (c.client_id === chatClientOuvert) c.non_lus = 0; });
-  afficherListeConversationsAdmin();
-  majBadgeChatAdmin();
-}
-let chatMinuterieListe = null;
-function chatRechargerListeBientot() { clearTimeout(chatMinuterieListe); chatMinuterieListe = setTimeout(chargerConversationsAdmin, 600); }
-
-function afficherListeConversationsAdmin() {
-  const zone = document.getElementById("chat-liste");
-  if (!chatConvs.length) {
-    zone.innerHTML = `<p style="color:#666;">Aucun message pour l'instant. Les messages des clients (app client → onglet « 💬 Messages », ou « Je ne peux pas payer à l'avance ») arrivent ici. Pour écrire à un client, touche « ✏️ Nouveau message ».</p>`;
-    return;
-  }
-  zone.innerHTML = "";
-  const q = (document.getElementById("chat-recherche")?.value || "").trim().toLowerCase();
-  const visibles = chatConvs.filter(c => chatConvCorrespond(c, q));
-  if (!visibles.length) { zone.innerHTML = `<p style="color:#666;">Aucune conversation ne correspond à « ${esc(q)} ».</p>`; return; }
-  visibles.forEach(c => {
-    const actives = chatActivesParClient.get(c.client_id) || [];
-    const el = document.createElement("div");
-    el.className = "chat-conv-item" + (c.non_lus ? " non-lu" : "") + (c.client_id === chatClientOuvert ? " active" : "");
-    el.innerHTML = `<div class="cc-corps">
-        <div class="cc-nom">👤 ${esc(c.nom || "Client")}${chatEtatsOuverts.get(c.client_id) === false ? ` <span title="Chat fermé côté client (aucune course en cours)">🔒</span>` : ""}</div>
-        ${c.telephone ? `<div class="cc-tel">📞 ${esc(c.telephone)}</div>` : ""}
-        ${actives.length ? `<div class="cc-tel">🚖 ${esc(actives.map(x => x.numero_reservation).filter(Boolean).join(", "))}</div>` : ""}
-        <div class="cc-apercu">${c.dernier_auteur === "admin" ? "Toi : " : ""}${esc(c.dernier_texte || "")}</div>
-      </div>
-      <div class="cc-droite">${c.dernier_at ? esc(chatFmtQuand(c.dernier_at)) : ""}${c.non_lus ? `<br><span class="cc-nb">${c.non_lus}</span>` : ""}</div>`;
-    el.addEventListener("click", () => ouvrirConversationAdmin(c.client_id));
-    zone.appendChild(el);
-  });
-}
-
-async function chatChargerInfosCourses(ids) {
-  const manquantes = [...new Set(ids.filter(id => id && !chatInfosCourses.has(id)))];
-  manquantes.forEach(id => {
-    const c = (typeof dernieresCoursesAdmin !== "undefined" ? dernieresCoursesAdmin : []).find(x => x.id === id);
-    if (c) chatInfosCourses.set(id, c);
-  });
-  const reste = manquantes.filter(id => !chatInfosCourses.has(id));
-  if (!reste.length) return;
-  const { data } = await supabase.from("courses").select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, client_nom, statut").in("id", reste);
-  (data || []).forEach(c => chatInfosCourses.set(c.id, c));
-  reste.forEach(id => { if (!chatInfosCourses.has(id)) chatInfosCourses.set(id, null); });
-}
-
-async function chatMarquerLuAdmin() {
-  if (!chatClientOuvert) return;
-  const conv = chatConvs.find(c => c.client_id === chatClientOuvert);
-  const aMarquer = chatMessages.some(m => m.auteur === "client" && !m.lu_par_admin_at) || (conv && conv.non_lus);
-  if (!aMarquer) return;
-  const maintenant = new Date().toISOString();
-  chatMessages.forEach(m => { if (m.auteur === "client" && !m.lu_par_admin_at) m.lu_par_admin_at = maintenant; });
-  if (conv) conv.non_lus = 0;
-  majBadgeChatAdmin(); afficherListeConversationsAdmin();
-  const { error } = await supabase.rpc("chat_marquer_lu_admin", { p_client: chatClientOuvert });
-  if (error) console.warn("chat lu :", error.message);
-}
-
-async function ouvrirConversationAdmin(clientId, courseId) {
-  chchOuvert = null;
-  chatBasculerMode("clients", true);
-  const changement = chatClientOuvert !== clientId;
-  chatClientOuvert = clientId;
-  if (changement) { chatMessages = []; chatCourseChoisie = null; }
-  if (courseId) chatCourseChoisie = courseId;
-  document.getElementById("chat-admin").classList.add("conv-ouverte");
-  let conv = chatConvs.find(c => c.client_id === clientId);
-  if (!conv) {
-    const { data } = await supabase.rpc("chat_client_infos_admin", { p_client: clientId });
-    const inf = (data && data[0]) || {};
-    conv = { client_id: clientId, nom: inf.nom || "Client", telephone: inf.telephone || null, non_lus: 0, nouveau: true };
-  }
-  const zone = document.getElementById("chat-conv-zone");
-  const wa = numeroWhatsapp(conv.telephone || "");
-  zone.innerHTML = `
-    <div class="chat-conv-entete">
-      <button type="button" class="chat-retour">← Conversations</button>
-      <div class="ce-nom">👤 ${esc(conv.nom || "Client")}${conv.telephone ? `<small>📞 ${esc(conv.telephone)}</small>` : ""}<div class="chat-resas-entete" id="chat-resas-entete"></div></div>
-      ${conv.telephone ? `<a class="tel" href="tel:${esc(String(conv.telephone).replace(/[^\d+]/g, ""))}">📞 Appeler</a>` : ""}
-      ${wa ? `<a class="wa" href="https://wa.me/${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
-    </div>
-    <div class="chat-fil-admin" id="chat-fil-admin"><p style="color:#666; margin:auto;">Chargement…</p></div>
-    <div class="chat-composer-admin">
-      <div id="chat-etat-admin"></div>
-      <div class="chat-chip" id="chat-chip-admin" style="display:none;"></div>
-      <div class="chat-saisie">
-        <textarea id="chat-texte-admin" rows="2" maxlength="2000" placeholder="Ta réponse au client…"></textarea>
-        <button type="button" id="chat-envoyer-admin">Envoyer</button>
-      </div>
-      <p id="chat-erreur-admin" style="color:var(--rouge); font-size:.85rem; margin:6px 0 0;"></p>
-    </div>`;
-  zone.querySelector(".chat-retour").addEventListener("click", () => {
-    document.getElementById("chat-admin").classList.remove("conv-ouverte");
-    chatClientOuvert = null; afficherListeConversationsAdmin();
-  });
-  const zoneTexte = zone.querySelector("#chat-texte-admin");
-  zone.querySelector("#chat-envoyer-admin").addEventListener("click", envoyerMessageChatAdmin);
-  zoneTexte.addEventListener("input", () => { zoneTexte.style.height = "auto"; zoneTexte.style.height = Math.min(zoneTexte.scrollHeight + 2, 160) + "px"; });
-  zoneTexte.addEventListener("keydown", (e) => {
-    const ordinateur = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && ordinateur) { e.preventDefault(); envoyerMessageChatAdmin(); }
-  });
-  afficherListeConversationsAdmin();
-  chatAfficherEtatAdmin(clientId);
-  chatChargerEtatsOuverts([clientId]).then(() => { if (chatClientOuvert === clientId) { chatAfficherResasEntete(); afficherChipChatAdmin(); } });
-  chatAfficherResasEntete();
-
-  const { data, error } = await supabase.from("messages_chat").select("*").eq("client_id", clientId).order("created_at", { ascending: true }).limit(500);
-  if (chatClientOuvert !== clientId) return;
-  if (error) { document.getElementById("chat-fil-admin").innerHTML = `<p style="color:var(--rouge);">Erreur : ${esc(error.message)}</p>`; return; }
-  chatMessages = data || [];
-  // Réponse par défaut : la réservation du dernier message du client
-  if (!chatCourseChoisie) {
-    const dernierClient = [...chatMessages].reverse().find(m => m.auteur === "client" && m.course_id);
-    if (dernierClient) chatCourseChoisie = dernierClient.course_id;
-    else { const act = chatActivesParClient.get(clientId) || []; if (act.length) chatCourseChoisie = act[0].id; }
-  }
-  await chatChargerInfosCourses(chatMessages.map(m => m.course_id).concat(chatCourseChoisie ? [chatCourseChoisie] : []));
-  afficherFilChatAdmin(true);
-  afficherChipChatAdmin();
-  chatMarquerLuAdmin();
-  setTimeout(() => zoneTexte.focus(), 100);
-}
-
-// Réservations en cours du client, en haut de la conversation (clic → carte de la course)
-function chatAfficherResasEntete() {
-  const z = document.getElementById("chat-resas-entete");
-  if (!z) return;
-  const act = chatActivesParClient.get(chatClientOuvert) || [];
-  z.innerHTML = act.map(c => `<button type="button" data-course="${esc(c.id)}" title="${esc((c.adresse_depart || "?") + " → " + (c.adresse_arrivee || "?"))}">🚖 ${esc(c.numero_reservation || "Course")} · ${esc(chatFmtCourse(c))}</button>`).join("");
-  z.querySelectorAll("button").forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); chatOuvrirCourse(b.dataset.course); }));
-}
-
-function afficherChipChatAdmin() {
-  const chip = document.getElementById("chat-chip-admin");
-  if (!chip) return;
-  // choix possibles : réservations en cours + réservations citées dans la conversation
-  const ids = [...new Set((chatActivesParClient.get(chatClientOuvert) || []).map(c => c.id)
-    .concat([...chatMessages].reverse().map(m => m.course_id).filter(Boolean))
-    .concat(chatCourseChoisie ? [chatCourseChoisie] : []))].slice(0, 12);
-  if (!chatCourseChoisie) {
-    if (!ids.length) { chip.style.display = "none"; chip.innerHTML = ""; return; }
-    chip.innerHTML = `<select title="Lier la réponse à une réservation"><option value="">➕ Lier à une réservation…</option>${ids.map(id => `<option value="${esc(id)}">🚖 ${esc(chatLibelleResa(chatInfosCourses.get(id)))}</option>`).join("")}</select>`;
-  } else if (ids.length > 1) {
-    chip.innerHTML = `<select title="Changer de réservation">${ids.map(id => `<option value="${esc(id)}" ${id === chatCourseChoisie ? "selected" : ""}>🚖 ${esc(chatLibelleResa(chatInfosCourses.get(id)))}</option>`).join("")}</select> <button type="button" title="Retirer">✕</button>`;
-  } else {
-    chip.innerHTML = `🚖 ${esc(chatLibelleResa(chatInfosCourses.get(chatCourseChoisie)))} <button type="button" title="Retirer">✕</button>`;
-  }
-  chip.style.display = "inline-flex";
-  const sel = chip.querySelector("select");
-  if (sel) sel.addEventListener("change", () => { chatCourseChoisie = sel.value || null; afficherChipChatAdmin(); });
-  const b = chip.querySelector("button");
-  if (b) b.addEventListener("click", () => { chatCourseChoisie = null; afficherChipChatAdmin(); });
-}
-
-function afficherFilChatAdmin(forcerBas) {
-  const fil = document.getElementById("chat-fil-admin");
-  if (!fil) return;
-  if (!chatMessages.length) { fil.innerHTML = `<p style="color:#666; margin:auto; text-align:center;">Pas encore de message avec ce client.<br>Écris-lui ci-dessous : il le verra dans son application (onglet « 💬 Messages ») et recevra un e-mail.</p>`; return; }
-  const enBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80;
-  let html = "", jourPrec = "";
-  const dernierAdmin = [...chatMessages].reverse().find(m => m.auteur === "admin");
-  chatMessages.forEach(m => {
-    const j = chatCleJour(m.created_at);
-    if (j !== jourPrec) { html += `<div class="chat-jour">${esc(j)}</div>`; jourPrec = j; }
-    const c = m.course_id ? chatInfosCourses.get(m.course_id) : null;
-    const tag = m.course_id ? `<div><span class="tag-course" data-course="${esc(m.course_id)}">🚖 ${c && c.numero_reservation ? esc(chatLibelleResa(c)) : "Course" + (c ? " du " + esc(chatFmtCourse(c)) : "")} ›</span></div>` : "";
-    const vu = dernierAdmin && m.id === dernierAdmin.id && m.lu_par_client_at ? " · ✓ Vu par le client" : "";
-    html += `<div class="bulle ${m.auteur === "admin" ? "admin" : "client"}">${tag}${esc(m.texte)}<div class="meta">${chatFmtHeure(m.created_at)}${vu}</div></div>`;
-  });
-  fil.innerHTML = html;
-  fil.querySelectorAll(".tag-course").forEach(t => t.addEventListener("click", () => chatOuvrirCourse(t.dataset.course)));
-  if (forcerBas || enBas) fil.scrollTop = fil.scrollHeight;
-}
-
-async function chatOuvrirCourse(courseId) {
-  const course = (typeof dernieresCoursesAdmin !== "undefined" ? dernieresCoursesAdmin : []).find(c => c.id === courseId);
-  if (course && typeof construireCarteAdmin === "function") {
-    ouvrirCourseDepuisPaiement({ course_id: courseId });
-    const b = document.querySelector("body > .carte-en-grand .btn-carte-grand");
-    if (b) b.textContent = "✕ Fermer (retour aux messages)";
-    return;
-  }
-  // course hors liste chargée : on la récupère en base et on ouvre sa carte
-  const { data: complete } = await supabase.from("courses")
-    .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom), vehicules:vehicule_id(nom, plaque, places)")
-    .eq("id", courseId).maybeSingle();
-  if (complete) { ouvrirCarteCourseEnGrand(complete, "✕ Fermer (retour aux messages)"); return; }
-  const c = chatInfosCourses.get(courseId);
-  alert(c ? `Course ${c.numero_reservation || ""} du ${chatFmtCourse(c)}\n${c.adresse_depart || "?"} → ${c.adresse_arrivee || "?"}\n\n(Course ancienne : plus affichée dans la liste.)` : "Course introuvable (supprimée ?).");
-}
-
-async function envoyerMessageChatAdmin() {
-  const zone = document.getElementById("chat-texte-admin"), btn = document.getElementById("chat-envoyer-admin"), err = document.getElementById("chat-erreur-admin");
-  if (!zone || !chatClientOuvert) return;
-  const texte = zone.value.trim();
-  err.textContent = "";
-  if (!texte) { zone.focus(); return; }
-  if (!chatMonId) { const { data: { user } } = await supabase.auth.getUser(); chatMonId = user ? user.id : null; }
-  btn.disabled = true; btn.textContent = "…";
-  const { data, error } = await supabase.from("messages_chat").insert({
-    client_id: chatClientOuvert, auteur: "admin", auteur_id: chatMonId, course_id: chatCourseChoisie,
-    texte: texte.slice(0, 2000), lu_par_admin_at: new Date().toISOString()
-  }).select().single();
-  btn.disabled = false; btn.textContent = "Envoyer";
-  if (error) { err.textContent = "Erreur : " + error.message; return; }
-  zone.value = ""; zone.style.height = "auto";
-  if (!chatMessages.some(m => m.id === data.id)) chatMessages.push(data);
-  await chatChargerInfosCourses([data.course_id]);
-  afficherFilChatAdmin(true);
-  afficherChipChatAdmin();
-  chatRechargerListeBientot();
-}
-
-// Ouvre l'onglet Messages sur la conversation d'un client (depuis une carte de course)
-function ouvrirChatAdmin(clientId, courseId) {
-  if (!clientId) { alert("Cette course n'est pas liée à un compte client de l'application."); return; }
-  document.querySelectorAll(".carte-en-grand .btn-carte-grand").forEach(b => b.click());
-  document.querySelectorAll("body > .carte-en-grand").forEach(c => c.remove());
-  document.body.classList.remove("carte-grand-ouverte");
-  const btn = document.querySelector('nav button[data-onglet="messages"]');
-  if (btn) btn.click();
-  ouvrirConversationAdmin(clientId, courseId || null);
-  setTimeout(() => document.getElementById("section-messages").scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-}
-
-async function chatAfficherEtatAdmin(clientId) {
-  let ouvert = null;
-  try {
-    const { data, error } = await supabase.rpc("chat_client_ouvert", { p_client: clientId });
-    if (!error && typeof data === "boolean") ouvert = data;
-  } catch (e) {}
-  if (ouvert === null) ouvert = chatEtatsOuverts.has(clientId) ? chatEtatsOuverts.get(clientId) : null;
-  if (chatClientOuvert !== clientId) return;
-  const zone = document.getElementById("chat-etat-admin");
-  if (!zone || ouvert === null) return;
-  if (chatEtatsOuverts.get(clientId) !== ouvert) { chatEtatsOuverts.set(clientId, ouvert); afficherListeConversationsAdmin(); }
-  zone.innerHTML = ouvert
-    ? `<span class="chat-etat-pill ouvert">🟢 Chat ouvert (course en cours)</span>`
-    : `<span class="chat-etat-pill ferme">🔒 Chat fermé côté client (aucune course en cours)</span>
-       <p class="chat-note-ferme">Le client peut lire ta réponse mais ne pourra répondre qu'après une nouvelle réservation.</p>`;
-}
-
-function demarrerChatAdmin() {
-  chargerConversationsAdmin();
-  try { demarrerChatChauffeursAdmin(); } catch (e) { console.warn("chat chauffeurs :", e); }
-  if (chatTempsReelActif) return;
-  chatTempsReelActif = true;
-  supabase.auth.getUser().then(({ data }) => { chatMonId = data && data.user ? data.user.id : null; });
-  setInterval(() => { if (document.visibilityState === "visible") chargerConversationsAdmin(); }, 60000);
-  document.addEventListener("visibilitychange", () => { if (chatSectionVisible() && chatClientOuvert) chatMarquerLuAdmin(); });
-  try {
-    supabase.channel("admin-messages-chat")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages_chat" }, async (payload) => {
-        const m = payload.new || {};
-        if (!m.id) return;
-        const convOuverteVisible = chatClientOuvert === m.client_id && chatSectionVisible();
-        if (chatClientOuvert === m.client_id && !chatMessages.some(x => x.id === m.id)) {
-          chatMessages.push(m);
-          await chatChargerInfosCourses([m.course_id]);
-          afficherFilChatAdmin(false);
-          if (m.auteur === "client" && m.course_id && !(document.getElementById("chat-texte-admin")?.value || "").trim()) { chatCourseChoisie = m.course_id; afficherChipChatAdmin(); }
-          if (convOuverteVisible && m.auteur === "client") chatMarquerLuAdmin();
-        }
-        if (m.auteur === "client" && !convOuverteVisible) {
-          let conv = chatConvs.find(c => c.client_id === m.client_id);
-          let nom = conv ? conv.nom : null;
-          if (!nom) { const { data } = await supabase.rpc("chat_client_infos_admin", { p_client: m.client_id }); nom = (data && data[0] && data[0].nom) || "Client"; }
-          const course = m.course_id ? (dernieresCoursesAdmin || []).find(c => c.id === m.course_id) || null : null;
-          const texte = String(m.texte || "");
-          if (m.course_id) await chatChargerInfosCourses([m.course_id]);
-          const numMsg = m.course_id ? (chatInfosCourses.get(m.course_id) || {}).numero_reservation : null;
-          alerteImportanteAdmin("💬 Nouveau message client" + (numMsg ? " · " + numMsg : ""), `${esc(nom)}${numMsg ? " (réservation " + esc(numMsg) + ")" : ""} : ${esc(texte.slice(0, 120))}${texte.length > 120 ? "…" : ""}`, course, "#1d4f86", "#eef4fb");
-          const pile = document.getElementById("pile-alertes-admin");
-          const alerte = pile && pile.lastElementChild;
-          if (alerte) {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.style.cssText = "margin-top:8px; width:100%; padding:12px; border:2px solid #1d4f86; border-radius:10px; background:#fff; color:#1d4f86; font-weight:800;";
-            b.textContent = "💬 Ouvrir la conversation";
-            b.addEventListener("click", () => { alerte.remove(); ouvrirChatAdmin(m.client_id, null); });
-            alerte.appendChild(b);
-          }
-        }
-        chatRechargerListeBientot();
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages_chat" }, (payload) => {
-        const m = payload.new || {};
-        if (chatClientOuvert === m.client_id) {
-          const i = chatMessages.findIndex(x => x.id === m.id);
-          if (i >= 0) { chatMessages[i] = { ...chatMessages[i], ...m }; afficherFilChatAdmin(false); }
-        }
-        chatRechargerListeBientot();
-      })
-      .subscribe();
-  } catch (e) { console.warn("temps réel chat :", e); }
-}
-
-
-// ================== 🚖 MESSAGES CHAUFFEURS : centrale ↔ chauffeur (table messages_chauffeur) ==================
-let chchMessages = [];
-let chchCourseChoisie = null;
-let chchCoursesDuChauffeur = [];
-let chchTempsReelActif = false;
-let chatModeMessages = "clients";
-
-function chatBasculerMode(mode, garderConv) {
-  chatModeMessages = mode;
-  document.querySelectorAll("#chat-seg button").forEach(b => b.classList.toggle("actif", b.dataset.mode === mode));
-  document.getElementById("chat-mode-clients").style.display = mode === "clients" ? "" : "none";
-  document.getElementById("chat-mode-chauffeurs").style.display = mode === "chauffeurs" ? "" : "none";
-  if (garderConv) return;
-  // on ferme la conversation de l'autre type
-  const autreOuverte = mode === "clients" ? chchOuvert : chatClientOuvert;
-  if (autreOuverte) {
-    chatClientOuvert = null; chchOuvert = null;
-    document.getElementById("chat-admin").classList.remove("conv-ouverte");
-    document.getElementById("chat-conv-zone").innerHTML = `<p style="color:#666; text-align:center; padding:30px 10px;">Choisis une conversation à gauche.</p>`;
-  }
-  if (mode === "clients") afficherListeConversationsAdmin(); else afficherListeChauffeursAdmin();
-}
-document.querySelectorAll("#chat-seg button").forEach(b => b.addEventListener("click", () => chatBasculerMode(b.dataset.mode)));
-
-function chchInfosChauffeur(id) {
-  const c = (typeof chauffeursCache !== "undefined" ? chauffeursCache : []).find(x => x.id === id)
-    || (typeof partenairesCache !== "undefined" ? partenairesCache : []).find(x => x.id === id);
-  return c || null;
-}
-
-async function chargerConversationsChauffeursAdmin() {
-  const { data, error } = await supabase.rpc("chat_conversations_chauffeurs_admin");
-  if (error) { const z = document.getElementById("chch-liste"); if (z) z.innerHTML = `<p style="color:var(--rouge);">Erreur : ${esc(error.message)}</p>`; return; }
-  chchConvs = data || [];
-  if (chchOuvert && chatSectionVisible()) chchConvs.forEach(c => { if (c.chauffeur_id === chchOuvert) c.non_lus = 0; });
-  afficherListeChauffeursAdmin();
-  majBadgeChatAdmin();
-}
-let chchMinuterieListe = null;
-function chchRechargerListeBientot() { clearTimeout(chchMinuterieListe); chchMinuterieListe = setTimeout(chargerConversationsChauffeursAdmin, 600); }
-
-function afficherListeChauffeursAdmin() {
-  const zone = document.getElementById("chch-liste");
-  if (!zone) return;
-  if (!chchConvs.length) {
-    zone.innerHTML = `<p style="color:#666;">Aucune conversation avec un chauffeur pour l'instant. Touche « ✏️ Nouveau message » pour écrire à un chauffeur, ou « 💬 Écrire au chauffeur » sur une course.</p>`;
-    return;
-  }
-  const q = (document.getElementById("chch-recherche")?.value || "").trim().toLowerCase();
-  const qTel = q.replace(/[^\d+]/g, "");
-  const visibles = chchConvs.filter(c => !q || (c.nom || "").toLowerCase().includes(q) || (c.societe || "").toLowerCase().includes(q)
-    || (qTel.length >= 3 && String(c.telephone || "").replace(/[^\d+]/g, "").includes(qTel)));
-  if (!visibles.length) { zone.innerHTML = `<p style="color:#666;">Aucune conversation ne correspond à « ${esc(q)} ».</p>`; return; }
-  zone.innerHTML = "";
-  visibles.forEach(c => {
-    const el = document.createElement("div");
-    el.className = "chat-conv-item" + (c.non_lus ? " non-lu" : "") + (c.chauffeur_id === chchOuvert ? " active" : "");
-    el.innerHTML = `<div class="cc-corps">
-        <div class="cc-nom">🚖 ${esc(c.nom || "Chauffeur")}${c.societe ? ` <small style="font-weight:400; color:var(--gris);">(${esc(c.societe)})</small>` : ""}</div>
-        ${c.telephone ? `<div class="cc-tel">📞 ${esc(c.telephone)}</div>` : ""}
-        <div class="cc-apercu">${c.dernier_auteur === "admin" ? "Toi : " : ""}${esc(c.dernier_texte || "")}</div>
-      </div>
-      <div class="cc-droite">${c.dernier_at ? esc(chatFmtQuand(c.dernier_at)) : ""}${c.non_lus ? `<br><span class="cc-nb">${c.non_lus}</span>` : ""}</div>`;
-    el.addEventListener("click", () => ouvrirConversationChauffeurAdmin(c.chauffeur_id));
-    zone.appendChild(el);
-  });
-}
-document.getElementById("chch-recherche").addEventListener("input", afficherListeChauffeursAdmin);
-
-async function chchMarquerLu() {
-  if (!chchOuvert) return;
-  const conv = chchConvs.find(c => c.chauffeur_id === chchOuvert);
-  const aMarquer = chchMessages.some(m => m.auteur === "chauffeur" && !m.lu_par_admin_at) || (conv && conv.non_lus);
-  if (!aMarquer) return;
-  const maintenant = new Date().toISOString();
-  chchMessages.forEach(m => { if (m.auteur === "chauffeur" && !m.lu_par_admin_at) m.lu_par_admin_at = maintenant; });
-  if (conv) conv.non_lus = 0;
-  majBadgeChatAdmin(); afficherListeChauffeursAdmin();
-  const { error } = await supabase.rpc("chat_chauffeur_marquer_lu_admin", { p_chauffeur: chchOuvert });
-  if (error) console.warn("chat chauffeur lu :", error.message);
-}
-
-async function chchChargerCoursesChauffeur(chauffeurId) {
-  const depuis = new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString();
-  const { data } = await supabase.from("courses").select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, client_nom, statut")
-    .eq("chauffeur_id", chauffeurId).gte("date_heure", depuis).not("statut", "in", "(annulee,refusee,expiree)")
-    .order("date_heure", { ascending: true }).limit(30);
-  if (chchOuvert !== chauffeurId) return;
-  chchCoursesDuChauffeur = data || [];
-  chchCoursesDuChauffeur.forEach(c => { if (!chatInfosCourses.get(c.id)) chatInfosCourses.set(c.id, c); });
-}
-
-async function ouvrirConversationChauffeurAdmin(chauffeurId, courseId) {
-  chatClientOuvert = null;
-  chatBasculerMode("chauffeurs", true);
-  const changement = chchOuvert !== chauffeurId;
-  chchOuvert = chauffeurId;
-  if (changement) { chchMessages = []; chchCourseChoisie = null; chchCoursesDuChauffeur = []; }
-  if (courseId) chchCourseChoisie = courseId;
-  document.getElementById("chat-admin").classList.add("conv-ouverte");
-  let conv = chchConvs.find(c => c.chauffeur_id === chauffeurId);
-  const inf = chchInfosChauffeur(chauffeurId) || {};
-  if (!conv) {
-    let nom = inf.nom, telephone = inf.telephone, societe = inf.societe;
-    if (!nom || telephone === undefined) {
-      const { data } = await supabase.from("profils").select("nom, telephone, societe").eq("id", chauffeurId).maybeSingle();
-      if (data) { nom = data.nom; telephone = data.telephone; societe = data.societe; }
-    }
-    conv = { chauffeur_id: chauffeurId, nom: nom || "Chauffeur", telephone: telephone || null, societe: societe || null, non_lus: 0 };
-  } else if (!conv.telephone && inf.telephone) conv.telephone = inf.telephone;
-  if (chchOuvert !== chauffeurId) return;
-  const zone = document.getElementById("chat-conv-zone");
-  const wa = numeroWhatsapp(conv.telephone || "");
-  zone.innerHTML = `
-    <div class="chat-conv-entete">
-      <button type="button" class="chat-retour">← Conversations</button>
-      <div class="ce-nom">🚖 ${esc(conv.nom || "Chauffeur")}${conv.societe ? ` (${esc(conv.societe)})` : ""}${conv.telephone ? `<small>📞 ${esc(conv.telephone)}</small>` : ""}</div>
-      ${conv.telephone ? `<a class="tel" href="tel:${esc(String(conv.telephone).replace(/[^\d+]/g, ""))}">📞 Appeler</a>` : ""}
-      ${wa ? `<a class="wa" href="https://wa.me/${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
-    </div>
-    <div class="chat-fil-admin" id="chch-fil"><p style="color:#666; margin:auto;">Chargement…</p></div>
-    <div class="chat-composer-admin">
-      <div class="chat-chip" id="chch-chip" style="display:none;"></div>
-      <div class="chat-saisie">
-        <textarea id="chch-texte" rows="2" maxlength="2000" placeholder="Ton message au chauffeur…"></textarea>
-        <button type="button" id="chch-envoyer">Envoyer</button>
-      </div>
-      <p id="chch-erreur" style="color:var(--rouge); font-size:.85rem; margin:6px 0 0;"></p>
-    </div>`;
-  zone.querySelector(".chat-retour").addEventListener("click", () => {
-    document.getElementById("chat-admin").classList.remove("conv-ouverte");
-    chchOuvert = null; afficherListeChauffeursAdmin();
-  });
-  const zoneTexte = zone.querySelector("#chch-texte");
-  zone.querySelector("#chch-envoyer").addEventListener("click", envoyerMessageChauffeurAdmin);
-  zoneTexte.addEventListener("input", () => { zoneTexte.style.height = "auto"; zoneTexte.style.height = Math.min(zoneTexte.scrollHeight + 2, 160) + "px"; });
-  zoneTexte.addEventListener("keydown", (e) => {
-    const ordinateur = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && ordinateur) { e.preventDefault(); envoyerMessageChauffeurAdmin(); }
-  });
-  afficherListeChauffeursAdmin();
-
-  const [res] = await Promise.all([
-    supabase.from("messages_chauffeur").select("*").eq("chauffeur_id", chauffeurId).order("created_at", { ascending: true }).limit(500),
-    chchChargerCoursesChauffeur(chauffeurId)
-  ]);
-  if (chchOuvert !== chauffeurId) return;
-  if (res.error) { document.getElementById("chch-fil").innerHTML = `<p style="color:var(--rouge);">Erreur : ${esc(res.error.message)}</p>`; return; }
-  chchMessages = res.data || [];
-  if (!chchCourseChoisie) {
-    const dernier = [...chchMessages].reverse().find(m => m.auteur === "chauffeur" && m.course_id);
-    if (dernier) chchCourseChoisie = dernier.course_id;
-  }
-  await chatChargerInfosCourses(chchMessages.map(m => m.course_id).concat(chchCourseChoisie ? [chchCourseChoisie] : []));
-  afficherFilChauffeurAdmin(true);
-  afficherChipChauffeurAdmin();
-  chchMarquerLu();
-  setTimeout(() => zoneTexte.focus(), 100);
-}
-
-function afficherChipChauffeurAdmin() {
-  const chip = document.getElementById("chch-chip");
-  if (!chip) return;
-  const ids = [...new Set(chchCoursesDuChauffeur.map(c => c.id)
-    .concat([...chchMessages].reverse().map(m => m.course_id).filter(Boolean))
-    .concat(chchCourseChoisie ? [chchCourseChoisie] : []))].slice(0, 20);
-  if (!ids.length) { chip.style.display = "none"; chip.innerHTML = ""; return; }
-  const lib = id => chatLibelleResa(chatInfosCourses.get(id));
-  if (!chchCourseChoisie) {
-    chip.innerHTML = `<select title="Lier le message à une course"><option value="">➕ Lier à une course…</option>${ids.map(id => `<option value="${esc(id)}">🚖 ${esc(lib(id))}</option>`).join("")}</select>`;
-  } else if (ids.length > 1) {
-    chip.innerHTML = `<select title="Changer de course">${ids.map(id => `<option value="${esc(id)}" ${id === chchCourseChoisie ? "selected" : ""}>🚖 ${esc(lib(id))}</option>`).join("")}</select> <button type="button" title="Retirer">✕</button>`;
-  } else {
-    chip.innerHTML = `🚖 ${esc(lib(chchCourseChoisie))} <button type="button" title="Retirer">✕</button>`;
-  }
-  chip.style.display = "inline-flex";
-  const sel = chip.querySelector("select");
-  if (sel) sel.addEventListener("change", () => { chchCourseChoisie = sel.value || null; afficherChipChauffeurAdmin(); });
-  const b = chip.querySelector("button");
-  if (b) b.addEventListener("click", () => { chchCourseChoisie = null; afficherChipChauffeurAdmin(); });
-}
-
-function afficherFilChauffeurAdmin(forcerBas) {
-  const fil = document.getElementById("chch-fil");
-  if (!fil) return;
-  if (!chchMessages.length) { fil.innerHTML = `<p style="color:#666; margin:auto; text-align:center;">Pas encore de message avec ce chauffeur.<br>Écris-lui ci-dessous : il le verra dans son app chauffeur (onglet « 💬 Messages ») et recevra une notification.</p>`; return; }
-  const enBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80;
-  let html = "", jourPrec = "";
-  const dernierAdmin = [...chchMessages].reverse().find(m => m.auteur === "admin");
-  chchMessages.forEach(m => {
-    const j = chatCleJour(m.created_at);
-    if (j !== jourPrec) { html += `<div class="chat-jour">${esc(j)}</div>`; jourPrec = j; }
-    const c = m.course_id ? chatInfosCourses.get(m.course_id) : null;
-    const tag = m.course_id ? `<div><span class="tag-course" data-course="${esc(m.course_id)}">🚖 ${c ? esc(chatLibelleResa(c)) : "Course"} ›</span></div>` : "";
-    const vu = dernierAdmin && m.id === dernierAdmin.id && m.lu_par_chauffeur_at ? " · ✓ Vu par le chauffeur" : "";
-    html += `<div class="bulle ${m.auteur === "admin" ? "admin" : "client"}">${tag}${esc(m.texte)}<div class="meta">${chatFmtHeure(m.created_at)}${vu}</div></div>`;
-  });
-  fil.innerHTML = html;
-  fil.querySelectorAll(".tag-course").forEach(t => t.addEventListener("click", () => chatOuvrirCourse(t.dataset.course)));
-  if (forcerBas || enBas) fil.scrollTop = fil.scrollHeight;
-}
-
-async function envoyerMessageChauffeurAdmin() {
-  const zone = document.getElementById("chch-texte"), btn = document.getElementById("chch-envoyer"), err = document.getElementById("chch-erreur");
-  if (!zone || !chchOuvert) return;
-  const texte = zone.value.trim();
-  err.textContent = "";
-  if (!texte) { zone.focus(); return; }
-  if (!chatMonId) { const { data: { user } } = await supabase.auth.getUser(); chatMonId = user ? user.id : null; }
-  btn.disabled = true; btn.textContent = "…";
-  const { data, error } = await supabase.from("messages_chauffeur").insert({
-    chauffeur_id: chchOuvert, auteur: "admin", auteur_id: chatMonId, course_id: chchCourseChoisie,
-    texte: texte.slice(0, 2000), lu_par_admin_at: new Date().toISOString()
-  }).select().single();
-  btn.disabled = false; btn.textContent = "Envoyer";
-  if (error) { err.textContent = "Erreur : " + error.message; return; }
-  zone.value = ""; zone.style.height = "auto";
-  if (!chchMessages.some(m => m.id === data.id)) chchMessages.push(data);
-  await chatChargerInfosCourses([data.course_id]);
-  afficherFilChauffeurAdmin(true);
-  afficherChipChauffeurAdmin();
-  chchRechargerListeBientot();
-}
-
-// Ouvre l'onglet Messages sur la conversation d'un chauffeur (depuis une carte de course)
-function ouvrirChatChauffeurAdmin(chauffeurId, courseId) {
-  if (!chauffeurId) { alert("Aucun chauffeur attribué à cette course."); return; }
-  document.querySelectorAll(".carte-en-grand .btn-carte-grand").forEach(b => b.click());
-  document.querySelectorAll("body > .carte-en-grand").forEach(c => c.remove());
-  document.body.classList.remove("carte-grand-ouverte");
-  const btn = document.querySelector('nav button[data-onglet="messages"]');
-  if (btn) btn.click();
-  ouvrirConversationChauffeurAdmin(chauffeurId, courseId || null);
-  setTimeout(() => document.getElementById("section-messages").scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-}
-
-function demarrerChatChauffeursAdmin() {
-  chargerConversationsChauffeursAdmin();
-  if (chchTempsReelActif) return;
-  chchTempsReelActif = true;
-  setInterval(() => { if (document.visibilityState === "visible") chargerConversationsChauffeursAdmin(); }, 60000);
-  document.addEventListener("visibilitychange", () => { if (chatSectionVisible() && chchOuvert) chchMarquerLu(); });
-  try {
-    supabase.channel("admin-messages-chauffeurs")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages_chauffeur" }, async (payload) => {
-        const m = payload.new || {};
-        if (!m.id) return;
-        const convOuverteVisible = chchOuvert === m.chauffeur_id && chatSectionVisible();
-        if (chchOuvert === m.chauffeur_id && !chchMessages.some(x => x.id === m.id)) {
-          chchMessages.push(m);
-          await chatChargerInfosCourses([m.course_id]);
-          afficherFilChauffeurAdmin(false);
-          if (m.auteur === "chauffeur" && m.course_id && !(document.getElementById("chch-texte")?.value || "").trim()) { chchCourseChoisie = m.course_id; afficherChipChauffeurAdmin(); }
-          if (convOuverteVisible && m.auteur === "chauffeur") chchMarquerLu();
-        }
-        if (m.auteur === "chauffeur" && !convOuverteVisible) {
-          const conv = chchConvs.find(c => c.chauffeur_id === m.chauffeur_id);
-          let nom = (conv && conv.nom) || (chchInfosChauffeur(m.chauffeur_id) || {}).nom;
-          if (!nom) { const { data } = await supabase.from("profils").select("nom").eq("id", m.chauffeur_id).maybeSingle(); nom = (data && data.nom) || "Chauffeur"; }
-          const course = m.course_id ? (dernieresCoursesAdmin || []).find(c => c.id === m.course_id) || null : null;
-          const texte = String(m.texte || "");
-          if (m.course_id) await chatChargerInfosCourses([m.course_id]);
-          const numMsg = m.course_id ? (chatInfosCourses.get(m.course_id) || {}).numero_reservation : null;
-          alerteImportanteAdmin("💬 Message chauffeur" + (numMsg ? " · " + esc(numMsg) : ""), `${esc(nom)}${numMsg ? " (réservation " + esc(numMsg) + ")" : ""} : ${esc(texte.slice(0, 120))}${texte.length > 120 ? "…" : ""}`, course, "#5a3d8a", "#f3eefb");
-          const pile = document.getElementById("pile-alertes-admin");
-          const alerte = pile && pile.lastElementChild;
-          if (alerte) {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.style.cssText = "margin-top:8px; width:100%; padding:12px; border:2px solid #5a3d8a; border-radius:10px; background:#fff; color:#5a3d8a; font-weight:800;";
-            b.textContent = "💬 Ouvrir la conversation";
-            b.addEventListener("click", () => { alerte.remove(); ouvrirChatChauffeurAdmin(m.chauffeur_id, null); });
-            alerte.appendChild(b);
-          }
-        }
-        chchRechargerListeBientot();
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages_chauffeur" }, (payload) => {
-        const m = payload.new || {};
-        if (chchOuvert === m.chauffeur_id) {
-          const i = chchMessages.findIndex(x => x.id === m.id);
-          if (i >= 0) { chchMessages[i] = { ...chchMessages[i], ...m }; afficherFilChauffeurAdmin(false); }
-        }
-        chchRechargerListeBientot();
-      })
-      .subscribe();
-  } catch (e) { console.warn("temps réel chat chauffeurs :", e); }
-}
-
-// ---------- ✏️ Nouveau message : choisir un client ou un chauffeur ----------
-let nmType = "client";
-const nmAnnuaire = { client: null, chauffeur: null };
-async function nmCharger(type) {
-  if (nmAnnuaire[type]) return nmAnnuaire[type];
-  const { data, error } = await supabase.rpc("chat_annuaire_admin", { p_type: type });
-  if (error) throw error;
-  nmAnnuaire[type] = data || [];
-  return nmAnnuaire[type];
-}
-async function nmAfficher() {
-  const zone = document.getElementById("nm-liste");
-  document.querySelectorAll("#nm-seg button").forEach(b => b.classList.toggle("actif", b.dataset.type === nmType));
-  let liste;
-  try { liste = await nmCharger(nmType); }
-  catch (e) { zone.innerHTML = `<p style="color:var(--rouge);">Erreur : ${esc(e.message || e)}</p>`; return; }
-  const q = document.getElementById("nm-recherche").value.trim().toLowerCase();
-  const qTel = q.replace(/[^\d+]/g, "");
-  const visibles = liste.filter(p => !q || (p.nom || "").toLowerCase().includes(q) || (p.email || "").toLowerCase().includes(q)
-    || (p.societe || "").toLowerCase().includes(q) || (qTel.length >= 3 && String(p.telephone || "").replace(/[^\d+]/g, "").includes(qTel)));
-  if (!visibles.length) { zone.innerHTML = `<p style="color:#666;">${q ? "Aucun résultat pour « " + esc(q) + " »." : "Aucun " + (nmType === "client" ? "compte client" : "chauffeur") + "."}</p>`; return; }
-  zone.innerHTML = "";
-  visibles.slice(0, 200).forEach(p => {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "nm-item";
-    const icone = nmType === "client" ? "👤" : (p.role === "partenaire" ? "🤝" : "🚖");
-    b.innerHTML = `<b>${icone} ${esc(p.nom || "Sans nom")}${p.societe ? ` <span style="font-weight:400; color:var(--gris);">(${esc(p.societe)})</span>` : ""}</b>
-      <small>${[p.telephone ? "📞 " + p.telephone : "", p.email ? "✉️ " + p.email : ""].filter(Boolean).map(esc).join(" · ") || "—"}</small>`;
-    b.addEventListener("click", () => {
-      nmFermer();
-      if (nmType === "client") ouvrirChatAdmin(p.id, null); else ouvrirChatChauffeurAdmin(p.id, null);
-    });
-    zone.appendChild(b);
-  });
-}
-function nmOuvrir() {
-  nmType = chatModeMessages === "chauffeurs" ? "chauffeur" : "client";
-  nmAnnuaire.client = null; nmAnnuaire.chauffeur = null; // liste fraîche à chaque ouverture
-  document.getElementById("nm-recherche").value = "";
-  document.getElementById("nm-liste").innerHTML = `<p style="color:#666;">Chargement…</p>`;
-  document.getElementById("modale-nouveau-message").style.display = "flex";
-  nmAfficher();
-  setTimeout(() => document.getElementById("nm-recherche").focus(), 50);
-}
-function nmFermer() { document.getElementById("modale-nouveau-message").style.display = "none"; }
-document.getElementById("btn-nouveau-message").addEventListener("click", nmOuvrir);
-document.getElementById("nm-fermer").addEventListener("click", nmFermer);
-document.getElementById("modale-nouveau-message").addEventListener("click", (e) => { if (e.target.id === "modale-nouveau-message") nmFermer(); });
-document.querySelectorAll("#nm-seg button").forEach(b => b.addEventListener("click", () => { nmType = b.dataset.type; document.getElementById("nm-liste").innerHTML = `<p style="color:#666;">Chargement…</p>`; nmAfficher(); }));
-document.getElementById("nm-recherche").addEventListener("input", nmAfficher);
-
-// ================== 🧾 FACTURES : demandes de facture des clients ==================
-let facturesCache = [];
-let faFiltre = "a_traiter";
-let faTempsReelActif = false;
-const FA_LIBELLES = { demandee: "🆕 Demandée", en_cours: "⏳ En cours", envoyee: "✅ Envoyée", refusee: "❌ Refusée" };
-
-function faNumeroChiffres(n) {
-  let d = String(n || "").replace(/\D/g, "");
-  if (d.length === 9) d = "0" + d;
-  return d;
-}
-function faFormaterNumero(n) {
-  const d = faNumeroChiffres(n);
-  if (d.length !== 10) return String(n || "");
-  return `BE${d.slice(0, 4)}.${d.slice(4, 7)}.${d.slice(7)}`;
-}
-function faAdresseLigne(d) {
-  const rue = [d.rue, d.numero].filter(Boolean).join(" ") + (d.boite ? ` (boîte ${d.boite})` : "");
-  const ville = [d.code_postal, d.ville].filter(Boolean).join(" ");
-  return [rue.trim(), ville, d.pays].filter(Boolean).join(", ");
-}
-function faCopier(texte, btn) {
-  const ok = () => { if (btn) { const t = btn.textContent; btn.textContent = "✅ Copié !"; setTimeout(() => btn.textContent = t, 1500); } };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(texte).then(ok, () => faCopierSecours(texte, ok));
-  } else faCopierSecours(texte, ok);
-}
-function faCopierSecours(texte, ok) {
-  const ta = document.createElement("textarea");
-  ta.value = texte; ta.style.cssText = "position:fixed; left:-9999px; top:0;";
-  document.body.appendChild(ta); ta.select();
-  try { document.execCommand("copy"); ok(); } catch (e) { prompt("Copie ce texte :", texte); }
-  ta.remove();
-}
-function faQuand(iso, avecJour) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", weekday: avecJour ? "short" : undefined, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-function faNomChauffeur(id) {
-  if (!id) return "";
-  const ch = (typeof chauffeursCache !== "undefined" ? chauffeursCache : []).find(c => c.id === id)
-    || (typeof partenairesCache !== "undefined" ? partenairesCache : []).find(p => p.id === id);
-  return ch ? (ch.nom || ch.telephone || "") : "";
-}
-function faTotalCourse(c) { return (Number(c.prix) || 0) + (Number(c.surprime) || 0); }
-function faStatutPaiement(c) {
-  if (c.mode_paiement === "uber") return "🚕 payé sur Uber";
-  const total = faTotalCourse(c);
-  const estTotal = c.paiement_exige === "total" || c.paiement_choisi === "total";
-  if (c.acompte_paye) {
-    if (estTotal) return "✅ Payé intégralement à l'avance";
-    const ac = Number(c.acompte_montant) || 0;
-    return `✅ Acompte payé ${ac.toFixed(2)} € · reste ${(total - ac).toFixed(2)} € (à bord)`;
-  }
-  if (c.acompte_declare_client) return "💰 Paiement déclaré par le client (à vérifier)";
-  return "⏳ Pas de paiement à l'avance enregistré";
-}
-function faRetourTexte(c) {
-  const parts = [];
-  if (c.est_retour) parts.push("↩️ Trajet retour");
-  if (c.aller_retour) {
-    let t = "🔄 Aller-retour";
-    if (c.type_retour === "immediat") t += " (retour immédiat, ≤15 min)";
-    else if (c.type_retour === "attente") t += ` (avec attente${c.duree_attente_estimee ? " ~" + c.duree_attente_estimee : " >15 min"})`;
-    else if (c.type_retour === "heure_precise" && c.heure_retour_prevue) t += ` (retour à ${new Date(c.heure_retour_prevue).toLocaleTimeString("fr-BE", { timeZone: "Europe/Brussels", hour: "2-digit", minute: "2-digit" })})`;
-    parts.push(t);
-  }
-  if (!c.aller_retour && c.duree_attente_estimee) parts.push(`⏱️ Attente : ${c.duree_attente_estimee}`);
-  return parts.join(" · ");
-}
-function faArrets(c) {
-  const a = Array.isArray(c.arrets) ? c.arrets : [];
-  return a.map(x => typeof x === "string" ? x : (x && (x.adresse || x.label || x.nom)) || "").filter(Boolean);
-}
-function faTexteCoordonnees(d) {
-  const lignes = [d.nom];
-  if (d.numero_entreprise) lignes.push("N° d'entreprise : " + faFormaterNumero(d.numero_entreprise));
-  const rue = [d.rue, d.numero].filter(Boolean).join(" ") + (d.boite ? ` boîte ${d.boite}` : "");
-  if (rue.trim()) lignes.push(rue.trim());
-  const ville = [d.code_postal, d.ville].filter(Boolean).join(" ");
-  if (ville) lignes.push(ville);
-  if (d.pays) lignes.push(d.pays);
-  if (d.personne_contact) lignes.push("À l'attention de : " + d.personne_contact);
-  if (d.email) lignes.push("E-mail : " + d.email);
-  if (d.telephone) lignes.push("Tél. : " + d.telephone);
-  return lignes.filter(Boolean).join("\n");
-}
-function faTexteCourses(courses) {
-  const lignes = courses.map((c, i) => {
-    const l = [`${i + 1}. ${c.numero_reservation ? "[" + c.numero_reservation + "] " : ""}${faQuand(c.date_heure)} — ${c.adresse_depart || "?"} → ${c.adresse_arrivee || "?"}`];
-    const arr = faArrets(c); if (arr.length) l.push(`   Arrêts : ${arr.join(" ; ")}`);
-    const rt = faRetourTexte(c); if (rt) l.push("   " + rt.replace(/[🔄↩️⏱️]️?\s?/gu, ""));
-    const inf = [`${c.passagers || 1} passager(s)`];
-    if (c.distance_km) inf.push(`${String(c.distance_km).replace(".", ",")} km`);
-    if (c.duree_min) inf.push(`${Math.round(c.duree_min)} min`);
-    const ch = faNomChauffeur(c.chauffeur_id); if (ch) inf.push("chauffeur : " + ch);
-    l.push("   " + inf.join(" · "));
-    l.push(`   Prix : ${(Number(c.prix) || 0).toFixed(2)} €` + (Number(c.surprime) ? ` + surprime ${Number(c.surprime).toFixed(2)} €` : "") + ` = ${faTotalCourse(c).toFixed(2)} € TTC`);
-    return l.join("\n");
-  });
-  const somme = courses.reduce((s, c) => s + faTotalCourse(c), 0);
-  lignes.push(`\nTOTAL : ${somme.toFixed(2)} € TTC (${courses.length} course${courses.length > 1 ? "s" : ""})`);
-  return lignes.join("\n");
-}
-function faNomFichierSur(nom) {
-  const p = String(nom || "facture").normalize("NFD").replace(/[̀-ͯ]/g, "");
-  return p.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").slice(-100) || "facture.pdf";
-}
-
-function demarrerFacturesAdmin() {
-  majBadgeFactures();
-  if (faTempsReelActif) return;
-  faTempsReelActif = true;
-  try {
-    supabase.channel("admin-demandes-facture")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "demandes_facture" }, (payload) => {
-        const d = payload.new || {};
-        const n = Array.isArray(d.course_ids) ? d.course_ids.length : 0;
-        alerteImportanteAdmin("🧾 Nouvelle demande de facture", `${esc(d.nom || "Client")} – ${n} course(s)`, null, "#1d4ed8", "#eef4ff");
-        majBadgeFactures();
-        if (document.getElementById("section-factures").classList.contains("visible")) chargerFacturesAdmin();
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "demandes_facture" }, () => {
-        majBadgeFactures();
-        clearTimeout(window.minuterieFactures);
-        window.minuterieFactures = setTimeout(() => {
-          if (document.getElementById("section-factures").classList.contains("visible")) chargerFacturesAdmin();
-        }, 800);
-      })
-      .subscribe();
-  } catch (e) { console.warn("temps réel factures :", e); }
-}
-
-async function majBadgeFactures() {
-  const { count, error } = await supabase.from("demandes_facture").select("id", { count: "exact", head: true }).eq("statut", "demandee");
-  if (error) return;
-  const btnNav = document.querySelector('nav button[data-onglet="factures"]');
-  if (!btnNav) return;
-  let p = btnNav.querySelector(".badge-demandes");
-  if (count) { if (!p) { p = document.createElement("span"); p.className = "badge-demandes"; btnNav.appendChild(p); } p.textContent = count; }
-  else if (p) p.remove();
-}
-
-async function chargerFacturesAdmin() {
-  const zone = document.getElementById("fa-liste");
-  if (!facturesCache.length) zone.innerHTML = `<p style="color:#666;">Chargement…</p>`;
-  const { data, error } = await supabase.from("demandes_facture").select("*").order("created_at", { ascending: false });
-  if (error) { zone.textContent = "Erreur : " + error.message; return; }
-  facturesCache = data || [];
-  const ids = [...new Set(facturesCache.flatMap(d => d.course_ids || []))];
-  const coursesParId = new Map();
-  for (let i = 0; i < ids.length; i += 100) {
-    const { data: cs } = await supabase.from("courses").select("*").in("id", ids.slice(i, i + 100));
-    (cs || []).forEach(c => coursesParId.set(c.id, c));
-  }
-  facturesCache.forEach(d => {
-    d._courses = (d.course_ids || []).map(id => coursesParId.get(id)).filter(Boolean)
-      .sort((a, b) => new Date(a.date_heure) - new Date(b.date_heure));
-  });
-  afficherFacturesAdmin();
-  majBadgeFactures();
-}
-
-function afficherFacturesAdmin() {
-  const zone = document.getElementById("fa-liste");
-  const liste = facturesCache.filter(d =>
-    faFiltre === "toutes" ? true
-    : faFiltre === "a_traiter" ? (d.statut === "demandee" || d.statut === "en_cours")
-    : d.statut === faFiltre);
-  zone.innerHTML = "";
-  if (!liste.length) { zone.innerHTML = `<p style="color:#666; text-align:center; padding:20px;">Aucune demande de facture ici.</p>`; return; }
-  liste.forEach(d => zone.appendChild(construireCarteFacture(d)));
-}
-
-function construireCarteFacture(d) {
-  const carte = document.createElement("div");
-  carte.className = "fa-carte fa-" + d.statut;
-  const num = faNumeroChiffres(d.numero_entreprise);
-  const lienBce = num.length === 10
-    ? ` <a href="https://kbopub.economie.fgov.be/kbopub/zoeknummerform.html?nummer=${num}&actionLu=Zoek&lang=fr" target="_blank" rel="noopener">🔎 BCE</a>` : "";
-  const courses = d._courses || [];
-  const somme = courses.reduce((s, c) => s + faTotalCourse(c), 0);
-  const manquantes = (d.course_ids || []).length - courses.length;
-  const ligne = (lab, val) => val ? `<div class="fa-ligne"><span>${lab}</span><b>${val}</b></div>` : "";
-  carte.innerHTML = `
-    <div class="fa-entete">
-      <div><div class="fa-nom">${esc(d.nom || "Client")}</div>
-        <div class="fa-date">Demandée le ${esc(faQuand(d.created_at, true))}${d.envoyee_at ? " · envoyée le " + esc(faQuand(d.envoyee_at)) : ""}</div></div>
-      <span class="fa-statut">${FA_LIBELLES[d.statut] || esc(d.statut)}</span>
-    </div>
-    <div class="fa-bloc">
-      <div class="fa-titre">🏢 Coordonnées de facturation</div>
-      ${ligne("Nom", esc(d.nom))}
-      ${ligne("N° d'entreprise", d.numero_entreprise ? esc(faFormaterNumero(d.numero_entreprise)) + lienBce : "")}
-      ${ligne("E-mail", d.email ? `<a href="mailto:${esc(d.email)}">${esc(d.email)}</a>` : "")}
-      ${ligne("Téléphone", d.telephone ? `<a href="tel:${esc(d.telephone)}">${esc(d.telephone)}</a>` : "")}
-      ${ligne("Contact", esc(d.personne_contact))}
-      ${ligne("Adresse", esc(faAdresseLigne(d)))}
-      <button type="button" class="fa-btn fa-copier-coord">📋 Copier les coordonnées</button>
-    </div>
-    ${d.message ? `<div class="fa-message">💬 ${esc(d.message)}</div>` : ""}
-    ${d.reponse_admin ? `<div class="fa-message fa-reponse">↩️ Ta réponse : ${esc(d.reponse_admin)}</div>` : ""}
-    <div class="fa-bloc">
-      <div class="fa-titre">🚕 Courses concernées (${courses.length})</div>
-      <div class="fa-courses"></div>
-      ${manquantes > 0 ? `<div class="fa-note">⚠️ ${manquantes} course(s) introuvable(s) (supprimée(s) ?)</div>` : ""}
-      <div class="fa-somme">Total : ${somme.toFixed(2)} € TTC</div>
-      ${courses.length ? `<button type="button" class="fa-btn fa-copier-courses">📋 Copier le détail des courses</button>` : ""}
-    </div>
-    <div class="fa-actions"></div>`;
-
-  const zc = carte.querySelector(".fa-courses");
-  courses.forEach(c => {
-    const el = document.createElement("div");
-    el.className = "fa-course";
-    const arr = faArrets(c);
-    const rt = faRetourTexte(c);
-    const inf = [`👥 ${c.passagers || 1}`];
-    if (c.bagages) inf.push(`🧳 ${c.bagages}`);
-    if (c.distance_km) inf.push(`📏 ${String(c.distance_km).replace(".", ",")} km`);
-    if (c.duree_min) inf.push(`⏱️ ${Math.round(c.duree_min)} min`);
-    const ch = faNomChauffeur(c.chauffeur_id); if (ch) inf.push(`🚖 ${esc(ch)}`);
-    el.innerHTML = `
-      <div class="fa-c-quand">${badgeNumeroResa(c.numero_reservation)}🕐 ${esc(faQuand(c.date_heure, true))}${c.statut ? ` <span class="fa-c-statut">${esc(c.statut)}</span>` : ""}</div>
-      <div>🟢 ${esc(c.adresse_depart || "?")}</div>
-      ${arr.map(a => `<div>🟡 ${esc(a)}</div>`).join("")}
-      <div>🔴 ${esc(c.adresse_arrivee || "?")}</div>
-      ${rt ? `<div class="fa-c-info">${esc(rt)}</div>` : ""}
-      <div class="fa-c-info">${inf.join(" · ")}</div>
-      <div class="fa-c-prix">💶 ${(Number(c.prix) || 0).toFixed(2)} €${Number(c.surprime) ? ` + surprime ${Number(c.surprime).toFixed(2)} €` : ""} = <b>${faTotalCourse(c).toFixed(2)} €</b></div>
-      <div class="fa-c-info">${esc(faStatutPaiement(c))}</div>`;
-    el.addEventListener("click", () => faOuvrirCourse(c));
-    zc.appendChild(el);
-  });
-
-  carte.querySelector(".fa-copier-coord").addEventListener("click", (e) => faCopier(faTexteCoordonnees(d), e.currentTarget));
-  const bc = carte.querySelector(".fa-copier-courses");
-  if (bc) bc.addEventListener("click", (e) => faCopier(faTexteCourses(courses), e.currentTarget));
-
-  const actions = carte.querySelector(".fa-actions");
-  const bouton = (txt, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "fa-btn " + (cls || ""); b.textContent = txt; b.addEventListener("click", fn); actions.appendChild(b); return b; };
-  const entree = document.createElement("input");
-  entree.type = "file"; entree.accept = "application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"; entree.style.display = "none";
-  actions.appendChild(entree);
-  entree.addEventListener("change", () => { const f = entree.files && entree.files[0]; entree.value = ""; if (f) faEnvoyerFichier(d, f, carte); });
-
-  if (d.statut === "demandee") bouton("⏳ Marquer en cours", "", () => faChangerStatut(d, { statut: "en_cours" }));
-  if (d.statut === "envoyee" && d.fichier_path) {
-    bouton("📄 Voir la facture", "fa-principal", () => faVoirFichier(d));
-    bouton("🔁 Remplacer le fichier", "", () => entree.click());
-  } else {
-    bouton("📎 Joindre la facture (PDF)", "fa-principal", () => entree.click());
-  }
-  if (d.statut === "demandee" || d.statut === "en_cours") {
-    bouton("❌ Refuser", "fa-danger", () => {
-      const motif = prompt("Motif du refus (sera visible par le client) :", "");
-      if (motif === null) return;
-      faChangerStatut(d, { statut: "refusee", reponse_admin: motif.trim() || null });
-    });
-  }
-  return carte;
-}
-
-async function faChangerStatut(d, maj) {
-  const { error } = await supabase.from("demandes_facture").update(maj).eq("id", d.id);
-  if (error) { alert("Erreur : " + error.message); return; }
-  chargerFacturesAdmin();
-}
-
-async function faEnvoyerFichier(d, fichier, carte) {
-  const okType = ["application/pdf", "image/jpeg", "image/png"].includes(fichier.type) || /\.(pdf|jpe?g|png)$/i.test(fichier.name);
-  if (!okType) { alert("Format accepté : PDF, JPG ou PNG."); return; }
-  if (fichier.size > 10 * 1024 * 1024) { alert("Fichier trop lourd (max 10 Mo)."); return; }
-  if (!d.client_id) { alert("Demande sans client associé : impossible d'envoyer le fichier."); return; }
-  const remplacement = d.statut === "envoyee" && !!d.fichier_path;
-  const chemin = `${d.client_id}/${d.id}/${faNomFichierSur(fichier.name)}`;
-  const type = fichier.type || (/\.pdf$/i.test(fichier.name) ? "application/pdf" : /\.png$/i.test(fichier.name) ? "image/png" : "image/jpeg");
-  carte.querySelectorAll(".fa-actions button").forEach(b => b.disabled = true);
-  const info = document.createElement("div"); info.className = "fa-note"; info.textContent = "⏫ Envoi du fichier…";
-  carte.querySelector(".fa-actions").appendChild(info);
-  const { error: errUp } = await supabase.storage.from("factures").upload(chemin, fichier, { upsert: true, contentType: type });
-  if (errUp) { alert("Erreur d'envoi du fichier : " + errUp.message); chargerFacturesAdmin(); return; }
-  const maj = { fichier_path: chemin, fichier_nom: fichier.name, statut: "envoyee" };
-  if (!remplacement) maj.envoyee_at = new Date().toISOString();
-  const { error } = await supabase.from("demandes_facture").update(maj).eq("id", d.id);
-  if (error) { alert("Fichier envoyé mais erreur de mise à jour : " + error.message); chargerFacturesAdmin(); return; }
-  if (remplacement && d.fichier_path && d.fichier_path !== chemin) {
-    try { await supabase.storage.from("factures").remove([d.fichier_path]); } catch (e) {}
-  }
-  alert(remplacement ? "✅ Fichier de la facture remplacé" : "✅ Facture envoyée au client");
-  chargerFacturesAdmin();
-}
-
-async function faVoirFichier(d) {
-  const fen = window.open("", "_blank");
-  const { data, error } = await supabase.storage.from("factures").createSignedUrl(d.fichier_path, 3600);
-  if (error || !data?.signedUrl) { if (fen) fen.close(); alert("Impossible d'ouvrir la facture : " + (error?.message || "lien introuvable")); return; }
-  if (fen) fen.location.href = data.signedUrl; else window.location.href = data.signedUrl;
-}
-
-function faOuvrirCourse(c) {
-  ouvrirCourseDepuisPaiement({ course_id: c.id, courses: c });
-  const carte = document.querySelector("body > .carte-en-grand");
-  const btn = carte && carte.querySelector(".btn-carte-grand");
-  if (btn) btn.textContent = "✕ Fermer (retour aux factures)";
-}
-
-document.querySelectorAll("#fa-filtres button").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll("#fa-filtres button").forEach(x => x.classList.toggle("actif", x === b));
-  faFiltre = b.dataset.f; afficherFacturesAdmin();
-}));
 
 // ================== COURSES PAR CHAUFFEUR ==================
 function estCourseAttribueeActive(c) {
@@ -3649,7 +1814,7 @@ function afficherListeCoursesAdmin() {
   const conteneur = document.getElementById("liste-courses-admin");
   conteneur.innerHTML = "";
   const ilYA30Jours = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const recherche = normaliserRechercheResa(document.getElementById("recherche-course").value);
+  const recherche = document.getElementById("recherche-course").value.trim().toLowerCase();
 
   // Une course attribuée à un chauffeur (pas encore terminée) quitte cette liste :
   // elle se retrouve dans « 👤 Courses par chauffeur ». Ici ne restent que les courses à traiter.
@@ -3662,32 +1827,17 @@ function afficherListeCoursesAdmin() {
     conteneur.appendChild(info);
   }
   const coursesAffichees = dernieresCoursesAdmin.filter(c => {
-    // un numéro de réservation retrouve la course même archivée
-    if (recherche && correspondNumeroResa(c.numero_reservation, recherche)) return true;
     if (!recherche && estCourseAttribueeActive(c)) return false;
     const estArchivable = c.statut === "terminee" || c.statut === "annulee";
     if (estArchivable && !afficherHistoriqueCourses) return false;
     if (estArchivable && afficherHistoriqueCourses && new Date(c.date_heure).getTime() < ilYA30Jours) return false;
     if (!recherche) return true;
-    const cible = [c.client_nom, c.client_telephone, c.adresse_depart, c.adresse_arrivee, c.profils?.nom, texteNumeroResa(c.numero_reservation)]
+    const cible = [c.client_nom, c.client_telephone, c.adresse_depart, c.adresse_arrivee, c.profils?.nom]
       .filter(Boolean).join(" ").toLowerCase();
     return cible.includes(recherche);
   });
 
   coursesAffichees.forEach(c => conteneur.appendChild(construireCarteAdmin(c)));
-  // Rien trouvé localement mais la saisie ressemble à un numéro : on cherche en base et on ouvre la carte
-  const numCherche = numeroResaDepuisSaisie(recherche);
-  if (!coursesAffichees.length && numCherche) {
-    const info = document.createElement("p");
-    info.style.cssText = "color:var(--gris); text-align:center; padding:14px 0;";
-    info.textContent = `🔎 Recherche de la réservation ${numCherche}…`;
-    conteneur.appendChild(info);
-    clearTimeout(afficherListeCoursesAdmin.minuterie);
-    afficherListeCoursesAdmin.minuterie = setTimeout(async () => {
-      const ok = await ouvrirCourseParNumero(numCherche, "✕ Fermer (retour aux courses)");
-      if (info.isConnected) info.textContent = ok ? `✅ Réservation ${numCherche} ouverte.` : `Aucune réservation ${numCherche}.`;
-    }, 500);
-  }
 }
 document.getElementById("recherche-course").addEventListener("input", afficherListeCoursesAdmin);
 
@@ -3710,23 +1860,15 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   if (error) { console.error(error); return; }
 
   if (idsCoursesConnusAdmin === null) {
-    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement }]));
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur }]));
   } else {
     (courses || []).forEach(c => {
       const ancien = idsCoursesConnusAdmin.get(c.id);
       if (ancien === undefined && c.origine === "client") {
         notifierNouvelleCourseAdmin(c);
       } else if (ancien) {
-        const montantPaiement = c.paiement_choisi === "total" ? ((Number(c.prix) || 0) + (Number(c.surprime) || 0)).toFixed(2) + " € (totalité)" : Number(c.acompte_montant || 0).toFixed(2) + " € (acompte)";
-        if (!ancien.declare && c.acompte_declare_client && !c.acompte_paye) {
-          alerteImportanteAdmin("💶 Paiement déclaré par le client", `${c.client_nom || "Le client"} dit avoir payé ${montantPaiement}.<br>Vérifie ton compte bancaire puis confirme le paiement sur la course.`, c, "#8a5a00", "#fff7e0");
-        }
-        if (!ancien.paye && c.acompte_paye) {
-          alerteImportanteAdmin("✅ PAIEMENT REÇU", `${c.client_nom || "Le client"} a payé ${montantPaiement}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.`, c, "#1f6b3f", "#e7f5ec");
-          if (document.getElementById("section-paiements")?.classList.contains("visible")) setTimeout(chargerPaiements, 1500);
-        }
-        if (!ancien.msg && c.message_client_paiement) {
-          alerteImportanteAdmin("🙋 Message du client sur le paiement", `${c.client_nom || "Le client"} : « ${esc(c.message_client_paiement)} »`, c, "#1d4f86", "#eef4fb");
+        if (ancien.statut !== "acompte_declare" && c.statut === "acompte_declare") {
+          notifierNouvelleCourseAdmin({ ...c, adresse_depart: "💰 Acompte déclaré payé", adresse_arrivee: c.adresse_arrivee });
         }
         if (!ancien.accepte && c.accepte_chauffeur) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: "✅ Course acceptée par le chauffeur", adresse_arrivee: c.adresse_arrivee });
@@ -3746,7 +1888,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: `❌ Course annulée — ${motifLisible} (${nomChauffeurPourNotif(c)})`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
-      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement });
+      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur });
     });
   }
 
@@ -3969,57 +2111,6 @@ async function supprimerCourse(course) {
   chargerCoursesAdmin();
 }
 
-// Course entre 22:00 et 05:59 (heure de Bruxelles) → paiement intégral exigé par défaut
-function estCourseDeNuit(dateHeure) {
-  if (!dateHeure) return false;
-  const d = new Date(dateHeure);
-  if (isNaN(d.getTime())) return false;
-  const h = parseInt(new Intl.DateTimeFormat("fr-BE", { timeZone: "Europe/Brussels", hour: "2-digit", hourCycle: "h23" }).format(d), 10);
-  return h >= 22 || h < 6;
-}
-
-// ---- Outils : messages automatiques & calcul du « déjà payé » ----
-function quandCourseTexte(dateHeure) {
-  if (!dateHeure) return "?";
-  const d = new Date(dateHeure);
-  return d.toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" }) + " à " + d.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
-}
-const eurosFr = (n) => (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace(".", ",") + " €";
-async function adminMonId() {
-  if (!chatMonId) { const { data: { user } } = await supabase.auth.getUser(); chatMonId = user ? user.id : null; }
-  return chatMonId;
-}
-async function envoyerMessageChauffeurAuto(chauffeurId, courseId, texte) {
-  if (!chauffeurId) return;
-  const { error } = await supabase.from("messages_chauffeur").insert({
-    chauffeur_id: chauffeurId, auteur: "admin", auteur_id: await adminMonId(), course_id: courseId || null,
-    texte: String(texte).slice(0, 2000), lu_par_admin_at: new Date().toISOString()
-  });
-  if (error) console.warn("message chauffeur :", error.message);
-}
-async function envoyerMessageClientAuto(clientId, courseId, texte) {
-  if (!clientId) return;
-  const { error } = await supabase.from("messages_chat").insert({
-    client_id: clientId, auteur: "admin", auteur_id: await adminMonId(), course_id: courseId || null,
-    texte: String(texte).slice(0, 2000), lu_par_admin_at: new Date().toISOString()
-  });
-  if (error) console.warn("message client :", error.message);
-}
-// Déjà payé : somme des paiements reçus enregistrés pour la course ; sinon déduit de l'état de la course
-async function dejaPayeCourse(course) {
-  const totalActuel = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
-  try {
-    const { data } = await supabase.from("paiements").select("montant, type, statut").eq("course_id", course.id);
-    const recus = (data || []).filter(p => !p.statut || p.statut === "recu");
-    if (recus.length) {
-      return Math.round(recus.reduce((s, p) => s + (p.type === "remboursement" ? -1 : 1) * (Number(p.montant) || 0), 0) * 100) / 100;
-    }
-  } catch (e) { /* on retombe sur l'état de la course */ }
-  if (course.reste_a_payer != null) return Math.round((totalActuel - Number(course.reste_a_payer)) * 100) / 100;
-  if (!course.acompte_paye) return 0;
-  return course.paiement_choisi === "total" ? totalActuel : (Number(course.acompte_montant) || 0);
-}
-
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -4077,7 +2168,7 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      ${badgeNumeroResa(course.numero_reservation)}<span class="statut-label">${labelStatut}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
+      <span class="statut-label">${labelStatut}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
       <h3>${esc(course.client_nom) || "Client"} — ${prixAffiche.startsWith("🚕") ? prixAffiche : esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
@@ -4205,39 +2296,7 @@ function construireCarteAdmin(course) {
         info.appendChild(zoneRep);
       }
     }
-    if (course.message_client_paiement && course.client_id) {
-      const bChat = document.createElement("button");
-      bChat.type = "button"; bChat.className = "btn-chat-carte";
-      bChat.textContent = "💬 Répondre dans le chat";
-      bChat.addEventListener("click", (e) => { e.stopPropagation(); ouvrirChatAdmin(course.client_id, course.id); });
-      info.appendChild(bChat);
-    }
     corps.appendChild(info);
-  }
-  if (course.client_id && !(course.origine === "client" && course.message_client_paiement)) {
-    const bChat = document.createElement("button");
-    bChat.type = "button"; bChat.className = "btn-chat-carte";
-    bChat.textContent = "💬 Écrire au client";
-    bChat.addEventListener("click", (e) => { e.stopPropagation(); ouvrirChatAdmin(course.client_id, course.id); });
-    corps.appendChild(bChat);
-  }
-  if (course.chauffeur_id) {
-    const bChCh = document.createElement("button");
-    bChCh.type = "button"; bChCh.className = "btn-chat-carte chauffeur";
-    bChCh.textContent = "💬 Écrire au chauffeur";
-    bChCh.addEventListener("click", (e) => { e.stopPropagation(); ouvrirChatChauffeurAdmin(course.chauffeur_id, course.id); });
-    corps.appendChild(bChCh);
-  }
-
-  if (course.reste_a_payer != null || course.prix_precedent != null) {
-    const infoPrix = document.createElement("div");
-    infoPrix.style.cssText = "background:#fff7e6; border:1px solid #f0d49a; border-radius:10px; padding:8px 10px; margin:8px 0; font-size:.86rem;";
-    const totalA = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
-    infoPrix.innerHTML = (course.prix_precedent != null ? `✏️ Prix corrigé${course.prix_modifie_at ? " le " + esc(quandCourseTexte(course.prix_modifie_at)) : ""} : <s>${esc(eurosFr(course.prix_precedent))}</s> → <b>${esc(eurosFr(course.prix))}</b>${course.prix_modifie_motif ? " · " + esc(course.prix_modifie_motif) : ""}<br>` : "") +
-      (course.reste_a_payer != null ? (Number(course.reste_a_payer) < 0
-        ? `💸 <b>À rembourser au client : ${esc(eurosFr(-Number(course.reste_a_payer)))}</b> (total ${esc(eurosFr(totalA))})`
-        : `💶 Total ${esc(eurosFr(totalA))} — déjà payé ${esc(eurosFr(totalA - Number(course.reste_a_payer)))} — <b>reste à payer ${esc(eurosFr(course.reste_a_payer))}</b>`) : "");
-    corps.appendChild(infoPrix);
   }
 
   // Outil km & prix : distance entre les 2 adresses + km d'approche depuis la gare choisie
@@ -4282,28 +2341,14 @@ function construireCarteAdmin(course) {
     blocPrix.className = "bloc-prix-admin";
     blocPrix.innerHTML = `
       <input type="number" step="0.5" placeholder="Prix à proposer (€)">
-      <select class="paiement-exige" style="margin-top:6px;">
-        <option value="acompte">💶 Le client paie un acompte (30 %)</option>
-        <option value="total">💳 Le client paie la totalité à l'avance</option>
-        <option value="choix">🔀 Le client choisit (acompte ou totalité)</option>
-      </select>
-      <div class="note-nuit-paiement" style="display:none; margin-top:6px; font-size:.82rem; color:#4338ca; background:#eef2ff; border-radius:8px; padding:6px 8px;">🌙 Course de nuit/tôt le matin : paiement intégral exigé (conditions)</div>
       <button type="button">Envoyer le prix</button>
     `;
     champPrixCible = blocPrix.querySelector("input");
-    if (estCourseDeNuit(course.date_heure)) {
-      blocPrix.querySelector(".paiement-exige").value = "total";
-      blocPrix.querySelector(".note-nuit-paiement").style.display = "block";
-    }
     blocPrix.querySelector("button").addEventListener("click", async () => {
       const prix = parseFloat(blocPrix.querySelector("input").value);
       if (!prix || prix <= 0) { alert("Indique un prix valide."); return; }
-      const exige = blocPrix.querySelector(".paiement-exige").value;
       const acompte = Math.round(prix * 0.3 * 100) / 100;
-      await supabase.from("courses").update({
-        prix, acompte_montant: acompte, statut: "prix_envoye", paiement_exige: exige,
-        paiement_choisi: exige === "total" ? "total" : "acompte"
-      }).eq("id", course.id);
+      await supabase.from("courses").update({ prix, acompte_montant: acompte, statut: "prix_envoye" }).eq("id", course.id);
       notifierClientParEmail(course.id, "prix_envoye");
       chargerCoursesAdmin();
     });
@@ -4319,10 +2364,9 @@ function construireCarteAdmin(course) {
       <button type="button">✅ Confirmer la réception de l'acompte</button>
     `;
     blocVerif.querySelector("button").addEventListener("click", async () => {
-      const { error: errConf } = await supabase.from("courses").update({
+      await supabase.from("courses").update({
         statut: "confirmee", acompte_paye: true, acompte_confirme_at: new Date().toISOString()
       }).eq("id", course.id);
-      if (!errConf) journaliserVirement(course);
       notifierClientParEmail(course.id, "acompte_confirme");
       chargerCoursesAdmin();
     });
@@ -4361,128 +2405,20 @@ function construireCarteAdmin(course) {
     corps.appendChild(blocVeh);
   }
 
-  // ---- ✏️ Modifier le prix à tout moment (même après acompte / attribution / démarrage) ----
-  if (course.statut !== "annulee" && !estUber) {
-    const btnPrix = document.createElement("button");
-    btnPrix.type = "button";
-    btnPrix.textContent = "✏️ Modifier le prix";
-    btnPrix.style.cssText = "width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid #c8961e; background:#fff7e6; color:#7a5200; font-weight:700;";
-    const blocP = document.createElement("div");
-    blocP.style.cssText = "display:none; background:#fffaf0; border:1px solid #f0d49a; border-radius:10px; padding:10px; margin-top:6px; font-size:.88rem;";
-    const surp = Number(course.surprime) || 0;
-    blocP.innerHTML = `
-      <div style="margin-bottom:6px;">Prix actuel : <b>${esc(eurosFr(course.prix))}</b>${surp ? ` + surprime ${esc(eurosFr(surp))}` : ""}${course.prix_precedent != null ? ` <span style="color:var(--gris);">(avant : <s>${esc(eurosFr(course.prix_precedent))}</s>)</span>` : ""}</div>
-      <label style="display:block; font-size:.78rem; color:var(--gris);">Nouveau prix (€)${surp ? " — hors surprime" : ""}</label>
-      <input type="number" step="0.5" min="0" class="mp-prix" value="${course.prix ?? ""}" style="width:100%;">
-      <label style="display:block; font-size:.78rem; color:var(--gris); margin-top:6px;">Motif (optionnel, envoyé au client)</label>
-      <input type="text" class="mp-motif" placeholder="ex : attente supplémentaire, détour, erreur de prix…" style="width:100%;">
-      <div class="mp-calcul" style="margin:8px 0; padding:8px; border-radius:8px; background:#fff; border:1px dashed #e0c27a; font-weight:700;">Calcul…</div>
-      <label style="display:block; font-size:.78rem; color:var(--gris);">Le reste se paie</label>
-      <select class="mp-mode" style="width:100%;">
-        <option value="chauffeur">au chauffeur</option>
-        <option value="virement">par virement</option>
-      </select>
-      <label style="display:flex; gap:6px; align-items:center; margin-top:8px;"><input type="checkbox" class="mp-client" ${course.client_id ? "checked" : "disabled"} style="width:auto;"> Prévenir le client${course.client_id ? "" : " (pas de compte client)"}</label>
-      <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" class="mp-chauffeur" ${course.chauffeur_id ? "checked" : "disabled"} style="width:auto;"> Prévenir le chauffeur${course.chauffeur_id ? "" : " (aucun chauffeur attribué)"}</label>
-      <button type="button" class="mp-enregistrer" style="width:100%; margin-top:8px; background:#c8961e; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:800;">💾 Enregistrer le nouveau prix</button>`;
-    blocP.addEventListener("click", ev => ev.stopPropagation());
-    let dejaPaye = null;
-    const champPrix = blocP.querySelector(".mp-prix");
-    const zoneCalc = blocP.querySelector(".mp-calcul");
-    const calculer = () => {
-      const np = parseFloat(String(champPrix.value).replace(",", "."));
-      if (isNaN(np) || dejaPaye === null) { zoneCalc.textContent = dejaPaye === null ? "Calcul…" : "Indique un prix valide."; return null; }
-      const total = Math.round((np + surp) * 100) / 100;
-      const reste = Math.round((total - dejaPaye) * 100) / 100;
-      zoneCalc.innerHTML = `Nouveau total : ${esc(eurosFr(total))} — Déjà payé : ${esc(eurosFr(dejaPaye))} — ` +
-        (reste < 0 ? `<span style="color:#b3141b;">À rembourser au client : ${esc(eurosFr(-reste))}</span>` : `Reste à payer : ${esc(eurosFr(reste))}`);
-      return { np, total, reste };
-    };
-    champPrix.addEventListener("input", calculer);
-    btnPrix.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      const ouvrir = blocP.style.display === "none";
-      blocP.style.display = ouvrir ? "block" : "none";
-      if (ouvrir && dejaPaye === null) { dejaPaye = await dejaPayeCourse(course); calculer(); }
-    });
-    blocP.querySelector(".mp-enregistrer").addEventListener("click", async (ev) => {
-      const btn = ev.currentTarget;
-      if (dejaPaye === null) dejaPaye = await dejaPayeCourse(course);
-      const r = calculer();
-      if (!r || r.np < 0) { alert("Indique un prix valide."); return; }
-      const ancienPrix = Number(course.prix) || 0;
-      const ancienTotal = Math.round((ancienPrix + surp) * 100) / 100;
-      const motif = blocP.querySelector(".mp-motif").value.trim();
-      const modeReste = blocP.querySelector(".mp-mode").value;
-      if (r.np === ancienPrix && !motif) { alert("Le prix est identique."); return; }
-      if (!confirm(`Changer le prix de ${eurosFr(ancienPrix)} à ${eurosFr(r.np)} ?\n\n` + zoneCalc.textContent)) return;
-      btn.disabled = true; btn.textContent = "Enregistrement…";
-      const maj = {
-        prix: r.np, prix_precedent: ancienPrix, prix_modifie_at: new Date().toISOString(),
-        prix_modifie_motif: motif || null, reste_a_payer: r.reste
-      };
-      // Pas encore payé : l'acompte demandé suit le nouveau prix (30 %)
-      if (!course.acompte_paye && ["en_attente", "prix_envoye", "attente_acompte"].includes(course.statut)) {
-        maj.acompte_montant = Math.round(r.np * 0.3 * 100) / 100;
-        maj.reste_a_payer = null;
-      }
-      const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
-      if (error) { alert("Erreur : " + error.message); btn.disabled = false; btn.textContent = "💾 Enregistrer le nouveau prix"; return; }
-      const num = course.numero_reservation || "";
-      if (blocP.querySelector(".mp-client").checked && course.client_id) {
-        const suite = maj.reste_a_payer === null
-          ? `${maj.acompte_montant != null ? `L'acompte à payer est maintenant de ${eurosFr(maj.acompte_montant)}.` : ""}`
-          : (r.reste < 0
-              ? `Tu as déjà payé ${eurosFr(dejaPaye)} : nous te rembourserons ${eurosFr(-r.reste)}.`
-              : r.reste === 0
-                ? `Tu as déjà payé ${eurosFr(dejaPaye)} : tout est réglé, il ne te reste rien à payer.`
-                : `Tu as déjà payé ${eurosFr(dejaPaye)}, il te reste ${eurosFr(r.reste)} à payer ${modeReste === "virement" ? "par virement" : "au chauffeur"}.`);
-        await envoyerMessageClientAuto(course.client_id, course.id,
-          `💶 Le prix de ta course ${num} a été corrigé : ${eurosFr(r.total)} au lieu de ${eurosFr(ancienTotal)}. ${suite}${motif ? " Motif : " + motif : ""}`.replace(/\s+/g, " ").trim());
-      }
-      if (blocP.querySelector(".mp-chauffeur").checked && course.chauffeur_id) {
-        const resteTxt = maj.reste_a_payer === null ? eurosFr(r.total)
-          : (r.reste < 0 ? `0,00 € (la centrale rembourse ${eurosFr(-r.reste)} au client)` : eurosFr(r.reste));
-        await envoyerMessageChauffeurAuto(course.chauffeur_id, course.id,
-          `💶 Course ${num} : nouveau prix ${eurosFr(r.total)}. ${dejaPaye > 0 ? `Acompte déjà payé ${eurosFr(dejaPaye)}.` : "Rien n'a encore été payé."} ➡️ À encaisser auprès du client : ${resteTxt}${modeReste === "virement" && r.reste > 0 ? " (le client a été invité à payer ce reste par virement : vérifie avec la centrale avant d'encaisser)" : ""}.`);
-      }
-      chargerCoursesAdmin();
-    });
-    corps.appendChild(btnPrix);
-    corps.appendChild(blocP);
-  }
-
   const selectChauffeur = document.createElement("select");
   selectChauffeur.innerHTML = `<option value="">— ${course.chauffeur_id ? "Réassigner à" : "Assigner à"} —</option>` + optionsChauffeursEtPartenaires(course.chauffeur_id).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
   selectChauffeur.addEventListener("change", async (e) => {
     const nouveauChauffeurId = e.target.value || null;
-    const ancienChauffeurId = course.chauffeur_id || null;
-    if (nouveauChauffeurId === ancienChauffeurId) return;
-    const nomPersonne = (id) => ((chauffeursCache.find(c => c.id === id) || partenairesCache.find(p => p.id === id) || {}).nom);
     // Sécurité : jamais de course retirée à un chauffeur par erreur
-    if (ancienChauffeurId) {
-      const ancien = nomPersonne(ancienChauffeurId) || course.profils?.nom || "ce chauffeur";
-      const nouveau = nouveauChauffeurId ? (nomPersonne(nouveauChauffeurId) || "un autre chauffeur") : null;
-      const dejaEngage = course.statut === "en_cours" || course.accepte_chauffeur;
-      const verbe = course.statut === "en_cours" ? "démarré" : "accepté";
-      const ok = confirm(dejaEngage
-        ? (nouveau
-            ? `⚠️ ${ancien} a déjà ${verbe} cette course. La retirer et la donner à ${nouveau} ?\n\n${ancien} sera prévenu immédiatement que la course lui est retirée.`
-            : `⚠️ ${ancien} a déjà ${verbe} cette course. La lui retirer ?\n\nElle disparaîtra de son application et reviendra « à attribuer ».`)
-        : (nouveau
-            ? `Retirer cette course à ${ancien} et la donner à ${nouveau} ?\n\n${ancien} sera prévenu qu'elle ne lui est plus attribuée.`
-            : `Retirer cette course à ${ancien} ?\n\nElle disparaîtra de son application et reviendra « à attribuer ».`));
-      if (!ok) { e.target.value = ancienChauffeurId || ""; return; }
+    if (course.chauffeur_id && course.chauffeur_id !== nouveauChauffeurId) {
+      const ancien = (chauffeursCache.find(c => c.id === course.chauffeur_id) || {}).nom || course.profils?.nom || "ce chauffeur";
+      const nouveau = nouveauChauffeurId ? ((chauffeursCache.find(c => c.id === nouveauChauffeurId) || {}).nom || "un autre chauffeur") : null;
+      const ok = confirm(nouveau
+        ? `Retirer cette course à ${ancien} et la donner à ${nouveau} ?\n\n${ancien} sera prévenu qu'elle ne lui est plus attribuée.`
+        : `Retirer cette course à ${ancien} ?\n\nElle disparaîtra de son application et reviendra « à attribuer ».`);
+      if (!ok) { e.target.value = course.chauffeur_id || ""; return; }
     }
-    // Réattribution à tout moment (même acceptée / démarrée) : la course repart « assignée, à accepter »
-    // chez le nouveau chauffeur. L'état du paiement (acompte, totalité…) est conservé tel quel.
-    const statutSansChauffeur = (course.origine === "client" && (course.acompte_paye || course.sans_acompte_autorise)) ? "confirmee" : "en_attente";
-    const maj = { chauffeur_id: nouveauChauffeurId, statut: nouveauChauffeurId ? "assignee" : statutSansChauffeur, accepte_chauffeur: false, accepte_a: null };
-    if (ancienChauffeurId && nouveauChauffeurId && course.vehicule_id) {
-      // le véhicule suit le nouveau chauffeur s'il en a un attitré
-      const vehNouveau = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
-      if (vehNouveau) maj.vehicule_id = vehNouveau.id;
-    }
+    const maj = { chauffeur_id: nouveauChauffeurId, statut: nouveauChauffeurId ? "assignee" : "en_attente", accepte_chauffeur: false, accepte_a: null };
     if (!course.vehicule_id) {
       const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
       if (vehAttitre) maj.vehicule_id = vehAttitre.id;
@@ -4495,28 +2431,8 @@ function construireCarteAdmin(course) {
     }
     const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
     if (error) { alert(error.message.includes("ACOMPTE_NON_PAYE") ? "⚠️ Le client n'a pas encore payé l'acompte : confirme d'abord le paiement." : "Erreur : " + error.message); e.target.value = course.chauffeur_id || ""; return; }
-    // Messages dans le chat chauffeur (en plus de la notification automatique de la base)
-    if (!["terminee", "annulee"].includes(course.statut)) {
-      const num = course.numero_reservation || "";
-      const quand = quandCourseTexte(course.date_heure);
-      if (ancienChauffeurId) {
-        await envoyerMessageChauffeurAuto(ancienChauffeurId, course.id,
-          `❌ La course ${num} du ${quand} t'a été retirée par la centrale.`);
-      }
-      if (nouveauChauffeurId) {
-        await envoyerMessageChauffeurAuto(nouveauChauffeurId, course.id,
-          `🚖 Nouvelle course ${num} le ${quand} : ${course.adresse_depart || "?"} → ${course.adresse_arrivee || "?"}${course.client_nom ? " (client : " + course.client_nom + ")" : ""}. Ouvre l'app pour l'accepter.`);
-      }
-    }
     chargerCoursesAdmin();
   });
-  selectChauffeur.addEventListener("click", ev => ev.stopPropagation());
-  if (course.statut !== "terminee" && course.statut !== "annulee" && course.chauffeur_id) {
-    const lblCh = document.createElement("div");
-    lblCh.style.cssText = "font-size:.8rem; color:var(--gris); margin:8px 0 3px;";
-    lblCh.textContent = `🚖 Chauffeur actuel : ${course.profils?.nom || "?"}${course.statut === "en_cours" ? " (course démarrée)" : course.accepte_chauffeur ? " (acceptée)" : ""} — tu peux la réattribuer à tout moment :`;
-    corps.appendChild(lblCh);
-  }
   corps.appendChild(selectChauffeur);
 
   if (!course.est_retour && course.statut !== "terminee" && course.statut !== "annulee") {
@@ -5534,17 +3450,127 @@ async function chargerCarte() {
         }, 3000);
       }).subscribe();
     setTimeout(() => carteLeaflet.invalidateSize(), 200);
+    initTrajetJour();
   }
 
   // Pas plus d'une mise à jour toutes les 8 secondes (sinon la carte rame)
   if (window.__carteEnCours) return;
-  if (window.__derniereCarte && Date.now() - window.__derniereCarte < 5000) {
+  if (window.__derniereCarte && Date.now() - window.__derniereCarte < 8000) {
     clearTimeout(window.__carteDiffere);
-    window.__carteDiffere = setTimeout(chargerCarte, 5000 - (Date.now() - window.__derniereCarte));
+    window.__carteDiffere = setTimeout(chargerCarte, 8000 - (Date.now() - window.__derniereCarte));
     return;
   }
   window.__carteEnCours = true; window.__derniereCarte = Date.now();
   try { await chargerCarteInterne(); } finally { window.__carteEnCours = false; }
+}
+
+// ---------- TAXI WAL DRIVER : trajet complet d'une journée (table trajets_gps) ----------
+let coucheTrajetJour = null;
+
+function distanceKm(a, b) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.latitude - a.latitude), dLon = rad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function heureTJ(d) { return new Date(d).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }); }
+function dureeTexte(min) { min = Math.round(min); return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}` : `${min} min`; }
+
+async function initTrajetJour() {
+  const sel = document.getElementById("tj-chauffeur");
+  if (!sel || sel.dataset.pret) return;
+  sel.dataset.pret = "1";
+  const { data } = await supabase.from("profils").select("id, nom, role").in("role", ["chauffeur", "partenaire"]).order("nom");
+  sel.innerHTML = (data || []).map(c => `<option value="${c.id}">${esc(c.nom || "Chauffeur")}${c.role === "partenaire" ? " (partenaire)" : ""}</option>`).join("");
+  const d = new Date();
+  document.getElementById("tj-date").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  document.getElementById("tj-afficher").addEventListener("click", afficherTrajetJour);
+  document.getElementById("tj-effacer").addEventListener("click", () => {
+    if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
+    coucheTrajetJour = null;
+    document.getElementById("tj-resultat").innerHTML = "";
+  });
+}
+
+async function afficherTrajetJour() {
+  const res = document.getElementById("tj-resultat");
+  const chauffeurId = document.getElementById("tj-chauffeur").value;
+  const jour = document.getElementById("tj-date").value;
+  if (!chauffeurId || !jour) { res.textContent = "Choisis un chauffeur et une date."; return; }
+  res.textContent = "Chargement du trajet…";
+  const debut = new Date(jour + "T00:00:00"), fin = new Date(debut.getTime() + 24 * 3600e3);
+
+  // Récupère tous les points de la journée (par paquets de 1000)
+  let points = [], depuis = 0;
+  while (true) {
+    const { data, error } = await supabase.from("trajets_gps")
+      .select("latitude, longitude, precision_m, vitesse_kmh, enregistre_le")
+      .eq("chauffeur_id", chauffeurId)
+      .gte("enregistre_le", debut.toISOString()).lt("enregistre_le", fin.toISOString())
+      .order("enregistre_le", { ascending: true })
+      .range(depuis, depuis + 999);
+    if (error) { res.textContent = "Erreur : " + error.message; return; }
+    points = points.concat(data || []);
+    if (!data || data.length < 1000) break;
+    depuis += 1000;
+  }
+  // On ignore les points trop imprécis (> 100 m)
+  points = points.filter(p => p.precision_m == null || p.precision_m <= 100);
+
+  if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
+  coucheTrajetJour = null;
+  if (points.length < 2) {
+    res.innerHTML = "Aucun trajet enregistré pour ce jour.<br><span style='color:#777; font-size:.82rem;'>Les trajets complets seront enregistrés dès que le chauffeur utilisera l'app Taxi Wal Driver (ou l'app chauffeur ouverte).</span>";
+    return;
+  }
+
+  // Kilomètres (on ignore les sauts GPS impossibles > 200 km/h)
+  let km = 0;
+  for (let i = 1; i < points.length; i++) {
+    const d = distanceKm(points[i - 1], points[i]);
+    const h = (new Date(points[i].enregistre_le) - new Date(points[i - 1].enregistre_le)) / 3600e3;
+    if (h > 0 && d / h > 200) continue;
+    km += d;
+  }
+
+  // Arrêts : le chauffeur reste dans un rayon de 120 m pendant au moins 5 minutes
+  const arrets = [];
+  let i = 0;
+  while (i < points.length) {
+    let j = i + 1;
+    while (j < points.length && distanceKm(points[i], points[j]) <= 0.12) j++;
+    const minutes = (new Date(points[j - 1].enregistre_le) - new Date(points[i].enregistre_le)) / 60000;
+    if (minutes >= 5) { arrets.push({ p: points[i], de: points[i].enregistre_le, a: points[j - 1].enregistre_le, minutes }); i = j; }
+    else i++;
+  }
+  // Trous dans le suivi (plus de 10 minutes sans aucun point = GPS coupé / app fermée)
+  const trous = [];
+  for (let k = 1; k < points.length; k++) {
+    const min = (new Date(points[k].enregistre_le) - new Date(points[k - 1].enregistre_le)) / 60000;
+    if (min > 10) trous.push({ de: points[k - 1].enregistre_le, a: points[k].enregistre_le, minutes: min });
+  }
+
+  coucheTrajetJour = L.layerGroup().addTo(carteLeaflet);
+  const ligne = L.polyline(points.map(p => [p.latitude, p.longitude]), { color: "#c8102e", weight: 4, opacity: .85 }).addTo(coucheTrajetJour);
+  const pastille = (txt, fond) => L.divIcon({ className: "", iconSize: [0, 0], html: `<div style="transform:translate(-50%,-50%); background:${fond}; color:#fff; font-weight:800; font-size:11px; padding:3px 7px; border-radius:999px; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); white-space:nowrap;">${txt}</div>` });
+  L.marker([points[0].latitude, points[0].longitude], { icon: pastille("Départ " + heureTJ(points[0].enregistre_le), "#1f8a4c") }).addTo(coucheTrajetJour);
+  const der = points[points.length - 1];
+  L.marker([der.latitude, der.longitude], { icon: pastille("Fin " + heureTJ(der.enregistre_le), "#111") }).addTo(coucheTrajetJour);
+  arrets.forEach((a, n) => {
+    L.marker([a.p.latitude, a.p.longitude], { icon: pastille(`⏸️ ${n + 1} · ${dureeTexte(a.minutes)}`, "#d97706") })
+      .addTo(coucheTrajetJour)
+      .bindPopup(`<b>Arrêt ${n + 1}</b><br>de ${heureTJ(a.de)} à ${heureTJ(a.a)}<br>${dureeTexte(a.minutes)}`);
+  });
+  carteLeaflet.fitBounds(ligne.getBounds(), { padding: [40, 40] });
+
+  const dureeTotale = (new Date(der.enregistre_le) - new Date(points[0].enregistre_le)) / 60000;
+  const totalArrets = arrets.reduce((s, a) => s + a.minutes, 0);
+  res.innerHTML = `
+    <div><b>${km.toFixed(1)} km</b> parcourus · de <b>${heureTJ(points[0].enregistre_le)}</b> à <b>${heureTJ(der.enregistre_le)}</b> (${dureeTexte(dureeTotale)})</div>
+    <div>⏸️ <b>${arrets.length}</b> arrêt(s) de 5 min ou plus, au total <b>${dureeTexte(totalArrets)}</b></div>
+    ${arrets.length ? `<ol style="margin:8px 0 0; padding-left:20px;">${arrets.map(a => `<li>${heureTJ(a.de)} → ${heureTJ(a.a)} : <b>${dureeTexte(a.minutes)}</b></li>`).join("")}</ol>` : ""}
+    ${trous.length ? `<div style="margin-top:8px; color:#b45309;">⚠️ Suivi interrompu ${trous.length} fois (GPS coupé ou app fermée) :<br>${trous.map(t => `${heureTJ(t.de)} → ${heureTJ(t.a)} (${dureeTexte(t.minutes)})`).join("<br>")}</div>` : ""}
+  `;
 }
 
 function centrerSurChauffeurs(meme) {
@@ -5557,16 +3583,10 @@ function centrerSurChauffeurs(meme) {
 }
 
 async function chargerCarteInterne() {
-  const { data: positionsBrutes, error } = await supabase
+  const { data: positions, error } = await supabase
     .from("positions_chauffeurs")
-    .select("*, profils:chauffeur_id(nom, role)");
+    .select("*, profils:chauffeur_id(nom)");
   if (error) { console.error(error); return; }
-  // seulement les chauffeurs / sous-traitants, et pas les positions de plus de 24 h
-  const positions = (positionsBrutes || []).filter(p =>
-    p.profils?.role !== "admin" && p.updated_at && Date.now() - new Date(p.updated_at).getTime() < 24 * 3600e3);
-  Object.keys(marqueurs).forEach(id => {
-    if (!positions.some(p => p.chauffeur_id === id)) { carteLeaflet.removeLayer(marqueurs[id]); delete marqueurs[id]; }
-  });
 
   const { data: coursesEnCours } = await supabase
     .from("courses")
@@ -5600,8 +3620,7 @@ async function chargerCarteInterne() {
       popup = `<b>${esc(nom)}</b><br>✅ Disponible<br>📍 <span id="popup-adr-${p.chauffeur_id}">chargement…</span> <button onclick="copierAdresseChauffeur(document.getElementById('popup-adr-${p.chauffeur_id}').textContent)" style="width:auto; padding:1px 6px; font-size:.7rem;">📋</button>`;
     }
 
-    const ageSec = p.updated_at ? (Date.now() - new Date(p.updated_at).getTime()) / 1000 : 9999;
-    const ancienne = ageSec > 120;   // plus de 2 min sans nouvelle position : l'app du chauffeur n'est plus à l'écran
+    const ancienne = p.updated_at && (Date.now() - new Date(p.updated_at).getTime()) > 10 * 60000;
     const villeConnue = cacheVilleChauffeur[p.latitude.toFixed(3) + "," + p.longitude.toFixed(3)] || "";
     const fondPastille = ancienne ? "#9a9a9a" : ({ red: "#c81e2c", green: "#1f8a4c", gray: "#6b6b6b" }[couleur]);
     const icone = L.divIcon({
@@ -5609,7 +3628,7 @@ async function chargerCarteInterne() {
       iconSize: [0, 0], iconAnchor: [0, 0],
       html: `<div style="position:absolute; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto;">
         <div style="background:${fondPastille}; color:#fff; font-weight:800; font-size:12px; padding:4px 9px; border-radius:999px; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.35); border:2px solid #fff;">
-          ${courseActive ? "🚕" : (p.disponible ? "✅" : "⏸️")} ${esc(nom)}${villeConnue ? " · " + esc(villeConnue) : ""}${ageSec > 45 ? " · " + esc(ageMiseAJour(p.updated_at)) : " · en direct"}
+          ${courseActive ? "🚕" : (p.disponible ? "✅" : "⏸️")} ${esc(nom)}${villeConnue ? " · " + esc(villeConnue) : ""}${ancienne ? " · " + esc(ageMiseAJour(p.updated_at)) : ""}
         </div>
         <div style="width:14px; height:14px; margin-top:-2px; border-radius:50%; background:${fondPastille}; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>
       </div>`
@@ -5652,7 +3671,7 @@ async function chargerCarteInterne() {
 
 setInterval(() => {
   if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
-}, 15000);
+}, 20000);
 
 async function chargerCaisse() {
   const conteneur = document.getElementById("liste-caisse");
@@ -6754,10 +4773,10 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       <td>${i + 1}</td>
       <td>${formatIndex(l.index_depart)}</td>
       <td>${formatIndex(l.embarquement_index)}</td>
-      <td class="lieu">${lieuImpression(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => lieuImpression(a.adresse, "+ ")).join("")}${mentionAR}</td>
+      <td>${fmtNombre(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => "<br>+ " + esc(a.adresse)).join("")}${mentionAR}</td>
       <td>${fmtNombre(l.embarquement_heure ? String(l.embarquement_heure).slice(0, 5) : "")}</td>
       <td>${formatIndex(l.debarquement_index)}</td>
-      <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
+      <td>${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => esc(a.adresse) + "<br>").join("")}${fmtNombre(l.debarquement_lieu)}</td>
       <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
       <td>${(() => {
         if (estUber) return "Uber";
@@ -6780,42 +4799,35 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
   <title>Feuille de route — ${esc(chauffeur.nom) || ""} — ${esc(dateLisible)}</title>
   <style>
-    @page { size: A4; margin: 8mm; }
+    @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
-    body { font-family: Georgia, 'Times New Roman', serif; color: #000; font-size: 8.5pt; line-height: 1.15; margin: 0; }
-    h1 { text-align: center; text-decoration: underline; font-size: 14pt; margin: 0 0 5px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-    td, th { border: 1px solid #000; padding: 2px 4px; }
-    h2 { font-size: 9pt; text-align: center; margin: 4px 0 3px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 1px 0; }
-    .mini { font-size: 6.5pt; color: #444; text-transform: uppercase; }
+    body { font-family: Georgia, 'Times New Roman', serif; color: #000; font-size: 11px; margin: 0; }
+    h1 { text-align: center; text-decoration: underline; font-size: 18px; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    td, th { border: 1px solid #000; padding: 4px 6px; }
+    h2 { font-size: 12px; text-align: center; margin: 8px 0 4px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 0; }
+    .mini { font-size: 9px; color: #444; text-transform: uppercase; }
     .valeur { font-weight: bold; }
     .courses-table thead { display: table-header-group; }
-    .courses-table th { font-size: 7.5pt; padding: 1px 2px; }
-    .courses-table td { font-size: 8pt; text-align: center; height: 16px; padding: 1px 3px; }
-    .courses-table td:nth-child(1) { width: 4%; }
-    .courses-table td:nth-child(2), .courses-table td:nth-child(3), .courses-table td:nth-child(6) { width: 6%; }
-    .courses-table td:nth-child(5), .courses-table td:nth-child(8) { width: 5%; }
-    .courses-table td:nth-child(9) { width: 7%; }
-    .courses-table td:nth-child(10) { width: 11%; }
-    .courses-table td.lieu { width: 25%; text-align: left; }
-    .courses-table td b { white-space: nowrap; letter-spacing: 0 !important; }
-    .lieu-l { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; word-break: break-word; }
-    .signature { margin-top: 10px; }
-    .note-bas { font-size: 7pt; margin-top: 3px; }
+    .courses-table th { font-size: 9px; }
+    .courses-table td { font-size: 10px; text-align: center; height: 22px; }
+    .courses-table tr { page-break-inside: avoid; }
+    .signature { margin-top: 16px; }
+    .note-bas { font-size: 8px; margin-top: 4px; }
     .barre-actions-impression { display: flex; gap: 8px; margin-bottom: 10px; }
     .barre-actions-impression button {
       padding: 8px 14px; border-radius: 6px; border: 1px solid #999; background: #f2f2f2;
       color: #000; font-family: -apple-system, sans-serif; font-size: 13px; cursor: pointer;
     }
     .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
-    .page { width: 194mm; height: auto; display: flex; flex-direction: column; background: #fff; }
+    .page { width: 190mm; height: auto; display: flex; flex-direction: column; background: #fff; }
     .page-contenu { flex: 0 0 auto; }
-    .page-pied { margin-top: 6px; }
-    .num-page { font-size: 7pt; text-align: right; margin-top: 2px; }
+    .page-pied { margin-top: 18px; }
+    .num-page { font-size: 8px; text-align: right; margin-top: 2px; }
     .courses-table tr { break-inside: avoid; page-break-inside: avoid; }
-    @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 8mm solid #fff; } #pages { padding: 8mm 0; } }
-    @media print { #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } .page + .page { break-before: page; page-break-before: always; } }
-    @media print { .btn-print, .barre-actions-impression { display: none; } }
+    @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 10mm solid #fff; } #pages { padding: 10mm 0; } }
+    @media print { #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } }
+    @media print { .barre-actions-impression { display: none; } }
   </style></head>
   <body>
     <div class="barre-actions-impression">
@@ -6876,36 +4888,25 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
     </template>
     <script>
 (function(){
-  // Mise en page : tout sur UNE page A4 si possible, sinon recto-verso propre.
-  // On mesure la vraie hauteur disponible (A4 297 mm − 2×8 mm de marges − 5 mm de sécurité)
-  // et on remplit les lignes une à une. Repli sur un nombre fixe de lignes si la mesure échoue.
-  var CAP_RECTO = 22, CAP_VERSO = 40;
   function paginer(){
     var source = document.getElementById("source"), zone = document.getElementById("pages");
     var tpl = document.getElementById("tpl-pied");
     var mesure = document.createElement("div");
-    mesure.style.cssText = "position:absolute;visibility:hidden;height:276mm;width:1px;";
+    mesure.style.cssText = "position:absolute;visibility:hidden;height:250mm;width:1px;";
     document.body.appendChild(mesure);
     var hauteurPage = mesure.getBoundingClientRect().height;
     mesure.parentNode.removeChild(mesure);
-    var mesureOk = isFinite(hauteurPage) && hauteurPage > 300;
     var pages = [], page = null, contenu = null;
     function nouvellePage(){
       page = document.createElement("div"); page.className = "page";
       contenu = document.createElement("div"); contenu.className = "page-contenu";
       var pied = document.createElement("div"); pied.className = "page-pied"; pied.innerHTML = tpl.innerHTML;
-      // La signature n'apparaît qu'une fois, sur le recto.
-      if (pages.length > 0){ var s = pied.querySelector(".signature"); if (s) s.parentNode.removeChild(s); }
       page.appendChild(contenu); page.appendChild(pied);
       zone.appendChild(page); pages.push(page);
     }
     function tient(){
-      if (!mesureOk){
-        var n = contenu.querySelectorAll(".courses-table tbody tr").length;
-        return n <= (pages.length === 1 ? CAP_RECTO : CAP_VERSO);
-      }
       var pied = page.querySelector(".page-pied");
-      return contenu.offsetHeight + pied.offsetHeight <= hauteurPage;
+      return contenu.offsetHeight + pied.offsetHeight + 14 <= hauteurPage;
     }
     nouvellePage();
     var elements = [].slice.call(source.children);
@@ -6921,7 +4922,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
           titreCourant = null;
           if (titre){
             titreCourant = titre.cloneNode(true);
-            if (suite) titreCourant.textContent = titre.textContent.replace(/\s+$/, "") + " (suite)";
+            if (suite) titreCourant.textContent = titre.textContent + " (suite)";
             contenu.appendChild(titreCourant);
           }
           table = el.cloneNode(false);
@@ -6949,10 +4950,8 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
       }
     }
     pages.forEach(function(p, k){
-      // La note de bas de page n'apparaît qu'une fois, à la fin du document.
-      if (k < pages.length - 1){ var nb = p.querySelector(".note-bas"); if (nb) nb.parentNode.removeChild(nb); }
       var n = p.querySelector(".num-page");
-      if (n) n.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length + (k % 2 === 0 ? " — recto" : " — verso")) : "";
+      if (n) n.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length + (k === 0 ? " — recto" : (k === 1 ? " — verso" : ""))) : "";
     });
     source.parentNode.removeChild(source);
   }
@@ -7433,7 +5432,7 @@ async function chargerClientsAdmin() {
 
   const { data: toutesLesCourses } = await supabase
     .from("courses")
-    .select("id, client_id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, prix, statut")
+    .select("id, client_id, date_heure, adresse_depart, adresse_arrivee, prix, statut")
     .not("client_id", "is", null)
     .order("date_heure", { ascending: false });
 
@@ -7453,7 +5452,6 @@ function afficherClientsFiltres(recherche) {
 
   const filtres = !recherche ? clientsCache : clientsCache.filter(c =>
     (c.nom || "").toLowerCase().includes(recherche) || (c.telephone || "").toLowerCase().includes(recherche)
-    || (c.courses || []).some(x => correspondNumeroResa(x.numero_reservation, recherche))
   );
 
   if (filtres.length === 0) {
@@ -7487,14 +5485,12 @@ function construireCarteClientAdmin(client) {
       <div>Dernière course<b>${derniereCourseTxt}</b></div>
     </div>
     ${client.telephone ? `<button type="button" class="btn-appeler-client">📞 Appeler</button>` : ""}
-    <button type="button" class="btn-message-client btn-chat-carte">💬 Message</button>
     ${client.courses.length > 0 ? `<button type="button" class="btn-historique-client">📜 Historique complet</button>` : ""}
     <div class="historique-client-lignes" style="display:none;"></div>
   `;
 
   const btnAppel = div.querySelector(".btn-appeler-client");
   if (btnAppel) btnAppel.addEventListener("click", () => { window.location.href = `tel:${client.telephone.replace(/\s/g, "")}`; });
-  div.querySelector(".btn-message-client").addEventListener("click", (e) => { e.stopPropagation(); ouvrirChatAdmin(client.id, null); });
 
   const btnCarnetApp = creerBoutonCarnetPourClient({
     nom: client.nom, telephone: client.telephone,
@@ -7509,7 +5505,7 @@ function construireCarteClientAdmin(client) {
       if (blocHisto.style.display === "none") {
         blocHisto.innerHTML = client.courses.map(c => {
           const d = new Date(c.date_heure).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit", year: "numeric" });
-          return `<div class="ligne-histo">${c.numero_reservation ? `<b>${esc(c.numero_reservation)}</b> · ` : ""}${d} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} — ${c.prix ? esc(c.prix) + " €" : "?"} (${esc(c.statut)})</div>`;
+          return `<div class="ligne-histo">${d} — ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)} — ${c.prix ? esc(c.prix) + " €" : "?"} (${esc(c.statut)})</div>`;
         }).join("");
         blocHisto.style.display = "block";
         btnHisto.textContent = "📜 Masquer l'historique";
