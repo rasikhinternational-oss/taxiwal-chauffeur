@@ -83,6 +83,147 @@ function formatIndex(v) {
   return String(v);
 }
 
+// ================== ORDRE CHRONOLOGIQUE + CONTRÔLE DES INDEX ==================
+// Même règle que la base (fonction renumeroter_feuille) : d'abord les courses avec une heure
+// d'embarquement, dans l'ordre de l'heure (une heure < début de service − 2 h = après minuit),
+// puis les courses sans heure (pas encore faites) : heure prévue de la course, sinon date de création.
+function frMinutes(h) {
+  if (!h) return null;
+  const p = String(h).split(":").map(Number);
+  if (p.length < 2 || isNaN(p[0]) || isNaN(p[1])) return null;
+  return p[0] * 60 + p[1];
+}
+function frHHMM(h) { return h ? String(h).slice(0, 5) : "--:--"; }
+function frNum(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(String(v).replace(",", "."));
+  return isNaN(n) ? null : n;
+}
+function frIdx(v) { return (typeof formatIndex === "function") ? formatIndex(v) : String(v ?? ""); }
+function frCleLigne(l, feuille) {
+  const m = frMinutes(l.embarquement_heure);
+  const debut = frMinutes(feuille && feuille.heure_debut);
+  if (m !== null) return [0, m + (debut !== null && m < debut - 120 ? 1440 : 0)];
+  const ds = feuille && feuille.date_service;
+  const base = ds ? new Date(ds + "T00:00:00").getTime() : 0;
+  const dh = l.courses && l.courses.date_heure;
+  const t = dh ? new Date(dh).getTime() : (l.created_at ? new Date(l.created_at).getTime() : null);
+  return [1, (t === null || isNaN(t)) ? Number.MAX_SAFE_INTEGER : (t - base) / 60000];
+}
+function trierLignesChrono(lignes, feuille) {
+  // Ordre choisi par la direction (feuille.ordre_manuel) : on respecte n_ordre tel quel
+  if (feuille && feuille.ordre_manuel) {
+    return (lignes || []).map((l, i) => ({ l, i }))
+      .sort((a, b) => ((a.l.n_ordre ?? 1e9) - (b.l.n_ordre ?? 1e9))
+        || String(a.l.created_at || "").localeCompare(String(b.l.created_at || "")) || (a.i - b.i))
+      .map(x => x.l);
+  }
+  return (lignes || []).map((l, i) => ({ l, i, k: frCleLigne(l, feuille) }))
+    .sort((a, b) => (a.k[0] - b.k[0]) || (a.k[1] - b.k[1])
+      || String(a.l.created_at || "").localeCompare(String(b.l.created_at || ""))
+      || ((a.l.n_ordre || 0) - (b.l.n_ordre || 0)) || (a.i - b.i))
+    .map(x => x.l);
+}
+// Écart signé entre deux index (compteur 3 chiffres 000-999 qui repasse à 000) ; négatif = en arrière.
+function ecartIndex(a, b) {
+  const x = frNum(a), y = frNum(b);
+  if (x === null || y === null) return null;
+  if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+    const d = ((y - x) % 1000 + 1000) % 1000;
+    return d >= 500 ? d - 1000 : d;
+  }
+  return y - x;
+}
+// Course annulée / no-show / sans déplacement : débarquement = embarquement autorisé
+function ligneSansDeplacement(l) {
+  return l.mode_paiement === "annulee" || (l.courses && l.courses.statut === "annulee")
+    || /annul|no[\s-]?show|sans d[ée]placement|absent/i.test(String(l.sommes_texte || "") + " " + String(l.motif_sans_prix || "") + " " + String(l.mode_paiement || ""));
+}
+// Index de début de la feuille = 3 derniers chiffres de l'« Index km — Début »
+function indexDebutFeuille(feuille) {
+  const v = frNum(feuille && feuille.index_km_debut);
+  return v === null ? null : Math.round(v) % 1000;
+}
+// Index de départ proposé pour une ligne : fin de la course précédente (ordre chronologique), sinon début de service
+function indexDepartSuggere(triees, ligne, feuille) {
+  const idx = triees.findIndex(x => x.id === ligne.id);
+  for (let j = (idx < 0 ? triees.length : idx) - 1; j >= 0; j--) {
+    if (frNum(triees[j].debarquement_index) !== null) return frNum(triees[j].debarquement_index);
+  }
+  return indexDebutFeuille(feuille);
+}
+// Problèmes d'une ligne (triees = lignes déjà dans l'ordre chronologique).
+// opts.heures : contrôle aussi les heures manquantes ; opts.suivante : contrôle aussi la course suivante.
+function problemesLigne(triees, idx, feuille, opts) {
+  opts = opts || {};
+  const l = triees[idx];
+  const pb = [];
+  if (!l) return pb;
+  const dep = frNum(l.index_depart), emb = frNum(l.embarquement_index), deb = frNum(l.debarquement_index);
+  let prec = null;
+  for (let j = idx - 1; j >= 0; j--) { if (frNum(triees[j].debarquement_index) !== null) { prec = triees[j]; break; } }
+  if (dep !== null) {
+    if (prec) {
+      if (ecartIndex(prec.debarquement_index, dep) < 0)
+        pb.push(`Index de départ trop petit : la course précédente (${frHHMM(prec.embarquement_heure)}) s'est terminée à ${frIdx(prec.debarquement_index)}.`);
+    } else {
+      const d0 = indexDebutFeuille(feuille);
+      if (d0 !== null && ecartIndex(d0, dep) < 0)
+        pb.push(`Index de départ trop petit : le service a commencé à ${frIdx(d0)} (index km début).`);
+    }
+  }
+  if (emb !== null && dep !== null && ecartIndex(dep, emb) < 0)
+    pb.push(`Index d'embarquement (${frIdx(emb)}) plus petit que l'index de départ (${frIdx(dep)}).`);
+  if (deb !== null && emb !== null) {
+    const e = ecartIndex(emb, deb);
+    if (e < 0) pb.push(`Index de débarquement (${frIdx(deb)}) plus petit que l'index d'embarquement (${frIdx(emb)}).`);
+    else if (e === 0 && !ligneSansDeplacement(l))
+      pb.push(`Index de débarquement = index d'embarquement (${frIdx(deb)}) : une course doit avoir des km (sauf course annulée / sans déplacement).`);
+  }
+  if (opts.suivante && deb !== null) {
+    let suiv = null;
+    for (let j = idx + 1; j < triees.length; j++) { if (frNum(triees[j].index_depart) !== null) { suiv = triees[j]; break; } }
+    if (suiv && ecartIndex(deb, suiv.index_depart) < 0)
+      pb.push(`Index de débarquement trop grand : la course suivante (${frHHMM(suiv.embarquement_heure)}) part de ${frIdx(suiv.index_depart)}.`);
+  }
+  const mE = frMinutes(l.embarquement_heure), mD = frMinutes(l.debarquement_heure);
+  if (opts.heures) {
+    if ((dep !== null || emb !== null || deb !== null) && mE === null) pb.push("Heure d'embarquement manquante.");
+    const sansRien = ligneSansDeplacement(l) && emb === null && deb === null;
+    if ((deb !== null || l.cloturee) && mD === null && !sansRien) pb.push("Heure de débarquement manquante.");
+  }
+  if (mE !== null && mD !== null && mD < mE && (mE - mD) < 720)
+    pb.push(`Heure de débarquement (${frHHMM(l.debarquement_heure)}) avant l'heure d'embarquement (${frHHMM(l.embarquement_heure)}).`);
+  return pb;
+}
+// Anomalies d'une feuille entière (index qui recule, débarquement = embarquement, heures manquantes…)
+function anomaliesFeuille(lignes, feuille) {
+  const triees = trierLignesChrono(lignes, feuille);
+  const parId = new Map();
+  const liste = [];
+  triees.forEach((l, i) => {
+    const pbs = problemesLigne(triees, i, feuille, { heures: true });
+    if (pbs.length) {
+      parId.set(l.id, pbs);
+      pbs.forEach(p => liste.push(`Course n° ${i + 1} (${frHHMM(l.embarquement_heure)}) : ${p}`));
+    }
+  });
+  return { triees, parId, liste, total: parId.size };
+}
+// Nouveaux problèmes créés par la modification d'un champ (on ne bloque pas pour une erreur déjà là avant)
+function nouveauxProblemesSaisie(lignes, feuille, ligne, champ, valeur) {
+  const avantTriees = trierLignesChrono(lignes, feuille);
+  const avant = problemesLigne(avantTriees, avantTriees.findIndex(x => x.id === ligne.id), feuille, { suivante: true });
+  const candidat = Object.assign({}, ligne, { [champ]: valeur });
+  const apresTriees = trierLignesChrono(lignes.map(x => x.id === ligne.id ? candidat : x), feuille);
+  const apres = problemesLigne(apresTriees, apresTriees.indexOf(candidat), feuille, { suivante: true });
+  return apres.filter(p => !avant.includes(p));
+}
+function messageConfirmImpression(an) {
+  const items = an.liste.slice(0, 10).map(t => "• " + t).join("\n") + (an.liste.length > 10 ? `\n… et ${an.liste.length - 10} autre(s)` : "");
+  return "⚠️ Cette feuille contient des erreurs d'index :\n\n" + items + "\n\nImprimer quand même ?";
+}
+
 // Impression : adresse raccourcie (sans « , Région wallonne », « , Hainaut », « , Belgique »… ni « Notes: … »),
 // limitée à ~70 caractères et à 2 lignes (CSS .lieu-l).
 function lieuImpression(v, prefixe) {
@@ -189,6 +330,8 @@ window.onerror = function(msg, url, line, col, err) {
   .identite span{ color:var(--gris); }
   #btn-imprimer-fr{ width:100%; padding:12px; border-radius:10px; border:none; background:#3b82c4; color:#fff; font-weight:600; font-size:.95rem; margin-bottom:14px; }
   .ligne-course{ background:#f0f1ee; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #dcdcda; }
+  .ligne-course.ligne-anomalie{ border:2px solid #c81e2c; background:#fdecee; }
+  .anomalie-ligne{ color:#8a1520; font-size:.82rem; font-weight:700; margin:6px 0 4px; line-height:1.35; }
   .ligne-course .num{ color:var(--blanc); font-size:.82rem; margin-bottom:6px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .ligne-course .num .chevron-ligne{ color:var(--gris); font-size:.75rem; flex-shrink:0; }
   .ligne-course .mention-uber{ font-size:.82rem; color:var(--gris); background:#fff; border:1px solid #dcdcda; border-radius:8px; padding:9px 11px; margin-bottom:10px; }
@@ -937,8 +1080,9 @@ async function afficherSectionsPassees() {
     const { data: vehicule } = f.vehicule_id
       ? await supabase.from("vehicules").select("nom, plaque").eq("id", f.vehicule_id).maybeSingle()
       : { data: null };
-    const { data: lignes } = await supabase
-      .from("lignes_feuille_route").select("*").eq("feuille_route_id", f.id).order("n_ordre");
+    const { data: lignesBrutes } = await supabase
+      .from("lignes_feuille_route").select("*, courses(statut, date_heure)").eq("feuille_route_id", f.id).order("n_ordre");
+    const lignes = trierLignesChrono(lignesBrutes || [], f);
 
     const recettes = (f.recettes_debut != null && f.recettes_fin != null)
       ? (parseFloat(f.recettes_fin) - parseFloat(f.recettes_debut)).toFixed(2) + " €" : "—";
@@ -1093,12 +1237,13 @@ Object.keys(champsEntete).forEach(idHtml => {
 async function chargerLignes() {
   const { data, error } = await supabase
     .from("lignes_feuille_route")
-    .select("*, courses(statut, notes, numero_reservation)")
+    .select("*, courses(statut, notes, numero_reservation, date_heure)")
     .eq("feuille_route_id", feuilleActuelle.id)
     .order("n_ordre", { ascending: true });
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
-  lignesActuelles = data || [];
+  // Toujours dans l'ordre chronologique (heure d'embarquement), même avant la renumérotation en base
+  lignesActuelles = trierLignesChrono(data || [], feuilleActuelle);
   afficherLignes();
   planifierCaisse();
 }
@@ -1179,16 +1324,19 @@ function afficherLignes() {
   const conteneur = document.getElementById("liste-lignes");
   const positionPage = window.scrollY;
   const existants = new Map([...conteneur.children].map(el => [el.dataset.id, el]));
+  const anomaliesParId = anomaliesFeuille(lignesActuelles, feuilleActuelle).parId;
   const nouveaux = lignesActuelles.map((ligne, index) => {
     const sig = signatureLigne(ligne, index + 1);
     const ancien = existants.get(String(ligne.id));
-    if (ancien && ancien._ligne && signatureLigne(ancien._ligne, index + 1) === sig) {
+    const sigAnomalies = (anomaliesParId.get(ligne.id) || []).join("|");
+    if (ancien && ancien._ligne && signatureLigne(ancien._ligne, index + 1) === sig && ancien._anomalies === sigAnomalies) {
       lignesActuelles[index] = ancien._ligne; // garde le même objet que les champs affichés
       return ancien;
     }
     const el = construireLigneHtml(ligne, index + 1);
     el.dataset.id = ligne.id;
     el._ligne = ligne;
+    el._anomalies = sigAnomalies;
     return el;
   });
   conteneur.replaceChildren(...nouveaux);
@@ -1232,13 +1380,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
   else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
   if (ligne.mode_paiement === "qr") badge += " · 📱 QR";
   if (ligne.mode_paiement === "annulee") badge += " · ❌ annulée";
-  // Contrôle du compteur : l'index de départ doit suivre l'index de débarquement de la course précédente
-  const idxLigne = lignesActuelles.findIndex(x => x.id === ligne.id);
-  const precedente = idxLigne > 0 ? lignesActuelles[idxLigne - 1] : null;
-  if (precedente && precedente.debarquement_index != null && ligne.index_depart != null) {
-    const ecart = ((Number(ligne.index_depart) - Number(precedente.debarquement_index)) % 1000 + 1000) % 1000;
-    if (ecart > 500) badge += " · ⚠️ index en arrière (vérifie)";
-  }
+  // Contrôle du compteur et des heures (ordre chronologique) : la ligne passe en rouge avec la raison
+  const anomaliesLigne = anomaliesFeuille(lignesActuelles, feuilleActuelle).parId.get(ligne.id) || [];
+  if (anomaliesLigne.length) badge += " · ⚠️ à vérifier";
   if (ligne.signalee_erreur) badge += " · 📨 demande envoyée à la centrale";
   if (ligne.courses?.numero_reservation) badge += " · N° " + String(ligne.courses.numero_reservation).replace(/[^A-Za-z0-9-]/g, "");
 
@@ -1250,6 +1394,14 @@ function construireLigneHtml(ligne, numeroAffiche) {
   entete.className = "num";
   entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${esc(resume)}${esc(heureResume)}${esc(badge)}</span><span class="chevron-ligne">${ouverte ? "▴" : "▾"}</span>`;
   div.appendChild(entete);
+
+  if (anomaliesLigne.length) {
+    div.classList.add("ligne-anomalie");
+    const boite = document.createElement("div");
+    boite.className = "anomalie-ligne";
+    boite.innerHTML = anomaliesLigne.map(m => "⚠️ " + esc(m)).join("<br>");
+    div.appendChild(boite);
+  }
 
   const corps = document.createElement("div");
   corps.style.display = ouverte ? "block" : "none";
@@ -1377,6 +1529,22 @@ function construireLigneHtml(ligne, numeroAffiche) {
     else if (CHAMPS_INDEX.includes(champ)) input.value = formatIndex(ligne[champ]);
     else input.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
     input.disabled = ligneVerrouillee;
+    // Pré-remplissage : index de départ = fin de la course précédente (ordre chronologique) ou début de service
+    if (champ === "index_depart" && !ligneVerrouillee) {
+      const sugg = indexDepartSuggere(lignesActuelles, ligne, feuilleActuelle);
+      if (sugg !== null) input.placeholder = formatIndex(sugg);
+      input.addEventListener("focus", () => {
+        if (input.value !== "" || ligne.index_depart != null) return;
+        const s = indexDepartSuggere(lignesActuelles, ligne, feuilleActuelle);
+        if (s === null) return;
+        input.value = formatIndex(s);
+        input.dispatchEvent(new Event("change"));
+      });
+    }
+    if (champ === "embarquement_index" && !ligneVerrouillee) {
+      const base = ligne.index_depart != null ? ligne.index_depart : indexDepartSuggere(lignesActuelles, ligne, feuilleActuelle);
+      if (base !== null && base !== undefined) input.placeholder = "≥ " + formatIndex(base);
+    }
     input.addEventListener("change", async (e) => {
       if (estTypeCourse && e.target.value === "prive") {
         if (!confirm("Confirmer qu'il s'agit bien d'un trajet privé, non facturé au client (ex : carwash, déplacement pour la société) ?\n\nN'oublie pas d'indiquer l'adresse et d'écrire une note expliquant le motif.")) {
@@ -1386,6 +1554,16 @@ function construireLigneHtml(ligne, numeroAffiche) {
       }
       let valeur = estCheckbox ? e.target.checked : (e.target.value === "" ? null : e.target.value);
       if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
+      // Contrôle à la saisie : index qui recule, débarquement = embarquement, heures incohérentes → refusé
+      if (CHAMPS_INDEX.includes(champ) || champ === "embarquement_heure" || champ === "debarquement_heure") {
+        const nouveaux = nouveauxProblemesSaisie(lignesActuelles, feuilleActuelle, ligne, champ, valeur);
+        if (nouveaux.length) {
+          alert("❌ " + nouveaux.join("\n❌ ") + "\n\nCorrige la valeur. Si c'est une autre course qui est fausse, corrige-la d'abord (ou demande à la centrale).");
+          const ancienne = ligne[champ];
+          e.target.value = CHAMPS_INDEX.includes(champ) ? formatIndex(ancienne) : (ancienne ? String(ancienne).slice(0, 5) : "");
+          return;
+        }
+      }
       const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
       if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
       const { data: ligneServeur, error } = await supabase
@@ -1394,6 +1572,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (!error && ligneServeur) {
         Object.assign(ligne, ligneServeur);
         if (CHAMPS_INDEX.includes(champ)) e.target.value = formatIndex(ligne[champ]);
+        if (champ === "index_depart" && inputsParChamp["embarquement_index"] && ligne.index_depart != null) inputsParChamp["embarquement_index"].placeholder = "≥ " + formatIndex(ligne.index_depart);
+        if (champ === "embarquement_heure") planifierRechargement(); // nouvelle place dans l'ordre chronologique
         synchroniserChampsUber();
         mettreAJourRenduMonnaie();
         planifierCaisse();
@@ -1593,6 +1773,13 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (!mode && ligne.type_course !== "prive" && !ligne.motif_sans_prix) manque.push("mode de paiement");
       if (!sansMontant && ligne.sommes_percues == null && ligne.prix_taximetre == null) manque.push("prix / sommes perçues");
       if (ligne.type_course === "forfait" && !ligne.motif_forfait) manque.push("motif du forfait");
+      // Bloquant : index incohérents ou heures manquantes (un contrôleur refuserait la feuille)
+      const idxChrono = lignesActuelles.findIndex(x => x.id === ligne.id);
+      const bloquants = problemesLigne(lignesActuelles, idxChrono, feuilleActuelle, { heures: true, suivante: true });
+      if (bloquants.length) {
+        alert("❌ Impossible de clôturer cette course :\n\n• " + bloquants.join("\n• ") + "\n\nCorrige d'abord (ou demande à la centrale).");
+        return;
+      }
       const message = manque.length
         ? "⚠️ Il manque encore : " + manque.join(", ") + ".\n\nClôturer quand même ? Tu ne pourras plus la modifier ensuite (seule la direction pourra)."
         : "Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).";
@@ -1700,6 +1887,7 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
       break;
     }
   }
+  if (indexDepartAuto === null) indexDepartAuto = indexDebutFeuille(feuilleActuelle);
 
   const { data, error } = await supabase
     .from("lignes_feuille_route")
@@ -1789,6 +1977,8 @@ function calcTotalHeures2(debut, fin) {
 }
 
 document.getElementById("btn-imprimer-fr").addEventListener("click", async () => {
+  const anomaliesImpression = anomaliesFeuille(lignesActuelles, feuilleActuelle);
+  if (anomaliesImpression.total && !confirm(messageConfirmImpression(anomaliesImpression))) return;
   const fenetre = window.open("", "_blank");
   if (!fenetre) { alert("Le navigateur a bloqué l'ouverture de la fenêtre d'impression. Autorise les pop-ups pour ce site."); return; }
   fenetre.document.write("Préparation de la feuille de route…");
@@ -1807,7 +1997,8 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       : { data: null };
     const { data: lignesF } = f.id === feuilleActuelle.id
       ? { data: lignesActuelles }
-      : await supabase.from("lignes_feuille_route").select("*").eq("feuille_route_id", f.id).order("n_ordre");
+      : await supabase.from("lignes_feuille_route").select("*, courses(statut, date_heure)").eq("feuille_route_id", f.id).order("n_ordre")
+          .then(r => ({ data: trierLignesChrono(r.data || [], f) }));
 
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};

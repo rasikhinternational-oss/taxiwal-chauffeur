@@ -170,6 +170,28 @@ window.onerror = function(msg, url, line, col, err) {
   .form-proposition label{ display:block; font-size:.78rem; color:var(--gris); margin:6px 0 3px; }
   .form-proposition input{ width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid #cfcfcd; }
   .form-proposition .btn-envoyer-proposition{ margin-top:8px; width:100%; background:var(--vert); color:#fff; border:none; border-radius:8px; padding:10px; font-weight:600; }
+  /* ---------- 💬 Messages avec la centrale ---------- */
+  nav.onglets button .badge-msg{ display:inline-block; margin-left:6px; min-width:20px; padding:1px 7px; border-radius:999px; background:var(--rouge); color:#fff; font-size:.78rem; font-weight:800; }
+  nav.onglets button.actif .badge-msg{ background:#fff; color:var(--rouge); }
+  nav.onglets button[data-onglet="messages"]{ grid-column:1 / -1; border-color:#1d4f86; color:#1d4f86; background:#eef4fb; }
+  nav.onglets button[data-onglet="messages"].actif{ background:var(--rouge); border-color:var(--rouge); color:#fff; }
+  #section-messages{ padding:0 16px 30px; }
+  .chm-entete{ display:flex; align-items:center; gap:10px; margin:2px 0 10px; font-weight:800; }
+  .chm-entete small{ display:block; font-weight:400; font-size:.78rem; color:var(--gris); }
+  .chm-fil{ background:#f1f1ee; border:1px solid #e2e2df; border-radius:14px; padding:12px 10px; height:min(55vh, 520px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+  .chm-fil .chm-jour{ align-self:center; font-size:.72rem; color:#777; background:#fff; border-radius:10px; padding:2px 10px; margin:4px 0; }
+  .chm-fil .bulle{ max-width:82%; padding:8px 11px 6px; border-radius:14px; font-size:.95rem; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; color:#111; box-shadow:0 1px 1px rgba(0,0,0,.06); }
+  .chm-fil .bulle.moi{ align-self:flex-end; background:#dcf3e4; border-bottom-right-radius:4px; }
+  .chm-fil .bulle.centrale{ align-self:flex-start; background:#fff; border-bottom-left-radius:4px; }
+  .chm-fil .bulle .meta{ font-size:.7rem; color:#777; text-align:right; margin-top:3px; }
+  .chm-fil .tag-course{ display:inline-block; font-size:.74rem; font-weight:700; background:#eef4fb; color:#1d4f86; border:1px solid #c7dbf0; border-radius:8px; padding:2px 7px; margin-bottom:4px; }
+  .chm-composer{ margin-top:10px; }
+  .chm-composer select{ width:100%; box-sizing:border-box; padding:9px 10px; border-radius:10px; border:1px solid #c7dbf0; background:#eef4fb; color:#1d4f86; font-weight:700; font-size:.88rem; margin-bottom:8px; }
+  .chm-saisie{ display:flex; gap:8px; align-items:flex-end; }
+  .chm-saisie textarea{ flex:1; min-width:0; resize:none; padding:11px 12px; border-radius:12px; border:1px solid #cfcfcd; background:#fff; color:#111; font-size:1rem; font-family:inherit; max-height:160px; box-sizing:border-box; }
+  .chm-saisie button{ width:auto !important; flex:0 0 auto; margin:0 !important; padding:12px 18px; border-radius:12px; border:none; background:var(--vert); color:#fff; font-weight:800; }
+  #chm-toast{ position:fixed; left:12px; right:12px; top:calc(env(safe-area-inset-top,0px) + 12px); z-index:90; background:#eef4fb; color:#1d4f86; border:3px solid #1d4f86; border-radius:14px; padding:12px 14px; box-shadow:0 10px 30px rgba(0,0,0,.25); font-size:.95rem; display:none; cursor:pointer; }
+  #chm-toast b{ display:block; font-size:1.02rem; margin-bottom:3px; }
   section{ display:none; }
   section.visible{ display:block; }
 
@@ -258,6 +280,14 @@ window.onerror = function(msg, url, line, col, err) {
   .course.carte-en-grand .btn-carte-grand{ position:sticky; top:0; z-index:3; background:var(--rouge) !important; }
   body.carte-grand-ouverte{ overflow:hidden; }
   .btn-carte-grand{ display:block; width:100%; margin:0 0 10px; padding:9px; border:none; border-radius:9px; background:#3b82c4; color:#fff; font-weight:700; font-size:.88rem; cursor:pointer; }
+  #section-plein{ padding:4px 16px 40px; }
+  .form-plein label{ display:block; font-size:.85rem; color:var(--gris); margin:12px 0 4px; }
+  .form-plein input, .form-plein select{ width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; background:#fff; }
+  .form-plein .pl-case{ display:flex; gap:10px; align-items:center; color:#111; font-weight:600; font-size:.92rem; }
+  .form-plein .pl-case input{ width:22px; height:22px; flex-shrink:0; }
+  .pl-info{ font-size:.85rem; margin-top:6px; color:#1d4f86; font-weight:600; }
+  .pl-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:.88rem; }
+  .pl-ligne b{ font-size:.95rem; }
 </style>
 </head>
 <body>
@@ -317,6 +347,8 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="historique-feuilles">📁 Mes feuilles (30 jours)</button>
     <button data-onglet="mes-horaires">🗓️ Mes horaires</button>
     <button data-onglet="demande-client">📝 Demande d'un client</button>
+    <button data-onglet="plein">⛽ J'ai fait le plein</button>
+    <button data-onglet="messages">💬 Messages avec la centrale</button>
   </nav>
 
   <section id="section-mes-courses" class="visible">
@@ -403,6 +435,31 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
   </section>
 
+  <section id="section-plein">
+    <div class="form-plein">
+      <p style="color:var(--gris); font-size:.88rem; margin:0 0 12px;">Après chaque plein, note le kilométrage du tableau de bord. La centrale voit combien de km tu as roulé avec le plein précédent.</p>
+      <label for="pl-vehicule">Véhicule *</label>
+      <select id="pl-vehicule"></select>
+      <div id="pl-dernier" class="pl-info"></div>
+      <label for="pl-km">Kilométrage au tableau de bord *</label>
+      <input id="pl-km" type="number" inputmode="numeric" placeholder="ex : 72540">
+      <div id="pl-calcul" class="pl-info"></div>
+      <label for="pl-litres">Litres mis</label>
+      <input id="pl-litres" type="text" inputmode="decimal" placeholder="ex : 45,30">
+      <label for="pl-montant">Montant payé (€)</label>
+      <input id="pl-montant" type="text" inputmode="decimal" placeholder="ex : 78,50">
+      <label class="pl-case"><input type="checkbox" id="pl-complet" checked> Plein complet (réservoir rempli jusqu'au bout)</label>
+      <label for="pl-station">Station (optionnel)</label>
+      <input id="pl-station" placeholder="ex : Total Boussu">
+      <label for="pl-note">Note (optionnel)</label>
+      <input id="pl-note" placeholder="ex : payé avec la carte carburant">
+      <p id="pl-erreur" style="color:var(--rouge); font-weight:600; min-height:1em;"></p>
+      <button type="button" id="pl-envoyer" style="width:100%; padding:16px; border:none; border-radius:12px; background:var(--vert); color:#fff; font-weight:800; font-size:1.05rem;">⛽ Enregistrer le plein</button>
+    </div>
+    <h3 style="margin:22px 0 8px; font-size:1rem;">Mes derniers pleins</h3>
+    <div id="pl-liste"></div>
+  </section>
+
   <section id="section-mes-horaires">
     <div id="liste-mes-horaires">Chargement…</div>
   </section>
@@ -411,7 +468,21 @@ window.onerror = function(msg, url, line, col, err) {
     <p class="histo-note">Tes feuilles de route des 30 derniers jours, en consultation. Touche une date pour voir le détail.</p>
     <div id="liste-historique-feuilles"></div>
   </section>
+
+  <section id="section-messages">
+    <div class="chm-entete">🏢 <div>Taxi Wal (central)<small>Tes messages arrivent directement à la centrale.</small></div></div>
+    <div class="chm-fil" id="chm-fil"><p style="color:#777; margin:auto;">Chargement…</p></div>
+    <div class="chm-composer">
+      <select id="chm-course" title="Lier le message à une course"><option value="">🚖 Sans course (message général)</option></select>
+      <div class="chm-saisie">
+        <textarea id="chm-texte" rows="2" maxlength="2000" placeholder="Ton message à la centrale…"></textarea>
+        <button type="button" id="chm-envoyer">Envoyer</button>
+      </div>
+      <p id="chm-erreur" style="color:var(--rouge); font-size:.85rem; margin:6px 0 0;"></p>
+    </div>
+  </section>
 </div>
+<div id="chm-toast"></div>
 
 <div id="modale-paiement" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:60; align-items:flex-end;">
   <div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:24px;">
@@ -484,8 +555,149 @@ function esc(valeur) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+// ================== ORDRE CHRONOLOGIQUE + CONTRÔLE DES INDEX ==================
+// Même règle que la base (fonction renumeroter_feuille) : d'abord les courses avec une heure
+// d'embarquement, dans l'ordre de l'heure (une heure < début de service − 2 h = après minuit),
+// puis les courses sans heure (pas encore faites) : heure prévue de la course, sinon date de création.
+function frMinutes(h) {
+  if (!h) return null;
+  const p = String(h).split(":").map(Number);
+  if (p.length < 2 || isNaN(p[0]) || isNaN(p[1])) return null;
+  return p[0] * 60 + p[1];
+}
+function frHHMM(h) { return h ? String(h).slice(0, 5) : "--:--"; }
+function frNum(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(String(v).replace(",", "."));
+  return isNaN(n) ? null : n;
+}
+function frIdx(v) { return (typeof formatIndex === "function") ? formatIndex(v) : String(v ?? ""); }
+function frCleLigne(l, feuille) {
+  const m = frMinutes(l.embarquement_heure);
+  const debut = frMinutes(feuille && feuille.heure_debut);
+  if (m !== null) return [0, m + (debut !== null && m < debut - 120 ? 1440 : 0)];
+  const ds = feuille && feuille.date_service;
+  const base = ds ? new Date(ds + "T00:00:00").getTime() : 0;
+  const dh = l.courses && l.courses.date_heure;
+  const t = dh ? new Date(dh).getTime() : (l.created_at ? new Date(l.created_at).getTime() : null);
+  return [1, (t === null || isNaN(t)) ? Number.MAX_SAFE_INTEGER : (t - base) / 60000];
+}
+function trierLignesChrono(lignes, feuille) {
+  // Ordre choisi par la direction (feuille.ordre_manuel) : on respecte n_ordre tel quel
+  if (feuille && feuille.ordre_manuel) {
+    return (lignes || []).map((l, i) => ({ l, i }))
+      .sort((a, b) => ((a.l.n_ordre ?? 1e9) - (b.l.n_ordre ?? 1e9))
+        || String(a.l.created_at || "").localeCompare(String(b.l.created_at || "")) || (a.i - b.i))
+      .map(x => x.l);
+  }
+  return (lignes || []).map((l, i) => ({ l, i, k: frCleLigne(l, feuille) }))
+    .sort((a, b) => (a.k[0] - b.k[0]) || (a.k[1] - b.k[1])
+      || String(a.l.created_at || "").localeCompare(String(b.l.created_at || ""))
+      || ((a.l.n_ordre || 0) - (b.l.n_ordre || 0)) || (a.i - b.i))
+    .map(x => x.l);
+}
+// Écart signé entre deux index (compteur 3 chiffres 000-999 qui repasse à 000) ; négatif = en arrière.
+function ecartIndex(a, b) {
+  const x = frNum(a), y = frNum(b);
+  if (x === null || y === null) return null;
+  if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+    const d = ((y - x) % 1000 + 1000) % 1000;
+    return d >= 500 ? d - 1000 : d;
+  }
+  return y - x;
+}
+// Course annulée / no-show / sans déplacement : débarquement = embarquement autorisé
+function ligneSansDeplacement(l) {
+  return l.mode_paiement === "annulee" || (l.courses && l.courses.statut === "annulee")
+    || /annul|no[\s-]?show|sans d[ée]placement|absent/i.test(String(l.sommes_texte || "") + " " + String(l.motif_sans_prix || "") + " " + String(l.mode_paiement || ""));
+}
+// Index de début de la feuille = 3 derniers chiffres de l'« Index km — Début »
+function indexDebutFeuille(feuille) {
+  const v = frNum(feuille && feuille.index_km_debut);
+  return v === null ? null : Math.round(v) % 1000;
+}
+// Index de départ proposé pour une ligne : fin de la course précédente (ordre chronologique), sinon début de service
+function indexDepartSuggere(triees, ligne, feuille) {
+  const idx = triees.findIndex(x => x.id === ligne.id);
+  for (let j = (idx < 0 ? triees.length : idx) - 1; j >= 0; j--) {
+    if (frNum(triees[j].debarquement_index) !== null) return frNum(triees[j].debarquement_index);
+  }
+  return indexDebutFeuille(feuille);
+}
+// Problèmes d'une ligne (triees = lignes déjà dans l'ordre chronologique).
+// opts.heures : contrôle aussi les heures manquantes ; opts.suivante : contrôle aussi la course suivante.
+function problemesLigne(triees, idx, feuille, opts) {
+  opts = opts || {};
+  const l = triees[idx];
+  const pb = [];
+  if (!l) return pb;
+  const dep = frNum(l.index_depart), emb = frNum(l.embarquement_index), deb = frNum(l.debarquement_index);
+  let prec = null;
+  for (let j = idx - 1; j >= 0; j--) { if (frNum(triees[j].debarquement_index) !== null) { prec = triees[j]; break; } }
+  if (dep !== null) {
+    if (prec) {
+      if (ecartIndex(prec.debarquement_index, dep) < 0)
+        pb.push(`Index de départ trop petit : la course précédente (${frHHMM(prec.embarquement_heure)}) s'est terminée à ${frIdx(prec.debarquement_index)}.`);
+    } else {
+      const d0 = indexDebutFeuille(feuille);
+      if (d0 !== null && ecartIndex(d0, dep) < 0)
+        pb.push(`Index de départ trop petit : le service a commencé à ${frIdx(d0)} (index km début).`);
+    }
+  }
+  if (emb !== null && dep !== null && ecartIndex(dep, emb) < 0)
+    pb.push(`Index d'embarquement (${frIdx(emb)}) plus petit que l'index de départ (${frIdx(dep)}).`);
+  if (deb !== null && emb !== null) {
+    const e = ecartIndex(emb, deb);
+    if (e < 0) pb.push(`Index de débarquement (${frIdx(deb)}) plus petit que l'index d'embarquement (${frIdx(emb)}).`);
+    else if (e === 0 && !ligneSansDeplacement(l))
+      pb.push(`Index de débarquement = index d'embarquement (${frIdx(deb)}) : une course doit avoir des km (sauf course annulée / sans déplacement).`);
+  }
+  if (opts.suivante && deb !== null) {
+    let suiv = null;
+    for (let j = idx + 1; j < triees.length; j++) { if (frNum(triees[j].index_depart) !== null) { suiv = triees[j]; break; } }
+    if (suiv && ecartIndex(deb, suiv.index_depart) < 0)
+      pb.push(`Index de débarquement trop grand : la course suivante (${frHHMM(suiv.embarquement_heure)}) part de ${frIdx(suiv.index_depart)}.`);
+  }
+  const mE = frMinutes(l.embarquement_heure), mD = frMinutes(l.debarquement_heure);
+  if (opts.heures) {
+    if ((dep !== null || emb !== null || deb !== null) && mE === null) pb.push("Heure d'embarquement manquante.");
+    const sansRien = ligneSansDeplacement(l) && emb === null && deb === null;
+    if ((deb !== null || l.cloturee) && mD === null && !sansRien) pb.push("Heure de débarquement manquante.");
+  }
+  if (mE !== null && mD !== null && mD < mE && (mE - mD) < 720)
+    pb.push(`Heure de débarquement (${frHHMM(l.debarquement_heure)}) avant l'heure d'embarquement (${frHHMM(l.embarquement_heure)}).`);
+  return pb;
+}
+// Anomalies d'une feuille entière (index qui recule, débarquement = embarquement, heures manquantes…)
+function anomaliesFeuille(lignes, feuille) {
+  const triees = trierLignesChrono(lignes, feuille);
+  const parId = new Map();
+  const liste = [];
+  triees.forEach((l, i) => {
+    const pbs = problemesLigne(triees, i, feuille, { heures: true });
+    if (pbs.length) {
+      parId.set(l.id, pbs);
+      pbs.forEach(p => liste.push(`Course n° ${i + 1} (${frHHMM(l.embarquement_heure)}) : ${p}`));
+    }
+  });
+  return { triees, parId, liste, total: parId.size };
+}
+// Nouveaux problèmes créés par la modification d'un champ (on ne bloque pas pour une erreur déjà là avant)
+function nouveauxProblemesSaisie(lignes, feuille, ligne, champ, valeur) {
+  const avantTriees = trierLignesChrono(lignes, feuille);
+  const avant = problemesLigne(avantTriees, avantTriees.findIndex(x => x.id === ligne.id), feuille, { suivante: true });
+  const candidat = Object.assign({}, ligne, { [champ]: valeur });
+  const apresTriees = trierLignesChrono(lignes.map(x => x.id === ligne.id ? candidat : x), feuille);
+  const apres = problemesLigne(apresTriees, apresTriees.indexOf(candidat), feuille, { suivante: true });
+  return apres.filter(p => !avant.includes(p));
+}
+function messageConfirmImpression(an) {
+  const items = an.liste.slice(0, 10).map(t => "• " + t).join("\n") + (an.liste.length > 10 ? `\n… et ${an.liste.length - 10} autre(s)` : "");
+  return "⚠️ Cette feuille contient des erreurs d'index :\n\n" + items + "\n\nImprimer quand même ?";
+}
 
 let positionInterval = null;
+let derniereLecturePosition = null; // dernière position lue par le suivi GPS (déclarée tôt : utilisée par obtenirPosition)
 
 document.getElementById("btn-envoyer-code").addEventListener("click", async () => {
   const btn = document.getElementById("btn-envoyer-code");
@@ -626,6 +838,32 @@ function attacherSuggestionsAdresse(input, conteneur) {
 
 
 // ================== DEMANDE D'UN CLIENT → CENTRALE (remplissage rapide) ==================
+// Position ponctuelle robuste (iPhone) : position récente du suivi si < 60 s, sinon GPS précis,
+// et en cas de délai dépassé / position indisponible, nouvel essai en précision réduite.
+function obtenirPosition() {
+  return new Promise((resoudre, rejeter) => {
+    if (!navigator.geolocation) { rejeter({ code: 2, message: "Géolocalisation non disponible" }); return; }
+    const recente = derniereLecturePosition;
+    if (recente && Date.now() - recente.timestamp < 60000) { resoudre(recente); return; }
+    navigator.geolocation.getCurrentPosition(resoudre, (err) => {
+      if (err && (err.code === 2 || err.code === 3)) {
+        navigator.geolocation.getCurrentPosition(resoudre, rejeter,
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+      } else rejeter(err);
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+  });
+}
+function messageErreurPosition(err) {
+  const code = err && err.code;
+  let msg;
+  if (code === 1) msg = "📍 La localisation est bloquée pour Taxi Wal.\n\nSur iPhone : Réglages → Confidentialité et sécurité → Service de localisation → activé, puis « Sites web Safari » → « Lorsque l'app est active ». Puis dans Safari : touche « aA » dans la barre d'adresse → Réglages du site web → Position → Autoriser. Ensuite ferme et rouvre l'application.";
+  else if (code === 2) msg = "📍 Position indisponible pour le moment (pas de signal GPS). Réessaie dehors ou tape l'adresse à la main.";
+  else if (code === 3) msg = "📍 Le GPS met trop de temps à répondre. Réessaie dans quelques secondes ou tape l'adresse à la main.";
+  else msg = "📍 Impossible d'obtenir ta position. Réessaie ou tape l'adresse à la main.";
+  if (!window.isSecureContext) msg += "\n\n⚠️ La page n'est pas ouverte en connexion sécurisée (https) : le téléphone refuse alors de donner la position. Ouvre l'application via son adresse https.";
+  return msg;
+}
+
 (function preparerFormulaireDemande() {
   const $ = id => document.getElementById(id);
   ["dc-depart", "dc-arrivee"].forEach(id => attacherSuggestionsAdresse($(id), $(id).parentNode));
@@ -638,7 +876,7 @@ function attacherSuggestionsAdresse(input, conteneur) {
     const cible = $(b.dataset.pos);
     if (!navigator.geolocation) { alert("Localisation indisponible sur ce téléphone."); return; }
     const avant = b.textContent; b.disabled = true; b.textContent = "📍 Recherche…";
-    navigator.geolocation.getCurrentPosition(async (pos) => {
+    obtenirPosition().then(async (pos) => {
       try {
         const r = await fetch(`https://photon.komoot.io/reverse?lang=fr&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
         const d = await r.json();
@@ -646,8 +884,7 @@ function attacherSuggestionsAdresse(input, conteneur) {
         if (lib) cible.value = lib; else alert("Adresse introuvable, tape-la à la main.");
       } catch (e) { alert("Adresse introuvable, tape-la à la main."); }
       b.disabled = false; b.textContent = avant;
-    }, () => { b.disabled = false; b.textContent = avant; alert("Position introuvable (autorise la localisation pour Taxi Wal)."); },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 20000 });
+    }, (err) => { b.disabled = false; b.textContent = avant; alert(messageErreurPosition(err)); });
   }));
   $("dc-inverser").addEventListener("click", () => { const a = $("dc-depart").value; $("dc-depart").value = $("dc-arrivee").value; $("dc-arrivee").value = a; });
   $("dc-carte").addEventListener("click", () => {
@@ -795,12 +1032,11 @@ async function reinscrireNotifications(bouton) {
   }
 }
 document.getElementById("btn-reactiver-notifs").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
-document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => { if (window.TaxiWalPush) { window.TaxiWalPush.activer(); alert("✅ Notifications vérifiées. Si l'iPhone le demande, choisis « Autoriser »."); return; } reinscrireNotifications(e.currentTarget); });
+document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
 
 // Affiche le bandeau rouge si les notifications sont bloquées, ou si les derniers envois ont échoué
 async function verifierEtatNotifications() {
   const bandeau = document.getElementById("bandeau-notifs");
-  if (window.TAXIWAL_PUSH_NATIF) { if (bandeau) bandeau.style.display = "none"; return; } // app Taxi Wal Driver : notifications natives
   const texte = document.getElementById("bandeau-notifs-texte");
   try {
     if (!("Notification" in window) || Notification.permission !== "granted") {
@@ -864,6 +1100,7 @@ async function demarrerEspaceChauffeur() {
   setInterval(chargerCourses, 30000);
   activerTempsReelCourses();
   activerTempsReelFeuilles();
+  try { chmDemarrer(); } catch (e) { console.warn("messages centrale :", e); }
 
   activerLocalisationAutomatique();
 }
@@ -1016,9 +1253,58 @@ function verifierRappels30MinChauffeur(courses) {
 
 var rechargeCartesEnAttente = false;
 function rechargerApresCarteGrand() { if (rechargeCartesEnAttente) { rechargeCartesEnAttente = false; chargerCourses(); } }
+// ---- Course retirée par la centrale (réattribuée à un autre chauffeur, annulée ou supprimée) ----
+// La base ne renvoie plus la course à l'ancien chauffeur : on la détecte quand elle disparaît de la liste.
+let coursesActivesPrecedentes = null;          // Map id -> course (dernière liste active connue)
+const idsRetiresParMoi = new Set();            // ex. « client absent » : ce n'est pas la centrale
+function gererCoursesRetirees(courses) {
+  const actives = (courses || []).filter(c => ["en_attente", "assignee", "en_cours"].includes(c.statut));
+  const presentes = new Set((courses || []).map(c => c.id));
+  const retirees = [];
+  if (coursesActivesPrecedentes) {
+    coursesActivesPrecedentes.forEach((c, id) => {
+      if (!presentes.has(id) && !idsRetiresParMoi.has(id)) retirees.push(c);
+    });
+  }
+  coursesActivesPrecedentes = new Map(actives.map(c => [c.id, c]));
+  if (!retirees.length) return;
+  const ids = new Set(retirees.map(c => c.id));
+  // Ferme proprement l'écran de la course si elle était ouverte en grand
+  document.querySelectorAll(".carte-en-grand").forEach(el => {
+    if (ids.has(el.dataset.courseId)) { el.classList.remove("carte-en-grand"); document.body.classList.remove("carte-grand-ouverte"); }
+  });
+  // Ferme la fin de course / le QR de paiement si c'était cette course
+  try {
+    if (courseEnFinDePaiement && ids.has(courseEnFinDePaiement)) {
+      modalePaiement.style.display = "none";
+      const oqc = document.getElementById("overlay-qr-chauffeur"); if (oqc) oqc.style.display = "none";
+      courseEnFinDePaiement = null;
+    }
+  } catch (e) {}
+  try { gererEcranAllume(); } catch (e) {}
+  retirees.forEach(c => { if (idsCoursesConnues) idsCoursesConnues.delete(c.id); });
+  afficherAlerteCourseRetiree(retirees);
+}
+function afficherAlerteCourseRetiree(retirees) {
+  let el = document.getElementById("alerte-course-retiree");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "alerte-course-retiree";
+    el.style.cssText = "position:fixed; left:12px; right:12px; top:calc(env(safe-area-inset-top,0px) + 12px); z-index:2000; background:#b3141b; color:#fff; border-radius:14px; padding:14px 16px; box-shadow:0 8px 30px rgba(0,0,0,.35); font-size:1rem;";
+    document.body.appendChild(el);
+  }
+  const lignes = retirees.map(c => {
+    const q = c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+    return `${c.numero_reservation ? esc(c.numero_reservation) + " · " : ""}${esc(q)} · ${esc(c.adresse_depart || "")}`;
+  }).join("<br>");
+  el.innerHTML = `<div style="font-weight:800; font-size:1.1rem; margin-bottom:4px;">❌ Course retirée par la centrale</div>
+    <div style="font-size:.9rem; margin-bottom:10px;">${lignes}<br>Elle n'est plus à toi : ne la fais pas.</div>
+    <button type="button" style="width:100%; padding:10px; border:none; border-radius:10px; background:#fff; color:#b3141b; font-weight:800;">OK, compris</button>`;
+  el.querySelector("button").addEventListener("click", () => el.remove());
+  try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
+}
+
 async function chargerCourses() {
-  // Une course est ouverte en grand : on ne redessine pas la liste (sinon elle se fermerait)
-  if (document.querySelector(".carte-en-grand")) { rechargeCartesEnAttente = true; return; }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
@@ -1029,6 +1315,9 @@ async function chargerCourses() {
     .order("date_heure", { ascending: true });
 
   if (error) { console.error(error); return; }
+  gererCoursesRetirees(courses);
+  // Une course est ouverte en grand : on ne redessine pas la liste (sinon elle se fermerait)
+  if (document.querySelector(".carte-en-grand")) { rechargeCartesEnAttente = true; return; }
 
   if (idsCoursesConnues === null) {
     idsCoursesConnues = new Set((courses || []).map(c => c.id));
@@ -1112,6 +1401,8 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
     if (btn.dataset.onglet === "demandes-ouvertes") chargerDemandesOuvertes();
     if (btn.dataset.onglet === "historique-feuilles") chargerHistoriqueFeuilles();
     if (btn.dataset.onglet === "mes-horaires") chargerMesHoraires();
+    if (btn.dataset.onglet === "plein") preparerPlein();
+    if (btn.dataset.onglet === "messages") chmOuvrir();
   });
 });
 
@@ -1170,7 +1461,7 @@ async function chargerHistoriqueFeuilles() {
   const ids = feuilles.map(f => f.id);
   const { data: lignes } = await supabase
     .from("lignes_feuille_route")
-    .select("*, courses(mode_paiement)")
+    .select("*, courses(mode_paiement, statut, date_heure)")
     .in("feuille_route_id", ids)
     .order("n_ordre", { ascending: true });
 
@@ -1179,7 +1470,7 @@ async function chargerHistoriqueFeuilles() {
   const feuillesTravaillees = feuilles.filter(f => f.verrouillee || f.heure_debut || f.heure_fin || (lignes || []).some(l => l.feuille_route_id === f.id));
   if (!feuillesTravaillees.length) { conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune feuille de route sur les 30 derniers jours.</p>'; return; }
   feuillesTravaillees.forEach(f => {
-    const lignesFeuille = (lignes || []).filter(l => l.feuille_route_id === f.id);
+    const lignesFeuille = trierLignesChrono((lignes || []).filter(l => l.feuille_route_id === f.id), f);
     conteneur.appendChild(construireFeuilleHistorique(f, lignesFeuille, f.date_service === aujourdHui));
   });
 }
@@ -1364,9 +1655,26 @@ document.getElementById("cal-next").addEventListener("click", () => {
   rendreCalendrier(dernieresCoursesChauffeur);
 });
 
+// Montant que le chauffeur doit encaisser : prix total (prix + surprime) moins ce qui est déjà payé.
+// La centrale peut corriger le prix à tout moment : elle enregistre alors « reste_a_payer ».
+const eurosChauffeur = (n) => (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace(".", ",") + " €";
+function montantAEncaisser(c) {
+  if (!c || c.mode_paiement === "uber") return null;
+  const total = Math.round(((Number(c.prix) || 0) + (Number(c.surprime) || 0)) * 100) / 100;
+  let reste;
+  if (c.reste_a_payer != null) reste = Number(c.reste_a_payer);
+  else if (c.acompte_paye) reste = c.paiement_choisi === "total" ? 0 : total - (Number(c.acompte_montant) || 0);
+  else reste = total;
+  reste = Math.round(reste * 100) / 100;
+  if (!(total > 0) && c.reste_a_payer == null) return null;
+  const deja = Math.round((total - reste) * 100) / 100;
+  return { total, reste, deja, toutPaye: reste <= 0 && deja > 0 };
+}
+
 function construireCarteCourse(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
+  div.dataset.courseId = course.id;
 
   const heure = new Date(course.date_heure).toLocaleString("fr-BE", {
     weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
@@ -1401,8 +1709,17 @@ function construireCarteCourse(course) {
   const ligneGroupe = course.nb_vehicules > 1
     ? `<b>Réservation :</b> ${course.nb_vehicules} véhicules pour ce client, les autres sont faits par un autre chauffeur.<br>` : "";
 
+  const encaisse = montantAEncaisser(course);
+  const blocEncaisser = encaisse ? `
+    <div class="bloc-a-encaisser" style="margin:8px 0; padding:10px 12px; border-radius:10px; background:${encaisse.reste < 0 ? "#fdecee" : "#e7f5ec"}; border:2px solid ${encaisse.reste < 0 ? "#b3141b" : "#1f8a4c"}; color:#111;">
+      <div style="font-size:1.15rem; font-weight:800;">💶 À encaisser : ${esc(eurosChauffeur(Math.max(encaisse.reste, 0)))}</div>
+      ${encaisse.deja > 0 ? `<div style="font-size:.85rem; margin-top:2px;">(${encaisse.toutPaye ? "course déjà payée en totalité" : "acompte de " + esc(eurosChauffeur(encaisse.deja)) + " déjà payé"} — total ${esc(eurosChauffeur(encaisse.total))})</div>` : ""}
+      ${encaisse.reste < 0 ? `<div style="font-size:.85rem; margin-top:2px;">Le client a trop payé : la centrale le rembourse (${esc(eurosChauffeur(-encaisse.reste))}). Ne rien encaisser.</div>` : ""}
+      ${course.prix_precedent != null ? `<div style="font-size:.8rem; margin-top:2px; color:#555;">Prix corrigé par la centrale : <s>${esc(eurosChauffeur(course.prix_precedent))}</s> → ${esc(eurosChauffeur(course.prix))}</div>` : ""}
+    </div>` : "";
+
   div.innerHTML = `
-    <span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}${badgeGroupe}
+    ${course.numero_reservation ? `<div style="font-size:.72rem; font-weight:700; color:#1d4f86; margin-bottom:3px;">N° ${esc(course.numero_reservation)}</div>` : ""}<span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}${badgeGroupe}
     <h3>${esc(course.client_nom) || "Client"}</h3>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
@@ -1413,6 +1730,7 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
       ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
       ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
+    ${blocEncaisser}
     ${course.code_verification && (course.statut === "assignee" || course.statut === "en_cours") ? `
     <div class="code-verification-chauffeur">🔒 Code client : <b>${esc(course.code_verification)}</b><br><small>Demande ce code au passager avant de démarrer, pour confirmer qu'il s'agit bien de ta course.</small></div>` : ""}
     ${course.statut === "assignee" ? `
@@ -1453,6 +1771,7 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
 
     const btnAbsent = creerBouton("🚫 Client absent", async () => {
       if (!confirm("Le client ne s'est pas présenté ? Cette course va être marquée annulée.")) return;
+      idsRetiresParMoi.add(course.id);
       const { error } = await supabase.from("courses").update({
         statut: "annulee", annulee_par: "chauffeur", motif_annulation: "non_presente"
       }).eq("id", course.id);
@@ -1544,6 +1863,7 @@ function construireCarteDemandeOuverte(course, maProposition) {
     weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
   });
   div.innerHTML = `
+    ${course.numero_reservation ? `<div style="font-size:.72rem; font-weight:700; color:#1d4f86; margin-bottom:3px;">N° ${esc(course.numero_reservation)}</div>` : ""}
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
@@ -1588,22 +1908,24 @@ async function changerStatut(courseId, nouveauStatut) {
 }
 
 async function accepterCourse(courseId) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("courses")
     .update({ accepte_chauffeur: true, accepte_a: new Date().toISOString() })
-    .eq("id", courseId);
+    .eq("id", courseId).select("id");
 
   if (error) { alert("Impossible d'accepter : " + error.message); return; }
+  if (!data || !data.length) { alert("❌ Course retirée par la centrale : elle n'est plus à toi."); chargerCourses(); return; }
   chargerCourses();
 }
 
 async function demarrerCourse(courseId) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("courses")
     .update({ statut: "en_cours" })
-    .eq("id", courseId);
+    .eq("id", courseId).select("id");
 
   if (error) { alert("Impossible de démarrer : " + error.message); return; }
+  if (!data || !data.length) { alert("❌ Course retirée par la centrale : elle n'est plus à toi."); chargerCourses(); return; }
   chargerCourses();
 }
 
@@ -1634,8 +1956,9 @@ function urlQrPaiementChauffeur(montant, communication) {
 document.getElementById("btn-paiement-qr").addEventListener("click", async () => {
   if (!courseEnFinDePaiement) return;
   const { data: c } = await supabase.from("courses")
-    .select("prix, surprime, acompte_montant, acompte_paye, date_heure").eq("id", courseEnFinDePaiement).maybeSingle();
-  let montant = (Number(c?.prix) || 0) + (Number(c?.surprime) || 0) - (c?.acompte_paye ? (Number(c?.acompte_montant) || 0) : 0);
+    .select("prix, surprime, acompte_montant, acompte_paye, paiement_choisi, reste_a_payer, mode_paiement, date_heure").eq("id", courseEnFinDePaiement).maybeSingle();
+  const enc = montantAEncaisser(c);
+  let montant = enc ? enc.reste : 0;
   if (!(montant > 0)) {
     const saisi = prompt("Montant à payer par le client (€) :");
     montant = parseFloat(String(saisi || "").replace(",", "."));
@@ -1660,15 +1983,16 @@ document.getElementById("oqc-recu").addEventListener("click", async () => {
 
 async function terminerAvecPaiement(mode) {
   if (!courseEnFinDePaiement) return;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("courses")
     .update({ statut: "terminee", mode_paiement: mode })
-    .eq("id", courseEnFinDePaiement);
+    .eq("id", courseEnFinDePaiement).select("id");
 
   modalePaiement.style.display = "none";
   courseEnFinDePaiement = null;
 
   if (error) { alert("Impossible de modifier : " + error.message); return; }
+  if (!data || !data.length) { alert("❌ Course retirée par la centrale : elle n'est plus à toi."); chargerCourses(); return; }
   chargerCourses();
 }
 
@@ -1680,22 +2004,62 @@ switchDispo.addEventListener("click", () => {
   switchDispo.classList.toggle("actif", dispoActive);
 
   if (dispoActive) {
+    alertePermissionSuiviMontree = false;
     demarrerPartagePosition();
   } else {
     arreterPartagePosition();
   }
 });
 
+// Suivi GPS en continu : le téléphone donne sa position dès qu'il bouge,
+// et on l'envoie à la centrale toutes les 15 secondes (même si le chauffeur est à l'arrêt).
+let suiviGpsId = null, dernierEnvoiPosition = 0, alertePermissionSuiviMontree = false;
+// Erreur du suivi GPS : permission refusée -> message une seule fois + interrupteur remis sur OFF ;
+// délai dépassé / position indisponible -> silencieux (le suivi continue).
+function gererErreurSuiviGps(err) {
+  console.error("Erreur GPS :", err);
+  if (!err || err.code !== 1 || !dispoActive || alertePermissionSuiviMontree) return;
+  alertePermissionSuiviMontree = true;
+  dispoActive = false;
+  switchDispo.classList.remove("actif");
+  arreterPartagePosition();
+  alert(messageErreurPosition(err));
+}
 function demarrerPartagePosition() {
   if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible sur cet appareil."); return; }
-
+  if (positionInterval) clearInterval(positionInterval);
+  if (suiviGpsId === null) {
+    suiviGpsId = navigator.geolocation.watchPosition(
+      (pos) => {
+        derniereLecturePosition = pos;
+        if (Date.now() - dernierEnvoiPosition > 14000) envoyerPositionLue(pos);
+      },
+      gererErreurSuiviGps,
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+    );
+  }
   envoyerPosition();
   positionInterval = setInterval(envoyerPosition, 15000);
 }
 
 function arreterPartagePosition() {
   if (positionInterval) clearInterval(positionInterval);
+  positionInterval = null;
+  if (suiviGpsId !== null) { navigator.geolocation.clearWatch(suiviGpsId); suiviGpsId = null; }
   metPositionIndisponible();
+}
+
+async function envoyerPositionLue(pos) {
+  dernierEnvoiPosition = Date.now();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("positions_chauffeurs").upsert({
+    chauffeur_id: user.id,
+    latitude: pos.coords.latitude,
+    longitude: pos.coords.longitude,
+    disponible: true,
+    updated_at: new Date().toISOString()
+  });
 }
 
 // Dès que l'app revient à l'écran : position envoyée tout de suite + écran gardé allumé si course en cours
@@ -1720,7 +2084,13 @@ async function gererEcranAllume() {
 setInterval(gererEcranAllume, 60000);
 
 async function envoyerPosition() {
+  // position récente déjà connue grâce au suivi continu : on l'envoie directement
+  if (derniereLecturePosition && Date.now() - derniereLecturePosition.timestamp < 20000) {
+    envoyerPositionLue(derniereLecturePosition);
+    return;
+  }
   navigator.geolocation.getCurrentPosition(async (pos) => {
+    derniereLecturePosition = pos; dernierEnvoiPosition = Date.now();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -1731,21 +2101,7 @@ async function envoyerPosition() {
       disponible: true,
       updated_at: new Date().toISOString()
     });
-
-    // Historique du trajet (Taxi Wal Driver) — l'app native s'en charge elle-même quand elle est installée
-    if (!window.TAXIWAL_GPS_NATIF) {
-      const { error: errTrajet } = await supabase.from("trajets_gps").insert({
-        chauffeur_id: user.id,
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        precision_m: pos.coords.accuracy != null ? Math.round(pos.coords.accuracy) : null,
-        vitesse_kmh: pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) : null,
-        cap: pos.coords.heading != null ? Math.round(pos.coords.heading) : null,
-        source: "app_web"
-      });
-      if (errTrajet) console.error("Trajet GPS :", errTrajet.message);
-    }
-  }, (err) => console.error("Erreur GPS :", err), { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
+  }, gererErreurSuiviGps, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 }
 
 async function metPositionIndisponible() {
@@ -1778,8 +2134,261 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
   const { data: { session } } = await supabase.auth.getSession();
   if (session) demarrerEspaceChauffeur();
 })();
+
+// ================== 💬 MESSAGES : chauffeur ↔ centrale Taxi Wal (table messages_chauffeur) ==================
+const CHM_TZ = "Europe/Brussels";
+let chmMonId = null, chmMessages = [], chmDemarre = false;
+const chmInfosCourses = new Map();
+const chmFmtHeure = iso => new Date(iso).toLocaleTimeString("fr-BE", { timeZone: CHM_TZ, hour: "2-digit", minute: "2-digit" });
+const chmCleJour = iso => new Date(iso).toLocaleDateString("fr-BE", { timeZone: CHM_TZ, weekday: "long", day: "numeric", month: "long" });
+const chmFmtCourse = c => c && c.date_heure ? new Date(c.date_heure).toLocaleString("fr-BE", { timeZone: CHM_TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "") : "";
+const chmLibelle = c => c ? [c.numero_reservation || "Course", chmFmtCourse(c)].filter(Boolean).join(" · ") : "Course";
+const chmVisible = () => document.getElementById("section-messages").classList.contains("visible") && document.visibilityState === "visible";
+
+function chmMajBadge() {
+  const n = chmMessages.filter(m => m.auteur === "admin" && !m.lu_par_chauffeur_at).length;
+  const btn = document.querySelector('nav.onglets button[data-onglet="messages"]');
+  if (!btn) return;
+  let b = btn.querySelector(".badge-msg");
+  if (n) { if (!b) { b = document.createElement("span"); b.className = "badge-msg"; btn.appendChild(b); } b.textContent = n; }
+  else if (b) b.remove();
+}
+
+async function chmChargerInfosCourses(ids) {
+  (dernieresCoursesChauffeur || []).forEach(c => { if (!chmInfosCourses.has(c.id)) chmInfosCourses.set(c.id, c); });
+  const manquantes = [...new Set((ids || []).filter(id => id && !chmInfosCourses.has(id)))];
+  if (!manquantes.length) return;
+  const { data } = await supabase.from("courses").select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, statut").in("id", manquantes);
+  (data || []).forEach(c => chmInfosCourses.set(c.id, c));
+  manquantes.forEach(id => { if (!chmInfosCourses.has(id)) chmInfosCourses.set(id, null); });
+}
+
+// Sélecteur de course : mes courses à venir / en cours (+ celles citées dans la conversation)
+function chmRemplirSelecteurCourses() {
+  const sel = document.getElementById("chm-course");
+  if (!sel) return;
+  const avant = sel.value;
+  const seuil = Date.now() - 24 * 3600 * 1000;
+  const miennes = (dernieresCoursesChauffeur || [])
+    .filter(c => !["terminee", "annulee", "refusee", "expiree", "no_show"].includes(c.statut) || (c.date_heure && new Date(c.date_heure).getTime() >= seuil))
+    .sort((a, b) => new Date(a.date_heure || 0) - new Date(b.date_heure || 0));
+  const ids = [...new Set(miennes.map(c => c.id))].slice(0, 25);
+  sel.innerHTML = `<option value="">🚖 Sans course (message général)</option>` +
+    ids.map(id => `<option value="${esc(id)}">🚖 ${esc(chmLibelle(chmInfosCourses.get(id) || miennes.find(c => c.id === id)))}</option>`).join("");
+  if (avant && ids.includes(avant)) sel.value = avant;
+}
+
+function chmAfficherFil(forcerBas) {
+  const fil = document.getElementById("chm-fil");
+  if (!fil) return;
+  if (!chmMessages.length) { fil.innerHTML = `<p style="color:#777; margin:auto; text-align:center;">Pas encore de message.<br>Écris ci-dessous pour contacter la centrale Taxi Wal.</p>`; return; }
+  const enBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80;
+  let html = "", jourPrec = "";
+  const dernierMoi = [...chmMessages].reverse().find(m => m.auteur === "chauffeur");
+  chmMessages.forEach(m => {
+    const j = chmCleJour(m.created_at);
+    if (j !== jourPrec) { html += `<div class="chm-jour">${esc(j)}</div>`; jourPrec = j; }
+    const c = m.course_id ? chmInfosCourses.get(m.course_id) : null;
+    const tag = m.course_id ? `<div><span class="tag-course">🚖 ${esc(chmLibelle(c))}</span></div>` : "";
+    const vu = dernierMoi && m.id === dernierMoi.id && m.lu_par_admin_at ? " · ✓ Lu par la centrale" : "";
+    const qui = m.auteur === "admin" ? `<div style="font-size:.72rem; font-weight:800; color:#1d4f86; margin-bottom:2px;">🏢 Taxi Wal</div>` : "";
+    html += `<div class="bulle ${m.auteur === "admin" ? "centrale" : "moi"}">${qui}${tag}${esc(m.texte)}<div class="meta">${chmFmtHeure(m.created_at)}${vu}</div></div>`;
+  });
+  fil.innerHTML = html;
+  if (forcerBas || enBas) fil.scrollTop = fil.scrollHeight;
+}
+
+async function chmCharger() {
+  if (!chmMonId) { const { data: { user } } = await supabase.auth.getUser(); chmMonId = user ? user.id : null; }
+  if (!chmMonId) return;
+  const { data, error } = await supabase.from("messages_chauffeur").select("*").eq("chauffeur_id", chmMonId).order("created_at", { ascending: true }).limit(500);
+  if (error) { const f = document.getElementById("chm-fil"); if (f) f.innerHTML = `<p style="color:var(--rouge);">Erreur : ${esc(error.message)}</p>`; return; }
+  chmMessages = data || [];
+  await chmChargerInfosCourses(chmMessages.map(m => m.course_id));
+  chmMajBadge();
+  if (chmVisible()) { chmAfficherFil(true); chmMarquerLu(); }
+}
+
+async function chmMarquerLu() {
+  const aLire = chmMessages.filter(m => m.auteur === "admin" && !m.lu_par_chauffeur_at);
+  if (!aLire.length) return;
+  const maintenant = new Date().toISOString();
+  aLire.forEach(m => m.lu_par_chauffeur_at = maintenant);
+  chmMajBadge();
+  const { error } = await supabase.rpc("chat_chauffeur_marquer_lu");
+  if (error) console.warn("messages lus :", error.message);
+}
+
+async function chmOuvrir() {
+  chmRemplirSelecteurCourses();
+  chmAfficherFil(true);
+  await chmCharger();
+  chmRemplirSelecteurCourses();
+  chmAfficherFil(true);
+  chmMarquerLu();
+}
+
+async function chmEnvoyer() {
+  const zone = document.getElementById("chm-texte"), btn = document.getElementById("chm-envoyer"), err = document.getElementById("chm-erreur");
+  const texte = zone.value.trim();
+  err.textContent = "";
+  if (!texte) { zone.focus(); return; }
+  if (!chmMonId) { const { data: { user } } = await supabase.auth.getUser(); chmMonId = user ? user.id : null; }
+  const courseId = document.getElementById("chm-course").value || null;
+  btn.disabled = true; btn.textContent = "…";
+  const { data, error } = await supabase.from("messages_chauffeur").insert({
+    chauffeur_id: chmMonId, auteur: "chauffeur", auteur_id: chmMonId, course_id: courseId,
+    texte: texte.slice(0, 2000), lu_par_chauffeur_at: new Date().toISOString()
+  }).select().single();
+  btn.disabled = false; btn.textContent = "Envoyer";
+  if (error) { err.textContent = "Erreur : " + error.message; return; }
+  zone.value = ""; zone.style.height = "auto";
+  if (!chmMessages.some(m => m.id === data.id)) chmMessages.push(data);
+  await chmChargerInfosCourses([data.course_id]);
+  chmAfficherFil(true);
+}
+
+function chmSonCourt() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[880, 0], [1175, 0.16]].forEach(([f, t0]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + 0.03 + t0;
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.7, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.36);
+    });
+  } catch (e) {}
+  try { if (navigator.vibrate) navigator.vibrate([250, 120, 250]); } catch (e) {}
+}
+
+let chmMinuterieToast = null;
+function chmToast(m) {
+  const t = document.getElementById("chm-toast");
+  if (!t) return;
+  const c = m.course_id ? chmInfosCourses.get(m.course_id) : null;
+  const texte = String(m.texte || "");
+  t.innerHTML = `<b>💬 Message de la centrale${c && c.numero_reservation ? " · " + esc(c.numero_reservation) : ""}</b>${esc(texte.slice(0, 160))}${texte.length > 160 ? "…" : ""}<div style="font-size:.78rem; margin-top:6px; font-weight:700;">Touche pour ouvrir</div>`;
+  t.style.display = "block";
+  t.onclick = () => { t.style.display = "none"; const b = document.querySelector('nav.onglets button[data-onglet="messages"]'); if (b) b.click(); };
+  clearTimeout(chmMinuterieToast);
+  chmMinuterieToast = setTimeout(() => { t.style.display = "none"; }, 12000);
+  if (document.visibilityState !== "visible" && "Notification" in window && Notification.permission === "granted") {
+    try { new Notification("💬 Message de la centrale Taxi Wal", { body: texte.slice(0, 160), tag: "chm-" + m.id }); } catch (e) {}
+  }
+}
+
+async function chmDemarrer() {
+  if (chmDemarre) return;
+  chmDemarre = true;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { chmDemarre = false; return; }
+  chmMonId = user.id;
+  await chmCharger();
+  const zone = document.getElementById("chm-texte");
+  document.getElementById("chm-envoyer").addEventListener("click", chmEnvoyer);
+  zone.addEventListener("input", () => { zone.style.height = "auto"; zone.style.height = Math.min(zone.scrollHeight + 2, 160) + "px"; });
+  zone.addEventListener("keydown", (e) => {
+    const ordinateur = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && ordinateur) { e.preventDefault(); chmEnvoyer(); }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") { chmCharger(); }
+  });
+  supabase.channel("messages-chauffeur-" + user.id)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages_chauffeur", filter: `chauffeur_id=eq.${user.id}` }, async (payload) => {
+      const m = payload.new || {};
+      if (!m.id || chmMessages.some(x => x.id === m.id)) return;
+      chmMessages.push(m);
+      // Message de la centrale lié à une course (retrait, nouvelle course, prix corrigé) : liste à jour tout de suite
+      if (m.auteur === "admin" && m.course_id) { try { chargerCourses(); } catch (e) {} }
+      await chmChargerInfosCourses([m.course_id]);
+      if (chmVisible()) { chmAfficherFil(false); if (m.auteur === "admin") chmMarquerLu(); }
+      else if (m.auteur === "admin") { chmSonCourt(); chmToast(m); }
+      chmMajBadge();
+    })
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages_chauffeur", filter: `chauffeur_id=eq.${user.id}` }, (payload) => {
+      const m = payload.new || {};
+      const i = chmMessages.findIndex(x => x.id === m.id);
+      if (i >= 0) { chmMessages[i] = { ...chmMessages[i], ...m }; if (chmVisible()) chmAfficherFil(false); chmMajBadge(); }
+    })
+    .subscribe();
+  // filet de sécurité si le temps réel décroche (app en arrière-plan)
+  setInterval(() => { if (document.visibilityState === "visible") chmCharger(); }, 60000);
+}
 </script>
-<script src="gps-natif.js"></script>
-<script src="push-natif.js"></script>
+<script>
+// ================== ⛽ PLEINS DE CARBURANT ==================
+let plDernier = null;
+const plNombre = v => { const n = parseFloat(String(v || "").replace(",", ".")); return isNaN(n) ? null : n; };
+async function preparerPlein() {
+  const sel = document.getElementById("pl-vehicule");
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  if (!sel.options.length) {
+    const { data: vehs } = await supabase.from("vehicules").select("id, nom, plaque, chauffeur_id").eq("actif", true).order("nom");
+    (vehs || []).forEach(v => sel.add(new Option(v.nom + (v.plaque ? " · " + v.plaque : ""), v.id)));
+    const attitre = (vehs || []).find(v => v.chauffeur_id === user.id);
+    if (attitre) sel.value = attitre.id;
+    sel.addEventListener("change", majDernierPlein);
+    document.getElementById("pl-km").addEventListener("input", majCalculPlein);
+    document.getElementById("pl-litres").addEventListener("input", majCalculPlein);
+  }
+  majDernierPlein();
+  chargerMesPleins();
+}
+async function majDernierPlein() {
+  const vid = document.getElementById("pl-vehicule").value;
+  plDernier = null;
+  if (vid) {
+    const { data } = await supabase.rpc("dernier_plein_vehicule", { p_vehicule: vid });
+    plDernier = (data && data[0]) || null;
+  }
+  document.getElementById("pl-dernier").textContent = plDernier
+    ? `Dernier plein : ${Number(plDernier.km_compteur).toLocaleString("fr-BE")} km, le ${new Date(plDernier.fait_le).toLocaleDateString("fr-BE")}`
+    : "Premier plein enregistré pour ce véhicule.";
+  majCalculPlein();
+}
+function majCalculPlein() {
+  const km = plNombre(document.getElementById("pl-km").value), litres = plNombre(document.getElementById("pl-litres").value);
+  const z = document.getElementById("pl-calcul");
+  if (!plDernier || !km) { z.textContent = ""; return; }
+  const roule = km - plDernier.km_compteur;
+  if (roule <= 0) { z.style.color = "var(--rouge)"; z.textContent = "⚠️ Le kilométrage doit être plus grand que celui du dernier plein."; return; }
+  z.style.color = "";
+  z.textContent = `🚗 ${roule.toLocaleString("fr-BE")} km roulés depuis le dernier plein` + (litres ? ` · ≈ ${(litres / roule * 100).toFixed(1).replace(".", ",")} L/100 km` : "");
+}
+document.getElementById("pl-envoyer").addEventListener("click", async () => {
+  const err = document.getElementById("pl-erreur"); err.textContent = "";
+  const { data: { user } } = await supabase.auth.getUser();
+  const km = plNombre(document.getElementById("pl-km").value);
+  const vid = document.getElementById("pl-vehicule").value;
+  if (!vid) { err.textContent = "Choisis le véhicule."; return; }
+  if (!km || km < 1) { err.textContent = "Indique le kilométrage du tableau de bord."; return; }
+  if (plDernier && km <= plDernier.km_compteur) { err.textContent = "Le kilométrage est plus petit que celui du dernier plein (" + plDernier.km_compteur + " km). Vérifie le chiffre."; return; }
+  const btn = document.getElementById("pl-envoyer"); btn.disabled = true; btn.textContent = "Enregistrement…";
+  const { error } = await supabase.from("pleins_carburant").insert({
+    vehicule_id: vid, chauffeur_id: user.id, km_compteur: Math.round(km),
+    litres: plNombre(document.getElementById("pl-litres").value),
+    montant: plNombre(document.getElementById("pl-montant").value),
+    plein_complet: document.getElementById("pl-complet").checked,
+    station: document.getElementById("pl-station").value.trim() || null,
+    note: document.getElementById("pl-note").value.trim() || null
+  });
+  btn.disabled = false; btn.textContent = "⛽ Enregistrer le plein";
+  if (error) { err.textContent = "Erreur : " + error.message; return; }
+  const roule = plDernier ? Math.round(km) - plDernier.km_compteur : null;
+  alert("✅ Plein enregistré." + (roule ? "\n" + roule + " km roulés depuis le dernier plein." : ""));
+  ["pl-km", "pl-litres", "pl-montant", "pl-station", "pl-note"].forEach(id => document.getElementById(id).value = "");
+  majDernierPlein(); chargerMesPleins();
+});
+async function chargerMesPleins() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.from("pleins_carburant").select("*, vehicules:vehicule_id(nom)").eq("chauffeur_id", user.id).order("fait_le", { ascending: false }).limit(10);
+  const z = document.getElementById("pl-liste");
+  z.innerHTML = (data || []).length ? (data || []).map(p => `<div class="pl-ligne"><b>${new Date(p.fait_le).toLocaleDateString("fr-BE")} · ${esc(p.vehicules?.nom || "")}</b><br>
+    ${Number(p.km_compteur).toLocaleString("fr-BE")} km${p.litres ? " · " + String(p.litres).replace(".", ",") + " L" : ""}${p.montant ? " · " + String(p.montant).replace(".", ",") + " €" : ""}${p.plein_complet ? "" : " · plein partiel"}</div>`).join("")
+    : '<p style="color:var(--gris);">Aucun plein enregistré.</p>';
+}
+</script>
 </body>
 </html>
