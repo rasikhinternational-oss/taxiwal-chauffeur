@@ -101,7 +101,8 @@ function frNum(v) {
 }
 function frIdx(v) { return (typeof formatIndex === "function") ? formatIndex(v) : String(v ?? ""); }
 function frCleLigne(l, feuille) {
-  const m = frMinutes(l.embarquement_heure);
+  // Course faite sans heure d'embarquement : classée à son heure de débarquement (même règle que la base)
+  const m = frMinutes(l.embarquement_heure) ?? frMinutes(l.debarquement_heure);
   const debut = frMinutes(feuille && feuille.heure_debut);
   if (m !== null) return [0, m + (debut !== null && m < debut - 120 ? 1440 : 0)];
   const ds = feuille && feuille.date_service;
@@ -1124,8 +1125,14 @@ function chauffeurEnTrainDeSaisir() {
 
 async function rechargerSilencieusement() {
   if (!feuilleActuelle) return;
-  if (chauffeurEnTrainDeSaisir() || ligneEnPleinEcran || document.getElementById("overlay-qr").style.display === "flex") { rechargeEnAttente = true; return; }
+  // On ne recharge pas pendant que le chauffeur écrit dans un champ (ni pendant le QR de paiement).
+  // Une course ouverte "en grand" est rouverte telle quelle après la mise à jour.
+  if (chauffeurEnTrainDeSaisir() || document.getElementById("overlay-qr").style.display === "flex") { rechargeEnAttente = true; return; }
   rechargeEnAttente = false;
+  const idPleinEcran = ligneEnPleinEcran;
+  const elPleinEcran = idPleinEcran ? document.querySelector(".ligne-course.plein-ecran") : null;
+  const defilementPleinEcran = elPleinEcran ? elPleinEcran.scrollTop : 0;
+  const defilementPage = window.scrollY;
 
   const { data: feuille, error } = await supabase
     .from("feuilles_route").select("*").eq("id", feuilleActuelle.id).maybeSingle();
@@ -1138,7 +1145,23 @@ async function rechargerSilencieusement() {
   await chargerLignes();
   if (verrouChange) appliquerVerrouillage();
   else if (feuilleActuelle.verrouillee) remplirResumeSignee();
+  if (idPleinEcran) {
+    ligneEnPleinEcran = null;
+    document.body.classList.remove("mode-plein-ecran");
+    const el = document.querySelector(`.ligne-course[data-ligne-id="${idPleinEcran}"]`);
+    const b = el && el.querySelector(".btn-plein-ecran");
+    if (b) { b.click(); el.scrollTop = defilementPleinEcran; }
+  } else {
+    window.scrollTo(0, defilementPage);
+  }
 }
+
+// Mise à jour automatique toutes les 15 secondes (en plus du temps réel) : corrections de la
+// centrale, prix modifiés, courses ajoutées/supprimées, recette recalculée par la base.
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  rechargerSilencieusement();
+}, 15000);
 
 document.addEventListener("focusout", () => {
   setTimeout(() => { if (rechargeEnAttente && !chauffeurEnTrainDeSaisir() && !ligneEnPleinEcran) rechargerSilencieusement(); }, 300);
@@ -1287,15 +1310,14 @@ async function afficherCaisse() {
     if (l.type_course === "forfait") { nbForfaits++; totalForfaits += montant; }
   });
   // Recette = somme des "Sommes perçues" (même règle que la base : recette_feuille / recettes_fin).
-  // Le taximètre ne sert que si aucune somme n'est saisie et sans motif.
+  // Uniquement les sommes perçues : sans somme notée, la ligne compte 0 € (pas de repli taximètre).
   // Uber / Uber cash / privé ne comptent jamais
   // (TVA déclarée par Uber) ; une annulée compte seulement si une somme perçue est notée.
   const totalGeneral = (lignes || []).reduce((s, l) => {
     const somme = nombreOuNull(l.sommes_percues);
     if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
     if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
-    const v = somme !== null ? somme : (l.motif_sans_prix ? 0 : (nombreOuNull(l.prix_taximetre) ?? 0));
-    return s + v;
+    return s + (somme !== null ? somme : 0);
   }, 0);
   const especesDansCaisse = modes.cash.total + modes.uber_cash.total;
 
@@ -1373,6 +1395,7 @@ const champsLigne = [
 function construireLigneHtml(ligne, numeroAffiche) {
   const div = document.createElement("div");
   div.className = "ligne-course";
+  div.dataset.ligneId = ligne.id;
 
   const ligneTerminee = estTermineeParCentrale(ligne);
   const courseManuelle = estCourseManuelle(ligne);
@@ -1968,9 +1991,14 @@ function appliquerVerrouillage() {
 }
 
 function fmtVal(v) { return (v === null || v === undefined || v === "") ? "" : esc(v); }
-function calcTotal2(debut, fin) {
-  const d = parseFloat(debut), f = parseFloat(fin);
-  return (!isNaN(d) && !isNaN(f)) ? (f - d).toFixed(2) : "";
+// Total = Fin − Début. Compteurs entiers (km, prises en charge…) : sans décimales ; montants : 2 décimales.
+// opts.debutVideZero : un Début vide compte pour 0 (recettes).
+function calcTotal2(debut, fin, opts) {
+  const vide = v => v === null || v === undefined || v === "";
+  const d = vide(debut) && opts && opts.debutVideZero ? 0 : parseFloat(debut), f = parseFloat(fin);
+  if (isNaN(d) || isNaN(f)) return "";
+  const t = Math.round((f - d) * 100) / 100;
+  return (opts && opts.euros) || !Number.isInteger(t) ? t.toFixed(2) : String(t);
 }
 function minutesDepuisHeure2(h) {
   if (!h) return null;
@@ -1985,6 +2013,27 @@ function calcTotalHeures2(debut, fin) {
   return `${Math.floor(total / 60)}h${String(total % 60).padStart(2, "0")}`;
 }
 
+// Colonne « Sommes perçues » à l'impression : si la ligne a un montant qui compte dans la recette
+// (même règle que recette_feuille), on imprime TOUJOURS le montant en gros, puis le mode / texte en petit.
+function celluleSommesImpression(l, fmt) {
+  const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
+  const n = (l.sommes_percues === null || l.sommes_percues === undefined || l.sommes_percues === "") ? null : Number(l.sommes_percues);
+  const libFacture = "FACTURE" + (l.numero_dossier ? " n° " + esc(l.numero_dossier) : "");
+  const libMode = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH", facture: libFacture, annulee: "ANNULÉE" }[l.mode_paiement]
+    || (l.mode_paiement && l.mode_paiement !== "uber" ? esc(l.mode_paiement).toUpperCase() : null);
+  const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
+  const compte = n !== null && !isNaN(n) && n > 0 && !estUber && l.type_course !== "prive" && l.mode_paiement !== "uber_cash";
+  if (compte) {
+    const montant = Number.isInteger(n) ? String(n) : n.toFixed(2);
+    return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte), true) : "") + (libMode ? petit(libMode) : "");
+  }
+  if (l.sommes_texte) return `<span style="color:#b3141b; font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
+  if (l.motif_sans_prix && n === null) return "—";
+  if (l.mode_paiement === "annulee") return "ANNULÉE";
+  if (l.mode_paiement === "facture") return libFacture;
+  if (estUber) return "Payé sur Uber";
+  return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "");
+}
 document.getElementById("btn-imprimer-fr").addEventListener("click", async () => {
   const anomaliesImpression = anomaliesFeuille(lignesActuelles, feuilleActuelle);
   if (anomaliesImpression.total && !confirm(messageConfirmImpression(anomaliesImpression))) return;
@@ -2012,17 +2061,15 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};
       const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
-      const sommes = l.sommes_texte ? `<span style="color:#b3141b; font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>` : l.motif_sans_prix && l.sommes_percues == null ? "—" : l.mode_paiement === "annulee" ? "ANNULÉE" : l.mode_paiement === "facture" ? ("Facture n° " + (l.numero_dossier || ""))
-        : estUber ? "Payé sur Uber" : l.sommes_percues;
       return `<tr>
         <td>${i + 1}</td>
         <td>${formatIndex(l.index_depart)}</td>
         <td>${formatIndex(l.embarquement_index)}</td>
         <td class="lieu">${lieuImpression(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => lieuImpression(a.adresse, "+ ")).join("")}</td>
-        <td>${fmtVal(l.embarquement_heure)}</td>
+        <td>${fmtVal(l.embarquement_heure ? String(l.embarquement_heure).slice(0, 5) : "")}</td>
         <td>${formatIndex(l.debarquement_index)}</td>
         <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
-        <td>${fmtVal(l.debarquement_heure)}</td>
+        <td>${fmtVal(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
         <td>${(() => {
           if (estUber) return "Uber";
           if (l.motif_sans_prix) return `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
@@ -2033,11 +2080,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
           const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : "";
           return esc(l.prix_taximetre) + typeLibre;
         })()}</td>
-        <td>${l.sommes_texte ? sommes : fmtVal(sommes)}${(() => {
-          const m = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH" }[l.mode_paiement]
-            || (l.mode_paiement && !["annulee", "facture", "uber"].includes(l.mode_paiement) ? esc(l.mode_paiement).toUpperCase() : null);
-          return m && l.sommes_percues != null ? `<br><b style="font-size:8px; letter-spacing:.5px;">${m}</b>` : "";
-        })()}</td>
+        <td>${celluleSommesImpression(l, fmtVal)}</td>
       </tr>`;
     }).join("");
 
@@ -2050,9 +2093,9 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       <h2>Service ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
       <table>
         <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
-        <tr><td>Début</td><td>${fmtVal(f.heure_debut)}</td><td>Interruptions : ${fmtVal(f.interruptions)}</td>
+        <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${fmtVal(f.interruptions)}</td>
             <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.taximetre_fin)}</td></tr>
-        <tr><td>Fin</td><td>${fmtVal(f.heure_fin)}</td><td></td>
+        <tr><td>Fin</td><td>${fmtVal(f.heure_fin ? String(f.heure_fin).slice(0, 5) : "")}</td><td></td>
             <td>Début</td><td>${fmtVal(f.index_km_debut)}</td><td>${fmtVal(f.taximetre_debut)}</td></tr>
         <tr><td>Total</td><td>${calcTotalHeures2(f.heure_debut, f.heure_fin)}</td><td></td>
             <td>Total</td><td>${calcTotal2(f.index_km_debut, f.index_km_fin)}</td><td>${calcTotal2(f.taximetre_debut, f.taximetre_fin)}</td></tr>
@@ -2060,8 +2103,8 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       <table>
         <tr><th></th><th>Prise en charge</th><th>Index Km (Km totaux)</th><th>Km en charge</th><th>Chutes (€)</th><th>Recettes</th></tr>
         <tr><td>Fin</td><td>${fmtVal(f.prise_en_charge_fin)}</td><td>${fmtVal(f.index_km_totaux_fin)}</td><td>${fmtVal(f.km_en_charge_fin)}</td><td>${fmtVal(f.chutes_fin)}</td><td>${fmtVal(f.recettes_fin)}</td></tr>
-        <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut)}</td></tr>
-        <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin)}</td></tr>
+        <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut ?? (f.recettes_fin != null ? "0.00" : ""))}</td></tr>
+        <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
       </table>
       <h2>Courses ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
       <table class="courses-table">
