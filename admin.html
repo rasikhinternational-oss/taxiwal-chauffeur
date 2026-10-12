@@ -171,7 +171,7 @@ function creerEditeurArrets(listeInitiale, options) {
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
-    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px));font-size:12px;word-break:break-word;font-family:monospace;">' +
     'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
   return false;
 };
@@ -857,6 +857,20 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-carte">
   <div id="carte"></div>
   <div id="carte-liste-chauffeurs"></div>
+
+  <div id="outil-trajet-jour" style="background:#fff; border-radius:12px; padding:14px; margin:12px 0; box-shadow:0 1px 6px rgba(0,0,0,.08);">
+    <h3 style="margin-top:0;">🛣️ Trajet d'une journée</h3>
+    <p style="margin:4px 0 10px; font-size:.85rem; color:#555;">Revoir tout le chemin d'un chauffeur, ses arrêts et leur durée.</p>
+    <label>Chauffeur</label>
+    <select id="tj-chauffeur"></select>
+    <label>Date</label>
+    <input type="date" id="tj-date">
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button id="tj-afficher" style="flex:1;">Afficher le trajet</button>
+      <button id="tj-effacer" class="secondaire" style="flex:0 0 auto; width:auto; padding:0 14px;">Effacer</button>
+    </div>
+    <div id="tj-resultat" style="margin-top:10px; font-size:.9rem;"></div>
+  </div>
 
   <div id="outil-calcul">
     <h3>🧭 Calculer un trajet</h3>
@@ -5728,6 +5742,7 @@ async function chargerCarte() {
         }, 3000);
       }).subscribe();
     setTimeout(() => carteLeaflet.invalidateSize(), 200);
+    initTrajetJour();
   }
 
   // Pas plus d'une mise à jour toutes les 8 secondes (sinon la carte rame)
@@ -5739,6 +5754,115 @@ async function chargerCarte() {
   }
   window.__carteEnCours = true; window.__derniereCarte = Date.now();
   try { await chargerCarteInterne(); } finally { window.__carteEnCours = false; }
+}
+
+// ---------- TAXI WAL DRIVER : trajet complet d'une journée (table trajets_gps) ----------
+let coucheTrajetJour = null;
+
+function distanceKm(a, b) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.latitude - a.latitude), dLon = rad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function heureTJ(d) { return new Date(d).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }); }
+function dureeTexte(min) { min = Math.round(min); return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}` : `${min} min`; }
+
+async function initTrajetJour() {
+  const sel = document.getElementById("tj-chauffeur");
+  if (!sel || sel.dataset.pret) return;
+  sel.dataset.pret = "1";
+  const { data } = await supabase.from("profils").select("id, nom, role").in("role", ["chauffeur", "partenaire"]).order("nom");
+  sel.innerHTML = (data || []).map(c => `<option value="${c.id}">${esc(c.nom || "Chauffeur")}${c.role === "partenaire" ? " (partenaire)" : ""}</option>`).join("");
+  const d = new Date();
+  document.getElementById("tj-date").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  document.getElementById("tj-afficher").addEventListener("click", afficherTrajetJour);
+  document.getElementById("tj-effacer").addEventListener("click", () => {
+    if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
+    coucheTrajetJour = null;
+    document.getElementById("tj-resultat").innerHTML = "";
+  });
+}
+
+async function afficherTrajetJour() {
+  const res = document.getElementById("tj-resultat");
+  const chauffeurId = document.getElementById("tj-chauffeur").value;
+  const jour = document.getElementById("tj-date").value;
+  if (!chauffeurId || !jour) { res.textContent = "Choisis un chauffeur et une date."; return; }
+  res.textContent = "Chargement du trajet…";
+  const debut = new Date(jour + "T00:00:00"), fin = new Date(debut.getTime() + 24 * 3600e3);
+
+  // Récupère tous les points de la journée (par paquets de 1000)
+  let points = [], depuis = 0;
+  while (true) {
+    const { data, error } = await supabase.from("trajets_gps")
+      .select("latitude, longitude, precision_m, vitesse_kmh, enregistre_le")
+      .eq("chauffeur_id", chauffeurId)
+      .gte("enregistre_le", debut.toISOString()).lt("enregistre_le", fin.toISOString())
+      .order("enregistre_le", { ascending: true })
+      .range(depuis, depuis + 999);
+    if (error) { res.textContent = "Erreur : " + error.message; return; }
+    points = points.concat(data || []);
+    if (!data || data.length < 1000) break;
+    depuis += 1000;
+  }
+  // On ignore les points trop imprécis (> 100 m)
+  points = points.filter(p => p.precision_m == null || p.precision_m <= 100);
+
+  if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
+  coucheTrajetJour = null;
+  if (points.length < 2) {
+    res.innerHTML = "Aucun trajet enregistré pour ce jour.<br><span style='color:#777; font-size:.82rem;'>Les trajets complets seront enregistrés dès que le chauffeur utilisera l'app Taxi Wal Driver (ou l'app chauffeur ouverte).</span>";
+    return;
+  }
+
+  // Kilomètres (on ignore les sauts GPS impossibles > 200 km/h)
+  let km = 0;
+  for (let i = 1; i < points.length; i++) {
+    const d = distanceKm(points[i - 1], points[i]);
+    const h = (new Date(points[i].enregistre_le) - new Date(points[i - 1].enregistre_le)) / 3600e3;
+    if (h > 0 && d / h > 200) continue;
+    km += d;
+  }
+
+  // Arrêts : le chauffeur reste dans un rayon de 120 m pendant au moins 5 minutes
+  const arrets = [];
+  let i = 0;
+  while (i < points.length) {
+    let j = i + 1;
+    while (j < points.length && distanceKm(points[i], points[j]) <= 0.12) j++;
+    const minutes = (new Date(points[j - 1].enregistre_le) - new Date(points[i].enregistre_le)) / 60000;
+    if (minutes >= 5) { arrets.push({ p: points[i], de: points[i].enregistre_le, a: points[j - 1].enregistre_le, minutes }); i = j; }
+    else i++;
+  }
+  // Trous dans le suivi (plus de 10 minutes sans aucun point = GPS coupé / app fermée)
+  const trous = [];
+  for (let k = 1; k < points.length; k++) {
+    const min = (new Date(points[k].enregistre_le) - new Date(points[k - 1].enregistre_le)) / 60000;
+    if (min > 10) trous.push({ de: points[k - 1].enregistre_le, a: points[k].enregistre_le, minutes: min });
+  }
+
+  coucheTrajetJour = L.layerGroup().addTo(carteLeaflet);
+  const ligne = L.polyline(points.map(p => [p.latitude, p.longitude]), { color: "#c8102e", weight: 4, opacity: .85 }).addTo(coucheTrajetJour);
+  const pastille = (txt, fond) => L.divIcon({ className: "", iconSize: [0, 0], html: `<div style="transform:translate(-50%,-50%); background:${fond}; color:#fff; font-weight:800; font-size:11px; padding:3px 7px; border-radius:999px; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); white-space:nowrap;">${txt}</div>` });
+  L.marker([points[0].latitude, points[0].longitude], { icon: pastille("Départ " + heureTJ(points[0].enregistre_le), "#1f8a4c") }).addTo(coucheTrajetJour);
+  const der = points[points.length - 1];
+  L.marker([der.latitude, der.longitude], { icon: pastille("Fin " + heureTJ(der.enregistre_le), "#111") }).addTo(coucheTrajetJour);
+  arrets.forEach((a, n) => {
+    L.marker([a.p.latitude, a.p.longitude], { icon: pastille(`⏸️ ${n + 1} · ${dureeTexte(a.minutes)}`, "#d97706") })
+      .addTo(coucheTrajetJour)
+      .bindPopup(`<b>Arrêt ${n + 1}</b><br>de ${heureTJ(a.de)} à ${heureTJ(a.a)}<br>${dureeTexte(a.minutes)}`);
+  });
+  carteLeaflet.fitBounds(ligne.getBounds(), { padding: [40, 40] });
+
+  const dureeTotale = (new Date(der.enregistre_le) - new Date(points[0].enregistre_le)) / 60000;
+  const totalArrets = arrets.reduce((s, a) => s + a.minutes, 0);
+  res.innerHTML = `
+    <div><b>${km.toFixed(1)} km</b> parcourus · de <b>${heureTJ(points[0].enregistre_le)}</b> à <b>${heureTJ(der.enregistre_le)}</b> (${dureeTexte(dureeTotale)})</div>
+    <div>⏸️ <b>${arrets.length}</b> arrêt(s) de 5 min ou plus, au total <b>${dureeTexte(totalArrets)}</b></div>
+    ${arrets.length ? `<ol style="margin:8px 0 0; padding-left:20px;">${arrets.map(a => `<li>${heureTJ(a.de)} → ${heureTJ(a.a)} : <b>${dureeTexte(a.minutes)}</b></li>`).join("")}</ol>` : ""}
+    ${trous.length ? `<div style="margin-top:8px; color:#b45309;">⚠️ Suivi interrompu ${trous.length} fois (GPS coupé ou app fermée) :<br>${trous.map(t => `${heureTJ(t.de)} → ${heureTJ(t.a)} (${dureeTexte(t.minutes)})`).join("<br>")}</div>` : ""}
+  `;
 }
 
 function centrerSurChauffeurs(meme) {
@@ -7972,5 +8096,6 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
 
 rendreLignesVehiculesModale([{}]);
 </script>
+<script src="push-natif.js"></script>
 </body>
 </html>

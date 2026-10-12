@@ -60,7 +60,7 @@ document.addEventListener("focusin", (e) => {
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
-    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px));font-size:12px;word-break:break-word;font-family:monospace;">' +
     'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
   return false;
 };
@@ -1032,11 +1032,12 @@ async function reinscrireNotifications(bouton) {
   }
 }
 document.getElementById("btn-reactiver-notifs").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
-document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
+document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => { if (window.TaxiWalPush) { window.TaxiWalPush.activer(); alert("✅ Notifications vérifiées. Si l'iPhone le demande, choisis « Autoriser »."); return; } reinscrireNotifications(e.currentTarget); });
 
 // Affiche le bandeau rouge si les notifications sont bloquées, ou si les derniers envois ont échoué
 async function verifierEtatNotifications() {
   const bandeau = document.getElementById("bandeau-notifs");
+  if (window.TAXIWAL_PUSH_NATIF) { if (bandeau) bandeau.style.display = "none"; return; } // app Taxi Wal Driver : notifications natives
   const texte = document.getElementById("bandeau-notifs-texte");
   try {
     if (!("Notification" in window) || Notification.permission !== "granted") {
@@ -2049,6 +2050,24 @@ function arreterPartagePosition() {
   metPositionIndisponible();
 }
 
+// Historique du trajet (Taxi Wal Driver) — l'app native s'en charge elle-même quand elle est installée
+let dernierEnvoiTrajet = 0;
+async function enregistrerTrajetGps(user, pos) {
+  if (window.TAXIWAL_GPS_NATIF) return;
+  if (Date.now() - dernierEnvoiTrajet < 10000) return; // max 1 point / ~15 s (suivi continu + intervalle)
+  dernierEnvoiTrajet = Date.now();
+  const { error: errTrajet } = await supabase.from("trajets_gps").insert({
+    chauffeur_id: user.id,
+    latitude: pos.coords.latitude,
+    longitude: pos.coords.longitude,
+    precision_m: pos.coords.accuracy != null ? Math.round(pos.coords.accuracy) : null,
+    vitesse_kmh: pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) : null,
+    cap: pos.coords.heading != null ? Math.round(pos.coords.heading) : null,
+    source: "app_web"
+  });
+  if (errTrajet) console.error("Trajet GPS :", errTrajet.message);
+}
+
 async function envoyerPositionLue(pos) {
   dernierEnvoiPosition = Date.now();
   const { data: { user } } = await supabase.auth.getUser();
@@ -2060,6 +2079,7 @@ async function envoyerPositionLue(pos) {
     disponible: true,
     updated_at: new Date().toISOString()
   });
+  await enregistrerTrajetGps(user, pos);
 }
 
 // Dès que l'app revient à l'écran : position envoyée tout de suite + écran gardé allumé si course en cours
@@ -2101,6 +2121,7 @@ async function envoyerPosition() {
       disponible: true,
       updated_at: new Date().toISOString()
     });
+    await enregistrerTrajetGps(user, pos);
   }, gererErreurSuiviGps, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 }
 
@@ -2390,5 +2411,7 @@ async function chargerMesPleins() {
     : '<p style="color:var(--gris);">Aucun plein enregistré.</p>';
 }
 </script>
+<script src="gps-natif.js"></script>
+<script src="push-natif.js"></script>
 </body>
 </html>
