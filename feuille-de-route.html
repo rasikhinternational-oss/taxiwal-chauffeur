@@ -1286,8 +1286,17 @@ async function afficherCaisse() {
     }
     if (l.type_course === "forfait") { nbForfaits++; totalForfaits += montant; }
   });
-  // Recette = tout sauf Uber (payé sur Uber OU en cash : Uber déclare déjà la TVA)
-  const totalGeneral = Object.entries(modes).filter(([k]) => k !== "uber" && k !== "uber_cash").reduce((s, [, m]) => s + m.total, 0);
+  // Recette = somme des "Sommes perçues" (même règle que la base : recette_feuille / recettes_fin).
+  // Le taximètre ne sert que si aucune somme n'est saisie et sans motif.
+  // Uber / Uber cash / privé ne comptent jamais
+  // (TVA déclarée par Uber) ; une annulée compte seulement si une somme perçue est notée.
+  const totalGeneral = (lignes || []).reduce((s, l) => {
+    const somme = nombreOuNull(l.sommes_percues);
+    if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+    if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
+    const v = somme !== null ? somme : (l.motif_sans_prix ? 0 : (nombreOuNull(l.prix_taximetre) ?? 0));
+    return s + v;
+  }, 0);
   const especesDansCaisse = modes.cash.total + modes.uber_cash.total;
 
   let html = `

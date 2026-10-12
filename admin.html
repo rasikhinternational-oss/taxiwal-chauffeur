@@ -6540,8 +6540,12 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   totalPercuDiv.style.cssText = "font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:8px;";
   function calculerTotalPercuLignes(listeLignes) {
     return listeLignes.reduce((s, l) => {
-      if (l.type_course === "uber" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.mode_paiement === "annulee" || l.type_course === "prive" || l.motif_sans_prix) return s;
-      const v = parseFloat(l.sommes_percues ?? l.prix_taximetre ?? 0);
+      // Même règle que la base (recette_feuille) : on additionne les "Sommes perçues"
+      const somme = l.sommes_percues == null || l.sommes_percues === "" ? null : parseFloat(l.sommes_percues);
+      // Uber / Uber cash / privé : jamais (TVA déclarée par Uber) ; annulée : seulement si une somme est notée
+      if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+      if (l.mode_paiement === "annulee" && !(somme > 0)) return s;
+      const v = (somme !== null && !isNaN(somme)) ? somme : (l.motif_sans_prix ? 0 : parseFloat(l.prix_taximetre ?? 0));
       return s + (isNaN(v) ? 0 : v);
     }, 0);
   }
