@@ -68,6 +68,13 @@
       <button id="btn-connexion" type="button">Se connecter</button>
       <button id="btn-changer-email" type="button" class="secondaire">Changer d'adresse email</button>
     </div>
+    <!-- Compte de démonstration (vérification Apple / Google) : mot de passe -->
+    <div id="etape-mdp" class="cache">
+      <label for="mdp">Mot de passe</label>
+      <input type="password" id="mdp" autocomplete="current-password" placeholder="Mot de passe">
+      <button id="btn-mdp" type="button">Se connecter</button>
+      <button id="btn-mdp-retour" type="button" class="secondaire">Changer d'adresse email</button>
+    </div>
     <div class="erreur" id="erreur"></div>
   </div>
 
@@ -85,6 +92,7 @@ const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 
 const $ = (id) => document.getElementById(id);
+const COMPTES_DEMO = ["demo.chauffeur@taxiwal.com"];
 
 function afficher(ecran) {
   ["ecran-chargement", "ecran-login", "ecran-refus"].forEach((id) => $(id).classList.toggle("cache", id !== ecran));
@@ -140,6 +148,15 @@ $("btn-code").addEventListener("click", async () => {
   $("erreur").textContent = "";
   if (!email || !email.includes("@")) { $("erreur").textContent = "Entrez votre adresse email."; return; }
 
+  // Compte de démonstration : connexion par mot de passe (les vérificateurs Apple/Google ne reçoivent pas d'email)
+  if (COMPTES_DEMO.includes(email)) {
+    $("etape-email").classList.add("cache");
+    $("etape-mdp").classList.remove("cache");
+    $("mdp").value = "";
+    $("mdp").focus();
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = "Envoi en cours…";
   try {
@@ -191,6 +208,33 @@ $("btn-connexion").addEventListener("click", async () => {
   }
 });
 
+// ================== Connexion par mot de passe (compte démo uniquement) ==================
+$("btn-mdp").addEventListener("click", async () => {
+  const btn = $("btn-mdp");
+  const email = $("email").value.trim().toLowerCase();
+  const password = $("mdp").value;
+  $("erreur").textContent = "";
+  if (!password) { $("erreur").textContent = "Entrez le mot de passe."; return; }
+  btn.disabled = true;
+  btn.textContent = "Connexion…";
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data || !data.user) { $("erreur").textContent = "Email ou mot de passe incorrect."; return; }
+    await redirigerSelonRole(data.user);
+  } catch (e) {
+    $("erreur").textContent = "Connexion impossible. Vérifiez votre connexion internet et réessayez.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Se connecter";
+  }
+});
+$("mdp").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-mdp").click(); });
+$("btn-mdp-retour").addEventListener("click", () => {
+  $("etape-mdp").classList.add("cache");
+  $("etape-email").classList.remove("cache");
+  $("erreur").textContent = "";
+});
+
 $("code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-connexion").click(); });
 $("email").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-code").click(); });
 
@@ -204,6 +248,7 @@ $("btn-changer-email").addEventListener("click", () => {
 $("btn-deconnexion").addEventListener("click", async () => {
   try { await supabase.auth.signOut(); } catch (e) { /* on continue quand même */ }
   $("etape-code").classList.add("cache");
+  $("etape-mdp").classList.add("cache");
   $("etape-email").classList.remove("cache");
   afficher("ecran-login");
 });
