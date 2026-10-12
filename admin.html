@@ -7119,12 +7119,25 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   return div;
 }
 
+// N° de dossier / facture : « Payeur n° 123 » (nouveau) ou « 123 » seul (ancien n° de dossier)
+function lirePayeurFacture(v) {
+  v = String(v || "").trim();
+  if (!v) return { payeur: "", numero: "" };
+  const m = v.match(/^(.*?)\s*n°\s*(.+)$/i);
+  if (m) return { payeur: m[1].trim(), numero: m[2].trim() };
+  if (/^\S*\d\S*$/.test(v)) return { payeur: "", numero: v };
+  return { payeur: v, numero: "" };
+}
+function texteFacture(v) {
+  const p = lirePayeurFacture(v);
+  return "FACTURE" + (p.payeur ? " " + p.payeur : "") + (p.numero ? " n° " + p.numero : "");
+}
 // Colonne « Sommes perçues » à l'impression : si la ligne a un montant qui compte dans la recette
 // (même règle que recette_feuille), on imprime TOUJOURS le montant en gros, puis le mode / texte en petit.
 function celluleSommesImpression(l, fmt) {
   const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
   const n = (l.sommes_percues === null || l.sommes_percues === undefined || l.sommes_percues === "") ? null : Number(l.sommes_percues);
-  const libFacture = "FACTURE" + (l.numero_dossier ? " n° " + esc(l.numero_dossier) : "");
+  const libFacture = esc(texteFacture(l.numero_dossier));
   const libMode = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH", facture: libFacture, annulee: "ANNULÉE" }[l.mode_paiement]
     || (l.mode_paiement && l.mode_paiement !== "uber" ? esc(l.mode_paiement).toUpperCase() : null);
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
@@ -7134,9 +7147,9 @@ function celluleSommesImpression(l, fmt) {
     return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte), true) : "") + (libMode ? petit(libMode) : "");
   }
   if (l.sommes_texte) return `<span style="color:#b3141b; font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
+  if (l.mode_paiement === "facture") return libFacture;
   if (l.motif_sans_prix && n === null) return "—";
   if (l.mode_paiement === "annulee") return "ANNULÉE";
-  if (l.mode_paiement === "facture") return libFacture;
   if (estUber) return "Payé sur Uber";
   return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "");
 }
