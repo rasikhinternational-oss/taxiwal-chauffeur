@@ -1849,9 +1849,21 @@ function construireLigneHtml(ligne, numeroAffiche) {
         mettreAJourRenduMonnaie();
         planifierCaisse();
       }
+      const nonEnregistre = !!error || !ligneServeur;
+      if (nonEnregistre) {
+        // Rien n'a été enregistré : on remet l'écran sur la valeur réellement en base
+        if (estCheckbox) e.target.checked = !!ligne[champ];
+        else if (CHAMPS_INDEX.includes(champ)) e.target.value = formatIndex(ligne[champ]);
+        else if (type === "time") e.target.value = ligne[champ] ? String(ligne[champ]).slice(0, 5) : "";
+        else e.target.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
+        if (estPaiement || estTypeCourse || estSansPrix) appliquerVisibilitePaiement();
+        rafraichirPuces();
+        majInfoCompletude();
+        alert("⚠️ Non enregistré : " + (error ? error.message : "la course n'a pas été mise à jour (connexion ? course déjà clôturée ?)") + "\n\nRéessaie. Si ça recommence, ferme et rouvre l'application.");
+      }
       if (etatEl) {
-        if (error) {
-          etatEl.textContent = "⚠️ Non enregistré (course déjà terminée ou verrouillée)";
+        if (nonEnregistre) {
+          etatEl.textContent = "⚠️ Non enregistré — réessaie";
           etatEl.className = "etat-sauvegarde erreur";
         } else {
           etatEl.textContent = "✓ Enregistré";
@@ -2139,12 +2151,18 @@ function construireLigneHtml(ligne, numeroAffiche) {
   function creerPuces(select, deselection) {
     const zone = document.createElement("div");
     zone.className = "puces";
+    // La puce « choisie » reflète la valeur EN BASE (ligne[champ]), jamais une valeur affichée mais non enregistrée
+    const champPuces = Object.keys(inputsParChamp).find(k => inputsParChamp[k] === select);
+    const valeurEnBase = () => (champPuces && ligne[champPuces] != null) ? String(ligne[champPuces]) : "";
     const rendre = () => {
       const defil = zone.scrollLeft;
+      const enBase = valeurEnBase();
+      if (select.value !== enBase && [...select.options].some(o => o.value === enBase)) select.value = enBase;
       zone.replaceChildren(...[...select.options].filter(o => o.value !== "").map(o =>
-        creerPuce(o.value === "__ecrire__" ? "✏️ Autre…" : o.textContent, o.value === select.value, select.disabled, () => {
-          const v = (o.value === select.value && deselection) ? "" : o.value;
-          if (v === select.value) return;
+        creerPuce(o.value === "__ecrire__" ? "✏️ Autre…" : o.textContent, o.value === enBase, select.disabled, () => {
+          const actuel = valeurEnBase();
+          const v = (o.value === actuel && deselection) ? "" : o.value;
+          if (v === actuel) { select.value = actuel; rafraichirPuces(); return; }
           select.value = v;
           select.dispatchEvent(new Event("change"));
           rafraichirPuces();
