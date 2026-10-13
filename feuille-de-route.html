@@ -2,6 +2,32 @@
 <html lang="fr">
 <head>
 <script>
+// Messages non bloquants : sur iPhone (appli sur l'écran d'accueil), une alerte système peut rester
+// invisible et bloquer toute l'application (plus aucun bouton ne répond). On affiche donc nos propres messages.
+(function () {
+  var file = [], ouvert = false;
+  function suivant() {
+    if (ouvert || !file.length) return;
+    if (!document.body) { document.addEventListener("DOMContentLoaded", suivant, { once: true }); return; }
+    ouvert = true;
+    var msg = file.shift();
+    var fond = document.createElement("div");
+    fond.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;";
+    var boite = document.createElement("div");
+    boite.style.cssText = "background:#fff;color:#111;max-width:440px;width:100%;border-radius:16px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.3);font:16px/1.4 -apple-system,Arial,sans-serif;max-height:80vh;overflow:auto;";
+    var texte = document.createElement("div");
+    texte.style.cssText = "white-space:pre-wrap;word-break:break-word;";
+    texte.textContent = String(msg == null ? "" : msg);
+    var ok = document.createElement("button");
+    ok.type = "button"; ok.textContent = "OK";
+    ok.style.cssText = "margin-top:14px;width:100%;padding:13px;border:none;border-radius:12px;background:#c81e2c;color:#fff;font-weight:800;font-size:1rem;";
+    ok.onclick = function () { fond.remove(); ouvert = false; suivant(); };
+    boite.appendChild(texte); boite.appendChild(ok); fond.appendChild(boite);
+    document.body.appendChild(fond);
+  }
+  window.alert = function (msg) { file.push(msg); suivant(); };
+})();
+
 // En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
 window.addEventListener("error", function (e) {
   try {
