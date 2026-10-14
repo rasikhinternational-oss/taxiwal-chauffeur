@@ -171,7 +171,7 @@ function creerEditeurArrets(listeInitiale, options) {
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
-    'padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px));font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
     'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
   return false;
 };
@@ -857,20 +857,6 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-carte">
   <div id="carte"></div>
   <div id="carte-liste-chauffeurs"></div>
-
-  <div id="outil-trajet-jour" style="background:#fff; border-radius:12px; padding:14px; margin:12px 0; box-shadow:0 1px 6px rgba(0,0,0,.08);">
-    <h3 style="margin-top:0;">🛣️ Trajet d'une journée</h3>
-    <p style="margin:4px 0 10px; font-size:.85rem; color:#555;">Revoir tout le chemin d'un chauffeur, ses arrêts et leur durée.</p>
-    <label>Chauffeur</label>
-    <select id="tj-chauffeur"></select>
-    <label>Date</label>
-    <input type="date" id="tj-date">
-    <div style="display:flex; gap:8px; margin-top:10px;">
-      <button id="tj-afficher" style="flex:1;">Afficher le trajet</button>
-      <button id="tj-effacer" class="secondaire" style="flex:0 0 auto; width:auto; padding:0 14px;">Effacer</button>
-    </div>
-    <div id="tj-resultat" style="margin-top:10px; font-size:.9rem;"></div>
-  </div>
 
   <div id="outil-calcul">
     <h3>🧭 Calculer un trajet</h3>
@@ -1569,14 +1555,136 @@ function demarrerAdmin() {
   try { demarrerFacturesAdmin(); } catch (e) { console.warn("factures :", e); }
   try { demarrerChatAdmin(); } catch (e) { console.warn("chat :", e); }
   setInterval(() => {
-    if (document.getElementById("section-caisse").classList.contains("visible")) chargerCaisse();
+    if (document.getElementById("section-caisse").classList.contains("visible")) rafraichirQuandLibre("caisse", chargerCaisse);
   }, 20000);
   surveillerImpressionsFeuilles();
   setInterval(surveillerImpressionsFeuilles, 20000);
-  setInterval(rafraichirFeuillesSiPossible, 15000);
+  setInterval(() => rafraichirFeuillesSiPossible(), 15000);
   activerTempsReelAdmin();
   chargerDemandesChauffeurs();
-  setInterval(chargerDemandesChauffeurs, 30000);
+  setInterval(() => rafraichirQuandLibre("demandes-chauffeurs", chargerDemandesChauffeurs), 30000);
+}
+
+// ================== GARDE ANTI-RAFRAÎCHISSEMENT ==================
+// Les rafraîchissements automatiques (toutes les 15-20 s + temps réel) ne redessinent JAMAIS l'écran
+// pendant que l'admin travaille : formulaire / fenêtre ouverte, champ actif, liste déroulante ouverte,
+// changement pas encore enregistré, ou moins de 20 s après le dernier geste (toucher, clavier, défilement).
+// À la place, une petite pastille « 🔄 Nouvelles données » apparaît : la toucher actualise tout de suite,
+// sinon l'actualisation se fait seule dès que l'admin ne touche plus à rien.
+const DELAI_CALME_ADMIN = 20000;
+window.derniereInteractionAdmin = 0;
+let selectOuvertAdmin = null;
+const rafraichissementsEnAttente = new Map();
+["pointerdown", "keydown", "wheel", "touchmove", "input", "change"].forEach(evt =>
+  document.addEventListener(evt, (e) => {
+    if (e.target && e.target.closest && e.target.closest("#pastille-nouveautes")) return;
+    window.derniereInteractionAdmin = Date.now();
+  }, { capture: true, passive: true }));
+document.addEventListener("scroll", () => { window.derniereInteractionAdmin = Date.now(); }, { capture: true, passive: true });
+// Liste déroulante ouverte : de l'appui jusqu'au choix (change) ou à la sortie du champ
+document.addEventListener("pointerdown", (e) => {
+  const s = e.target && e.target.closest ? e.target.closest("select") : null;
+  if (s) selectOuvertAdmin = s;
+}, true);
+document.addEventListener("change", (e) => { if (e.target === selectOuvertAdmin) selectOuvertAdmin = null; }, true);
+document.addEventListener("focusout", (e) => { if (e.target === selectOuvertAdmin) selectOuvertAdmin = null; }, true);
+// Champ modifié (pas encore enregistré) dans une carte de course
+function marquerChampModifieAdmin(e) {
+  const t = e.target;
+  if (!t || !t.closest || !/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+  if (!t.closest(".course")) return;
+  if (t.closest(".outil-km-admin") || t.classList.contains("checkbox-select-course")) return;
+  t.dataset.modifie = "1";
+}
+document.addEventListener("input", marquerChampModifieAdmin, true);
+document.addEventListener("change", marquerChampModifieAdmin, true);
+
+function estAfficheAdmin(el) {
+  return !!(el && el.isConnected && el.getClientRects().length && getComputedStyle(el).visibility !== "hidden");
+}
+// Renvoie la raison pour laquelle on ne doit pas redessiner maintenant (ou "" si on peut)
+function adminOccupe(ignorerDelai = false) {
+  const actif = document.activeElement;
+  if (actif && actif !== document.body && (/^(INPUT|TEXTAREA|SELECT)$/.test(actif.tagName) || actif.isContentEditable)
+      && !actif.closest("#pastille-nouveautes")) return "saisie";
+  if (selectOuvertAdmin && selectOuvertAdmin.isConnected) return "liste";
+  if ([...document.querySelectorAll(".form-modif-course, .bloc-edition-admin")].some(f => f.style.display !== "none" && estAfficheAdmin(f))) return "formulaire";
+  if ([...document.querySelectorAll('[id^="modale"], [id$="-modale"], .fenetre-edition-admin')].some(estAfficheAdmin)) return "fenetre";
+  if ([...document.querySelectorAll('.course [data-modifie="1"]')].some(estAfficheAdmin)) return "modifie";
+  if (!ignorerDelai && Date.now() - (window.derniereInteractionAdmin || 0) < DELAI_CALME_ADMIN) return "activite";
+  return "";
+}
+// Lance fn si l'admin ne travaille pas, sinon la met en attente (pastille)
+function rafraichirQuandLibre(nom, fn) {
+  if (!adminOccupe()) { rafraichissementsEnAttente.delete(nom); fn(); return true; }
+  rafraichissementsEnAttente.set(nom, fn);
+  afficherPastilleNouveautes();
+  return false;
+}
+function afficherPastilleNouveautes() {
+  let p = document.getElementById("pastille-nouveautes");
+  if (!p) {
+    p = document.createElement("button");
+    p.type = "button";
+    p.id = "pastille-nouveautes";
+    p.textContent = "🔄 Nouvelles données — toucher pour actualiser";
+    p.style.cssText = "position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 14px); z-index:4500; width:auto; max-width:92vw; padding:9px 16px; border:none; border-radius:20px; background:#1d4f86; color:#fff; font-weight:700; font-size:.85rem; box-shadow:0 4px 14px rgba(0,0,0,.3);";
+    p.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const raison = adminOccupe(true);
+      if ((raison === "formulaire" || raison === "modifie" || raison === "fenetre") &&
+          !confirm("Une modification est ouverte et pas encore enregistrée.\n\nActualiser quand même ? (la modification en cours sera perdue)")) return;
+      executerRafraichissementsEnAttente();
+    });
+    document.body.appendChild(p);
+  }
+  p.style.display = "block";
+}
+function executerRafraichissementsEnAttente() {
+  const fns = [...rafraichissementsEnAttente.values()];
+  rafraichissementsEnAttente.clear();
+  const p = document.getElementById("pastille-nouveautes");
+  if (p) p.style.display = "none";
+  fns.forEach(fn => { try { fn(); } catch (e) { console.warn("rafraîchissement :", e); } });
+}
+setInterval(() => {
+  if (rafraichissementsEnAttente.size && !document.hidden && !adminOccupe()) executerRafraichissementsEnAttente();
+}, 3000);
+
+// Petit message de confirmation en bas de l'écran
+function toastAdmin(texte, couleur) {
+  const t = document.createElement("div");
+  t.textContent = texte;
+  t.style.cssText = `position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 60px); z-index:6000; max-width:92vw; padding:10px 16px; border-radius:12px; background:${couleur || "#1f6b3f"}; color:#fff; font-weight:700; font-size:.9rem; box-shadow:0 4px 14px rgba(0,0,0,.3);`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// Liste déroulante qui n'enregistre PAS au simple choix : un bouton « ✅ Enregistrer » / « Annuler »
+// apparaît, et c'est seulement ce bouton qui lance l'enregistrement (onEnregistrer(valeur)).
+function selectAvecEnregistrer(select, onEnregistrer, texteBouton) {
+  const valeurInitiale = select.value;
+  const barre = document.createElement("div");
+  barre.className = "bloc-edition-admin barre-enregistrer-select";
+  barre.style.cssText = "display:none; gap:8px; margin:6px 0 4px;";
+  barre.innerHTML = `<button type="button" class="bes-ok" style="flex:2; padding:10px; border:none; border-radius:8px; background:var(--vert); color:#fff; font-weight:800;">${texteBouton || "✅ Enregistrer"}</button>
+    <button type="button" class="bes-annuler" style="flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; color:#333;">Annuler</button>`;
+  const montrer = () => { barre.style.display = select.value !== valeurInitiale ? "flex" : "none"; };
+  select.addEventListener("change", (e) => { e.stopPropagation(); montrer(); });
+  select.addEventListener("click", e => e.stopPropagation());
+  barre.addEventListener("click", e => e.stopPropagation());
+  const annuler = () => { select.value = valeurInitiale; delete select.dataset.modifie; montrer(); };
+  barre.querySelector(".bes-annuler").addEventListener("click", annuler);
+  barre.querySelector(".bes-ok").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    try {
+      const ok = await onEnregistrer(select.value || null);
+      if (ok === false) annuler();
+    } finally { b.disabled = false; }
+  });
+  select.insertAdjacentElement("afterend", barre);
+  return { annuler };
 }
 
 // Dernière SAISIE de l'admin dans les feuilles (taper, choisir) : on ne rafraîchit pas pendant
@@ -1601,10 +1709,11 @@ function saisieEnCoursFeuilles() {
   const champ = /^(INPUT|TEXTAREA|SELECT)$/.test(actif.tagName) || actif.isContentEditable;
   return champ && !!(actif.closest("#section-feuilles") || actif.closest("#overlay-plein-ecran-fa") || actif.closest(".plein-ecran-ligne"));
 }
-function rafraichirFeuillesSiPossible() {
+function rafraichirFeuillesSiPossible(force = false) {
   const zoneFeuilles = document.getElementById("section-feuilles");
   if (!zoneFeuilles.classList.contains("visible")) return;
   if (document.hidden) return;
+  if (!force && adminOccupe()) { rafraichissementsEnAttente.set("feuilles", () => rafraichirFeuillesSiPossible(true)); afficherPastilleNouveautes(); return; }
   if (document.getElementById("vue-historique-fa").style.display === "block") return;
   if (document.querySelector(".btn-reorg-fa.actif")) return;              // réorganisation à la main en cours
   if (saisieEnCoursFeuilles()) return;                                    // l'admin écrit dans un champ
@@ -1639,7 +1748,7 @@ function activerTempsReelAdmin() {
 }
 function planifierRafraichissementFeuilles() {
   clearTimeout(window.minuterieDemandesChauffeurs);
-  window.minuterieDemandesChauffeurs = setTimeout(chargerDemandesChauffeurs, 800);
+  window.minuterieDemandesChauffeurs = setTimeout(() => rafraichirQuandLibre("demandes-chauffeurs", chargerDemandesChauffeurs), 800);
   clearTimeout(minuterieTempsReelFeuilles);
   minuterieTempsReelFeuilles = setTimeout(rafraichirFeuillesSiPossible, 600);
 }
@@ -3901,21 +4010,46 @@ document.getElementById("recherche-course").addEventListener("input", afficherLi
 
 var rechargeCartesEnAttente = false;
 function rechargerApresCarteGrand() { if (rechargeCartesEnAttente) { rechargeCartesEnAttente = false; chargerCoursesAdmin(true); } }
-async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
-  // Une course est ouverte en grand : on ne redessine pas la liste (sinon elle se fermerait)
-  if (document.querySelector(".carte-en-grand")) { rechargeCartesEnAttente = true; return; }
-  // L'admin est en train de modifier une course : pas de rafraîchissement automatique
-  if (depuisAutoRafraichissement) {
-    const formOuvert = [...document.querySelectorAll("#section-courses .form-modif-course, #section-par-chauffeur .form-modif-course")].some(x => x.style.display === "block");
-    const actif = document.activeElement;
-    const saisie = actif && ["INPUT", "SELECT", "TEXTAREA"].includes(actif.tagName) && actif.closest("#section-courses, #section-par-chauffeur");
-    if (formOuvert || saisie || Date.now() - (window.derniereActiviteCourses || 0) < 30000) return;
+// Remplace la carte ouverte en grand par une carte à jour (après un enregistrement), sans la fermer
+function rafraichirCarteEnGrand(carteGrand) {
+  const id = carteGrand.dataset.courseId;
+  const course = id && dernieresCoursesAdmin.find(c => c.id === id);
+  if (!course) return;
+  const ancienBtn = carteGrand.querySelector(".btn-carte-grand");
+  const texteFermer = ancienBtn ? ancienBtn.textContent : "✕ Fermer";
+  const dansBody = carteGrand.parentNode === document.body;
+  const dejaOuverte = coursesOuvertes.has(course.id);
+  coursesOuvertes.add(course.id);
+  const nouvelle = construireCarteAdmin(course);
+  if (!dejaOuverte && !dansBody) coursesOuvertes.delete(course.id);
+  nouvelle.classList.add("carte-en-grand");
+  const btn = nouvelle.querySelector(".btn-carte-grand");
+  if (btn) {
+    btn.textContent = texteFermer;
+    if (dansBody) btn.addEventListener("click", () => { if (!nouvelle.classList.contains("carte-en-grand")) nouvelle.remove(); });
   }
+  const defil = carteGrand.scrollTop;
+  carteGrand.replaceWith(nouvelle);
+  nouvelle.scrollTop = defil;
+}
+
+async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
+  // L'admin travaille (formulaire ouvert, champ actif, liste ouverte, changement non enregistré,
+  // ou geste il y a moins de 20 s) : on ne redessine rien, on affiche la pastille « Nouvelles données »
+  if (depuisAutoRafraichissement && adminOccupe()) {
+    rafraichissementsEnAttente.set("courses", () => chargerCoursesAdmin(false));
+    afficherPastilleNouveautes();
+    return;
+  }
+  // Une course est ouverte en grand : rafraîchissement auto → on attend qu'elle soit fermée
+  const carteGrand = document.querySelector(".carte-en-grand");
+  if (carteGrand && depuisAutoRafraichissement) { rechargeCartesEnAttente = true; return; }
   const { data: courses, error } = await supabase
     .from("courses")
     .select("*, profils:chauffeur_id(nom, role), chauffeur_prefere:chauffeur_prefere_id(nom), vehicules:vehicule_id(nom, plaque, places)")
     .order("date_heure", { ascending: true });
   if (error) { console.error(error); return; }
+  rafraichissementsEnAttente.delete("courses");
 
   if (idsCoursesConnusAdmin === null) {
     idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement }]));
@@ -3961,6 +4095,15 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   dernieresCoursesAdmin = courses || [];
 
   verifierRappels30MinAdmin(dernieresCoursesAdmin);
+
+  // Après un enregistrement depuis une carte ouverte en grand : on la redessine à jour, sans la fermer.
+  // Les listes derrière seront redessinées à sa fermeture.
+  const carteGrandActuelle = document.querySelector(".carte-en-grand");
+  if (carteGrandActuelle) {
+    rafraichirCarteEnGrand(carteGrandActuelle);
+    rechargeCartesEnAttente = true;
+    return;
+  }
 
   const zoneCourses = document.getElementById("liste-courses-admin");
   const enTrainDeSaisir = depuisAutoRafraichissement && zoneCourses.contains(document.activeElement) && document.activeElement.tagName !== "BODY";
@@ -4231,6 +4374,7 @@ async function dejaPayeCourse(course) {
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
+  div.dataset.courseId = course.id;
 
   if (course.statut === "en_attente") {
     const checkbox = document.createElement("input");
@@ -4347,22 +4491,21 @@ function construireCarteAdmin(course) {
         <label style="display:block; font-size:.78rem; color:var(--gris); margin-bottom:3px;">Chauffeur du retour (indépendant de l'aller)</label>`;
       const selR = document.createElement("select");
       selR.innerHTML = `<option value="">— Pas encore attribué —</option>` + (chauffeursCache || []).map(c => `<option value="${c.id}" ${c.id === retour.chauffeur_id ? "selected" : ""}>${esc(c.nom)}</option>`).join("");
-      selR.addEventListener("click", e => e.stopPropagation());
-      selR.addEventListener("change", async (e) => {
-        e.stopPropagation();
-        const id = e.target.value || null;
+      blocRetour.appendChild(selR);
+      selectAvecEnregistrer(selR, async (valeur) => {
+        const id = valeur || null;
         const maj = { chauffeur_id: id, statut: id ? "assignee" : (retour.statut === "assignee" ? "confirmee" : retour.statut), accepte_chauffeur: false };
         const veh = id ? vehiculesCache.find(v => v.chauffeur_id === id) : null;
         if (veh) maj.vehicule_id = veh.id; else if (!id) maj.vehicule_id = null;
         if (id && retour.origine === "client" && !retour.acompte_paye && !retour.sans_acompte_autorise && !course.acompte_paye) {
-          if (!confirm("⚠️ Le client n'a pas encore payé l'acompte. Attribuer le retour quand même ?")) { e.target.value = retour.chauffeur_id || ""; return; }
+          if (!confirm("⚠️ Le client n'a pas encore payé l'acompte. Attribuer le retour quand même ?")) { return false; }
           maj.sans_acompte_autorise = true;
         } else if (id && retour.origine === "client" && course.acompte_paye) maj.sans_acompte_autorise = true;
         const { error } = await supabase.from("courses").update(maj).eq("id", retour.id);
-        if (error) { alert("Erreur : " + error.message); e.target.value = retour.chauffeur_id || ""; return; }
+        if (error) { alert("Erreur : " + error.message); return false; }
+        toastAdmin("✅ Chauffeur du retour enregistré");
         chargerCoursesAdmin();
-      });
-      blocRetour.appendChild(selR);
+      }, "✅ Enregistrer le chauffeur du retour");
     }
     corps.appendChild(blocRetour);
   }
@@ -4507,6 +4650,7 @@ function construireCarteAdmin(course) {
       const prix = parseFloat(blocPrix.querySelector("input").value);
       if (!prix || prix <= 0) { alert("Indique un prix valide."); return; }
       const exige = blocPrix.querySelector(".paiement-exige").value;
+      if (!confirm(`Envoyer le prix de ${prix.toFixed(2).replace(".", ",")} € au client ?`)) return;
       const acompte = Math.round(prix * 0.3 * 100) / 100;
       await supabase.from("courses").update({
         prix, acompte_montant: acompte, statut: "prix_envoye", paiement_exige: exige,
@@ -4527,6 +4671,7 @@ function construireCarteAdmin(course) {
       <button type="button">✅ Confirmer la réception de l'acompte</button>
     `;
     blocVerif.querySelector("button").addEventListener("click", async () => {
+      if (!confirm(`Confirmer que tu as bien reçu ${course.acompte_montant ?? ""} € sur le compte ?`)) return;
       const { error: errConf } = await supabase.from("courses").update({
         statut: "confirmee", acompte_paye: true, acompte_confirme_at: new Date().toISOString()
       }).eq("id", course.id);
@@ -4554,18 +4699,23 @@ function construireCarteAdmin(course) {
       <label>Véhicule de la flotte</label>
       <select class="select-veh-flotte">${optionsVehiculesFlotte(course.vehicule_id)}</select>
     `;
-    blocVeh.querySelector(".select-type-veh").addEventListener("change", async (e) => {
-      await supabase.from("courses").update({ vehicule_souhaite: e.target.value || null }).eq("id", course.id);
+    // Enregistré seulement avec le bouton « ✅ Enregistrer » (jamais au simple choix dans la liste)
+    selectAvecEnregistrer(blocVeh.querySelector(".select-type-veh"), async (valeur) => {
+      const { error } = await supabase.from("courses").update({ vehicule_souhaite: valeur || null }).eq("id", course.id);
+      if (error) { alert("Erreur : " + error.message); return false; }
+      toastAdmin("✅ Type de véhicule enregistré");
       chargerCoursesAdmin();
-    });
-    blocVeh.querySelector(".select-veh-flotte").addEventListener("change", async (e) => {
-      const vehId = e.target.value || null;
+    }, "✅ Enregistrer le type");
+    selectAvecEnregistrer(blocVeh.querySelector(".select-veh-flotte"), async (valeur) => {
+      const vehId = valeur || null;
       const maj = { vehicule_id: vehId };
       const veh = vehiculesCache.find(v => v.id === vehId);
       if (veh && !course.vehicule_souhaite) maj.vehicule_souhaite = (veh.places || 0) >= 7 ? "van" : "berline";
-      await supabase.from("courses").update(maj).eq("id", course.id);
+      const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
+      if (error) { alert("Erreur : " + error.message); return false; }
+      toastAdmin("✅ Véhicule enregistré");
       chargerCoursesAdmin();
-    });
+    }, "✅ Enregistrer le véhicule");
     corps.appendChild(blocVeh);
   }
 
@@ -4576,6 +4726,7 @@ function construireCarteAdmin(course) {
     btnPrix.textContent = "✏️ Modifier le prix";
     btnPrix.style.cssText = "width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid #c8961e; background:#fff7e6; color:#7a5200; font-weight:700;";
     const blocP = document.createElement("div");
+    blocP.className = "bloc-edition-admin";
     blocP.style.cssText = "display:none; background:#fffaf0; border:1px solid #f0d49a; border-radius:10px; padding:10px; margin-top:6px; font-size:.88rem;";
     const surp = Number(course.surprime) || 0;
     blocP.innerHTML = `
@@ -4662,10 +4813,12 @@ function construireCarteAdmin(course) {
 
   const selectChauffeur = document.createElement("select");
   selectChauffeur.innerHTML = `<option value="">— ${course.chauffeur_id ? "Réassigner à" : "Assigner à"} —</option>` + optionsChauffeursEtPartenaires(course.chauffeur_id).replace('<option value="">— Aucun (à attribuer plus tard) —</option>', "");
-  selectChauffeur.addEventListener("change", async (e) => {
-    const nouveauChauffeurId = e.target.value || null;
+  // L'attribution se fait UNIQUEMENT avec le bouton « ✅ Attribuer » (pas au simple choix dans la liste)
+  const appliquerChoixChauffeur = async (valeurChoisie) => {
+    const e = { target: selectChauffeur };
+    const nouveauChauffeurId = valeurChoisie || null;
     const ancienChauffeurId = course.chauffeur_id || null;
-    if (nouveauChauffeurId === ancienChauffeurId) return;
+    if (nouveauChauffeurId === ancienChauffeurId) return false;
     const nomPersonne = (id) => ((chauffeursCache.find(c => c.id === id) || partenairesCache.find(p => p.id === id) || {}).nom);
     // Sécurité : jamais de course retirée à un chauffeur par erreur
     if (ancienChauffeurId) {
@@ -4680,7 +4833,7 @@ function construireCarteAdmin(course) {
         : (nouveau
             ? `Retirer cette course à ${ancien} et la donner à ${nouveau} ?\n\n${ancien} sera prévenu qu'elle ne lui est plus attribuée.`
             : `Retirer cette course à ${ancien} ?\n\nElle disparaîtra de son application et reviendra « à attribuer ».`));
-      if (!ok) { e.target.value = ancienChauffeurId || ""; return; }
+      if (!ok) return false;
     }
     // Réattribution à tout moment (même acceptée / démarrée) : la course repart « assignée, à accepter »
     // chez le nouveau chauffeur. L'état du paiement (acompte, totalité…) est conservé tel quel.
@@ -4698,11 +4851,14 @@ function construireCarteAdmin(course) {
     // RÈGLE : demande d'un client → pas de chauffeur tant que l'acompte n'est pas payé
     if (nouveauChauffeurId && course.origine === "client" && !course.acompte_paye && !course.sans_acompte_autorise) {
       const ok = confirm("⚠️ Le client n'a PAS encore payé l'acompte.\n\nRègle Taxi Wal : on attribue un chauffeur seulement après le paiement.\n\nAttribuer quand même SANS acompte (par exemple : client de confiance, paiement à bord convenu) ?");
-      if (!ok) { e.target.value = course.chauffeur_id || ""; return; }
+      if (!ok) return false;
       maj.sans_acompte_autorise = true;
+    } else if (nouveauChauffeurId && !ancienChauffeurId) {
+      const nomN = nomPersonne(nouveauChauffeurId) || "ce chauffeur";
+      if (!confirm(`Attribuer la course ${course.numero_reservation || ""} à ${nomN} ?\n\n${nomN} sera prévenu immédiatement.`)) return false;
     }
     const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
-    if (error) { alert(error.message.includes("ACOMPTE_NON_PAYE") ? "⚠️ Le client n'a pas encore payé l'acompte : confirme d'abord le paiement." : "Erreur : " + error.message); e.target.value = course.chauffeur_id || ""; return; }
+    if (error) { alert(error.message.includes("ACOMPTE_NON_PAYE") ? "⚠️ Le client n'a pas encore payé l'acompte : confirme d'abord le paiement." : "Erreur : " + error.message); return false; }
     // Messages dans le chat chauffeur (en plus de la notification automatique de la base)
     if (!["terminee", "annulee"].includes(course.statut)) {
       const num = course.numero_reservation || "";
@@ -4716,9 +4872,9 @@ function construireCarteAdmin(course) {
           `🚖 Nouvelle course ${num} le ${quand} : ${course.adresse_depart || "?"} → ${course.adresse_arrivee || "?"}${course.client_nom ? " (client : " + course.client_nom + ")" : ""}. Ouvre l'app pour l'accepter.`);
       }
     }
+    toastAdmin(nouveauChauffeurId ? "✅ Course attribuée" : "✅ Course retirée au chauffeur");
     chargerCoursesAdmin();
-  });
-  selectChauffeur.addEventListener("click", ev => ev.stopPropagation());
+  };
   if (course.statut !== "terminee" && course.statut !== "annulee" && course.chauffeur_id) {
     const lblCh = document.createElement("div");
     lblCh.style.cssText = "font-size:.8rem; color:var(--gris); margin:8px 0 3px;";
@@ -4726,12 +4882,14 @@ function construireCarteAdmin(course) {
     corps.appendChild(lblCh);
   }
   corps.appendChild(selectChauffeur);
+  selectAvecEnregistrer(selectChauffeur, appliquerChoixChauffeur, course.chauffeur_id ? "✅ Réattribuer" : "✅ Attribuer");
 
   if (!course.est_retour && course.statut !== "terminee" && course.statut !== "annulee") {
     const btnAjoutVeh = document.createElement("button");
     btnAjoutVeh.className = "btn-ajout-vehicule";
     btnAjoutVeh.textContent = "➕ Ajouter un véhicule à cette réservation";
     btnAjoutVeh.addEventListener("click", async () => {
+      if (!confirm("Ajouter un véhicule supplémentaire à cette réservation ?\n\n(une nouvelle course est créée pour ce véhicule)")) return;
       btnAjoutVeh.disabled = true; btnAjoutVeh.textContent = "Ajout en cours…";
       await ajouterVehiculeAReservation(course);
     });
@@ -4753,6 +4911,7 @@ function construireCarteAdmin(course) {
   }
   if (course.statut === "terminee") {
     actions.appendChild(creerBoutonAdmin("Rouvrir", async () => {
+      if (!confirm("Rouvrir cette course terminée (elle repasse « en cours ») ?")) return;
       await supabase.from("courses").update({ statut: "en_cours", verrouillee: false }).eq("id", course.id);
       chargerCoursesAdmin();
     }));
@@ -4770,6 +4929,7 @@ function construireCarteAdmin(course) {
     const btnAnnuler = document.createElement("button");
     btnAnnuler.textContent = "Annuler la course";
     const blocMotif = document.createElement("div");
+    blocMotif.className = "bloc-edition-admin";
     blocMotif.style.cssText = "display:none; background:#fbe2e2; border-radius:10px; padding:10px; margin-top:8px;";
     blocMotif.innerHTML = `
       <label style="display:block; font-size:.75rem; color:#8a2020; margin-bottom:4px;">Motif de l'annulation</label>
@@ -4884,28 +5044,76 @@ function construireCarteAdmin(course) {
     formModif.querySelector(".modif-bloc-heure-retour").style.display = e.target.value === "heure_precise" ? "block" : "none";
   });
   formModif.querySelector(".btn-suppr-surprime").addEventListener("click", async () => {
+    if (!confirm("Supprimer la surprime de cette course ?")) return;
     formModif.querySelector('[data-champ="surprime"]').value = "";
-    await supabase.from("courses").update({ surprime: null }).eq("id", course.id);
+    const { error } = await supabase.from("courses").update({ surprime: null }).eq("id", course.id);
+    if (error) { alert("Erreur : " + error.message); return; }
+    toastAdmin("✅ Surprime supprimée");
     chargerCoursesAdmin();
   });
-  formModif.querySelector(".btn-enregistrer-modif").addEventListener("click", async () => {
-    const maj = {};
+  // Enregistrer : seulement les champs vraiment changés. Possible à tout moment (même course acceptée /
+  // démarrée) : l'acceptation du chauffeur est conservée, et il est prévenu des nouvelles infos.
+  formModif.querySelector(".btn-enregistrer-modif").addEventListener("click", async (ev) => {
+    const btnSave = ev.currentTarget;
+    const lu = {};
     const estAllerRetourModif = formModif.querySelector('[data-champ="aller_retour"]').checked;
     const typeRetourChoisi = estAllerRetourModif ? formModif.querySelector('[data-champ="type_retour"]').value : "";
     formModif.querySelectorAll("[data-champ]").forEach(input => {
       const champ = input.dataset.champ;
-      if (input.type === "checkbox") { maj[champ] = input.checked; return; }
+      if (input.type === "checkbox") { lu[champ] = input.checked; return; }
       let val = input.value;
-      if (champ === "date_heure" || champ === "heure_retour_prevue") { maj[champ] = val ? new Date(val).toISOString() : null; return; }
-      if (champ === "passagers" || champ === "bagages") { maj[champ] = val ? parseInt(val) : null; return; }
-      if (champ === "prix" || champ === "surprime") { maj[champ] = val ? parseFloat(val) : null; return; }
-      maj[champ] = val || null;
+      if (champ === "date_heure" || champ === "heure_retour_prevue") { lu[champ] = val ? new Date(val).toISOString() : null; return; }
+      if (champ === "passagers" || champ === "bagages") { lu[champ] = val ? parseInt(val) : null; return; }
+      if (champ === "prix" || champ === "surprime") { lu[champ] = val ? parseFloat(String(val).replace(",", ".")) : null; return; }
+      lu[champ] = (typeof val === "string" ? val.trim() : val) || null;
     });
-    if (!estAllerRetourModif) { maj.type_retour = null; maj.duree_attente_estimee = null; maj.heure_retour_prevue = null; }
-    if (typeRetourChoisi !== "attente") maj.duree_attente_estimee = null;
-    if (typeRetourChoisi !== "heure_precise") maj.heure_retour_prevue = null;
+    if (!estAllerRetourModif) { lu.type_retour = null; lu.duree_attente_estimee = null; lu.heure_retour_prevue = null; }
+    if (typeRetourChoisi !== "attente") lu.duree_attente_estimee = null;
+    if (typeRetourChoisi !== "heure_precise") lu.heure_retour_prevue = null;
+    if (!lu.date_heure) { alert("Indique la date et l'heure de la course."); return; }
+    // Comparaison avec la course actuelle → on n'envoie que ce qui change
+    const pareil = (champ, v) => {
+      const avant = course[champ];
+      if (champ === "date_heure" || champ === "heure_retour_prevue") {
+        // le champ du formulaire est à la minute près : on compare à la minute
+        const m = (x) => x ? Math.floor(new Date(x).getTime() / 60000) : null;
+        return m(avant) === m(v);
+      }
+      if (typeof v === "boolean") return !!avant === v;
+      if (typeof v === "number") return avant != null && avant !== "" && Number(avant) === v;
+      if (v === null) return avant == null || avant === "";
+      return String(avant ?? "") === String(v);
+    };
+    const maj = {};
+    Object.keys(lu).forEach(champ => { if (!pareil(champ, lu[champ])) maj[champ] = lu[champ]; });
+    if (!Object.keys(maj).length) { alert("Aucun changement à enregistrer."); return; }
+    const libelles = { client_nom: "Nom du client", client_telephone: "Téléphone", adresse_depart: "Départ", adresse_arrivee: "Arrivée",
+      date_heure: "Date et heure", passagers: "Passagers", bagages: "Bagages", prix: "Prix", surprime: "Surprime", aller_retour: "Aller-retour",
+      mode_tarification: "Tarification", type_retour: "Type de retour", duree_attente_estimee: "Attente", heure_retour_prevue: "Heure de retour", notes: "Notes" };
+    const affiche = (champ, v) => v == null || v === "" ? "—" : (champ === "date_heure" || champ === "heure_retour_prevue") ? quandCourseTexte(v) : typeof v === "boolean" ? (v ? "oui" : "non") : String(v);
+    const resume = Object.keys(maj).map(c => `• ${libelles[c] || c} : ${affiche(c, maj[c])}`).join("\n");
+    const chauffeurAPrevenir = course.chauffeur_id && !["terminee", "annulee"].includes(course.statut);
+    const nomCh = course.profils?.nom || "le chauffeur";
+    if (!confirm(`Enregistrer ces modifications ?\n\n${resume}${chauffeurAPrevenir ? `\n\n${nomCh} sera prévenu (la course reste ${course.accepte_chauffeur ? "acceptée" : "attribuée"}).` : ""}`)) return;
+    btnSave.disabled = true; btnSave.textContent = "Enregistrement…";
     const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
+    btnSave.disabled = false; btnSave.textContent = "Enregistrer les modifications";
     if (error) { alert("Erreur : " + error.message); return; }
+    // Chauffeur prévenu dans son chat (en plus de la notification automatique de la base)
+    if (chauffeurAPrevenir) {
+      const morceaux = [];
+      if ("adresse_arrivee" in maj) morceaux.push(`nouvelle destination : ${maj.adresse_arrivee || "?"}`);
+      if ("adresse_depart" in maj) morceaux.push(`nouvelle adresse de départ : ${maj.adresse_depart || "?"}`);
+      if ("date_heure" in maj) morceaux.push(`nouvelle heure : ${quandCourseTexte(maj.date_heure)}`);
+      if ("heure_retour_prevue" in maj && maj.heure_retour_prevue) morceaux.push(`retour prévu : ${quandCourseTexte(maj.heure_retour_prevue)}`);
+      const autres = Object.keys(maj).filter(c => !["adresse_arrivee", "adresse_depart", "date_heure", "heure_retour_prevue"].includes(c)).map(c => (libelles[c] || c).toLowerCase());
+      if (autres.length) morceaux.push(`autres infos mises à jour (${autres.join(", ")})`);
+      await envoyerMessageChauffeurAuto(course.chauffeur_id, course.id,
+        `✏️ Course ${course.numero_reservation || ""} modifiée par la centrale : ${morceaux.join(" · ")}. Trajet : ${maj.adresse_depart ?? course.adresse_depart ?? "?"} → ${maj.adresse_arrivee ?? course.adresse_arrivee ?? "?"}, le ${quandCourseTexte(maj.date_heure ?? course.date_heure)}.`.replace(/\s+/g, " "));
+    }
+    formModif.querySelectorAll("[data-modifie]").forEach(x => delete x.dataset.modifie);
+    formModif.style.display = "none";
+    toastAdmin(chauffeurAPrevenir ? `✅ Course modifiée — ${nomCh} prévenu` : "✅ Course modifiée");
     chargerCoursesAdmin();
   });
   formModif.querySelector(".btn-supprimer-course").addEventListener("click", () => supprimerCourse(course));
@@ -5742,7 +5950,6 @@ async function chargerCarte() {
         }, 3000);
       }).subscribe();
     setTimeout(() => carteLeaflet.invalidateSize(), 200);
-    initTrajetJour();
   }
 
   // Pas plus d'une mise à jour toutes les 8 secondes (sinon la carte rame)
@@ -5754,115 +5961,6 @@ async function chargerCarte() {
   }
   window.__carteEnCours = true; window.__derniereCarte = Date.now();
   try { await chargerCarteInterne(); } finally { window.__carteEnCours = false; }
-}
-
-// ---------- TAXI WAL DRIVER : trajet complet d'une journée (table trajets_gps) ----------
-let coucheTrajetJour = null;
-
-function distanceKm(a, b) {
-  const R = 6371, rad = x => x * Math.PI / 180;
-  const dLat = rad(b.latitude - a.latitude), dLon = rad(b.longitude - a.longitude);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-function heureTJ(d) { return new Date(d).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }); }
-function dureeTexte(min) { min = Math.round(min); return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}` : `${min} min`; }
-
-async function initTrajetJour() {
-  const sel = document.getElementById("tj-chauffeur");
-  if (!sel || sel.dataset.pret) return;
-  sel.dataset.pret = "1";
-  const { data } = await supabase.from("profils").select("id, nom, role").in("role", ["chauffeur", "partenaire"]).order("nom");
-  sel.innerHTML = (data || []).map(c => `<option value="${c.id}">${esc(c.nom || "Chauffeur")}${c.role === "partenaire" ? " (partenaire)" : ""}</option>`).join("");
-  const d = new Date();
-  document.getElementById("tj-date").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  document.getElementById("tj-afficher").addEventListener("click", afficherTrajetJour);
-  document.getElementById("tj-effacer").addEventListener("click", () => {
-    if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
-    coucheTrajetJour = null;
-    document.getElementById("tj-resultat").innerHTML = "";
-  });
-}
-
-async function afficherTrajetJour() {
-  const res = document.getElementById("tj-resultat");
-  const chauffeurId = document.getElementById("tj-chauffeur").value;
-  const jour = document.getElementById("tj-date").value;
-  if (!chauffeurId || !jour) { res.textContent = "Choisis un chauffeur et une date."; return; }
-  res.textContent = "Chargement du trajet…";
-  const debut = new Date(jour + "T00:00:00"), fin = new Date(debut.getTime() + 24 * 3600e3);
-
-  // Récupère tous les points de la journée (par paquets de 1000)
-  let points = [], depuis = 0;
-  while (true) {
-    const { data, error } = await supabase.from("trajets_gps")
-      .select("latitude, longitude, precision_m, vitesse_kmh, enregistre_le")
-      .eq("chauffeur_id", chauffeurId)
-      .gte("enregistre_le", debut.toISOString()).lt("enregistre_le", fin.toISOString())
-      .order("enregistre_le", { ascending: true })
-      .range(depuis, depuis + 999);
-    if (error) { res.textContent = "Erreur : " + error.message; return; }
-    points = points.concat(data || []);
-    if (!data || data.length < 1000) break;
-    depuis += 1000;
-  }
-  // On ignore les points trop imprécis (> 100 m)
-  points = points.filter(p => p.precision_m == null || p.precision_m <= 100);
-
-  if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
-  coucheTrajetJour = null;
-  if (points.length < 2) {
-    res.innerHTML = "Aucun trajet enregistré pour ce jour.<br><span style='color:#777; font-size:.82rem;'>Les trajets complets seront enregistrés dès que le chauffeur utilisera l'app Taxi Wal Driver (ou l'app chauffeur ouverte).</span>";
-    return;
-  }
-
-  // Kilomètres (on ignore les sauts GPS impossibles > 200 km/h)
-  let km = 0;
-  for (let i = 1; i < points.length; i++) {
-    const d = distanceKm(points[i - 1], points[i]);
-    const h = (new Date(points[i].enregistre_le) - new Date(points[i - 1].enregistre_le)) / 3600e3;
-    if (h > 0 && d / h > 200) continue;
-    km += d;
-  }
-
-  // Arrêts : le chauffeur reste dans un rayon de 120 m pendant au moins 5 minutes
-  const arrets = [];
-  let i = 0;
-  while (i < points.length) {
-    let j = i + 1;
-    while (j < points.length && distanceKm(points[i], points[j]) <= 0.12) j++;
-    const minutes = (new Date(points[j - 1].enregistre_le) - new Date(points[i].enregistre_le)) / 60000;
-    if (minutes >= 5) { arrets.push({ p: points[i], de: points[i].enregistre_le, a: points[j - 1].enregistre_le, minutes }); i = j; }
-    else i++;
-  }
-  // Trous dans le suivi (plus de 10 minutes sans aucun point = GPS coupé / app fermée)
-  const trous = [];
-  for (let k = 1; k < points.length; k++) {
-    const min = (new Date(points[k].enregistre_le) - new Date(points[k - 1].enregistre_le)) / 60000;
-    if (min > 10) trous.push({ de: points[k - 1].enregistre_le, a: points[k].enregistre_le, minutes: min });
-  }
-
-  coucheTrajetJour = L.layerGroup().addTo(carteLeaflet);
-  const ligne = L.polyline(points.map(p => [p.latitude, p.longitude]), { color: "#c8102e", weight: 4, opacity: .85 }).addTo(coucheTrajetJour);
-  const pastille = (txt, fond) => L.divIcon({ className: "", iconSize: [0, 0], html: `<div style="transform:translate(-50%,-50%); background:${fond}; color:#fff; font-weight:800; font-size:11px; padding:3px 7px; border-radius:999px; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); white-space:nowrap;">${txt}</div>` });
-  L.marker([points[0].latitude, points[0].longitude], { icon: pastille("Départ " + heureTJ(points[0].enregistre_le), "#1f8a4c") }).addTo(coucheTrajetJour);
-  const der = points[points.length - 1];
-  L.marker([der.latitude, der.longitude], { icon: pastille("Fin " + heureTJ(der.enregistre_le), "#111") }).addTo(coucheTrajetJour);
-  arrets.forEach((a, n) => {
-    L.marker([a.p.latitude, a.p.longitude], { icon: pastille(`⏸️ ${n + 1} · ${dureeTexte(a.minutes)}`, "#d97706") })
-      .addTo(coucheTrajetJour)
-      .bindPopup(`<b>Arrêt ${n + 1}</b><br>de ${heureTJ(a.de)} à ${heureTJ(a.a)}<br>${dureeTexte(a.minutes)}`);
-  });
-  carteLeaflet.fitBounds(ligne.getBounds(), { padding: [40, 40] });
-
-  const dureeTotale = (new Date(der.enregistre_le) - new Date(points[0].enregistre_le)) / 60000;
-  const totalArrets = arrets.reduce((s, a) => s + a.minutes, 0);
-  res.innerHTML = `
-    <div><b>${km.toFixed(1)} km</b> parcourus · de <b>${heureTJ(points[0].enregistre_le)}</b> à <b>${heureTJ(der.enregistre_le)}</b> (${dureeTexte(dureeTotale)})</div>
-    <div>⏸️ <b>${arrets.length}</b> arrêt(s) de 5 min ou plus, au total <b>${dureeTexte(totalArrets)}</b></div>
-    ${arrets.length ? `<ol style="margin:8px 0 0; padding-left:20px;">${arrets.map(a => `<li>${heureTJ(a.de)} → ${heureTJ(a.a)} : <b>${dureeTexte(a.minutes)}</b></li>`).join("")}</ol>` : ""}
-    ${trous.length ? `<div style="margin-top:8px; color:#b45309;">⚠️ Suivi interrompu ${trous.length} fois (GPS coupé ou app fermée) :<br>${trous.map(t => `${heureTJ(t.de)} → ${heureTJ(t.a)} (${dureeTexte(t.minutes)})`).join("<br>")}</div>` : ""}
-  `;
 }
 
 function centrerSurChauffeurs(meme) {
@@ -8096,6 +8194,5 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
 
 rendreLignesVehiculesModale([{}]);
 </script>
-<script src="push-natif.js"></script>
 </body>
 </html>

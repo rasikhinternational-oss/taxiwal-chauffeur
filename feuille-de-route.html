@@ -591,7 +591,7 @@ window.onerror = function(msg, url, line, col, err) {
   #bloc-caisse .caisse-alerte{ background:#fdecee; color:var(--rouge); border-radius:8px; padding:9px 11px; font-size:.85rem; margin-top:8px; font-weight:600; }
   .sous-titre-mini{ font-size:.72rem; color:var(--gris); margin:8px 0 4px; }
   #btn-ajouter-ligne{ width:100%; padding:12px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.9rem; margin-top:6px; }
-  #btn-signer{ width:100%; padding:14px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-weight:600; margin-top:10px; }
+  #btn-signer{ width:100%; padding:14px; border-radius:10px; border:2px dashed #555; background:#fff; color:#333; font-weight:700; margin-top:10px; }
   #avertissement{ font-size:.78rem; color:var(--gris); margin-top:10px; background:#eef0ee; padding:10px; border-radius:8px; }
   #statut-feuille{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#dcdcda; color:var(--gris); }
   #statut-feuille.verrouillee{ background:#f9d6d6; color:#b83232; }
@@ -756,9 +756,17 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="contenu-caisse">Chargement…</div>
 </div>
 
+<div style="height:90px"></div>
 <div class="bloc" id="bloc-signature">
-  <p id="avertissement">Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
-  <button id="btn-signer">Signer et clôturer la feuille</button>
+  <h2>🌙 Fin de journée</h2>
+  <p id="avertissement">À faire <b>seulement quand ta journée est terminée</b>. Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
+  <button id="btn-signer" type="button">✍️ Ma journée est finie : signer la feuille</button>
+  <div id="etape-signature" style="display:none; margin-top:12px; border:2px solid #b3141b; border-radius:12px; padding:12px; background:#fff7f7;">
+    <div id="signature-manque" style="color:#b3141b; font-weight:700; white-space:pre-wrap;"></div>
+    <label style="display:flex; gap:10px; align-items:center; margin:10px 0; font-weight:700;"><input type="checkbox" id="chk-fin-journee" style="width:26px; height:26px;"> Oui, ma journée est terminée</label>
+    <button id="btn-signer-confirmer" type="button" disabled style="width:100%; padding:14px; border-radius:10px; border:none; background:#b3141b; color:#fff; font-weight:800; opacity:.45;">🔒 Je signe et je clôture ma feuille</button>
+    <button id="btn-signer-annuler" type="button" style="width:100%; padding:12px; border-radius:10px; border:1px solid #ccc; background:#fff; margin-top:8px;">Annuler</button>
+  </div>
 </div>
 </div>
 
@@ -2360,8 +2368,36 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
   afficherLignes();
 });
 
-document.getElementById("btn-signer").addEventListener("click", async () => {
-  if (!confirm("Confirmer la signature ? Tous les véhicules utilisés aujourd'hui seront verrouillés et ne pourront plus être modifiés.")) return;
+// Signature en 2 étapes (bouton éloigné de « Clôturer cette course » pour éviter les erreurs)
+function manquesSignature() {
+  const f = feuilleActuelle || {};
+  const champs = [["heure_debut","heure de début"],["heure_fin","heure de fin"],["index_km_debut","index km début"],["index_km_fin","index km fin"],
+    ["taximetre_debut","taximètre début"],["taximetre_fin","taximètre fin"],["prise_en_charge_debut","prise en charge début"],["prise_en_charge_fin","prise en charge fin"],
+    ["index_km_totaux_debut","km totaux début"],["index_km_totaux_fin","km totaux fin"],["km_en_charge_debut","km en charge début"],["km_en_charge_fin","km en charge fin"],
+    ["chutes_debut","chutes début"],["chutes_fin","chutes fin"]];
+  const m = champs.filter(([c]) => f[c] === null || f[c] === undefined || f[c] === "").map(([, l]) => l);
+  const ouvertes = (lignesActuelles || []).filter(l => !l.cloturee).length;
+  if (ouvertes) m.push(ouvertes + " course(s) pas encore clôturée(s)");
+  return m;
+}
+document.getElementById("btn-signer").addEventListener("click", () => {
+  const etape = document.getElementById("etape-signature");
+  const m = manquesSignature();
+  document.getElementById("signature-manque").textContent = m.length ? "❌ Impossible de signer, il manque :\n• " + m.join("\n• ") : "";
+  document.getElementById("chk-fin-journee").checked = false;
+  document.getElementById("chk-fin-journee").disabled = m.length > 0;
+  const b = document.getElementById("btn-signer-confirmer"); b.disabled = true; b.style.opacity = ".45";
+  etape.style.display = "block";
+  etape.scrollIntoView({ block: "center", behavior: "smooth" });
+});
+document.getElementById("chk-fin-journee").addEventListener("change", (e) => {
+  const b = document.getElementById("btn-signer-confirmer");
+  b.disabled = !e.target.checked || manquesSignature().length > 0; b.style.opacity = b.disabled ? ".45" : "1";
+});
+document.getElementById("btn-signer-annuler").addEventListener("click", () => { document.getElementById("etape-signature").style.display = "none"; });
+document.getElementById("btn-signer-confirmer").addEventListener("click", async () => {
+  if (manquesSignature().length || !document.getElementById("chk-fin-journee").checked) return;
+  document.getElementById("etape-signature").style.display = "none";
 
   const idsAVerrouiller = toutesLesFeuillesDuJour.filter(f => !f.verrouillee).map(f => f.id);
   const { error } = await supabase.from("feuilles_route")
