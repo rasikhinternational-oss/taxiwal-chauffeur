@@ -375,7 +375,7 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- ÉCRAN CONNEXION -->
 <div id="ecran-login">
   <label for="email">Adresse email</label>
-  <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email">
+  <input type="email" id="email" placeholder="votre.email@exemple.com" autocomplete="email">
   <div id="bloc-otp" style="display:none;">
     <label for="otp">Code reçu par email</label>
     <input type="text" id="otp" inputmode="numeric" placeholder="123456">
@@ -393,9 +393,9 @@ window.onerror = function(msg, url, line, col, err) {
 <div id="ecran-profil-setup" style="display:none;">
   <h2 style="text-align:center; font-size:1.1rem;">Bienvenue 👋</h2>
   <p style="text-align:center; color:var(--gris); font-size:.9rem; margin-top:-8px;">Encore une étape avant de réserver.</p>
-  <label for="profil-nom">Ton nom</label>
+  <label for="profil-nom">Votre nom</label>
   <input type="text" id="profil-nom" placeholder="Nom et prénom">
-  <label for="profil-tel">Ton téléphone</label>
+  <label for="profil-tel">Votre téléphone</label>
   <input type="tel" id="profil-tel" placeholder="04xx xx xx xx">
   <button id="btn-creer-profil">Continuer</button>
   <p id="erreur-profil"></p>
@@ -415,13 +415,22 @@ window.onerror = function(msg, url, line, col, err) {
   <!-- Onglet Réserver -->
   <section id="section-reserver" class="visible">
     <span class="badge-marque">TAXI WAL</span>
+    <div id="bloc-confiance" style="background:#f1f7f2; border:1px solid #cfe6d5; border-radius:12px; padding:10px 12px; margin:8px 0 12px; font-size:.84rem; line-height:1.45; color:#1f3d2a;">
+      <div style="font-weight:800; margin-bottom:4px;">Nos garanties</div>
+      <div>✅ Chauffeurs licenciés — licence taxi n°04 Ville de Saint-Ghislain</div>
+      <div>✅ Prix fixé à l'avance par notre équipe</div>
+      <div>✅ Paiement sécurisé : Bancontact ou virement</div>
+      <div>✅ 15 minutes d'attente incluses</div>
+      <div>✅ Contact WhatsApp : <a href="https://wa.me/32495353594" target="_blank" rel="noopener">0495 35 35 94</a></div>
+      <div id="bloc-avis" style="display:none; margin-top:8px;"></div>
+    </div>
     <div id="info-process">
       <b>Comment ça se passe :</b>
       <ol>
-        <li>Tu envoies ta demande de course</li>
-        <li>Notre équipe la confirme et t'envoie un prix</li>
-        <li>Tu acceptes le prix, puis tu payes un acompte de 30%</li>
-        <li>Dès que l'acompte est reçu, ta course est confirmée</li>
+        <li>Vous envoyez votre demande de course</li>
+        <li>Notre équipe vous envoie un prix fixé à l'avance</li>
+        <li>Vous acceptez le prix, puis vous payez à l'avance (acompte ou totalité)</li>
+        <li>Dès réception du paiement, votre course est confirmée. Impossible de payer à l'avance ? Contactez le dispatch (WhatsApp 0495 35 35 94)</li>
       </ol>
     </div>
     <div class="champ">
@@ -495,18 +504,24 @@ window.onerror = function(msg, url, line, col, err) {
       <label>Bagages (optionnel)</label>
       <input type="number" id="input-bagages" value="0" min="0">
     </div>
+    <div class="champ" id="champ-aeroport" style="display:none;">
+      <label for="input-numero-vol">✈️ Numéro de vol (optionnel)</label>
+      <input type="text" id="input-numero-vol" placeholder="ex : FR1234" autocapitalize="characters">
+      <label class="ligne-checkbox-marche" style="display:flex; gap:10px; align-items:center; margin-top:8px;"><input type="checkbox" id="input-accueil-panneau" style="width:22px; height:22px; flex-shrink:0;"> 🪧 Accueil avec panneau à votre nom</label>
+      <input type="text" id="input-nom-panneau" placeholder="Nom à afficher sur le panneau" style="display:none; margin-top:6px;">
+    </div>
     <div class="champ">
       <label>Notes pour le chauffeur (optionnel)</label>
-      <textarea id="input-notes" placeholder="Ex : siège bébé, gros bagages, vol à confirmer…"></textarea>
+      <textarea id="input-notes" placeholder="Ex : siège bébé, gros bagages…"></textarea>
     </div>
     <div class="champ">
       <label class="ligne-checkbox-marche">
-        <input type="checkbox" id="input-ouverte-marche" checked>
-        📢 Envoyer aussi ma demande à tous les chauffeurs disponibles (recevez plusieurs propositions de prix, en plus du prix que notre équipe peut vous envoyer)
+        <input type="checkbox" id="input-ouverte-marche" checked style="display:none">
+        ✅ Notre équipe vous répond rapidement avec le prix.
       </label>
     </div>
     <p id="erreur-reservation"></p>
-    <p class="mention-conditions" id="mention-conditions-reservation">En réservant, tu acceptes nos <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button>.</p>
+    <p class="mention-conditions" id="mention-conditions-reservation">En réservant, vous acceptez nos <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button>.</p>
     <button id="btn-reserver">Demander cette course</button>
   </section>
 
@@ -546,7 +561,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button id="btn-deconnexion" class="secondaire">Se déconnecter</button>
     <div style="margin-top:28px; padding-top:16px; border-top:1px solid #e3e3e0;">
       <button id="btn-supprimer-compte" type="button" style="width:100%; padding:13px; border-radius:12px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700;">🗑️ Supprimer mon compte</button>
-      <p style="font-size:.78rem; color:var(--gris); margin-top:6px; text-align:center;">Supprime définitivement ton compte, tes adresses favorites et tes données personnelles. Tes demandes en attente sont annulées.</p>
+      <p style="font-size:.78rem; color:var(--gris); margin-top:6px; text-align:center;">Supprime définitivement votre compte, vos adresses favorites et vos données personnelles. Vos demandes en attente sont annulées.</p>
     </div>
   </section>
 
@@ -602,16 +617,16 @@ window.onerror = function(msg, url, line, col, err) {
   <!-- Onglet Messages (chat avec Taxi Wal) -->
   <section id="section-messages">
     <div class="chat-entete">💬 Discussion avec Taxi Wal
-      <small>Écris-nous ici, on te répond directement dans l'application. Urgence : <a href="tel:+32495353594">0495 35 35 94</a></small>
+      <small>Écrivez-nous ici, nous vous répondons directement dans l'application. Urgence : <a href="tel:+32495353594">0495 35 35 94</a></small>
     </div>
     <div id="chat-fil" class="chat-fil"><div class="chat-vide">Chargement…</div></div>
-    <div id="chat-ferme" class="chat-ferme" style="display:none;">🔒 Le chat est fermé : tu n'as pas de réservation en cours. Pour discuter avec Taxi Wal, fais une nouvelle réservation — le chat se rouvrira automatiquement.
+    <div id="chat-ferme" class="chat-ferme" style="display:none;">🔒 Le chat est fermé : vous n'avez pas de réservation en cours. Pour discuter avec Taxi Wal, faites une nouvelle réservation — le chat se rouvrira automatiquement.
       <button type="button" id="chat-btn-reserver" class="vert">🚖 Réserver une course</button>
     </div>
     <div class="chat-composer" id="chat-composer">
       <div id="chat-chip" class="chat-chip" style="display:none;"></div>
       <div class="chat-saisie">
-        <textarea id="chat-texte" rows="1" maxlength="2000" placeholder="Écris ton message…"></textarea>
+        <textarea id="chat-texte" rows="1" maxlength="2000" placeholder="Écrivez votre message…"></textarea>
         <button type="button" id="chat-envoyer" class="vert">Envoyer</button>
       </div>
       <p id="chat-erreur" style="color:var(--rouge); font-size:.85rem; margin:6px 0 0; min-height:0;"></p>
@@ -799,7 +814,7 @@ function echeancePaiementCourse(course) {
 if (!window.supabase) {
   document.body.insertAdjacentHTML("afterbegin",
     '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
-    'Problème de connexion internet — recharge la page.</div>');
+    'Problème de connexion internet — rechargez la page.</div>');
   throw new Error("supabase-js non chargé (pas de connexion internet ?)");
 }
 const stockageMemoire = {};
@@ -843,11 +858,11 @@ document.getElementById("btn-envoyer-code").addEventListener("click", async () =
   const email = document.getElementById("email").value.trim();
   const erreur = document.getElementById("erreur-login");
   erreur.textContent = "";
-  if (!email) { erreur.textContent = "Entre ton adresse email."; return; }
+  if (!email) { erreur.textContent = "Entrez votre adresse e-mail."; return; }
 
   if (estCompteDemo(email)) {
     const mdp = document.getElementById("mdp-demo").value;
-    if (!mdp) { erreur.textContent = "Entre le mot de passe."; return; }
+    if (!mdp) { erreur.textContent = "Entrez le mot de passe."; return; }
     btn.disabled = true; btn.textContent = "Connexion…";
     const { error } = await supabase.auth.signInWithPassword({ email: EMAIL_DEMO, password: mdp });
     btn.disabled = false; btn.textContent = "Se connecter";
@@ -874,19 +889,19 @@ document.getElementById("btn-envoyer-code").addEventListener("click", async () =
       if (error) { erreur.textContent = "Erreur : " + error.message; btn.disabled = false; btn.textContent = texteOriginal; return; }
     }
     const aide = document.getElementById("aide-code-email");
-    if (aide) aide.innerHTML = "📩 Un e-mail <b>« Ton code Taxi Wal »</b> vient d'être envoyé à " + email.replace(/[<>&]/g, "") + ".<br>Tape le <b>code à 6 chiffres</b> ci-dessous. Pas reçu ? Regarde dans tes <b>spams</b> (ou « Promotions »).";
+    if (aide) aide.innerHTML = "📩 Un e-mail <b>« Votre code Taxi Wal »</b> vient d'être envoyé à " + email.replace(/[<>&]/g, "") + ".<br>Tapez le <b>code à 6 chiffres</b> ci-dessous. Pas reçu ? Regardez dans vos <b>spams</b> (ou « Promotions »).";
 
     if (!document.getElementById("aide-code-email")) {
       const p = document.createElement("p"); p.id = "aide-code-email";
       p.style.cssText = "font-size:.88rem; color:#333; background:#eef4fb; border:1px solid #bcd3ee; border-radius:10px; padding:10px 12px; margin:10px 0;";
       document.getElementById("bloc-otp").prepend(p);
-      p.innerHTML = "📩 Un e-mail <b>« Ton code Taxi Wal »</b> vient d'être envoyé à " + email.replace(/[<>&]/g, "") + ".<br>Tape le <b>code à 6 chiffres</b> ci-dessous. Pas reçu ? Regarde dans tes <b>spams</b>.";
+      p.innerHTML = "📩 Un e-mail <b>« Votre code Taxi Wal »</b> vient d'être envoyé à " + email.replace(/[<>&]/g, "") + ".<br>Tapez le <b>code à 6 chiffres</b> ci-dessous. Pas reçu ? Regardez dans vos <b>spams</b>.";
     }
     document.getElementById("bloc-otp").style.display = "block";
     btn.style.display = "none";
     document.getElementById("btn-valider-code").style.display = "block";
   } catch (e) {
-    erreur.textContent = "Connexion impossible. Vérifie ta connexion internet et réessaie.";
+    erreur.textContent = "Connexion impossible. Vérifiez votre connexion internet et réessayez.";
     btn.disabled = false;
     btn.textContent = texteOriginal;
   }
@@ -925,9 +940,9 @@ document.getElementById("btn-creer-profil").addEventListener("click", async () =
   const nom = document.getElementById("profil-nom").value.trim();
   const tel = document.getElementById("profil-tel").value.trim();
   const erreur = document.getElementById("erreur-profil");
-  if (!nom || !tel) { erreur.textContent = "Merci de remplir ton nom et ton téléphone."; return; }
+  if (!nom || !tel) { erreur.textContent = "Merci de remplir votre nom et votre téléphone."; return; }
   const chiffresTel = tel.replace(/\D/g, "");
-  if (nom.length < 2) { erreur.textContent = "Merci d'indiquer ton nom et prénom."; return; }
+  if (nom.length < 2) { erreur.textContent = "Merci d'indiquer votre nom et prénom."; return; }
   if (chiffresTel.length < 9 || chiffresTel.length > 15) { erreur.textContent = "Ce numéro de téléphone n'est pas valide (ex : 0478 12 34 56)."; return; }
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -945,6 +960,10 @@ document.getElementById("btn-creer-profil").addEventListener("click", async () =
 // ---------- DÉMARRAGE ESPACE CLIENT ----------
 function demarrerEspaceClient() {
   document.getElementById("ecran-principal").style.display = "block";
+  document.querySelector("nav.onglets").style.display = "";
+  const favBtn = document.getElementById("btn-gerer-favoris"); if (favBtn) favBtn.style.display = "";
+  const msgResa = document.getElementById("msg-connexion-resa"); if (msgResa) msgResa.remove();
+  const envoyerApres = window.__demandeEnAttente === true;
   document.getElementById("sous-titre").textContent = "Bonjour " + (monProfil.nom || "").split(" ")[0];
   document.getElementById("btn-menu-client").style.display = "block";
 
@@ -956,9 +975,11 @@ function demarrerEspaceClient() {
   }
 
   // Pré-remplit la date avec "maintenant + 1h" par confort
-  const dansUneHeure = new Date(Date.now() + 60 * 60000);
-  dansUneHeure.setMinutes(0);
-  document.getElementById("input-date").value = dansUneHeure.toISOString().slice(0, 16);
+  if (!envoyerApres) {
+    const dansUneHeure = new Date(Date.now() + 60 * 60000);
+    dansUneHeure.setMinutes(0);
+    document.getElementById("input-date").value = dansUneHeure.toISOString().slice(0, 16);
+  }
 
   chargerMesCourses();
   setInterval(chargerMesCourses, 20000);
@@ -966,6 +987,14 @@ function demarrerEspaceClient() {
   chargerAdressesFavorites();
   if (typeof window.initFactureClient === "function") window.initFactureClient();
   if (typeof window.initChatClient === "function") window.initChatClient();
+  if (envoyerApres) {
+    setTimeout(() => {
+      const nom = document.getElementById("rz-nom"), tel = document.getElementById("rz-tel");
+      if (nom && !nom.value) nom.value = monProfil.nom || "";
+      if (tel && !tel.value) tel.value = monProfil.telephone || "";
+      document.getElementById("btn-reserver").click();
+    }, 300);
+  }
 }
 
 // ---------- Adresses favorites (domicile, travail...) ----------
@@ -1077,6 +1106,90 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
   });
 });
 
+// ---------- AÉROPORT : numéro de vol + accueil panneau ----------
+function ressembleAeroport(t) {
+  return /a[ée]roport|airport|zaventem|charleroi|\bcrl\b|\bbru\b|lesquin|lille|li[èe]ge|bierset/i.test(t || "");
+}
+function estTrajetAeroport() {
+  return ressembleAeroport(document.getElementById("input-depart").value) || ressembleAeroport(document.getElementById("input-arrivee").value);
+}
+function majChampAeroport() {
+  const champ = document.getElementById("champ-aeroport");
+  if (!champ) return;
+  champ.style.display = estTrajetAeroport() ? "block" : "none";
+  document.getElementById("input-nom-panneau").style.display = document.getElementById("input-accueil-panneau").checked ? "block" : "none";
+}
+function champsAeroport() {
+  if (!estTrajetAeroport()) return {};
+  const vol = document.getElementById("input-numero-vol").value.trim().toUpperCase();
+  const panneau = document.getElementById("input-accueil-panneau").checked;
+  const nom = document.getElementById("input-nom-panneau").value.trim();
+  const r = {};
+  if (vol) r.numero_vol = vol;
+  if (panneau) { r.accueil_panneau = true; r.nom_panneau = nom || (monProfil && monProfil.nom) || null; }
+  return r;
+}
+function notesAvecAeroport() {
+  const notes = document.getElementById("input-notes").value.trim();
+  const a = champsAeroport(), extra = [];
+  if (a.numero_vol) extra.push("✈️ Vol : " + a.numero_vol);
+  if (a.accueil_panneau) extra.push("🪧 Accueil avec panneau" + (a.nom_panneau ? " : " + a.nom_panneau : ""));
+  return [notes, extra.join(" · ")].filter(Boolean).join("\n");
+}
+["input-depart", "input-arrivee"].forEach(id => ["input", "change"].forEach(ev => document.getElementById(id).addEventListener(ev, majChampAeroport)));
+document.getElementById("input-accueil-panneau").addEventListener("change", majChampAeroport);
+document.getElementById("rr-inverser") && document.getElementById("rr-inverser").addEventListener("click", () => setTimeout(majChampAeroport, 60));
+
+// ---------- RÉSERVATION SANS ÊTRE CONNECTÉ ----------
+// Le formulaire reste en mémoire (champs inchangés) pendant la connexion, puis la demande part automatiquement.
+function afficherModeVisiteur() {
+  document.getElementById("ecran-login").style.display = "none";
+  document.getElementById("ecran-principal").style.display = "block";
+  document.querySelector("nav.onglets").style.display = "none";
+  const fav = document.getElementById("btn-gerer-favoris"); if (fav) fav.style.display = "none";
+  if (!document.getElementById("input-date").value) {
+    const d = new Date(Date.now() + 60 * 60000); d.setMinutes(0, 0, 0);
+    document.getElementById("input-date").value = dateLocaleISO(d);
+  }
+}
+function demanderConnexionPourReserver() {
+  window.__demandeEnAttente = true;
+  const nom = document.getElementById("rz-nom"), tel = document.getElementById("rz-tel");
+  if (nom && !document.getElementById("profil-nom").value) document.getElementById("profil-nom").value = nom.value.trim();
+  if (tel && !document.getElementById("profil-tel").value) document.getElementById("profil-tel").value = tel.value.trim();
+  document.getElementById("ecran-principal").style.display = "none";
+  const login = document.getElementById("ecran-login");
+  login.style.display = "block";
+  let msg = document.getElementById("msg-connexion-resa");
+  if (!msg) {
+    msg = document.createElement("p"); msg.id = "msg-connexion-resa";
+    msg.style.cssText = "font-size:.9rem; background:#eef4fb; border:1px solid #bcd3ee; border-radius:10px; padding:10px 12px; margin:0 0 10px;";
+    msg.innerHTML = "🔐 Dernière étape : connectez-vous avec votre adresse e-mail (code reçu par e-mail). Votre demande est gardée et sera envoyée automatiquement juste après. <button type='button' id='btn-retour-formulaire' style='display:block; margin-top:8px; background:transparent; border:1px solid #bcd3ee; color:inherit; border-radius:8px; padding:6px 10px; width:auto;'>← Revenir au formulaire</button>";
+    login.prepend(msg);
+    document.getElementById("btn-retour-formulaire").addEventListener("click", () => { window.__demandeEnAttente = false; afficherModeVisiteur(); });
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ---------- AVIS CLIENTS RÉELS (affichés seulement s'ils existent en base) ----------
+async function chargerAvisReels() {
+  const bloc = document.getElementById("bloc-avis");
+  if (!bloc) return;
+  try {
+    // Les règles d'accès ne laissent voir au client que ses propres courses : on passe par une fonction
+    // publique « avis_clients_publics » (note_client / commentaire_client). Si elle n'existe pas ou s'il n'y a
+    // aucun avis réel, rien n'est affiché.
+    const { data, error } = await supabase.rpc("avis_clients_publics");
+    if (error || !data || !data.length) { bloc.style.display = "none"; return; }
+    const moy = data.reduce((t, c) => t + Number(c.note_client), 0) / data.length;
+    const commentaires = data.filter(c => c.commentaire_client && c.commentaire_client.trim()).slice(0, 3);
+    bloc.innerHTML = `<div style="font-weight:800;">⭐ ${moy.toFixed(1).replace(".", ",")} / 5 · ${data.length} avis</div>` +
+      commentaires.map(c => `<div style="margin-top:4px; font-style:italic;">« ${esc(c.commentaire_client.trim().slice(0, 160))} » — ${"★".repeat(Number(c.note_client))}</div>`).join("");
+    bloc.style.display = "block";
+  } catch (e) { bloc.style.display = "none"; }
+}
+chargerAvisReels();
+
 // ---------- RÉSERVER UNE COURSE ----------
 document.getElementById("btn-reserver").addEventListener("click", async () => {
   const erreur = document.getElementById("erreur-reservation");
@@ -1093,6 +1206,8 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
   if (window.validerDemandeClient && !(await window.validerDemandeClient())) return;
 
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !monProfil) { demanderConnexionPourReserver(); return; }
+  window.__demandeEnAttente = false;
   const { data: nouvelleCourse, error } = await supabase.from("courses").insert({
     client_id: user.id,
     origine: "client",
@@ -1111,7 +1226,8 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
     aller_retour: !!(document.getElementById("rz-aller-retour") && document.getElementById("rz-aller-retour").checked),
     distance_km: (window.__distanceTrajetKm ? Math.round(window.__distanceTrajetKm * 10) / 10 : null),
     duree_min: (window.__dureeTrajetMin ? Math.round(window.__dureeTrajetMin) : null),
-    notes: document.getElementById("input-notes").value.trim()
+    notes: notesAvecAeroport(),
+    ...champsAeroport()
   }).select("id, numero_reservation").maybeSingle();
 
   if (error) { erreur.textContent = "Erreur : " + error.message; return; }
@@ -1122,7 +1238,10 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
   document.getElementById("input-vehicule-souhaite").value = "";
   document.getElementById("input-chauffeur-prefere").value = "";
   document.getElementById("input-notes").value = "";
-  alert("Demande envoyée !" + (numeroResa ? " Ton numéro de réservation : " + numeroResa + "." : "") + " Elle doit être confirmée par notre équipe. Tu vas d'abord recevoir un prix à accepter, puis un acompte de 30% te sera demandé pour confirmer la course. Suis l'avancement dans \"Mes courses\".");
+  ["input-numero-vol", "input-nom-panneau"].forEach(id => { document.getElementById(id).value = ""; });
+  document.getElementById("input-accueil-panneau").checked = false;
+  majChampAeroport();
+  alert("Demande envoyée !" + (numeroResa ? " Votre numéro de réservation : " + numeroResa + "." : "") + " Notre équipe vous répond rapidement avec le prix. Après acceptation, le paiement se fait à l'avance (acompte ou totalité) pour confirmer la course ; si vous ne pouvez pas payer à l'avance, contactez le dispatch (WhatsApp 0495 35 35 94). Suivez l'avancement dans \"Mes courses\".");
   document.querySelector('[data-onglet="mes-courses"]').click();
   chargerMesCourses();
 });
@@ -1282,7 +1401,7 @@ function lignePrixClient(course) {
   if (course.statut !== "annulee" && reste !== null && deja > 0) {
     txt += ` · ${course.paiement_choisi === "total" && !(reste > 0) ? "Payé" : "Acompte payé"} : ${esc(eu(deja))}`;
     if (reste > 0) txt += ` · <b>Reste à payer : ${esc(eu(reste))}</b>`;
-    else if (reste < 0) txt += ` · <b>À te rembourser : ${esc(eu(-reste))}</b>`;
+    else if (reste < 0) txt += ` · <b>À vous rembourser : ${esc(eu(-reste))}</b>`;
   } else if (course.statut !== "annulee" && reste !== null && reste > 0 && course.prix_precedent != null) {
     txt += ` · <b>Reste à payer : ${esc(eu(reste))}</b>`;
   }
@@ -1410,12 +1529,12 @@ async function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-paiement";
     bloc.innerHTML = `
-      <div style="font-weight:700; margin-bottom:8px; ${exige === "choix" ? "" : "display:none;"}">Comment veux-tu payer ?</div>
+      <div style="font-weight:700; margin-bottom:8px; ${exige === "choix" ? "" : "display:none;"}">Comment souhaitez-vous payer ?</div>
       <div class="choix-paiement" style="${exige === "choix" ? "" : "display:none;"}">
         <button type="button" data-choix="acompte" class="${payeTout ? "" : "actif"}">Acompte<br><b>${esc(Number(course.acompte_montant || 0).toFixed(2))} €</b><small>le reste au chauffeur</small></button>
         <button type="button" data-choix="total" class="${payeTout ? "actif" : ""}">Totalité<br><b>${esc(totalCourse.toFixed(2))} €</b><small>tout est réglé</small></button>
       </div>
-      <div style="font-weight:700; margin:10px 0 4px;">${payeTout ? "Montant total à payer" : "Acompte à payer (30 %)"} : ${esc(montantAPayer)} €</div>
+      <div style="font-weight:700; margin:10px 0 4px;">${payeTout ? "Montant total à payer" : "Acompte à payer"} : ${esc(montantAPayer)} €</div>
       ${exige === "total" ? `<div class="note-instant" style="margin-top:0;">Pour cette course, Taxi Wal demande le paiement de la totalité à l'avance.</div>` : ""}
       ${exige === "acompte" ? `<div class="note-instant" style="margin-top:0;">Le reste (${esc((totalCourse - Number(course.acompte_montant || 0)).toFixed(2))} €) se paie au chauffeur.</div>` : ""}
       ${(() => { const ech = echeancePaiementCourse(course); return `<div class="echeance-paiement${ech.urgent ? " urgent" : ""}">${esc(ech.texte)}</div>`; })()}
@@ -1423,30 +1542,30 @@ async function construireCarteCourseClient(course) {
         <input type="checkbox" class="cb-accepte-conditions" ${course.conditions_acceptees_at ? "checked" : ""}>
         <span>J'ai lu et j'accepte les <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button> <span style="color:var(--rouge);">*</span></span>
       </label>
-      <div class="note-instant aide-conditions" style="color:var(--rouge); margin-top:0; ${course.conditions_acceptees_at ? "display:none;" : ""}">Coche la case ci-dessus pour pouvoir payer.</div>
+      <div class="note-instant aide-conditions" style="color:var(--rouge); margin-top:0; ${course.conditions_acceptees_at ? "display:none;" : ""}">Cochez la case ci-dessus pour pouvoir payer.</div>
       <div class="zone-paiement-en-ligne" style="display:none;">
         <button type="button" class="btn-payer-en-ligne">📱 Payer avec Bancontact · ${esc(montantAPayer)} €</button>
-        <div class="payer-moyens">Paiement sécurisé : scanne le QR avec l'app Bancontact ou ton app bancaire</div>
+        <div class="payer-moyens">Paiement sécurisé : scannez le QR avec l'app Bancontact ou votre app bancaire</div>
         <div class="payer-ou">— ou par virement (gratuit) —</div>
       </div>
       ${(() => {
         const qrSrc = qrPaiementDataUrl({ montant: montantAPayer, communication });
         if (!qrSrc) return "";
         return `<div class="bloc-qr-epc">
-        <div style="font-weight:700; margin:12px 0 4px;">📱 Scanne avec ton appli bancaire</div>
-        <div class="note-instant" style="color:var(--gris); margin-top:0; text-align:center;">Le montant et la communication sont déjà remplis. Tu n'as qu'à valider.</div>
+        <div style="font-weight:700; margin:12px 0 4px;">📱 Scannez avec votre appli bancaire</div>
+        <div class="note-instant" style="color:var(--gris); margin-top:0; text-align:center;">Le montant et la communication sont déjà remplis. Vous n'avez qu'à valider.</div>
         <img src="${qrSrc}" alt="QR code de virement (montant ${esc(montantAPayer)} €)" style="width:220px; height:220px; padding:14px; background:#fff; image-rendering:pixelated;">
-        <div class="note-instant" style="color:var(--gris);">Sur le même téléphone ? Fais une capture d'écran du QR et ouvre-la depuis ton appli bancaire (option « scanner depuis une image »).</div>
+        <div class="note-instant" style="color:var(--gris);">Sur le même téléphone ? Faites une capture d'écran du QR et ouvrez-la depuis votre appli bancaire (option « scanner depuis une image »).</div>
       </div>`;
       })()}
       <div class="ligne-info">Bénéficiaire<br><b>${esc(COMPTE_BENEFICIAIRE)}</b></div>
       <div class="ligne-info">IBAN<br><b>${esc(COMPTE_IBAN)}</b></div>
       <div class="ligne-info">Communication (important)<br><b>${esc(communication)}</b></div>
       <button type="button" id="btn-copier-iban">📋 Copier l'IBAN</button>
-      <div class="note-instant">⚡ Merci de faire un virement instantané si ta banque le propose : on reçoit la confirmation en quelques secondes et on peut valider ta course tout de suite.</div>
+      <div class="note-instant">⚡ Merci de faire un virement instantané si votre banque le propose : nous recevons la confirmation en quelques secondes et pouvons valider votre course tout de suite.</div>
       <div class="bloc-payer-tel">
-        <div style="font-weight:700; margin:12px 0 6px;">📲 Tu réserves depuis ce téléphone ?</div>
-        <div class="note-instant" style="color:var(--gris); margin-top:0;">Ouvre l'app de ta banque → <b>Virement</b>, puis colle les infos ci-dessous (ou enregistre le QR : la plupart des apps bancaires belges savent lire un QR depuis tes photos).</div>
+        <div style="font-weight:700; margin:12px 0 6px;">📲 Vous réservez depuis ce téléphone ?</div>
+        <div class="note-instant" style="color:var(--gris); margin-top:0;">Ouvrez l'app de votre banque → <b>Virement</b>, puis collez les infos ci-dessous (ou enregistrez le QR : la plupart des apps bancaires belges savent lire un QR depuis vos photos).</div>
         <button type="button" class="btn-copie" data-copie="iban">📋 Copier l'IBAN</button>
         <button type="button" class="btn-copie" data-copie="montant">📋 Copier le montant (${esc(montantAPayer)} €)</button>
         <button type="button" class="btn-copie" data-copie="comm">📋 Copier la communication</button>
@@ -1454,13 +1573,13 @@ async function construireCarteCourseClient(course) {
       </div>
       <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">${payeTout ? "J'ai payé la totalité" : "J'ai payé l'acompte"}</button>
       <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;">🙋 Je ne peux pas payer à l'avance</button>
-      ${course.message_client_paiement ? `<div class="lien-chat-paiement">✅ Ton message a été envoyé. Ta conversation est dans l'onglet 💬 Messages : Taxi Wal te répond là.<button type="button" class="btn-ouvrir-chat-paiement">💬 Ouvrir mes messages</button></div>` : ""}
+      ${course.message_client_paiement ? `<div class="lien-chat-paiement">✅ Votre message a été envoyé. Votre conversation est dans l'onglet 💬 Messages : Taxi Wal vous répond là.<button type="button" class="btn-ouvrir-chat-paiement">💬 Ouvrir mes messages</button></div>` : ""}
       <div class="bloc-contact-dispatch" style="display:none;">
-        <div class="note-instant" style="color:var(--gris);">Pas de souci, on reste ouverts : explique-nous ta situation, on trouve une solution ensemble (paiement à bord, facture…).</div>
+        <div class="note-instant" style="color:var(--gris);">Pas de souci : expliquez-nous votre situation ou contactez le dispatch, nous trouverons une solution ensemble.</div>
         <textarea class="message-paiement" rows="3" placeholder="Ex : je n'ai pas de carte bancaire, je préfère payer en espèces au chauffeur…" style="width:100%; box-sizing:border-box; margin-top:8px; padding:10px; border-radius:10px; border:1px solid #cfcfcd; font-size:.95rem;">${esc(course.message_client_paiement || "")}</textarea>
         <button type="button" class="btn-envoyer-message-paiement vert" style="margin-top:8px;">📨 Envoyer mon message à Taxi Wal</button>
-        ${course.message_client_paiement ? `<div class="note-instant" style="color:var(--vert);">✅ Message envoyé. Notre équipe te recontacte rapidement.</div>` : ""}
-        <div class="note-instant" style="color:var(--gris); margin-top:10px;">Ou contacte-nous directement :</div>
+        ${course.message_client_paiement ? `<div class="note-instant" style="color:var(--vert);">✅ Message envoyé. Notre équipe vous recontacte rapidement.</div>` : ""}
+        <div class="note-instant" style="color:var(--gris); margin-top:10px;">Ou contactez-nous directement :</div>
         <a class="btn-contact wa" target="_blank" rel="noopener">💬 Écrire sur WhatsApp</a>
         <a class="btn-contact mail">✉️ Envoyer un e-mail</a>
       </div>
@@ -1478,7 +1597,7 @@ async function construireCarteCourseClient(course) {
         const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id, retour: location.origin + location.pathname } });
         if (error || !data || !data.url) {
           btn.disabled = false; btn.textContent = "📱 Payer avec Bancontact · " + montantAPayer + " €";
-          alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement ci-dessous.");
+          alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Vous pouvez payer par virement ci-dessous.");
           return;
         }
         window.location.href = data.url;
@@ -1512,12 +1631,12 @@ async function construireCarteCourseClient(course) {
     }));
     bloc.querySelector(".btn-envoyer-message-paiement").addEventListener("click", async (e) => {
       const texte = bloc.querySelector(".message-paiement").value.trim();
-      if (!texte) { alert("Écris d'abord ton message."); return; }
+      if (!texte) { alert("Écrivez d'abord votre message."); return; }
       e.target.disabled = true; e.target.textContent = "Envoi…";
       const { error } = await supabase.rpc("client_message_paiement", { p_course: course.id, p_message: texte });
       if (error) { e.target.disabled = false; e.target.textContent = "📨 Envoyer mon message à Taxi Wal"; alert("Erreur : " + error.message); return; }
       chargerMesCourses();
-      if (confirm("✅ Message envoyé ! Notre équipe te répond rapidement.\n\nTa conversation est dans l'onglet 💬 Messages. L'ouvrir maintenant ?")) {
+      if (confirm("✅ Message envoyé ! Notre équipe vous répond rapidement.\n\nVotre conversation est dans l'onglet 💬 Messages. L'ouvrir maintenant ?")) {
         if (typeof window.ouvrirChatClient === "function") window.ouvrirChatClient(course.id);
       }
     });
@@ -1540,7 +1659,7 @@ async function construireCarteCourseClient(course) {
     });
     bloc.querySelector("#btn-jai-paye").addEventListener("click", async () => {
       if (!conditionsCochees()) { alert("Merci d'accepter d'abord les conditions de paiement et d'annulation."); return; }
-      if (!confirm("Confirmes-tu avoir déjà envoyé le virement de " + montantAPayer + " € ?")) return;
+      if (!confirm("Confirmez-vous avoir déjà envoyé le virement de " + montantAPayer + " € ?")) return;
       await supabase.from("courses").update({
         statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString(),
         conditions_acceptees_at: course.conditions_acceptees_at || new Date().toISOString()
@@ -1563,7 +1682,7 @@ async function construireCarteCourseClient(course) {
   if (course.statut === "acompte_declare") {
     const bloc = document.createElement("div");
     bloc.className = "bloc-verif";
-    bloc.textContent = "Merci ! Ton paiement est en cours de vérification par notre équipe. Ta course sera confirmée dès réception.";
+    bloc.textContent = "Merci ! Votre paiement est en cours de vérification par notre équipe. Votre course sera confirmée dès réception.";
     div.appendChild(bloc);
   }
 
@@ -1572,8 +1691,8 @@ async function construireCarteCourseClient(course) {
     bloc.className = "bloc-verif";
     bloc.style.background = "rgba(31,138,76,.12)"; bloc.style.color = "var(--vert)";
     bloc.textContent = course.sans_acompte_autorise && !course.acompte_paye
-      ? "Ta course est confirmée ! Tu paieras directement au chauffeur. Un chauffeur te sera assigné prochainement."
-      : "Acompte reçu, ta course est confirmée ! Un chauffeur te sera assigné prochainement.";
+      ? "Votre course est confirmée ! Vous paierez directement au chauffeur. Un chauffeur vous sera assigné prochainement."
+      : "Paiement reçu, votre course est confirmée ! Un chauffeur vous sera assigné prochainement.";
     div.appendChild(bloc);
   }
 
@@ -1583,12 +1702,12 @@ async function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-verif";
     if (course.acompte_declare_client) {
-      bloc.textContent = "💶 Merci, tu nous as signalé ton paiement. Notre équipe le vérifie.";
+      bloc.textContent = "💶 Merci, vous nous avez signalé votre paiement. Notre équipe le vérifie.";
     } else {
-      bloc.innerHTML = `<div style="margin-bottom:8px">Tu as déjà fait un virement pour cette course ? Préviens-nous ici :</div>
+      bloc.innerHTML = `<div style="margin-bottom:8px">Vous avez déjà fait un virement pour cette course ? Prévenez-nous ici :</div>
         <button type="button" class="btn-deja-paye" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--vert);color:#fff;font-weight:700;font-size:1rem">💶 J'ai déjà payé</button>`;
       bloc.querySelector(".btn-deja-paye").addEventListener("click", async (e) => {
-        if (!confirm("Confirmes-tu avoir déjà envoyé ton paiement à Taxi Wal ?")) return;
+        if (!confirm("Confirmez-vous avoir déjà envoyé votre paiement à Taxi Wal ?")) return;
         e.target.disabled = true; e.target.textContent = "Envoi…";
         const { error } = await supabase.from("courses").update({
           acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
@@ -1610,6 +1729,12 @@ async function construireCarteCourseClient(course) {
       if (typeof window.ouvrirFactureAvecCourse === "function") window.ouvrirFactureAvecCourse(course.id);
     });
     div.appendChild(blocFacture);
+    const blocRebook = document.createElement("div");
+    blocRebook.style.cssText = "display:flex; gap:8px; margin-top:8px;";
+    blocRebook.innerHTML = `<button type="button" class="btn-rebook" style="flex:1;">🔄 Réserver à nouveau</button><button type="button" class="btn-retour" style="flex:1;">↩️ Réserver le retour</button>`;
+    blocRebook.querySelector(".btn-rebook").addEventListener("click", () => preremplirReservation(course, false));
+    blocRebook.querySelector(".btn-retour").addEventListener("click", () => preremplirReservation(course, true));
+    div.appendChild(blocRebook);
   }
 
   // --- Course terminée : le client peut noter le chauffeur (une seule fois) ---
@@ -1668,6 +1793,24 @@ async function construireCarteCourseClient(course) {
   return div;
 }
 
+// Pré-remplit le formulaire depuis une course terminée (retour = adresses inversées)
+function preremplirReservation(course, retour) {
+  const $ = id => document.getElementById(id);
+  $("input-depart").value = retour ? (course.adresse_arrivee || "") : (course.adresse_depart || "");
+  $("input-arrivee").value = retour ? (course.adresse_depart || "") : (course.adresse_arrivee || "");
+  $("input-passagers").value = course.passagers || 1;
+  $("input-bagages").value = course.bagages || 0;
+  $("input-vehicule-souhaite").value = course.vehicule_souhaite || "";
+  const d = new Date(Date.now() + 60 * 60000); d.setMinutes(0, 0, 0);
+  $("input-date").value = dateLocaleISO(d);
+  const ar = $("rz-aller-retour"); if (ar) ar.checked = false;
+  $("input-numero-vol").value = ""; $("input-accueil-panneau").checked = false; $("input-nom-panneau").value = "";
+  majChampAeroport();
+  const onglet = document.querySelector('nav.onglets button[data-onglet="reserver"]'); if (onglet) onglet.click();
+  ["input-depart", "input-arrivee"].forEach(id => $(id).dispatchEvent(new Event("change", { bubbles: true })));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 // Affiche une petite carte en direct avec la position du chauffeur assigné (comme Uber),
 // ou un message d'attente tant que sa position n'est pas encore connue.
 async function afficherCarteChauffeurClient(courseId, chauffeurId) {
@@ -1697,13 +1840,13 @@ async function afficherCarteChauffeurClient(courseId, chauffeurId) {
 
 function notifierChangementStatut(course) {
   const messages = {
-    prix_envoye: "Un prix t'a été proposé pour ta course 💶",
-    attente_acompte: "Prix accepté — il ne reste plus qu'à payer l'acompte",
-    confirmee: "Acompte reçu, ta course est confirmée ✅",
-    assignee: "Un chauffeur a accepté ta course 🚕",
-    en_cours: "Ton chauffeur est en route !",
+    prix_envoye: "Un prix vous a été proposé pour votre course 💶",
+    attente_acompte: "Prix accepté — il ne reste plus qu'à payer à l'avance",
+    confirmee: "Paiement reçu, votre course est confirmée ✅",
+    assignee: "Un chauffeur a accepté votre course 🚕",
+    en_cours: "Votre chauffeur est en route !",
     terminee: "Course terminée, merci d'avoir choisi Taxi Wal 🙏",
-    annulee: "Ta course a été annulée."
+    annulee: "Votre course a été annulée."
   };
   const texte = messages[course.statut];
   if (!texte) return;
@@ -1741,15 +1884,15 @@ document.getElementById("btn-sauver-profil").addEventListener("click", async () 
 });
 
 document.getElementById("btn-supprimer-compte").addEventListener("click", async () => {
-  if (!confirm("Supprimer définitivement ton compte Taxi Wal ?\n\nTon compte, tes adresses favorites et tes données personnelles seront effacés. Tes demandes de course pas encore faites seront annulées.\n\nCette action est irréversible.")) return;
-  const saisie = prompt("Pour confirmer, tape le mot SUPPRIMER");
+  if (!confirm("Supprimer définitivement votre compte Taxi Wal ?\n\nVotre compte, vos adresses favorites et vos données personnelles seront effacés. Vos demandes de course pas encore faites seront annulées.\n\nCette action est irréversible.")) return;
+  const saisie = prompt("Pour confirmer, tapez le mot SUPPRIMER");
   if (!saisie || saisie.trim().toUpperCase() !== "SUPPRIMER") { alert("Suppression annulée."); return; }
   const btn = document.getElementById("btn-supprimer-compte");
   btn.disabled = true; btn.textContent = "Suppression…";
   const { error } = await supabase.rpc("client_supprimer_mon_compte");
   if (error) { btn.disabled = false; btn.textContent = "🗑️ Supprimer mon compte"; alert("Erreur : " + error.message); return; }
   try { await supabase.auth.signOut(); } catch (e) {}
-  alert("Ton compte a été supprimé. Merci d'avoir utilisé Taxi Wal.");
+  alert("Votre compte a été supprimé. Merci d'avoir utilisé Taxi Wal.");
   location.reload();
 });
 
@@ -1780,6 +1923,7 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
 (async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session) apresConnexion();
+  else afficherModeVisiteur();
 })();
 </script>
 <script>
@@ -1885,7 +2029,7 @@ function attacherSuggestionsAdresse(input, conteneur) {
   $("rr-position-depart").addEventListener("click", () => {
     const b = $("rr-position-depart");
     if (!navigator.geolocation) { alert("La localisation n'est pas disponible sur ce téléphone."); return; }
-    const avant = b.textContent; b.disabled = true; b.textContent = "📍 Recherche de ta position…";
+    const avant = b.textContent; b.disabled = true; b.textContent = "📍 Recherche de votre position…";
     navigator.geolocation.getCurrentPosition(async (pos) => {
       try {
         const r = await fetch(`https://photon.komoot.io/reverse?lang=fr&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
@@ -1976,6 +2120,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   // Étape 1 : trajet + carte
   etapes[0].appendChild(champDe("input-depart"));
   etapes[0].appendChild(champDe("input-arrivee"));
+  if ($("champ-aeroport")) etapes[0].appendChild($("champ-aeroport"));
   const carteDiv = document.createElement("div"); carteDiv.className = "rz-carte"; carteDiv.id = "rz-carte";
   const trajetInfo = document.createElement("div"); trajetInfo.className = "rz-trajet-info"; trajetInfo.id = "rz-trajet-info";
   etapes[0].appendChild(carteDiv); etapes[0].appendChild(trajetInfo);
@@ -2012,12 +2157,12 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   etapes[3].appendChild(recap);
   const blocContact = document.createElement("div");
   blocContact.className = "champ";
-  blocContact.innerHTML = `<div style="font-weight:800; margin:4px 0 6px;">📇 Tes coordonnées <span style="color:var(--rouge);">*</span></div>
+  blocContact.innerHTML = `<div style="font-weight:800; margin:4px 0 6px;">📇 Vos coordonnées <span style="color:var(--rouge);">*</span></div>
     <label for="rz-nom">Nom et prénom *</label>
     <input type="text" id="rz-nom" autocomplete="name" placeholder="ex : Marie Dupont">
     <label for="rz-tel" style="margin-top:8px;">Téléphone *</label>
     <input type="tel" id="rz-tel" autocomplete="tel" inputmode="tel" placeholder="ex : 0478 12 34 56">
-    <div style="font-size:.78rem; color:var(--gris); margin-top:4px;">Le chauffeur t'appelle à ce numéro le jour de la course.</div>`;
+    <div style="font-size:.78rem; color:var(--gris); margin-top:4px;">Le chauffeur vous appelle à ce numéro le jour de la course.</div>`;
   etapes[3].appendChild(blocContact);
   etapes[3].appendChild(champDe("input-notes"));
   etapes[3].appendChild(champDe("input-ouverte-marche"));
@@ -2030,7 +2175,8 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 
   // on vide la section et on remet tout dans l'ordre
   const badge = section.querySelector(".badge-marque");
-  [...section.children].forEach(c => { if (c !== badge) c.style.display = "none"; });
+  const confiance = $("bloc-confiance");
+  [...section.children].forEach(c => { if (c !== badge && c !== confiance) c.style.display = "none"; });
   section.appendChild(entete);
   etapes.forEach(e => section.appendChild(e));
   nav.appendChild(btnReserver);
@@ -2038,10 +2184,10 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   btnReserver.classList.add("rz-suivant");
 
   const TITRES = [
-    ["Où allez-vous ?", "Tape l'adresse : des propositions s'affichent dès 3 lettres."],
-    ["Quand et combien ?", "Choisis l'heure de prise en charge et le nombre de personnes."],
-    ["Quel véhicule ?", "Choisis le type de voiture adapté à ton trajet."],
-    ["Récapitulatif", "Vérifie ta demande, puis envoie-la."]
+    ["Où allez-vous ?", "Tapez l'adresse : des propositions s'affichent dès 3 lettres."],
+    ["Quand et combien ?", "Choisissez l'heure de prise en charge et le nombre de personnes."],
+    ["Quel véhicule ?", "Choisissez le type de voiture adapté à votre trajet."],
+    ["Récapitulatif", "Vérifiez votre demande, puis envoyez-la."]
   ];
   let etapeActuelle = 1;
   function allerEtape(n) {
@@ -2065,11 +2211,11 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   function erreur(msg) { const e = $("erreur-reservation"); if (etapeActuelle !== 4) alert(msg); else e.textContent = msg; }
   nav.querySelector(".rz-retour").addEventListener("click", () => allerEtape(Math.max(1, etapeActuelle - 1)));
   nav.querySelector("button.rz-suivant:not(#btn-reserver)").addEventListener("click", () => {
-    if (etapeActuelle === 1 && (!$("input-depart").value.trim() || !$("input-arrivee").value.trim())) { erreur("Indique l'adresse de départ et l'adresse d'arrivée."); return; }
+    if (etapeActuelle === 1 && (!$("input-depart").value.trim() || !$("input-arrivee").value.trim())) { erreur("Indiquez l'adresse de départ et l'adresse d'arrivée."); return; }
     if (etapeActuelle === 2) {
       const v = $("input-date").value;
-      if (!v) { erreur("Choisis la date et l'heure (ou touche « Dans 1 h »)."); return; }
-      if (new Date(v).getTime() < Date.now() - 5 * 60000) { erreur("Cette heure est déjà passée : choisis une heure à venir."); return; }
+      if (!v) { erreur("Choisissez la date et l'heure (ou touchez « Dans 1 h »)."); return; }
+      if (new Date(v).getTime() < Date.now() - 5 * 60000) { erreur("Cette heure est déjà passée : choisissez une heure à venir."); return; }
     }
     allerEtape(Math.min(4, etapeActuelle + 1));
   });
@@ -2166,7 +2312,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     // Pas de prix calculé automatiquement : on montre seulement la distance, Taxi Wal envoie le prix
     const km = infoTrajet.km;
     zone.innerHTML = `<div class="rz-prix">${km ? `Distance entre les deux adresses : <b>${km.toFixed(1).replace(".", ",")} km</b>${infoTrajet.min ? ` · ⏱️ ${Math.max(1, Math.round(infoTrajet.min))} min` : ""}` : "<b>Distance en cours de calcul…</b>"}
-      <small>💶 Le <b>prix</b> de ta course t'est envoyé par notre équipe juste après ta demande (notification + e-mail). Tu l'acceptes ou non, sans engagement.</small></div>`;
+      <small>💶 Le <b>prix</b> de votre course vous est envoyé par notre équipe juste après votre demande (notification + e-mail). Vous l'acceptez ou non, sans engagement.</small></div>`;
   }
   function majRecap() {
     const d = $("input-date").value ? new Date($("input-date").value) : null;
@@ -2180,6 +2326,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
         <div class="rz-recap-ligne"><span>👥</span><div>${$("input-passagers").value || 1} passager(s) · ${$("input-bagages").value || 0} bagage(s)</div><a data-aller="2">Modifier</a></div>
         <div class="rz-recap-ligne"><span>${$("rz-aller-retour").checked ? "🔁" : "➡️"}</span><div>${$("rz-aller-retour").checked ? "Aller-retour" : "Aller simple"}</div><a data-aller="2">Modifier</a></div>
         <div class="rz-recap-ligne"><span>${veh[1]}</span><div>${veh[2]}</div><a data-aller="3">Modifier</a></div>
+        ${typeof estTrajetAeroport === "function" && estTrajetAeroport() && ($("input-numero-vol").value.trim() || $("input-accueil-panneau").checked) ? `<div class="rz-recap-ligne"><span>✈️</span><div>${e([$("input-numero-vol").value.trim() ? "Vol " + $("input-numero-vol").value.trim().toUpperCase() : "", $("input-accueil-panneau").checked ? "Accueil avec panneau" : ""].filter(Boolean).join(" · "))}</div><a data-aller="1">Modifier</a></div>` : ""}
       </div><div id="rz-zone-prix"></div>`;
     lancerCalculPrix();
     recap.querySelectorAll("[data-aller]").forEach(a => a.addEventListener("click", () => allerEtape(Number(a.dataset.aller))));
@@ -2202,7 +2349,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     const d = $("input-date").value ? new Date($("input-date").value) : null;
     verif("input-date", !!d && d.getTime() > Date.now() - 5 * 60000, "une date et une heure à venir", 2);
     verif("input-passagers", (parseInt($("input-passagers").value, 10) || 0) >= 1, "le nombre de passagers", 2);
-    verif("rz-nom", $("rz-nom").value.trim().length >= 2, "ton nom et prénom", 4);
+    verif("rz-nom", $("rz-nom").value.trim().length >= 2, "votre nom et prénom", 4);
     const chiffres = $("rz-tel").value.replace(/\D/g, "");
     verif("rz-tel", chiffres.length >= 9 && chiffres.length <= 15, "un numéro de téléphone valide", 4);
     const err = $("erreur-reservation");
@@ -2466,7 +2613,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       const url = await urlSignee(d);
       if (action === "ouvrir" || (action === "imprimer" && estIOS)) {
         if (fenetre) fenetre.location.href = url; else window.location.href = url;
-        if (action === "imprimer") toast("Utilise le bouton Partager → Imprimer de ton téléphone.");
+        if (action === "imprimer") toast("Utilisez le bouton Partager → Imprimer de votre téléphone.");
         return;
       }
       if (action === "imprimer") {
@@ -2535,7 +2682,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       if (e2) throw e2;
       coursesCochees.clear();
       $("fa-message").value = "";
-      $("fa-succes").textContent = "✅ Demande envoyée ! Tu seras prévenu dès que ta facture sera disponible ici.";
+      $("fa-succes").textContent = "✅ Demande envoyée ! Vous serez prévenu dès que votre facture sera disponible ici.";
       $("fa-succes").style.display = "block";
       await chargerDemandes();
       $("fa-mes-demandes").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2555,12 +2702,12 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
         if (n && n.id) {
           const avant = statutsConnus.get(n.id);
           if (n.statut === "envoyee" && avant && avant !== "envoyee") {
-            toast("🧾 Ta facture Taxi Wal est disponible (onglet « Facture »).");
+            toast("🧾 Votre facture Taxi Wal est disponible (onglet « Facture »).");
             if ("Notification" in window && Notification.permission === "granted") {
-              try { new Notification("Taxi Wal", { body: "🧾 Ta facture est disponible dans l'application.", tag: "facture-" + n.id }); } catch (e) {}
+              try { new Notification("Taxi Wal", { body: "🧾 Votre facture est disponible dans l'application.", tag: "facture-" + n.id }); } catch (e) {}
             }
           } else if (n.statut === "refusee" && avant && avant !== "refusee") {
-            toast("ℹ️ Ta demande de facture a reçu une réponse (onglet « Facture »).");
+            toast("ℹ️ Votre demande de facture a reçu une réponse (onglet « Facture »).");
           }
         }
         chargerDemandes();
@@ -2663,7 +2810,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   function rendre() {
     const fil = $("chat-fil");
     if (!messages.length) {
-      fil.innerHTML = `<div class="chat-vide">👋 Une question sur une course, un paiement, un horaire ?<br>Écris-nous ici : Taxi Wal te répond directement dans l'application.</div>`;
+      fil.innerHTML = `<div class="chat-vide">👋 Une question sur une course, un paiement, un horaire ?<br>Écrivez-nous ici : Taxi Wal vous répond directement dans l'application.</div>`;
       return;
     }
     const enBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80;
@@ -2757,7 +2904,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     err.textContent = "";
     if (!texte) { zone.focus(); return; }
     if (chatOuvert === false) { appliquerEtatChat(); return; }
-    if (!utilisateur) { err.textContent = "Connexion en cours, réessaie dans un instant."; return; }
+    if (!utilisateur) { err.textContent = "Connexion en cours, réessayez dans un instant."; return; }
     btn.disabled = true; btn.textContent = "…";
     const { data, error } = await supabase.from("messages_chat")
       .insert({ client_id: utilisateur.id, auteur: "client", auteur_id: utilisateur.id, course_id: courseChoisie, texte: texte.slice(0, 2000) })
@@ -2786,10 +2933,10 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   function nouveauMessageAdmin(m) {
     if (ongletOuvert()) { marquerLu(); return; }
     const extrait = m.texte.length > 90 ? m.texte.slice(0, 90) + "…" : m.texte;
-    if (typeof window.toastClient === "function") window.toastClient("💬 Taxi Wal t'a répondu : " + extrait);
+    if (typeof window.toastClient === "function") window.toastClient("💬 Taxi Wal vous a répondu : " + extrait);
     try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
     if (document.visibilityState !== "visible" && "Notification" in window && Notification.permission === "granted") {
-      try { new Notification("💬 Taxi Wal t'a répondu", { body: extrait, tag: "chat-" + m.id }); } catch (e) {}
+      try { new Notification("💬 Taxi Wal vous a répondu", { body: extrait, tag: "chat-" + m.id }); } catch (e) {}
     }
   }
 
@@ -2874,7 +3021,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   history.replaceState(null, "", location.pathname);
   const ouvrirMesCourses = () => { const b = document.querySelector('nav.onglets button[data-onglet="mes-courses"]'); if (b) b.click(); };
   if (etat === "annule") {
-    setTimeout(() => { alert("Paiement annulé. Tu peux réessayer ou payer par virement."); ouvrirMesCourses(); }, 1200);
+    setTimeout(() => { alert("Paiement annulé. Vous pouvez réessayer ou payer par virement."); ouvrirMesCourses(); }, 1200);
     return;
   }
   if (etat !== "ok" && etat !== "retour") return;
@@ -2892,8 +3039,8 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     }
     if (typeof chargerMesCourses === "function") { try { await chargerMesCourses(); } catch (e) {} }
     ouvrirMesCourses();
-    alert(paye ? "✅ Paiement reçu, merci ! Ta course est confirmée."
-               : "Merci ! Ton paiement est en cours de vérification. Dès qu'il est reçu, ta course passe automatiquement en « Confirmée ».");
+    alert(paye ? "✅ Paiement reçu, merci ! Votre course est confirmée."
+               : "Merci ! Votre paiement est en cours de vérification. Dès qu'il est reçu, votre course passe automatiquement en « Confirmée ».");
   }, 1200);
 })();
 </script>
