@@ -796,13 +796,14 @@ window.onerror = function(msg, url, line, col, err) {
     <div id="menu-admin-deroulant" style="display:none; position:absolute; top:46px; right:0; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
       <button id="btn-email-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">✉️ E-mails (codes clients, Brevo)</button>
       <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Stripe · Bancontact)</button>
+      <a href="https://taxiwal.com" target="_blank" rel="noopener" style="display:block; padding:12px 16px; border-bottom:1px solid #cfcfcd; color:var(--vert); font-weight:600; text-decoration:none;">🌐 Voir le site taxiwal.com</a>
       <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
     </div>
   </div>
   <nav>
-    <button class="actif" data-onglet="courses">Courses</button>
-    <button data-onglet="agenda">Agenda</button>
-    <button data-onglet="carte">Carte chauffeurs</button>
+    <button class="actif" data-onglet="courses">🚕 Courses</button>
+    <button data-onglet="agenda">📅 Agenda</button>
+    <button data-onglet="carte">📍 Carte chauffeurs</button>
     <button data-onglet="demandes-clients">📲 Demandes clients</button>
     <button data-onglet="par-chauffeur">👤 Courses par chauffeur</button>
     <button data-onglet="horaires">🗓️ Horaires</button>
@@ -811,9 +812,9 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="paiements">💳 Paiements</button>
     <button data-onglet="factures">🧾 Factures</button>
     <button data-onglet="messages">💬 Messages</button>
-    <button data-onglet="feuilles">Feuilles de route</button>
-    <button data-onglet="vehicules">Véhicules</button>
-    <button data-onglet="caisse">Caisse</button>
+    <button data-onglet="feuilles">📄 Feuilles de route</button>
+    <button data-onglet="vehicules">🚐 Véhicules</button>
+    <button data-onglet="caisse">💰 Caisse</button>
     <button data-onglet="partenaires">🤝 Sous-traitants</button>
     <button data-onglet="carnet">📇 Carnet clients</button>
     <button data-onglet="clients">👥 Comptes clients app</button>
@@ -826,7 +827,7 @@ window.onerror = function(msg, url, line, col, err) {
 </header>
 
 <section id="section-courses" class="visible">
-  <button id="btn-nouvelle-course">+ Nouvelle course</button>
+  <button id="btn-nouvelle-course">➕ Nouvelle course</button>
   <button id="btn-toggle-historique" style="width:100%; padding:12px; border-radius:10px; background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
   <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse, N° TW-…)">
   <div id="barre-assignation-groupee" style="display:none;">
@@ -857,6 +858,7 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-carte">
   <div id="carte"></div>
   <div id="carte-liste-chauffeurs"></div>
+  <div id="tableau-bord-chauffeurs" style="margin-top:14px;"></div>
 
   <div id="outil-calcul">
     <h3>🧭 Calculer un trajet</h3>
@@ -1046,7 +1048,7 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <section id="section-vehicules">
-  <button id="btn-ajouter-vehicule">+ Ajouter un véhicule</button>
+  <button id="btn-ajouter-vehicule">🚐 Ajouter un véhicule</button>
   <div id="liste-vehicules-admin"></div>
 </section>
 
@@ -1097,7 +1099,7 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- Modale création sous-traitant -->
 <div id="modale-partenaire">
   <div id="modale-partenaire-contenu">
-    <h2>Nouveau sous-traitant</h2>
+    <h2>🤝 Nouveau sous-traitant</h2>
     <label>Nom du chauffeur ou de la société</label>
     <input type="text" id="input-partenaire-nom" placeholder="ex: Jean Dupont ou Taxi XYZ">
     <label>Société (optionnel)</label>
@@ -1119,7 +1121,7 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- Modale création course -->
 <div id="modale">
   <div id="modale-contenu">
-    <h2>Nouvelle course</h2>
+    <h2>🚕 Nouvelle course</h2>
 
     <div class="bloc-recherche-carnet-modale">
       <label for="input-recherche-carnet-modale">📇 Client déjà enregistré ? Cherche-le ici</label>
@@ -2197,33 +2199,8 @@ function nomChauffeurPourNotif(course) {
 }
 
 function jouerSonAlerteAdmin() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const frequences = [988, 1319];
-    const nbSonneries = 4;
-    const dureeNote = 0.35;
-    const pauseEntreNotes = 0.12;
-    const pauseEntreSonneries = 0.5;
-    let t = ctx.currentTime;
-
-    for (let s = 0; s < nbSonneries; s++) {
-      frequences.forEach(freq => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "square";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02);
-        gain.gain.setValueAtTime(0.9, t + dureeNote - 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + dureeNote);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(t);
-        osc.stop(t + dureeNote);
-        t += dureeNote + pauseEntreNotes;
-      });
-      t += pauseEntreSonneries;
-    }
-  } catch (e) { console.error("Son impossible :", e); }
+  // Carillon doux (3 notes harmonieuses), répété 3 fois pour ne pas rater une alerte importante.
+  try { if (typeof window.twCarillon === "function") window.twCarillon(3); } catch (e) { console.error("Son impossible :", e); }
 
   if ("vibrate" in navigator) {
     try { navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch (e) {}
@@ -5993,6 +5970,7 @@ async function chargerCarteInterne() {
 
   dernieresPositionsCarte = positions || [];
   afficherListeChauffeursCarte(positions, coursesParChauffeur);
+  majTableauBordChauffeurs(positions).catch(e => console.error("Tableau de bord chauffeurs :", e));
   setTimeout(() => centrerSurChauffeurs(false), 300);
 
   Object.keys(lignesRouteCarte).forEach(chauffeurId => {
@@ -6069,6 +6047,127 @@ async function chargerCarteInterne() {
 setInterval(() => {
   if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
 }, 15000);
+
+// ================== TABLEAU DE BORD : statut, temps libre, prochaine course, ETA, attentes du jour ==================
+const etaApprocheCache = {}; // chauffeurId -> { calculeA, minutes, cle }
+function distanceVolOiseauKm(aLat, aLon, bLat, bLon) {
+  const R = 6371, r = x => x * Math.PI / 180;
+  const h = Math.sin(r(bLat - aLat) / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(r(bLon - aLon) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+async function etaVersPriseEnCharge(chauffeurId, lat, lon, adresse) {
+  const c = etaApprocheCache[chauffeurId];
+  if (c && c.cle === adresse && Date.now() - c.calculeA < 30000) return c.minutes; // max 1 appel / 30 s / chauffeur
+  const dest = await geocoderAdresse(adresse);
+  if (!dest) return null;
+  let minutes = null;
+  try {
+    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${dest.lon},${dest.lat}?overview=false`);
+    const d = await res.json();
+    if (d.routes && d.routes[0]) minutes = Math.round(d.routes[0].duration / 60);
+  } catch (e) { /* repli ci-dessous */ }
+  if (minutes == null) minutes = Math.round(distanceVolOiseauKm(lat, lon, dest.lat, dest.lon) * 1.3 / 40 * 60);
+  etaApprocheCache[chauffeurId] = { calculeA: Date.now(), minutes, cle: adresse };
+  return minutes;
+}
+function dureeTexte(min) {
+  min = Math.max(0, Math.round(min));
+  return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}`;
+}
+function heureCourte(d) { return new Date(d).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }); }
+
+async function majTableauBordChauffeurs(positions) {
+  const zone = document.getElementById("tableau-bord-chauffeurs");
+  if (!zone) return;
+  const debut = new Date(); debut.setHours(0, 0, 0, 0);
+  const fin = new Date(debut.getTime() + 24 * 3600e3);
+  const { data: courses } = await supabase.from("courses")
+    .select("id, chauffeur_id, statut, date_heure, duree_min, client_nom, adresse_depart, accepte_chauffeur, profils:chauffeur_id(nom)")
+    .not("chauffeur_id", "is", null)
+    .gte("date_heure", debut.toISOString()).lt("date_heure", fin.toISOString())
+    .in("statut", ["assignee", "en_cours", "terminee"])
+    .order("date_heure", { ascending: true });
+  const liste = courses || [];
+  // Heures réelles de début / fin tirées de l'historique des statuts
+  const debutReel = {}, finReelle = {};
+  if (liste.length) {
+    const { data: hist } = await supabase.from("courses_historique")
+      .select("course_id, quand, nouveau_statut")
+      .in("course_id", liste.map(c => c.id))
+      .in("nouveau_statut", ["en_cours", "terminee"]);
+    (hist || []).forEach(h => {
+      if (h.nouveau_statut === "en_cours" && (!debutReel[h.course_id] || h.quand < debutReel[h.course_id])) debutReel[h.course_id] = h.quand;
+      if (h.nouveau_statut === "terminee" && (!finReelle[h.course_id] || h.quand > finReelle[h.course_id])) finReelle[h.course_id] = h.quand;
+    });
+  }
+  const debutDe = c => new Date(debutReel[c.id] || c.date_heure).getTime();
+  const finDe = c => finReelle[c.id] ? new Date(finReelle[c.id]).getTime()
+    : (c.statut === "terminee" ? debutDe(c) + (Number(c.duree_min) || 30) * 60000 : null);
+
+  const parChauffeur = {};
+  liste.forEach(c => { (parChauffeur[c.chauffeur_id] = parChauffeur[c.chauffeur_id] || []).push(c); });
+  const posParChauffeur = {};
+  (positions || []).forEach(p => { posParChauffeur[p.chauffeur_id] = p; });
+  const ids = [...new Set([...Object.keys(parChauffeur), ...Object.keys(posParChauffeur)])];
+  const maintenant = Date.now();
+
+  const cartes = [], lignesJour = [];
+  for (const id of ids) {
+    const cs = parChauffeur[id] || [];
+    const p = posParChauffeur[id];
+    const nom = p?.profils?.nom || cs[0]?.profils?.nom || "Chauffeur";
+    const enCours = cs.find(c => c.statut === "en_cours");
+    const prochaine = cs.filter(c => c.statut === "assignee").sort((a, b) => new Date(a.date_heure) - new Date(b.date_heure))[0];
+    const terminees = cs.filter(c => c.statut === "terminee");
+    const derniereFin = terminees.map(finDe).filter(Boolean).sort((a, b) => b - a)[0];
+    const minAvantProchaine = prochaine ? (new Date(prochaine.date_heure).getTime() - maintenant) / 60000 : null;
+    let statut, couleur;
+    if (enCours) { statut = "🚕 En course"; couleur = "var(--rouge)"; }
+    else if (prochaine && prochaine.accepte_chauffeur && minAvantProchaine <= 90) { statut = "🧭 En route vers le client"; couleur = "#3b82c4"; }
+    else { statut = "✅ Libre"; couleur = "var(--vert, #1f8a4c)"; }
+
+    let html = `<div class="cc-chauffeur" style="border-left-color:${couleur}"><h4>${esc(nom)} — <span style="color:${couleur}">${statut}</span></h4>`;
+    if (!enCours) html += `<div class="cc-ligne">⏳ Libre depuis : <b>${derniereFin ? dureeTexte((maintenant - derniereFin) / 60000) + " (fin à " + heureCourte(derniereFin) + ")" : "aucune course terminée aujourd'hui"}</b></div>`;
+    if (prochaine) {
+      html += `<div class="cc-ligne">📅 Prochaine course : <b>${heureCourte(prochaine.date_heure)}</b> — ${esc(prochaine.client_nom || "Client")}</div>
+        <div class="cc-ligne">📍 Prise en charge : <b>${esc(prochaine.adresse_depart || "?")}</b></div>
+        <div class="cc-ligne">⏱️ ETA jusqu'au client : <b id="tb-eta-${id}">${p && !enCours ? "calcul…" : (enCours ? "après la course en cours" : "position inconnue")}</b></div>`;
+    } else html += `<div class="cc-ligne">📅 Pas d'autre course prévue aujourd'hui</div>`;
+    html += `</div>`;
+    cartes.push(html);
+
+    if (prochaine && p && !enCours && prochaine.adresse_depart) {
+      etaVersPriseEnCharge(id, p.latitude, p.longitude, prochaine.adresse_depart).then(min => {
+        const el = document.getElementById(`tb-eta-${id}`);
+        if (!el) return;
+        if (min == null) { el.textContent = "indisponible"; return; }
+        const arrivee = Date.now() + min * 60000;
+        const retard = Math.round((arrivee - new Date(prochaine.date_heure).getTime()) / 60000);
+        el.innerHTML = `≈ ${min} min (arrivée ~${heureCourte(arrivee)}) — ` + (retard > 0
+          ? `<span style="color:var(--rouge)">🔴 en retard de ${retard} min</span>`
+          : `<span style="color:var(--vert, #1f8a4c)">🟢 à l'heure</span>`);
+      });
+    }
+
+    // Temps d'attente entre deux courses terminées / en cours (fin N → début N+1)
+    const faites = cs.filter(c => c.statut !== "assignee").sort((a, b) => debutDe(a) - debutDe(b));
+    let totalVide = 0; const attentes = [];
+    for (let i = 1; i < faites.length; i++) {
+      const f = finDe(faites[i - 1]); if (!f) continue;
+      const att = Math.max(0, (debutDe(faites[i]) - f) / 60000);
+      totalVide += att;
+      attentes.push(`${heureCourte(f)} → ${heureCourte(debutDe(faites[i]))} : <b>${dureeTexte(att)}</b>`);
+    }
+    if (faites.length) lignesJour.push(`<tr><td style="padding:6px;"><b>${esc(nom)}</b></td><td style="padding:6px;">${faites.length}</td><td style="padding:6px; font-size:.8rem;">${attentes.join("<br>") || "—"}</td><td style="padding:6px;"><b>${dureeTexte(totalVide)}</b></td></tr>`);
+  }
+
+  zone.innerHTML = `<h3 style="margin:10px 0;">📋 Tableau de bord des chauffeurs</h3>` +
+    (cartes.join("") || '<p style="color:var(--gris);">Aucun chauffeur actif aujourd\'hui.</p>') +
+    `<h3 style="margin:14px 0 8px;">🕒 Temps à vide du jour</h3>` +
+    (lignesJour.length ? `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:.85rem; background:var(--noir-2); border-radius:12px;">
+      <thead><tr style="text-align:left; color:var(--gris);"><th style="padding:6px;">Chauffeur</th><th style="padding:6px;">Courses</th><th style="padding:6px;">Attentes (fin → début suivante)</th><th style="padding:6px;">Total à vide</th></tr></thead>
+      <tbody>${lignesJour.join("")}</tbody></table></div>` : '<p style="color:var(--gris);">Pas encore de course faite aujourd\'hui.</p>');
+}
 
 async function chargerCaisse() {
   const conteneur = document.getElementById("liste-caisse");
@@ -8193,6 +8292,44 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
 });
 
 rendreLignesVehiculesModale([{}]);
+</script>
+<script>
+// ===== Taxi Wal : carillon doux (Web Audio, aucun fichier) + déverrouillage audio iOS =====
+(function () {
+  let ctx = null;
+  function getCtx() {
+    try { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; }
+    return ctx;
+  }
+  function deverrouiller() {
+    const c = getCtx(); if (!c) return;
+    if (c.state === "suspended") c.resume().catch(() => {});
+    try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {}
+  }
+  ["pointerdown", "touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, deverrouiller, { passive: true }));
+  // Carillon 3 notes (do-mi-sol aigu), ~1 s, enveloppe douce façon cloche
+  window.twCarillon = function (fois) {
+    const c = getCtx(); if (!c) return;
+    try {
+      if (c.state === "suspended") c.resume().catch(() => {});
+      const sortie = c.createGain(); sortie.gain.value = 0.35; sortie.connect(c.destination);
+      const n = Math.max(1, fois || 1);
+      for (let r = 0; r < n; r++) {
+        [[1046.5, 0], [1318.5, 0.16], [1568, 0.32]].forEach(([f, d]) => {
+          const t = c.currentTime + 0.03 + r * 1.3 + d;
+          [[1, 0.5], [2.01, 0.08]].forEach(([m, v]) => {
+            const o = c.createOscillator(), g = c.createGain();
+            o.type = "sine"; o.frequency.value = f * m;
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(v, t + 0.015);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + (m === 1 ? 0.8 : 0.3));
+            o.connect(g).connect(sortie); o.start(t); o.stop(t + 0.85);
+          });
+        });
+      }
+    } catch (e) {}
+  };
+})();
 </script>
 </body>
 </html>

@@ -353,6 +353,24 @@ window.onerror = function(msg, url, line, col, err) {
 </style>
 <!-- Générateur de QR code (côté navigateur) pour le QR de virement SEPA / EPC -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" crossorigin="anonymous"></script>
+<script>
+// ===== Visuels véhicules : SVG légers. Pour mettre de vraies photos plus tard, renseigner les URL ici. =====
+window.TW_PHOTOS_VEHICULES = { berline: "", van: "", pmr: "" };
+window.twVisuelVehicule = function (type, taille) {
+  const h = taille || 44;
+  const url = (window.TW_PHOTOS_VEHICULES || {})[type];
+  if (url) return `<img src="${url}" alt="" loading="lazy" decoding="async" style="height:${h}px; width:auto; max-width:100%; object-fit:contain; border-radius:8px;">`;
+  const roues = (a, b) => `<circle cx="${a}" cy="38" r="6" fill="#111"/><circle cx="${a}" cy="38" r="2.5" fill="#bbb"/><circle cx="${b}" cy="38" r="6" fill="#111"/><circle cx="${b}" cy="38" r="2.5" fill="#bbb"/>`;
+  const liseré = `<rect x="6" y="31" width="84" height="2" fill="#c81e2c"/><rect x="6" y="33" width="84" height="1.5" fill="#1f8a4c"/>`;
+  const corps = {
+    berline: `<path d="M6 34 L8 25 Q10 22 16 21 L28 20 L38 12 Q41 10 46 10 L64 10 Q69 10 72 13 L80 20 L88 22 Q92 23 92 28 L92 34 Z" fill="#1b1b1b"/><path d="M33 20 L41 13 L54 13 L54 20 Z M57 13 L67 13 L74 20 L57 20 Z" fill="#9fc3df"/>`,
+    van: `<path d="M6 34 L6 14 Q6 8 12 8 L70 8 Q74 8 77 12 L86 22 Q92 23 92 28 L92 34 Z" fill="#1b1b1b"/><path d="M12 12 L30 12 L30 21 L12 21 Z M33 12 L51 12 L51 21 L33 21 Z M54 12 L69 12 L80 21 L54 21 Z" fill="#9fc3df"/>`,
+    pmr: `<path d="M6 34 L6 14 Q6 8 12 8 L70 8 Q74 8 77 12 L86 22 Q92 23 92 28 L92 34 Z" fill="#1b1b1b"/><path d="M54 12 L69 12 L80 21 L54 21 Z" fill="#9fc3df"/><rect x="12" y="11" width="22" height="20" rx="3" fill="#1d4f86"/><g fill="none" stroke="#fff" stroke-width="1.8"><circle cx="22" cy="25" r="4"/><path d="M21 15 v6 h5 l2 5"/></g><circle cx="21" cy="13.5" r="1.4" fill="#fff"/>`
+  }[type];
+  if (!corps) return "";
+  return `<svg viewBox="0 0 96 46" height="${h}" role="img" aria-label="${type}" style="display:block; max-width:100%;">${corps}${liseré}${roues(type === "berline" ? 24 : 22, 74)}<rect x="40" y="3" width="16" height="5" rx="1" fill="#f5c400" ${type === "berline" ? 'transform="translate(0 4)"' : ""}/></svg>`;
+};
+</script>
 </head>
 <body>
 
@@ -362,11 +380,13 @@ window.onerror = function(msg, url, line, col, err) {
     <h1>Taxi Wal</h1>
     <p id="sous-titre">Connexion requise</p>
   </div>
+  <a href="https://taxiwal.com" target="_blank" rel="noopener" title="Visiter notre site taxiwal.com" style="flex-shrink:0; text-decoration:none; padding:7px 10px; border-radius:8px; background:var(--vert); color:#fff; font-weight:700; font-size:.82rem; white-space:nowrap;">🌐 Notre site</a>
   <button id="btn-menu-client" style="display:none; width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
   <div id="menu-client-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
     <button type="button" data-ouvrir-conditions style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">📄 Conditions de paiement et d'annulation</button>
     <button type="button" id="btn-menu-facture" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">🧾 Demander une facture</button>
     <button type="button" id="btn-menu-messages" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #eee; color:var(--blanc); font-weight:600; text-align:left; cursor:pointer;">💬 Messages avec Taxi Wal <span id="badge-menu-messages" style="display:none; background:var(--rouge); color:#fff; border-radius:10px; padding:1px 7px; font-size:.75rem; margin-left:4px;"></span></button>
+    <a href="https://taxiwal.com" target="_blank" rel="noopener" style="display:block; padding:12px 16px; border-bottom:1px solid #eee; color:var(--vert); font-weight:700; text-decoration:none;">🌐 Visiter notre site</a>
     <button id="btn-deconnexion-menu-client" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
   </div>
 </header>
@@ -384,7 +404,7 @@ window.onerror = function(msg, url, line, col, err) {
     <label for="mdp-demo">Mot de passe</label>
     <input type="password" id="mdp-demo" placeholder="Mot de passe" autocomplete="current-password">
   </div>
-  <button id="btn-envoyer-code">Recevoir un code</button>
+  <button id="btn-envoyer-code">✉️ Recevoir un code</button>
   <button id="btn-valider-code" style="display:none; margin-top:10px;">Se connecter</button>
   <p id="erreur-login"></p>
 </div>
@@ -404,10 +424,10 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- ÉCRAN PRINCIPAL -->
 <div id="ecran-principal" style="display:none;">
   <nav class="onglets">
-    <button class="actif" data-onglet="reserver">Réserver</button>
-    <button data-onglet="mes-courses">Mes courses</button>
-    <button data-onglet="agenda">Agenda</button>
-    <button data-onglet="profil">Profil</button>
+    <button class="actif" data-onglet="reserver">🚕 Réserver</button>
+    <button data-onglet="mes-courses">📋 Mes courses</button>
+    <button data-onglet="agenda">📅 Agenda</button>
+    <button data-onglet="profil">👤 Profil</button>
     <button data-onglet="facture">🧾 Facture</button>
     <button data-onglet="messages">💬 Messages</button>
   </nav>
@@ -522,7 +542,7 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
     <p id="erreur-reservation"></p>
     <p class="mention-conditions" id="mention-conditions-reservation">En réservant, vous acceptez nos <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button>.</p>
-    <button id="btn-reserver">Demander cette course</button>
+    <button id="btn-reserver">✅ Demander cette course</button>
   </section>
 
   <!-- Onglet Mes courses -->
@@ -556,8 +576,8 @@ window.onerror = function(msg, url, line, col, err) {
       <input type="tel" id="edit-profil-tel">
     </div>
     <p id="erreur-edit-profil"></p>
-    <button id="btn-sauver-profil" class="vert">Enregistrer</button>
-    <a href="https://taxiwal.com" target="_blank" id="btn-visiter-site" style="text-decoration:none; display:block;">🌐 Visiter le site Taxi Wal</a>
+    <button id="btn-sauver-profil" class="vert">💾 Enregistrer</button>
+    <a href="https://taxiwal.com" target="_blank" rel="noopener" id="btn-visiter-site" style="text-decoration:none; display:block;">🌐 Visiter notre site</a>
     <button id="btn-deconnexion" class="secondaire">Se déconnecter</button>
     <div style="margin-top:28px; padding-top:16px; border-top:1px solid #e3e3e0;">
       <button id="btn-supprimer-compte" type="button" style="width:100%; padding:13px; border-radius:12px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700;">🗑️ Supprimer mon compte</button>
@@ -1451,16 +1471,16 @@ async function construireCarteCourseClient(course) {
     if (!propositions || propositions.length === 0) {
       blocMarche.innerHTML = `<p class="attente-propositions">📢 Demande envoyée aux chauffeurs disponibles — en attente de propositions…</p>`;
     } else {
-      const { data: positions } = await supabase
-        .from("positions_chauffeurs")
-        .select("chauffeur_id, latitude, longitude")
-        .in("chauffeur_id", propositions.map(p => p.chauffeur_id));
-      const positionParChauffeur = new Map((positions || []).map(p => [p.chauffeur_id, p]));
+      // Indication de proximité via fonction sécurisée (aucune coordonnée renvoyée)
+      const chauffeursProches = new Set();
+      await Promise.all([...new Set(propositions.map(p => p.chauffeur_id))].map(async (cid) => {
+        const { data: proche } = await supabase.rpc("chauffeur_proposant_a_proximite", { p_course_id: course.id, p_chauffeur_id: cid });
+        if (proche === true) chauffeursProches.add(cid);
+      }));
 
       blocMarche.innerHTML = `<div class="titre-propositions">📢 ${propositions.length} proposition${propositions.length > 1 ? "s" : ""} reçue${propositions.length > 1 ? "s" : ""}</div>` +
         propositions.map(p => {
-          const pos = positionParChauffeur.get(p.chauffeur_id);
-          const distanceTxt = pos ? ` · 📍 chauffeur localisé à proximité` : "";
+          const distanceTxt = chauffeursProches.has(p.chauffeur_id) ? ` · 📍 chauffeur localisé à proximité` : "";
           return `
             <div class="ligne-proposition" data-id="${p.id}">
               <div><b>${esc(p.profils?.nom) || "Chauffeur"}</b>${distanceTxt}</div>
@@ -1488,6 +1508,7 @@ async function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-chauffeur-assigne";
     bloc.innerHTML = `
+      ${course.vehicule_souhaite && window.twVisuelVehicule ? `<div style="margin-bottom:6px;">${window.twVisuelVehicule(course.vehicule_souhaite, 40)}</div>` : ""}
       <div class="ligne-chauffeur">🚕 <b>${esc(course.profils.nom) || "Votre chauffeur"}</b>${course.vehicules ? ` — ${esc(course.vehicules.nom) || ""} ${esc(course.vehicules.plaque) ? "(" + esc(course.vehicules.plaque) + ")" : ""}` : ""}</div>
       <div class="mini-carte-chauffeur" id="carte-course-${course.id}"></div>
       ${course.code_verification ? `<div class="code-verification">🔒 Code de vérification : <b>${esc(course.code_verification)}</b><br><small>Donnez ce code au chauffeur pour confirmer qu'il s'agit bien de votre course.</small></div>` : ""}
@@ -1500,7 +1521,7 @@ async function construireCarteCourseClient(course) {
       });
     }
     div.appendChild(bloc);
-    afficherCarteChauffeurClient(course.id, course.chauffeur_id);
+    afficherCarteChauffeurClient(course);
   }
 
   // --- Prix proposé : le client doit l'accepter avant de pouvoir payer l'acompte ---
@@ -1813,29 +1834,79 @@ function preremplirReservation(course, retour) {
 
 // Affiche une petite carte en direct avec la position du chauffeur assigné (comme Uber),
 // ou un message d'attente tant que sa position n'est pas encore connue.
-async function afficherCarteChauffeurClient(courseId, chauffeurId) {
+// Suivi du chauffeur UNIQUEMENT pendant l'approche (course acceptée, pas encore démarrée).
+// La position est lue via la fonction sécurisée position_chauffeur_pour_client (jamais la table directement).
+const suivisApproche = new Map(); // courseId -> { timer, carte, marqueur, dernierEta, etaTxt, pickup }
+function distanceVolKm(a, b) {
+  const R = 6371, r = x => x * Math.PI / 180;
+  const dLat = r(b[0] - a[0]), dLon = r(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+async function etaMinutesApproche(depuis, vers) {
+  try {
+    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${depuis[1]},${depuis[0]};${vers[1]},${vers[0]}?overview=false`);
+    const d = await r.json();
+    if (d.routes && d.routes[0]) return Math.max(1, Math.round(d.routes[0].duration / 60));
+  } catch (e) {}
+  return Math.max(1, Math.round(distanceVolKm(depuis, vers) * 1.3 / 40 * 60));
+}
+function arreterSuiviApproche(courseId) {
+  const s = suivisApproche.get(courseId);
+  if (s) { clearInterval(s.timer); try { s.carte && s.carte.remove(); } catch (e) {} suivisApproche.delete(courseId); }
+}
+async function afficherCarteChauffeurClient(course) {
+  const courseId = course.id;
   const conteneurCarte = document.getElementById(`carte-course-${courseId}`);
-  if (!conteneurCarte || !chauffeurId) return;
-
-  const { data: position } = await supabase
-    .from("positions_chauffeurs")
-    .select("latitude, longitude")
-    .eq("chauffeur_id", chauffeurId)
-    .maybeSingle();
-
-  if (!position || position.latitude == null) {
-    conteneurCarte.innerHTML = '<p class="carte-en-attente">📍 Localisation du chauffeur en cours…</p>';
+  arreterSuiviApproche(courseId);
+  if (!conteneurCarte || !course.chauffeur_id) return;
+  if (course.statut !== "assignee") {
+    conteneurCarte.innerHTML = course.statut === "en_cours"
+      ? '<p class="carte-en-attente">✅ Vous avez été pris en charge — bon trajet !</p>'
+      : '<p class="carte-en-attente">Course terminée.</p>';
     return;
   }
+  const suivi = { timer: null, carte: null, marqueur: null, dernierEta: 0, etaTxt: "", pickup: null };
+  suivisApproche.set(courseId, suivi);
+  conteneurCarte.innerHTML = '<p class="carte-en-attente">📍 Le suivi de votre chauffeur s\'affichera dès qu\'il sera en route vers vous.</p>';
 
-  try {
-    const carte = L.map(conteneurCarte, { zoomControl: false, attributionControl: false })
-      .setView([position.latitude, position.longitude], 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(carte);
-    L.marker([position.latitude, position.longitude]).addTo(carte).bindPopup("Votre chauffeur");
-  } catch (e) {
-    conteneurCarte.innerHTML = '<p class="carte-en-attente">Carte indisponible pour le moment.</p>';
-  }
+  const rafraichir = async () => {
+    // L'élément a disparu (liste rechargée) : on arrête ce suivi
+    if (!document.body.contains(conteneurCarte)) { arreterSuiviApproche(courseId); return; }
+    const { data, error } = await supabase.rpc("position_chauffeur_pour_client", { p_course_id: courseId });
+    const pos = !error && data && data[0];
+    if (!pos || pos.latitude == null) {
+      if (suivi.carte) { try { suivi.carte.remove(); } catch (e) {} suivi.carte = null; suivi.marqueur = null; }
+      conteneurCarte.innerHTML = '<p class="carte-en-attente">📍 Le suivi de votre chauffeur s\'affichera dès qu\'il sera en route vers vous.</p>';
+      return;
+    }
+    const ici = [pos.latitude, pos.longitude];
+    if (!suivi.carte) {
+      conteneurCarte.innerHTML = '<div class="eta-approche" style="font-weight:700;margin:6px 0;">🚕 Votre chauffeur est en route</div><div class="carte-approche" style="height:200px;border-radius:10px;overflow:hidden;"></div>';
+      try {
+        suivi.carte = L.map(conteneurCarte.querySelector(".carte-approche"), { zoomControl: false, attributionControl: false }).setView(ici, 14);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(suivi.carte);
+        suivi.marqueur = L.marker(ici).addTo(suivi.carte).bindPopup("Votre chauffeur");
+      } catch (e) { conteneurCarte.innerHTML = '<p class="carte-en-attente">Carte indisponible pour le moment.</p>'; return; }
+    } else {
+      suivi.marqueur.setLatLng(ici); suivi.carte.panTo(ici);
+    }
+    // ETA : au plus un calcul toutes les 30 s
+    if (Date.now() - suivi.dernierEta > 30000) {
+      suivi.dernierEta = Date.now();
+      if (!suivi.pickup && course.adresse_depart) {
+        try { const g = await geocoderAdresseTarif(course.adresse_depart); if (g) suivi.pickup = [g.lat, g.lon]; } catch (e) {}
+      }
+      if (suivi.pickup) {
+        const min = await etaMinutesApproche(ici, suivi.pickup);
+        suivi.etaTxt = `🚕 Votre chauffeur est en route — arrivée dans environ ${min} min`;
+      }
+    }
+    const el = conteneurCarte.querySelector(".eta-approche");
+    if (el && suivi.etaTxt) el.textContent = suivi.etaTxt;
+  };
+  await rafraichir();
+  if (suivisApproche.get(courseId) === suivi) suivi.timer = setInterval(rafraichir, 20000);
 }
 
 function notifierChangementStatut(course) {
@@ -1852,14 +1923,7 @@ function notifierChangementStatut(course) {
   if (!texte) return;
 
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine"; osc.frequency.value = 660;
-    gain.gain.setValueAtTime(0.25, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(); osc.stop(ctx.currentTime + 0.3);
+    if (typeof window.twCarillon === "function") window.twCarillon();
   } catch (e) {}
 
   if ("Notification" in window && Notification.permission === "granted") {
@@ -2144,7 +2208,8 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   VEHICULES.forEach(([val, ico, nom, det]) => {
     const b = document.createElement("div");
     b.className = "rz-vehicule"; b.dataset.val = val;
-    b.innerHTML = `<div class="rz-v-icone">${ico}</div><div class="rz-v-nom">${nom}</div><div class="rz-v-detail">${det}</div>`;
+    const vis = val && window.twVisuelVehicule ? window.twVisuelVehicule(val, 40) : "";
+    b.innerHTML = `<div class="rz-v-icone">${vis || ico}</div><div class="rz-v-nom">${nom}</div><div class="rz-v-detail">${det}</div>`;
     b.addEventListener("click", () => { selVeh.value = val; selVeh.dispatchEvent(new Event("change", { bubbles: true })); majVehicules(); });
     grille.appendChild(b);
   });
@@ -2935,6 +3000,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     const extrait = m.texte.length > 90 ? m.texte.slice(0, 90) + "…" : m.texte;
     if (typeof window.toastClient === "function") window.toastClient("💬 Taxi Wal vous a répondu : " + extrait);
     try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+    try { if (typeof window.twCarillon === "function") window.twCarillon(); } catch (e) {}
     if (document.visibilityState !== "visible" && "Notification" in window && Notification.permission === "granted") {
       try { new Notification("💬 Taxi Wal vous a répondu", { body: extrait, tag: "chat-" + m.id }); } catch (e) {}
     }
@@ -3042,6 +3108,44 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     alert(paye ? "✅ Paiement reçu, merci ! Votre course est confirmée."
                : "Merci ! Votre paiement est en cours de vérification. Dès qu'il est reçu, votre course passe automatiquement en « Confirmée ».");
   }, 1200);
+})();
+</script>
+<script>
+// ===== Taxi Wal : carillon doux (Web Audio, aucun fichier) + déverrouillage audio iOS =====
+(function () {
+  let ctx = null;
+  function getCtx() {
+    try { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; }
+    return ctx;
+  }
+  function deverrouiller() {
+    const c = getCtx(); if (!c) return;
+    if (c.state === "suspended") c.resume().catch(() => {});
+    try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {}
+  }
+  ["pointerdown", "touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, deverrouiller, { passive: true }));
+  // Carillon 3 notes (do-mi-sol aigu), ~1 s, enveloppe douce façon cloche
+  window.twCarillon = function (fois) {
+    const c = getCtx(); if (!c) return;
+    try {
+      if (c.state === "suspended") c.resume().catch(() => {});
+      const sortie = c.createGain(); sortie.gain.value = 0.35; sortie.connect(c.destination);
+      const n = Math.max(1, fois || 1);
+      for (let r = 0; r < n; r++) {
+        [[1046.5, 0], [1318.5, 0.16], [1568, 0.32]].forEach(([f, d]) => {
+          const t = c.currentTime + 0.03 + r * 1.3 + d;
+          [[1, 0.5], [2.01, 0.08]].forEach(([m, v]) => {
+            const o = c.createOscillator(), g = c.createGain();
+            o.type = "sine"; o.frequency.value = f * m;
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(v, t + 0.015);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + (m === 1 ? 0.8 : 0.3));
+            o.connect(g).connect(sortie); o.start(t); o.stop(t + 0.85);
+          });
+        });
+      }
+    } catch (e) {}
+  };
 })();
 </script>
 </body>
