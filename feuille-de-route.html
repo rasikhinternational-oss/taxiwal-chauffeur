@@ -637,10 +637,7 @@ window.onerror = function(msg, url, line, col, err) {
 <header>
   <a href="chauffeur.html" id="btn-retour">← Retour</a>
   <button id="btn-imprimer-fr">🖨️ Imprimer / PDF (contrôle)</button>
-  <div style="display:flex; align-items:center; gap:10px;">
-    <img src="icon-192.png" alt="Taxi Wal" width="36" height="36" style="width:36px; height:36px; border-radius:9px; flex-shrink:0;">
-    <h1>📄 Feuille de route</h1>
-  </div>
+  <h1>Feuille de route</h1>
   <p id="sous-titre">Chargement…</p>
 </header>
 
@@ -650,7 +647,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <p id="vehicule-actuel-titre" style="margin:16px 20px 0;">🚗 Véhicule actuel</p>
 <div class="bloc" id="bloc-identite">
-  <h2>🪪 Identité</h2>
+  <h2>Identité</h2>
   <p class="identite"><span>Identité de l'exploitant :</span> <b id="identite-societe">—</b></p>
   <p class="identite"><span>Date :</span> <b id="identite-date">—</b></p>
   <p class="identite"><span>Nom du chauffeur :</span> <b id="identite-chauffeur">—</b></p>
@@ -671,7 +668,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <div class="bloc-repliable" id="bloc-service-repliable">
   <div class="entete-repliable" id="entete-service-repliable">
-    <h2>⏱️ Service &amp; compteurs (ticket) <span id="statut-feuille"></span></h2>
+    <h2>Service &amp; compteurs (ticket) <span id="statut-feuille"></span></h2>
     <span class="chevron-repli" id="chevron-service">▾</span>
   </div>
   <div class="resume-repli" id="resume-service-replie"></div>
@@ -736,7 +733,7 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <div class="bloc" id="bloc-courses">
-  <h2>🚕 Courses</h2>
+  <h2>Courses</h2>
   <div id="liste-lignes"></div>
   <div id="overlay-qr">
     <div style="font-weight:700; font-size:1.1rem;">📱 Paiement par QR code</div>
@@ -751,7 +748,7 @@ window.onerror = function(msg, url, line, col, err) {
       <button type="button" id="oq-fermer" style="background:#dcdcda; color:#111;">✕ Fermer</button>
     </div>
   </div>
-  <button id="btn-ajouter-ligne">➕ Ajouter une course</button>
+  <button id="btn-ajouter-ligne">+ Ajouter une course</button>
 </div>
 
 <div class="bloc" id="bloc-caisse">
@@ -1240,42 +1237,77 @@ function afficherSelecteurFeuilles() {
   if (!barre) {
     barre = document.createElement("div");
     barre.id = "barre-selecteur-feuilles";
-    barre.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; margin:14px 20px 0;";
+    barre.style.cssText = "margin:14px 20px 0;";
     document.getElementById("bloc-identite").insertAdjacentElement("beforebegin", barre);
   }
   barre.innerHTML = "";
-
   const btnChanger = document.createElement("button");
-  btnChanger.textContent = "🚗 Changer de véhicule";
-  btnChanger.style.cssText = "width:auto; padding:8px 12px; font-size:.82rem; border-radius:8px; border:1px dashed var(--vert); background:transparent; color:var(--vert); font-weight:600;";
+  btnChanger.type = "button";
+  const signee = feuilleActuelle && feuilleActuelle.verrouillee;
+  btnChanger.textContent = signee ? "➕ Ouvrir une nouvelle feuille (autre voiture)" : "🚗 Je change de voiture → nouvelle feuille";
+  btnChanger.style.cssText = "width:100%; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid var(--vert); background:#eef8f1; color:var(--vert); font-weight:800;";
   btnChanger.addEventListener("click", ouvrirChangementVehicule);
   barre.appendChild(btnChanger);
 }
 
+function choisirVehicule() {
+  return new Promise((resolve) => {
+    const fond = document.createElement("div");
+    fond.style.cssText = "position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center;";
+    const boite = document.createElement("div");
+    boite.style.cssText = "background:#fff; color:#111; width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px); max-height:85vh; overflow:auto;";
+    boite.innerHTML = '<div style="font-weight:800; font-size:1.05rem; margin-bottom:10px;">🚗 Avec quelle voiture continues-tu ?</div>';
+    vehiculesActifsCache.forEach(v => {
+      const b = document.createElement("button");
+      b.type = "button";
+      const actuelle = feuilleActuelle && feuilleActuelle.vehicule_id === v.id;
+      b.textContent = (v.nom || "Véhicule") + (v.plaque ? " · " + v.plaque : "") + (actuelle ? "  (voiture actuelle)" : "");
+      b.style.cssText = "display:block; width:100%; text-align:left; padding:14px; margin-bottom:8px; border-radius:12px; border:1px solid #ccc; background:" + (actuelle ? "#f3f3f3" : "#fff") + "; font-size:1rem; font-weight:700;";
+      b.onclick = () => { fond.remove(); resolve(v); };
+      boite.appendChild(b);
+    });
+    const annuler = document.createElement("button");
+    annuler.type = "button"; annuler.textContent = "Annuler";
+    annuler.style.cssText = "display:block; width:100%; padding:12px; border-radius:12px; border:1px solid #ccc; background:#fff;";
+    annuler.onclick = () => { fond.remove(); resolve(null); };
+    boite.appendChild(annuler);
+    fond.appendChild(boite);
+    fond.addEventListener("click", (e) => { if (e.target === fond) { fond.remove(); resolve(null); } });
+    document.body.appendChild(fond);
+  });
+}
+
 async function ouvrirChangementVehicule() {
   if (vehiculesActifsCache.length === 0) { alert("Aucun véhicule actif enregistré."); return; }
-  const options = vehiculesActifsCache
-    .map((v, i) => `${i + 1}. ${v.nom}${v.plaque ? " (" + v.plaque + ")" : ""}`)
-    .join("\n");
-  const choix = prompt(
-    "Avec quel véhicule continues-tu maintenant ? Ça va créer une nouvelle feuille de route pour ce véhicule, à partir de maintenant.\n\n" + options
-  );
-  if (!choix) return;
-  const index = parseInt(choix) - 1;
-  const vehiculeChoisi = vehiculesActifsCache[index];
-  if (!vehiculeChoisi) { alert("Choix non reconnu."); return; }
-
-  if (!confirm(`Passer au véhicule "${vehiculeChoisi.nom}" maintenant ? L'heure de fin du véhicule actuel sera complétée automatiquement si elle est vide.`)) return;
-
   const { data: { user } } = await supabase.auth.getUser();
   const aujourdHui = dateLocaleISO();
   const heureMaintenant = new Date().toTimeString().slice(0, 5);
+  const actuelleOuverte = feuilleActuelle && !feuilleActuelle.verrouillee;
 
-  // Clôture le segment en cours : complète l'heure de fin si elle n'est pas déjà remplie
-  // manuellement, pour que "de telle heure à telle heure" soit toujours correct.
-  if (!feuilleActuelle.heure_fin) {
-    await supabase.from("feuilles_route").update({ heure_fin: heureMaintenant }).eq("id", feuilleActuelle.id);
-    feuilleActuelle.heure_fin = heureMaintenant;
+  // 1) La feuille de la voiture actuelle doit être complète, puis elle est clôturée (signée)
+  if (actuelleOuverte) {
+    if (!feuilleActuelle.heure_fin) {
+      const { error } = await supabase.from("feuilles_route").update({ heure_fin: heureMaintenant }).eq("id", feuilleActuelle.id);
+      if (!error) feuilleActuelle.heure_fin = heureMaintenant;
+    }
+    const manques = manquesSignature();
+    if (manques.length) {
+      alert("🚗 Avant de changer de voiture, termine la feuille de la voiture actuelle.\n\nIl manque :\n• " + manques.join("\n• ") + "\n\n(Remplis les compteurs de FIN de la voiture que tu quittes, puis réessaie.)");
+      try { ouvrirFermerService(true); } catch (_) {}
+      const bloc = document.getElementById("bloc-service-repliable") || document.getElementById("bloc-identite");
+      if (bloc) bloc.scrollIntoView({ block: "start", behavior: "smooth" });
+      return;
+    }
+  }
+  const vehiculeChoisi = await choisirVehicule();
+  if (!vehiculeChoisi) return;
+  if (!confirm((actuelleOuverte ? "La feuille de la voiture actuelle va être clôturée (signée).\n\n" : "") +
+      `Ouvrir une nouvelle feuille avec « ${vehiculeChoisi.nom}${vehiculeChoisi.plaque ? " · " + vehiculeChoisi.plaque : ""} » à partir de ${heureMaintenant} ?`)) return;
+
+  if (actuelleOuverte) {
+    const { error: errSigne } = await supabase.from("feuilles_route").update({ signee: true }).eq("id", feuilleActuelle.id);
+    if (errSigne) { alert("Erreur à la clôture de la feuille actuelle : " + errSigne.message); return; }
+    feuilleActuelle.verrouillee = true; feuilleActuelle.signee = true;
   }
 
   const { data: nouvelleFeuille, error } = await supabase
@@ -1284,9 +1316,10 @@ async function ouvrirChangementVehicule() {
     .select().single();
   if (error) { alert("Erreur : " + error.message); return; }
 
-  toutesLesFeuillesDuJour.push(nouvelleFeuille);
+  if (!toutesLesFeuillesDuJour.some(f => f.id === nouvelleFeuille.id)) toutesLesFeuillesDuJour.push(nouvelleFeuille);
   feuilleActuelle = nouvelleFeuille;
   await chargerFeuilleActive(user);
+  alert("✅ Nouvelle feuille ouverte pour « " + vehiculeChoisi.nom + " ». Remplis les compteurs de DÉBUT de cette voiture.");
 }
 
 async function chargerFeuilleActive(user) {
@@ -2402,16 +2435,16 @@ document.getElementById("btn-signer-confirmer").addEventListener("click", async 
   if (manquesSignature().length || !document.getElementById("chk-fin-journee").checked) return;
   document.getElementById("etape-signature").style.display = "none";
 
-  const idsAVerrouiller = toutesLesFeuillesDuJour.filter(f => !f.verrouillee).map(f => f.id);
+  const idsAVerrouiller = [feuilleActuelle.id];
   const { error } = await supabase.from("feuilles_route")
     .update({ signee: true }).in("id", idsAVerrouiller);
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
   feuilleActuelle.verrouillee = true;
   feuilleActuelle.signee = true;
-  toutesLesFeuillesDuJour.forEach(f => { f.verrouillee = true; f.signee = true; });
   afficherLignes();
   appliquerVerrouillage();
+  afficherSelecteurFeuilles();
 });
 
 function remplirResumeSignee() {
