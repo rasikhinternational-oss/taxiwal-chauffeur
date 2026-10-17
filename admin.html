@@ -6438,6 +6438,14 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
 
   if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
 
+  // Toute personne qui a une feuille ce jour-là est affichée, même si son compte n'a pas le rôle
+  // « chauffeur » (ex. compte admin utilisé pour rouler) ou s'il est désactivé.
+  (feuilles || []).forEach(f => {
+    if (!chauffeurs.some(c => c.id === f.chauffeur_id)) {
+      chauffeurs.push({ id: f.chauffeur_id, nom: ((f.profils && f.profils.nom) || "Compte sans nom") + " (autre compte)" });
+    }
+  });
+
   if (!chauffeurs || chauffeurs.length === 0) {
     conteneur.innerHTML = '<p id="feuilles-vide">Aucun chauffeur actif enregistré.</p>';
     return;
