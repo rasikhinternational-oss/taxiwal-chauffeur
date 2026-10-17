@@ -28,6 +28,37 @@
   window.alert = function (msg) { file.push(msg); suivant(); };
 })();
 
+// Confirmation dans la page (remplace window.confirm, qui peut rester invisible sur iPhone).
+// Renvoie une Promise<boolean> : true si "OK", false si "Annuler".
+function confirmerDansPage(message, okLabel, cancelLabel) {
+  return new Promise(function (resolve) {
+    function ouvrir() {
+      var fond = document.createElement("div");
+      fond.className = "modale-confirmer-dans-page";
+      fond.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;";
+      var boite = document.createElement("div");
+      boite.style.cssText = "background:#fff;color:#111;max-width:440px;width:100%;border-radius:16px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.3);font:16px/1.4 -apple-system,Arial,sans-serif;max-height:80vh;overflow:auto;";
+      var texte = document.createElement("div");
+      texte.style.cssText = "white-space:pre-wrap;word-break:break-word;";
+      texte.textContent = String(message == null ? "" : message);
+      var ok = document.createElement("button");
+      ok.type = "button"; ok.className = "btn-confirmer-ok"; ok.textContent = okLabel || "OK";
+      ok.style.cssText = "margin-top:14px;width:100%;padding:16px;border:none;border-radius:12px;background:#1f8a4c;color:#fff;font-weight:800;font-size:1.1rem;";
+      var annuler = document.createElement("button");
+      annuler.type = "button"; annuler.className = "btn-confirmer-annuler"; annuler.textContent = cancelLabel || "Annuler";
+      annuler.style.cssText = "margin-top:10px;width:100%;padding:14px;border:none;border-radius:12px;background:#e5e5e5;color:#111;font-weight:700;font-size:1rem;";
+      var fini = false;
+      function fermer(v) { if (fini) return; fini = true; fond.remove(); resolve(v); }
+      ok.onclick = function (e) { e.stopPropagation(); fermer(true); };
+      annuler.onclick = function (e) { e.stopPropagation(); fermer(false); };
+      boite.addEventListener("click", function (e) { e.stopPropagation(); });
+      boite.appendChild(texte); boite.appendChild(ok); boite.appendChild(annuler); fond.appendChild(boite);
+      document.body.appendChild(fond);
+    }
+    if (document.body) ouvrir(); else document.addEventListener("DOMContentLoaded", ouvrir, { once: true });
+  });
+}
+
 // En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
 window.addEventListener("error", function (e) {
   try {
@@ -344,7 +375,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <div id="ecran-login">
   <div class="tw-photo tw-hero-login">
-    <img src="img/van-soir.webp" alt="Van Taxi Wal" width="540" height="720" loading="lazy" decoding="async" style="object-position:center 60%;" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+    <img src="van-soir.webp" alt="Van Taxi Wal" width="540" height="720" loading="lazy" decoding="async" style="object-position:center 60%;" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
     <div class="tw-voile"></div>
     <div class="tw-texte"><b>Espace Chauffeur</b><span>Connecte-toi pour recevoir tes courses</span></div>
   </div>
@@ -1434,7 +1465,7 @@ document.addEventListener("click", () => {
   document.getElementById("menu-chauffeur-deroulant").style.display = "none";
 });
 document.getElementById("btn-deconnexion-chauffeur").addEventListener("click", async () => {
-  if (!confirm("Se déconnecter de l'application Taxi Wal ?")) return;
+  if (!(await confirmerDansPage("Se déconnecter de l'application Taxi Wal ?", "Se déconnecter", "Annuler"))) return;
   arreterPartagePosition();
   await supabase.auth.signOut();
   location.reload();
@@ -1833,7 +1864,7 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
     }
 
     const btnAbsent = creerBouton("🚫 Client absent", async () => {
-      if (!confirm("Le client ne s'est pas présenté ? Cette course va être marquée annulée.")) return;
+      if (!(await confirmerDansPage("Le client ne s'est pas présenté ? Cette course va être marquée annulée.", "🚫 Oui, client absent", "Annuler"))) return;
       idsRetiresParMoi.add(course.id);
       const { error } = await supabase.from("courses").update({
         statut: "annulee", annulee_par: "chauffeur", motif_annulation: "non_presente"
@@ -1845,16 +1876,24 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
     actions.appendChild(btnAbsent);
   }
 
-  if (course.statut === "assignee" && course.accepte_chauffeur) {
-    actions.appendChild(creerBouton("Démarrer la course", () => {
-      const ok = window.confirm(
+  if (course.statut === "assignee") {
+    // Toujours visible (même si la course n'est pas encore acceptée) : démarrer = accepter + démarrer
+    const btnDemarrer = creerBouton("▶️ Démarrer la course", async () => {
+      const ok = await confirmerDansPage(
         "Avant de démarrer :\n\n" +
         (estTaximetre ? "1) Allume le taximètre\n2) Imprime le ticket à la fin\n" : "1) Course au forfait, pas besoin du taximètre\n") +
         "3) Complète ta feuille de route\n\n" +
-        "Continuer et démarrer la course ?"
+        "Continuer et démarrer la course ?",
+        "▶️ Oui, démarrer", "Annuler"
       );
-      if (ok) demarrerCourse(course.id);
-    }));
+      if (ok) demarrerCourse(course.id, !course.accepte_chauffeur);
+    });
+    btnDemarrer.className = "btn-demarrer-course";
+    btnDemarrer.style.background = "var(--vert)";
+    btnDemarrer.style.fontSize = "1.15rem";
+    btnDemarrer.style.fontWeight = "800";
+    btnDemarrer.style.padding = "16px";
+    actions.appendChild(btnDemarrer);
   } else if (course.statut === "en_cours") {
     actions.appendChild(creerBouton(encaisse && encaisse.payeEnLigneTout ? "✅ Terminer la course (déjà payée)" : "Marquer terminée", () => ouvrirModalePaiement(course.id)));
   }
@@ -1981,13 +2020,19 @@ async function accepterCourse(courseId) {
   chargerCourses();
 }
 
-async function demarrerCourse(courseId) {
-  const { data, error } = await supabase
-    .from("courses")
-    .update({ statut: "en_cours" })
-    .eq("id", courseId).select("id");
+async function demarrerCourse(courseId, accepterAussi) {
+  // Si la course n'était pas encore acceptée, démarrer l'accepte en même temps (mêmes champs qu'accepterCourse)
+  const maj = { statut: "en_cours" };
+  if (accepterAussi) { maj.accepte_chauffeur = true; maj.accepte_a = new Date().toISOString(); }
+  let data, error;
+  try {
+    ({ data, error } = await supabase
+      .from("courses")
+      .update(maj)
+      .eq("id", courseId).select("id"));
+  } catch (e) { error = e; }
 
-  if (error) { alert("Impossible de démarrer : " + error.message); return; }
+  if (error) { alert("❌ Impossible de démarrer la course : " + (error.message || error) + "\n\nVérifie ta connexion et réessaie."); return; }
   if (!data || !data.length) { alert("❌ Course retirée par la centrale : elle n'est plus à toi."); chargerCourses(); return; }
   chargerCourses();
 }
@@ -2004,7 +2049,7 @@ async function ouvrirModalePaiement(courseId) {
       .eq("id", courseId).maybeSingle();
     const enc = montantAEncaisser(c);
     if (enc && enc.payeEnLigneTout) {
-      if (window.confirm("✅ Course DÉJÀ PAYÉE PAR BANCONTACT (" + eurosChauffeur(enc.enLigne) + ").\n\nNe rien encaisser auprès du client.\n\nTerminer la course maintenant ?")) {
+      if (await confirmerDansPage("✅ Course DÉJÀ PAYÉE PAR BANCONTACT (" + eurosChauffeur(enc.enLigne) + ").\n\nNe rien encaisser auprès du client.\n\nTerminer la course maintenant ?", "✅ Oui, terminer", "Annuler")) {
         await terminerAvecPaiement("qr");
       } else courseEnFinDePaiement = null;
       return;
