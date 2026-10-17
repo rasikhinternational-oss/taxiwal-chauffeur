@@ -252,8 +252,18 @@ function ligneEnFacture(l) { return l.mode_paiement === "facture" || l.motif_san
 // un prix OU un motif « pas de prix », des sommes perçues OU un motif/texte qui explique l'absence d'argent,
 // le mode de paiement et, pour une facture, le payeur (« pour qui »).
 // Renvoie aussi les champs à entourer en rouge (champs), dont « payeur » (bloc facture).
+// Paiement en ligne (Bancontact via Stripe) de la course liée à la ligne
+function paiementEnLigneLigne(l) {
+  const c = l && l.courses;
+  const montant = Math.round((Number(c && c.paye_en_ligne_montant) || 0) * 100) / 100;
+  if (!c || !(montant > 0)) return null;
+  const total = Math.round(((Number(c.prix) || 0) + (Number(c.surprime) || 0)) * 100) / 100;
+  const reste = Math.max(0, Math.round((c.reste_a_payer != null ? Number(c.reste_a_payer) : total - montant) * 100) / 100);
+  return { montant, total, reste, tout: reste <= 0 };
+}
 function etatCompletude(l, triees, feuille) {
   const manque = [], champs = new Set();
+  const enLigneTout = !!(paiementEnLigneLigne(l) || {}).tout;
   const exiger = (ok, champ, libelle, autres) => { if (ok) return; manque.push(libelle); champs.add(champ); (autres || []).forEach(c => champs.add(c)); };
   const annulee = ligneSansDeplacement(l);
   const prix = frNum(l.prix_taximetre), somme = frNum(l.sommes_percues);
@@ -273,11 +283,11 @@ function etatCompletude(l, triees, feuille) {
     exiger((somme !== null && somme > 0) || sansArgentExplique(l), "sommes_percues", "sommes perçues (ou motif sans argent)");
   } else if (!typeSansPrix) {
     exiger((prix !== null && prix > 0) || !!l.motif_sans_prix, "prix_taximetre", "prix taximètre (ou motif « pas de prix »)", ["motif_sans_prix"]);
-    exiger((somme !== null && somme > 0) || sansArgentExplique(l), "sommes_percues", "sommes perçues (ou motif sans argent)");
+    exiger((somme !== null && somme > 0) || sansArgentExplique(l) || enLigneTout, "sommes_percues", "sommes perçues (ou motif sans argent)");
   }
   // Mode de paiement : obligatoire, sauf trajet privé ou motif sans aucun paiement (carwash, à vide, gratuit…)
   const motifSansPaiement = !!l.motif_sans_prix && !MOTIFS_AVEC_PAIEMENT[l.motif_sans_prix];
-  if (l.type_course !== "prive" && !motifSansPaiement) exiger(rempli(l.mode_paiement), "mode_paiement", "mode de paiement");
+  if (l.type_course !== "prive" && !motifSansPaiement) exiger(rempli(l.mode_paiement) || enLigneTout, "mode_paiement", "mode de paiement");
   if (ligneEnFacture(l)) exiger(!!lirePayeurFacture(l.numero_dossier).payeur, "payeur", "facture : pour qui ?");
   const t = triees || trierLignesChrono(lignesActuelles || [], feuille);
   const idx = t.findIndex(x => x.id === l.id);
@@ -1349,7 +1359,7 @@ async function afficherSectionsPassees() {
       ? await supabase.from("vehicules").select("nom, plaque").eq("id", f.vehicule_id).maybeSingle()
       : { data: null };
     const { data: lignesBrutes } = await supabase
-      .from("lignes_feuille_route").select("*, courses(statut, date_heure)").eq("feuille_route_id", f.id).order("n_ordre");
+      .from("lignes_feuille_route").select("*, courses(statut, date_heure, prix, surprime, paye_en_ligne_montant, reste_a_payer, acompte_paye, acompte_montant, paiement_choisi)").eq("feuille_route_id", f.id).order("n_ordre");
     const lignes = trierLignesChrono(lignesBrutes || [], f);
 
     const recettes = (f.recettes_debut != null && f.recettes_fin != null)
@@ -1527,7 +1537,7 @@ Object.keys(champsEntete).forEach(idHtml => {
 async function chargerLignes() {
   const { data, error } = await supabase
     .from("lignes_feuille_route")
-    .select("*, courses(statut, notes, numero_reservation, date_heure)")
+    .select("*, courses(statut, notes, numero_reservation, date_heure, prix, surprime, paye_en_ligne_montant, reste_a_payer, acompte_paye, acompte_montant, paiement_choisi)")
     .eq("feuille_route_id", feuilleActuelle.id)
     .order("n_ordre", { ascending: true });
 
@@ -1685,7 +1695,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
   else if (ligne.course_id && !courseManuelle) badge = ligneTerminee ? " · ✅ course faite — à compléter puis clôturer" : " · attribuée par la centrale";
   if (ligne.mode_paiement === "uber_cash") badge += " · 🚕💵 Uber cash";
   else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
-  if (ligne.mode_paiement === "qr") badge += " · 📱 QR";
+  const _enLigneBadge = paiementEnLigneLigne(ligne);
+  if (_enLigneBadge && _enLigneBadge.tout) badge += " · ✅ payé par Bancontact";
+  else if (_enLigneBadge) badge += " · 💳 acompte payé en ligne";
+  else if (ligne.mode_paiement === "qr") badge += " · 📱 QR";
   if (ligne.mode_paiement === "annulee") badge += " · ❌ annulée";
   // Contrôle du compteur et des heures (ordre chronologique) : la ligne passe en rouge avec la raison
   const anomaliesLigne = anomaliesFeuille(lignesActuelles, feuilleActuelle).parId.get(ligne.id) || [];
@@ -2002,6 +2015,33 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionPrive.textContent = "🔒 Trajet privé : non facturé au client, juste comptabilisé pour le kilométrage du véhicule.";
   corps.insertBefore(mentionPrive, wrapsParChamp["mode_paiement"]);
 
+  // ---- Course payée en ligne par Bancontact (Stripe) ----
+  const payeEnLigne = paiementEnLigneLigne(ligne);
+  const mentionEnLigne = document.createElement("div");
+  mentionEnLigne.className = "mention-uber";
+  mentionEnLigne.style.cssText = "background:#e7f5ec; color:#1f6b3f; border:2px solid #1f8a4c; font-weight:700; font-size:.92rem;";
+  if (payeEnLigne && payeEnLigne.tout) {
+    mentionEnLigne.textContent = "✅ Payé en ligne par Bancontact (" + formatEuro(payeEnLigne.montant) + ") — rien à encaisser.";
+  } else if (payeEnLigne) {
+    mentionEnLigne.textContent = "💳 Dont " + formatEuro(payeEnLigne.montant) + " déjà payés en ligne par Bancontact — à encaisser : " + formatEuro(payeEnLigne.reste)
+      + ". Dans « Sommes perçues », mets le TOTAL de la course (" + formatEuro(payeEnLigne.total) + " = en ligne + encaissé) et le mode = ce que tu as encaissé.";
+  }
+  if (payeEnLigne) corps.insertBefore(mentionEnLigne, wrapsParChamp["mode_paiement"]);
+  // Tout payé en ligne : sommes perçues et mode remplis d'office (si vides)
+  if (payeEnLigne && payeEnLigne.tout && !ligneVerrouillee && (ligne.sommes_percues == null || !ligne.mode_paiement)) (() => {
+    const majEnLigne = {};
+    // (avec une surprime, la synchro ligne → course réécrirait le prix : on laisse alors le serveur remplir)
+    if (ligne.sommes_percues == null && !(Number(ligne.courses?.surprime) > 0)) majEnLigne.sommes_percues = payeEnLigne.total || payeEnLigne.montant;
+    if (!ligne.mode_paiement) majEnLigne.mode_paiement = "qr";
+    if (!Object.keys(majEnLigne).length) return;
+    supabase.from("lignes_feuille_route").update(majEnLigne).eq("id", ligne.id).select("*").maybeSingle().then(({ data: lsrv, error }) => {
+      if (error || !lsrv) return;
+      Object.assign(ligne, lsrv);
+      try { synchroniserChampsUber(); appliquerVisibilitePaiement(); majInfoCompletude(); } catch (e) {}
+      if (typeof calculerTotaux === "function") calculerTotaux();
+    });
+  })();
+
   // ---- Calculatrice "rendu monnaie" (paiement cash) ----
   // Reste utilisable tant que la feuille n'est pas signée, même si la course est terminée.
   const feuilleSignee = feuilleActuelle.verrouillee;
@@ -2202,9 +2242,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
     mentionPrive.style.display = estPrive ? "" : "none";
     mentionUber.style.display = estUber ? "" : "none";
     mentionUberCash.style.display = estUberCash ? "" : "none";
-    blocMonnaie.style.display = (!estUber && !estPrive && (mode === "cash" || mode === "" || estUberCash)) ? "" : "none";
+    blocMonnaie.style.display = (!(payeEnLigne && payeEnLigne.tout) && !estUber && !estPrive && (mode === "cash" || mode === "" || estUberCash)) ? "" : "none";
     mentionAnnulee.style.display = estAnnulee ? "" : "none";
-    blocQr.style.display = (mode === "qr" && !estPrive) ? "" : "none";
+    blocQr.style.display = (mode === "qr" && !estPrive && !(payeEnLigne && payeEnLigne.tout)) ? "" : "none";
   }
 
   // ---- Puces : motifs et modes de paiement affichés directement (rangée qui défile horizontalement) ----
@@ -2568,7 +2608,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       : { data: null };
     const { data: lignesF } = f.id === feuilleActuelle.id
       ? { data: lignesActuelles }
-      : await supabase.from("lignes_feuille_route").select("*, courses(statut, date_heure)").eq("feuille_route_id", f.id).order("n_ordre")
+      : await supabase.from("lignes_feuille_route").select("*, courses(statut, date_heure, prix, surprime, paye_en_ligne_montant, reste_a_payer, acompte_paye, acompte_montant, paiement_choisi)").eq("feuille_route_id", f.id).order("n_ordre")
           .then(r => ({ data: trierLignesChrono(r.data || [], f) }));
 
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {

@@ -86,7 +86,7 @@ document.addEventListener("focusin", (e) => {
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
-    'padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px));font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
     'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
   return false;
 };
@@ -134,6 +134,16 @@ window.onerror = function(msg, url, line, col, err) {
   header img{ animation:logo-pulse 3.5s ease-in-out infinite; }
 
   #ecran-login{ padding:40px 20px; max-width:360px; margin:0 auto; }
+  /* ---- Photos véhicules (présentation uniquement) ---- */
+  .tw-photo{ position:relative; overflow:hidden; border-radius:16px; background:#1c1c1c; box-shadow:0 6px 18px rgba(0,0,0,.12); }
+  .tw-photo img{ display:block; width:100%; height:100%; object-fit:cover; }
+  .tw-photo .tw-voile{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.72) 100%); pointer-events:none; }
+  .tw-photo .tw-texte{ position:absolute; left:14px; right:14px; bottom:12px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .tw-photo .tw-texte b{ display:block; font-size:1.05rem; font-weight:800; }
+  .tw-photo .tw-texte span{ display:block; font-size:.8rem; opacity:.92; margin-top:2px; }
+  .tw-photo::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:linear-gradient(90deg, var(--rouge), var(--vert)); }
+  .tw-hero-login{ height:200px; margin:-20px 0 22px; }
+
   #ecran-login label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
   #ecran-login input{
     width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
@@ -315,24 +325,6 @@ window.onerror = function(msg, url, line, col, err) {
   .pl-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:.88rem; }
   .pl-ligne b{ font-size:.95rem; }
 </style>
-<script>
-// ===== Visuels véhicules : SVG légers. Pour mettre de vraies photos plus tard, renseigner les URL ici. =====
-window.TW_PHOTOS_VEHICULES = { berline: "", van: "", pmr: "" };
-window.twVisuelVehicule = function (type, taille) {
-  const h = taille || 44;
-  const url = (window.TW_PHOTOS_VEHICULES || {})[type];
-  if (url) return `<img src="${url}" alt="" loading="lazy" decoding="async" style="height:${h}px; width:auto; max-width:100%; object-fit:contain; border-radius:8px;">`;
-  const roues = (a, b) => `<circle cx="${a}" cy="38" r="6" fill="#111"/><circle cx="${a}" cy="38" r="2.5" fill="#bbb"/><circle cx="${b}" cy="38" r="6" fill="#111"/><circle cx="${b}" cy="38" r="2.5" fill="#bbb"/>`;
-  const liseré = `<rect x="6" y="31" width="84" height="2" fill="#c81e2c"/><rect x="6" y="33" width="84" height="1.5" fill="#1f8a4c"/>`;
-  const corps = {
-    berline: `<path d="M6 34 L8 25 Q10 22 16 21 L28 20 L38 12 Q41 10 46 10 L64 10 Q69 10 72 13 L80 20 L88 22 Q92 23 92 28 L92 34 Z" fill="#1b1b1b"/><path d="M33 20 L41 13 L54 13 L54 20 Z M57 13 L67 13 L74 20 L57 20 Z" fill="#9fc3df"/>`,
-    van: `<path d="M6 34 L6 14 Q6 8 12 8 L70 8 Q74 8 77 12 L86 22 Q92 23 92 28 L92 34 Z" fill="#1b1b1b"/><path d="M12 12 L30 12 L30 21 L12 21 Z M33 12 L51 12 L51 21 L33 21 Z M54 12 L69 12 L80 21 L54 21 Z" fill="#9fc3df"/>`,
-    pmr: `<path d="M6 34 L6 14 Q6 8 12 8 L70 8 Q74 8 77 12 L86 22 Q92 23 92 28 L92 34 Z" fill="#1b1b1b"/><path d="M54 12 L69 12 L80 21 L54 21 Z" fill="#9fc3df"/><rect x="12" y="11" width="22" height="20" rx="3" fill="#1d4f86"/><g fill="none" stroke="#fff" stroke-width="1.8"><circle cx="22" cy="25" r="4"/><path d="M21 15 v6 h5 l2 5"/></g><circle cx="21" cy="13.5" r="1.4" fill="#fff"/>`
-  }[type];
-  if (!corps) return "";
-  return `<svg viewBox="0 0 96 46" height="${h}" role="img" aria-label="${type}" style="display:block; max-width:100%;">${corps}${liseré}${roues(type === "berline" ? 24 : 22, 74)}<rect x="40" y="3" width="16" height="5" rx="1" fill="#f5c400" ${type === "berline" ? 'transform="translate(0 4)"' : ""}/></svg>`;
-};
-</script>
 </head>
 <body>
 
@@ -345,13 +337,17 @@ window.twVisuelVehicule = function (type, taille) {
   <button id="btn-menu-chauffeur" style="width:auto; padding:8px 12px; background:var(--noir); border:1px solid #cfcfcd; border-radius:8px; color:var(--blanc); font-size:1.1rem; cursor:pointer;">☰</button>
   <div id="menu-chauffeur-deroulant" style="display:none; position:absolute; top:56px; right:20px; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
     <button id="btn-reactiver-notifs-menu" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">🔔 Réactiver les notifications</button>
-    <a href="https://taxiwal.com" target="_blank" rel="noopener" style="display:block; padding:12px 16px; border-bottom:1px solid #cfcfcd; color:var(--vert); font-weight:600; text-decoration:none;">🌐 Voir le site taxiwal.com</a>
     <button id="btn-deconnexion-chauffeur" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
   </div>
 </header>
 <button id="btn-installer-app" style="display:none; margin:10px 20px 0; background:var(--vert);">📲 Installer l'application</button>
 
 <div id="ecran-login">
+  <div class="tw-photo tw-hero-login">
+    <img src="img/van-soir.webp" alt="Van Taxi Wal" width="540" height="720" loading="lazy" decoding="async" style="object-position:center 60%;" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+    <div class="tw-voile"></div>
+    <div class="tw-texte"><b>Espace Chauffeur</b><span>Connecte-toi pour recevoir tes courses</span></div>
+  </div>
   <label for="email">Adresse email</label>
   <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email">
 
@@ -386,9 +382,9 @@ window.twVisuelVehicule = function (type, taille) {
   <a href="feuille-de-route.html" id="btn-feuille-route" style="text-decoration:none; display:block; text-align:center;">📋 Ma feuille de route du jour</a>
 
   <nav class="onglets">
-    <button class="actif" data-onglet="mes-courses">📋 Mes courses</button>
+    <button class="actif" data-onglet="mes-courses">Mes courses</button>
     <button data-onglet="demandes-ouvertes">📢 Demandes ouvertes</button>
-    <button data-onglet="agenda">📅 Agenda</button>
+    <button data-onglet="agenda">Agenda</button>
     <button data-onglet="historique-feuilles">📁 Mes feuilles (30 jours)</button>
     <button data-onglet="mes-horaires">🗓️ Mes horaires</button>
     <button data-onglet="demande-client">📝 Demande d'un client</button>
@@ -501,7 +497,7 @@ window.twVisuelVehicule = function (type, taille) {
       <p id="pl-erreur" style="color:var(--rouge); font-weight:600; min-height:1em;"></p>
       <button type="button" id="pl-envoyer" style="width:100%; padding:16px; border:none; border-radius:12px; background:var(--vert); color:#fff; font-weight:800; font-size:1.05rem;">⛽ Enregistrer le plein</button>
     </div>
-    <h3 style="margin:22px 0 8px; font-size:1rem;">⛽ Mes derniers pleins</h3>
+    <h3 style="margin:22px 0 8px; font-size:1rem;">Mes derniers pleins</h3>
     <div id="pl-liste"></div>
   </section>
 
@@ -531,7 +527,7 @@ window.twVisuelVehicule = function (type, taille) {
 
 <div id="modale-paiement" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:60; align-items:flex-end;">
   <div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:24px;">
-    <h2 style="margin-top:0; font-size:1.1rem;">💳 Comment le client a-t-il payé ?</h2>
+    <h2 style="margin-top:0; font-size:1.1rem;">Comment le client a-t-il payé ?</h2>
     <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
       <button id="btn-paiement-cash" style="background:var(--vert);">💶 Cash</button>
       <button id="btn-paiement-carte" style="background:var(--bleu, #3b82c4);">💳 Carte</button>
@@ -1078,12 +1074,11 @@ async function reinscrireNotifications(bouton) {
   }
 }
 document.getElementById("btn-reactiver-notifs").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
-document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => { if (window.TaxiWalPush) { window.TaxiWalPush.activer(); alert("✅ Notifications vérifiées. Si l'iPhone le demande, choisis « Autoriser »."); return; } reinscrireNotifications(e.currentTarget); });
+document.getElementById("btn-reactiver-notifs-menu").addEventListener("click", (e) => reinscrireNotifications(e.currentTarget));
 
 // Affiche le bandeau rouge si les notifications sont bloquées, ou si les derniers envois ont échoué
 async function verifierEtatNotifications() {
   const bandeau = document.getElementById("bandeau-notifs");
-  if (window.TAXIWAL_PUSH_NATIF) { if (bandeau) bandeau.style.display = "none"; return; } // app Taxi Wal Driver : notifications natives
   const texte = document.getElementById("bandeau-notifs-texte");
   try {
     if (!("Notification" in window) || Notification.permission !== "granted") {
@@ -1270,7 +1265,13 @@ function notifierNouvelleCourse(course) {
   jouerSonAlerte();
   if ("Notification" in window && Notification.permission === "granted") {
     new Notification("🚕 Nouvelle course Taxi Wal — vérifie vite !", {
-      body: `${course.adresse_depart} → ${course.adresse_arrivee}`,
+      body: `${course.adresse_depart} → ${course.adresse_arrivee}` + (() => {
+        const enc = montantAEncaisser(course);
+        if (!enc || !(enc.enLigne > 0)) return "";
+        return enc.payeEnLigneTout
+          ? `\n✅ DÉJÀ PAYÉ PAR BANCONTACT (${eurosChauffeur(enc.enLigne)}) — rien à encaisser`
+          : `\n💳 Acompte ${eurosChauffeur(enc.enLigne)} payé par Bancontact — à encaisser : ${eurosChauffeur(Math.max(enc.reste, 0))}`;
+      })(),
       tag: "course-" + course.id,
       requireInteraction: true
     });
@@ -1708,14 +1709,29 @@ const eurosChauffeur = (n) => (Math.round((Number(n) || 0) * 100) / 100).toFixed
 function montantAEncaisser(c) {
   if (!c || c.mode_paiement === "uber") return null;
   const total = Math.round(((Number(c.prix) || 0) + (Number(c.surprime) || 0)) * 100) / 100;
+  const enLigne = Math.round((Number(c.paye_en_ligne_montant) || 0) * 100) / 100;
   let reste;
   if (c.reste_a_payer != null) reste = Number(c.reste_a_payer);
+  else if (enLigne > 0) reste = total - enLigne;
   else if (c.acompte_paye) reste = c.paiement_choisi === "total" ? 0 : total - (Number(c.acompte_montant) || 0);
   else reste = total;
   reste = Math.round(reste * 100) / 100;
-  if (!(total > 0) && c.reste_a_payer == null) return null;
+  if (!(total > 0) && c.reste_a_payer == null && !(enLigne > 0)) return null;
   const deja = Math.round((total - reste) * 100) / 100;
-  return { total, reste, deja, toutPaye: reste <= 0 && deja > 0 };
+  return { total, reste, deja, enLigne, toutPaye: reste <= 0 && deja > 0, payeEnLigneTout: enLigne > 0 && reste <= 0 };
+}
+// Bandeau « payé par Bancontact » (gros et vert) pour la carte de course
+function blocPayeEnLigneChauffeur(enc) {
+  if (!enc || !(enc.enLigne > 0)) return "";
+  if (enc.payeEnLigneTout) return `
+    <div class="bloc-paye-en-ligne" style="margin:8px 0; padding:12px 14px; border-radius:12px; background:#1f8a4c; color:#fff; border:3px solid #136b37;">
+      <div style="font-size:1.25rem; font-weight:900; line-height:1.25;">✅ DÉJÀ PAYÉ PAR BANCONTACT (${esc(eurosChauffeur(enc.enLigne))})</div>
+      <div style="font-size:1rem; font-weight:700; margin-top:4px;">Ne rien encaisser — termine la course tranquillement.</div>
+    </div>`;
+  return `
+    <div class="bloc-paye-en-ligne" style="margin:8px 0; padding:10px 12px; border-radius:10px; background:#e7f5ec; color:#111; border:2px solid #1f8a4c;">
+      <div style="font-size:1.05rem; font-weight:800;">💳 Acompte ${esc(eurosChauffeur(enc.enLigne))} déjà payé par Bancontact — à encaisser : ${esc(eurosChauffeur(Math.max(enc.reste, 0)))}</div>
+    </div>`;
 }
 
 function construireCarteCourse(course) {
@@ -1757,7 +1773,7 @@ function construireCarteCourse(course) {
     ? `<b>Réservation :</b> ${course.nb_vehicules} véhicules pour ce client, les autres sont faits par un autre chauffeur.<br>` : "";
 
   const encaisse = montantAEncaisser(course);
-  const blocEncaisser = encaisse ? `
+  const blocEncaisser = encaisse && encaisse.payeEnLigneTout ? blocPayeEnLigneChauffeur(encaisse) : encaisse ? blocPayeEnLigneChauffeur(encaisse) + `
     <div class="bloc-a-encaisser" style="margin:8px 0; padding:10px 12px; border-radius:10px; background:${encaisse.reste < 0 ? "#fdecee" : "#e7f5ec"}; border:2px solid ${encaisse.reste < 0 ? "#b3141b" : "#1f8a4c"}; color:#111;">
       <div style="font-size:1.15rem; font-weight:800;">💶 À encaisser : ${esc(eurosChauffeur(Math.max(encaisse.reste, 0)))}</div>
       ${encaisse.deja > 0 ? `<div style="font-size:.85rem; margin-top:2px;">(${encaisse.toutPaye ? "course déjà payée en totalité" : "acompte de " + esc(eurosChauffeur(encaisse.deja)) + " déjà payé"} — total ${esc(eurosChauffeur(encaisse.total))})</div>` : ""}
@@ -1768,7 +1784,6 @@ function construireCarteCourse(course) {
   div.innerHTML = `
     ${course.numero_reservation ? `<div style="font-size:.72rem; font-weight:700; color:#1d4f86; margin-bottom:3px;">N° ${esc(course.numero_reservation)}</div>` : ""}<span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}${badgeGroupe}
     <h3>${esc(course.client_nom) || "Client"}</h3>
-    ${course.vehicule_souhaite && window.twVisuelVehicule ? `<div style="float:right; margin:-4px 0 4px 8px;">${window.twVisuelVehicule(course.vehicule_souhaite, 34)}</div>` : ""}
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
@@ -1841,7 +1856,7 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
       if (ok) demarrerCourse(course.id);
     }));
   } else if (course.statut === "en_cours") {
-    actions.appendChild(creerBouton("Marquer terminée", () => ouvrirModalePaiement(course.id)));
+    actions.appendChild(creerBouton(encaisse && encaisse.payeEnLigneTout ? "✅ Terminer la course (déjà payée)" : "Marquer terminée", () => ouvrirModalePaiement(course.id)));
   }
 
   if (actions.children.length > 0) div.appendChild(actions);
@@ -1980,8 +1995,21 @@ async function demarrerCourse(courseId) {
 let courseEnFinDePaiement = null;
 const modalePaiement = document.getElementById("modale-paiement");
 
-function ouvrirModalePaiement(courseId) {
+async function ouvrirModalePaiement(courseId) {
   courseEnFinDePaiement = courseId;
+  // Course déjà payée en totalité par Bancontact (en ligne) : pas d'étape d'encaissement
+  try {
+    const { data: c } = await supabase.from("courses")
+      .select("prix, surprime, acompte_montant, acompte_paye, paiement_choisi, reste_a_payer, mode_paiement, paye_en_ligne_montant")
+      .eq("id", courseId).maybeSingle();
+    const enc = montantAEncaisser(c);
+    if (enc && enc.payeEnLigneTout) {
+      if (window.confirm("✅ Course DÉJÀ PAYÉE PAR BANCONTACT (" + eurosChauffeur(enc.enLigne) + ").\n\nNe rien encaisser auprès du client.\n\nTerminer la course maintenant ?")) {
+        await terminerAvecPaiement("qr");
+      } else courseEnFinDePaiement = null;
+      return;
+    }
+  } catch (e) { console.error(e); }
   modalePaiement.style.display = "flex";
 }
 document.getElementById("btn-annuler-paiement").addEventListener("click", () => {
@@ -2004,7 +2032,7 @@ function urlQrPaiementChauffeur(montant, communication) {
 document.getElementById("btn-paiement-qr").addEventListener("click", async () => {
   if (!courseEnFinDePaiement) return;
   const { data: c } = await supabase.from("courses")
-    .select("prix, surprime, acompte_montant, acompte_paye, paiement_choisi, reste_a_payer, mode_paiement, date_heure").eq("id", courseEnFinDePaiement).maybeSingle();
+    .select("prix, surprime, acompte_montant, acompte_paye, paiement_choisi, reste_a_payer, mode_paiement, date_heure, paye_en_ligne_montant").eq("id", courseEnFinDePaiement).maybeSingle();
   const enc = montantAEncaisser(c);
   let montant = enc ? enc.reste : 0;
   if (!(montant > 0)) {
@@ -2097,24 +2125,6 @@ function arreterPartagePosition() {
   metPositionIndisponible();
 }
 
-// Historique du trajet (Taxi Wal Driver) — l'app native s'en charge elle-même quand elle est installée
-let dernierEnvoiTrajet = 0;
-async function enregistrerTrajetGps(user, pos) {
-  if (window.TAXIWAL_GPS_NATIF) return;
-  if (Date.now() - dernierEnvoiTrajet < 10000) return; // max 1 point / ~15 s (suivi continu + intervalle)
-  dernierEnvoiTrajet = Date.now();
-  const { error: errTrajet } = await supabase.from("trajets_gps").insert({
-    chauffeur_id: user.id,
-    latitude: pos.coords.latitude,
-    longitude: pos.coords.longitude,
-    precision_m: pos.coords.accuracy != null ? Math.round(pos.coords.accuracy) : null,
-    vitesse_kmh: pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) : null,
-    cap: pos.coords.heading != null ? Math.round(pos.coords.heading) : null,
-    source: "app_web"
-  });
-  if (errTrajet) console.error("Trajet GPS :", errTrajet.message);
-}
-
 async function envoyerPositionLue(pos) {
   dernierEnvoiPosition = Date.now();
   const { data: { user } } = await supabase.auth.getUser();
@@ -2126,7 +2136,6 @@ async function envoyerPositionLue(pos) {
     disponible: true,
     updated_at: new Date().toISOString()
   });
-  await enregistrerTrajetGps(user, pos);
 }
 
 // Dès que l'app revient à l'écran : position envoyée tout de suite + écran gardé allumé si course en cours
@@ -2168,7 +2177,6 @@ async function envoyerPosition() {
       disponible: true,
       updated_at: new Date().toISOString()
     });
-    await enregistrerTrajetGps(user, pos);
   }, gererErreurSuiviGps, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 }
 
@@ -2317,8 +2325,15 @@ async function chmEnvoyer() {
 }
 
 function chmSonCourt() {
-  // Carillon doux pour les messages (la sonnerie "appel" reste pour les nouvelles courses).
-  try { if (typeof window.twCarillon === "function") window.twCarillon(); } catch (e) {}
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[880, 0], [1175, 0.16]].forEach(([f, t0]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + 0.03 + t0;
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.7, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.36);
+    });
+  } catch (e) {}
   try { if (navigator.vibrate) navigator.vibrate([250, 120, 250]); } catch (e) {}
 }
 
@@ -2451,45 +2466,5 @@ async function chargerMesPleins() {
     : '<p style="color:var(--gris);">Aucun plein enregistré.</p>';
 }
 </script>
-<script>
-// ===== Taxi Wal : carillon doux (Web Audio, aucun fichier) + déverrouillage audio iOS =====
-(function () {
-  let ctx = null;
-  function getCtx() {
-    try { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; }
-    return ctx;
-  }
-  function deverrouiller() {
-    const c = getCtx(); if (!c) return;
-    if (c.state === "suspended") c.resume().catch(() => {});
-    try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {}
-  }
-  ["pointerdown", "touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, deverrouiller, { passive: true }));
-  // Carillon 3 notes (do-mi-sol aigu), ~1 s, enveloppe douce façon cloche
-  window.twCarillon = function (fois) {
-    const c = getCtx(); if (!c) return;
-    try {
-      if (c.state === "suspended") c.resume().catch(() => {});
-      const sortie = c.createGain(); sortie.gain.value = 0.35; sortie.connect(c.destination);
-      const n = Math.max(1, fois || 1);
-      for (let r = 0; r < n; r++) {
-        [[1046.5, 0], [1318.5, 0.16], [1568, 0.32]].forEach(([f, d]) => {
-          const t = c.currentTime + 0.03 + r * 1.3 + d;
-          [[1, 0.5], [2.01, 0.08]].forEach(([m, v]) => {
-            const o = c.createOscillator(), g = c.createGain();
-            o.type = "sine"; o.frequency.value = f * m;
-            g.gain.setValueAtTime(0.0001, t);
-            g.gain.exponentialRampToValueAtTime(v, t + 0.015);
-            g.gain.exponentialRampToValueAtTime(0.0001, t + (m === 1 ? 0.8 : 0.3));
-            o.connect(g).connect(sortie); o.start(t); o.stop(t + 0.85);
-          });
-        });
-      }
-    } catch (e) {}
-  };
-})();
-</script>
-<script src="gps-natif.js"></script>
-<script src="push-natif.js"></script>
 </body>
 </html>

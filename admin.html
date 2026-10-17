@@ -171,7 +171,7 @@ function creerEditeurArrets(listeInitiale, options) {
 window.onerror = function(msg, url, line, col, err) {
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
-    'padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px));font-size:12px;word-break:break-word;font-family:monospace;">' +
+    'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
     'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
   return false;
 };
@@ -724,6 +724,20 @@ window.onerror = function(msg, url, line, col, err) {
 
   /* Écran de connexion admin */
   #ecran-login-admin{ padding:60px 20px; max-width:360px; margin:0 auto; }
+  /* ---- Photos véhicules (présentation uniquement) ---- */
+  .tw-photo{ position:relative; overflow:hidden; border-radius:16px; background:#1c1c1c; box-shadow:0 6px 18px rgba(0,0,0,.12); }
+  .tw-photo img{ display:block; width:100%; height:100%; object-fit:cover; }
+  .tw-photo .tw-voile{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.72) 100%); pointer-events:none; }
+  .tw-photo .tw-texte{ position:absolute; left:14px; right:14px; bottom:12px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .tw-photo .tw-texte b{ display:block; font-size:1.05rem; font-weight:800; }
+  .tw-photo .tw-texte span{ display:block; font-size:.8rem; opacity:.92; margin-top:2px; }
+  .tw-photo::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:linear-gradient(90deg, var(--rouge), var(--vert)); }
+  .tw-hero-login{ height:170px; margin:-30px 0 18px; }
+  .vehicule-admin .entete-veh{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .vehicule-admin .vignette-veh{ width:64px; height:48px; border-radius:8px; object-fit:cover; flex-shrink:0; background:#e6e6e3; }
+  .vehicule-admin .entete-veh b{ display:block; font-size:.95rem; }
+  .vehicule-admin .entete-veh small{ color:var(--gris); font-size:.76rem; }
+
   #ecran-login-admin label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
   #ecran-login-admin input{
     width:100%; padding:14px; margin-bottom:14px; border-radius:10px;
@@ -773,6 +787,10 @@ window.onerror = function(msg, url, line, col, err) {
 <body>
 
 <div id="ecran-login-admin">
+  <div class="tw-photo tw-hero-login">
+    <img src="img/van-principal.webp" alt="Véhicule Taxi Wal" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+    <div class="tw-voile"></div>
+  </div>
   <img src="icon-192.png" alt="Taxi Wal" style="width:64px; height:64px; border-radius:16px; display:block; margin:0 auto 14px; animation:logo-pulse 3.5s ease-in-out infinite;">
   <h1 style="text-align:center; font-size:1.2rem;">Taxi Wal — Admin</h1>
   <label for="email-admin">Adresse email administrateur</label>
@@ -796,14 +814,13 @@ window.onerror = function(msg, url, line, col, err) {
     <div id="menu-admin-deroulant" style="display:none; position:absolute; top:46px; right:0; background:var(--noir-2); border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.15); z-index:20; min-width:180px; overflow:hidden;">
       <button id="btn-email-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">✉️ E-mails (codes clients, Brevo)</button>
       <button id="btn-paiement-en-ligne-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; border-bottom:1px solid #cfcfcd; color:inherit; font-weight:600; text-align:left; cursor:pointer;">💳 Paiement en ligne (Stripe · Bancontact)</button>
-      <a href="https://taxiwal.com" target="_blank" rel="noopener" style="display:block; padding:12px 16px; border-bottom:1px solid #cfcfcd; color:var(--vert); font-weight:600; text-decoration:none;">🌐 Voir le site taxiwal.com</a>
       <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
     </div>
   </div>
   <nav>
-    <button class="actif" data-onglet="courses">🚕 Courses</button>
-    <button data-onglet="agenda">📅 Agenda</button>
-    <button data-onglet="carte">📍 Carte chauffeurs</button>
+    <button class="actif" data-onglet="courses">Courses</button>
+    <button data-onglet="agenda">Agenda</button>
+    <button data-onglet="carte">Carte chauffeurs</button>
     <button data-onglet="demandes-clients">📲 Demandes clients</button>
     <button data-onglet="par-chauffeur">👤 Courses par chauffeur</button>
     <button data-onglet="horaires">🗓️ Horaires</button>
@@ -812,9 +829,9 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="paiements">💳 Paiements</button>
     <button data-onglet="factures">🧾 Factures</button>
     <button data-onglet="messages">💬 Messages</button>
-    <button data-onglet="feuilles">📄 Feuilles de route</button>
-    <button data-onglet="vehicules">🚐 Véhicules</button>
-    <button data-onglet="caisse">💰 Caisse</button>
+    <button data-onglet="feuilles">Feuilles de route</button>
+    <button data-onglet="vehicules">Véhicules</button>
+    <button data-onglet="caisse">Caisse</button>
     <button data-onglet="partenaires">🤝 Sous-traitants</button>
     <button data-onglet="carnet">📇 Carnet clients</button>
     <button data-onglet="clients">👥 Comptes clients app</button>
@@ -827,7 +844,7 @@ window.onerror = function(msg, url, line, col, err) {
 </header>
 
 <section id="section-courses" class="visible">
-  <button id="btn-nouvelle-course">➕ Nouvelle course</button>
+  <button id="btn-nouvelle-course">+ Nouvelle course</button>
   <button id="btn-toggle-historique" style="width:100%; padding:12px; border-radius:10px; background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
   <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse, N° TW-…)">
   <div id="barre-assignation-groupee" style="display:none;">
@@ -858,21 +875,6 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-carte">
   <div id="carte"></div>
   <div id="carte-liste-chauffeurs"></div>
-  <div id="tableau-bord-chauffeurs" style="margin-top:14px;"></div>
-
-  <div id="outil-trajet-jour" style="background:#fff; border-radius:12px; padding:14px; margin:12px 0; box-shadow:0 1px 6px rgba(0,0,0,.08);">
-    <h3 style="margin-top:0;">🛣️ Trajet d'une journée</h3>
-    <p style="margin:4px 0 10px; font-size:.85rem; color:#555;">Revoir tout le chemin d'un chauffeur, ses arrêts et leur durée.</p>
-    <label>Chauffeur</label>
-    <select id="tj-chauffeur"></select>
-    <label>Date</label>
-    <input type="date" id="tj-date">
-    <div style="display:flex; gap:8px; margin-top:10px;">
-      <button id="tj-afficher" style="flex:1;">Afficher le trajet</button>
-      <button id="tj-effacer" class="secondaire" style="flex:0 0 auto; width:auto; padding:0 14px;">Effacer</button>
-    </div>
-    <div id="tj-resultat" style="margin-top:10px; font-size:.9rem;"></div>
-  </div>
 
   <div id="outil-calcul">
     <h3>🧭 Calculer un trajet</h3>
@@ -1062,7 +1064,7 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <section id="section-vehicules">
-  <button id="btn-ajouter-vehicule">🚐 Ajouter un véhicule</button>
+  <button id="btn-ajouter-vehicule">+ Ajouter un véhicule</button>
   <div id="liste-vehicules-admin"></div>
 </section>
 
@@ -1113,7 +1115,7 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- Modale création sous-traitant -->
 <div id="modale-partenaire">
   <div id="modale-partenaire-contenu">
-    <h2>🤝 Nouveau sous-traitant</h2>
+    <h2>Nouveau sous-traitant</h2>
     <label>Nom du chauffeur ou de la société</label>
     <input type="text" id="input-partenaire-nom" placeholder="ex: Jean Dupont ou Taxi XYZ">
     <label>Société (optionnel)</label>
@@ -1135,7 +1137,7 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- Modale création course -->
 <div id="modale">
   <div id="modale-contenu">
-    <h2>🚕 Nouvelle course</h2>
+    <h2>Nouvelle course</h2>
 
     <div class="bloc-recherche-carnet-modale">
       <label for="input-recherche-carnet-modale">📇 Client déjà enregistré ? Cherche-le ici</label>
@@ -2213,8 +2215,33 @@ function nomChauffeurPourNotif(course) {
 }
 
 function jouerSonAlerteAdmin() {
-  // Carillon doux (3 notes harmonieuses), répété 3 fois pour ne pas rater une alerte importante.
-  try { if (typeof window.twCarillon === "function") window.twCarillon(3); } catch (e) { console.error("Son impossible :", e); }
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const frequences = [988, 1319];
+    const nbSonneries = 4;
+    const dureeNote = 0.35;
+    const pauseEntreNotes = 0.12;
+    const pauseEntreSonneries = 0.5;
+    let t = ctx.currentTime;
+
+    for (let s = 0; s < nbSonneries; s++) {
+      frequences.forEach(freq => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.9, t + 0.02);
+        gain.gain.setValueAtTime(0.9, t + dureeNote - 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dureeNote);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + dureeNote);
+        t += dureeNote + pauseEntreNotes;
+      });
+      t += pauseEntreSonneries;
+    }
+  } catch (e) { console.error("Son impossible :", e); }
 
   if ("vibrate" in navigator) {
     try { navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch (e) {}
@@ -2409,6 +2436,10 @@ function pmLigneVersement(p) {
   else if (p.versement_statut === "en_attente" && p.disponible_le) h = `<div class="pm-versement attente">⏳ Pas encore versé — disponible le ${esc(pmJourCourt(p.disponible_le))} (environ)</div>`;
   else h = `<div class="pm-versement attente">⏳ Versement en attente</div>`;
   if (p.frais_reels != null) h += `<div class="pm-info">Frais Stripe ${pmEur(p.frais_reels)} · net ${pmEur(pmNet(p))}</div>`;
+  // Preuve : paiement confirmé par Stripe + lien pour le vérifier soi-même dans Stripe
+  h = `<div class="pm-info" style="color:#1f6b3f; font-weight:700;">✔️ Payé — confirmé par Stripe (banque du client)</div>` + h;
+  const ref = p.stripe_payment_intent || "";
+  if (ref) h += `<a href="https://dashboard.stripe.com/payments/${encodeURIComponent(ref)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-block; margin-top:6px; padding:7px 12px; border-radius:9px; border:1px solid #635bff; color:#635bff; font-weight:700; text-decoration:none; font-size:.85rem;">🔎 Vérifier ce paiement dans Stripe</a>`;
   return h;
 }
 // Demande à la fonction d'aller chercher chez Stripe les versements (payouts) et de les rattacher aux paiements
@@ -4362,6 +4393,49 @@ async function dejaPayeCourse(course) {
   return course.paiement_choisi === "total" ? totalActuel : (Number(course.acompte_montant) || 0);
 }
 
+// ---- Paiement en ligne (Bancontact via Stripe) : payé / reste à encaisser ----
+function infoPayeEnLigneAdmin(course) {
+  const enLigne = Math.round((Number(course && course.paye_en_ligne_montant) || 0) * 100) / 100;
+  if (!course || !(enLigne > 0)) return null;
+  const total = Math.round(((Number(course.prix) || 0) + (Number(course.surprime) || 0)) * 100) / 100;
+  const reste = Math.max(0, Math.round((course.reste_a_payer != null ? Number(course.reste_a_payer) : total - enLigne) * 100) / 100);
+  return { enLigne, total, reste, tout: reste <= 0 };
+}
+const _piStripeParCourse = new Map();
+function paymentIntentStripeCourse(courseId) {
+  if (!_piStripeParCourse.has(courseId)) {
+    _piStripeParCourse.set(courseId, supabase.from("paiements").select("stripe_payment_intent, recu_at")
+      .eq("course_id", courseId).eq("methode", "bancontact").not("stripe_payment_intent", "is", null)
+      .order("recu_at", { ascending: false }).limit(1)
+      .then(({ data }) => (data && data[0] && data[0].stripe_payment_intent) || null, () => null));
+  }
+  return _piStripeParCourse.get(courseId);
+}
+function blocPayeEnLigneAdmin(course, court) {
+  const inf = infoPayeEnLigneAdmin(course);
+  if (!inf) return null;
+  const el = document.createElement("div");
+  el.className = "badge-paye-en-ligne";
+  el.style.cssText = inf.tout
+    ? `background:#1f8a4c; color:#fff; border:2px solid #136b37; border-radius:10px; padding:${court ? "6px 10px" : "9px 12px"}; margin:6px 0; font-weight:900; font-size:${court ? ".82rem" : ".95rem"};`
+    : `background:#e7f5ec; color:#1f6b3f; border:2px solid #1f8a4c; border-radius:10px; padding:${court ? "6px 10px" : "9px 12px"}; margin:6px 0; font-weight:800; font-size:${court ? ".82rem" : ".92rem"};`;
+  el.textContent = inf.tout
+    ? (court ? `✅ Déjà payé par Bancontact (${eurosFr(inf.enLigne)}) — le chauffeur n'encaisse rien`
+             : `✅ PAYÉ PAR BANCONTACT — ${eurosFr(inf.enLigne)} reçus · rien à encaisser`)
+    : (court ? `💳 Acompte ${eurosFr(inf.enLigne)} payé par Bancontact — le chauffeur encaisse ${eurosFr(inf.reste)}`
+             : `💳 Acompte ${eurosFr(inf.enLigne)} payé par Bancontact · reste à encaisser ${eurosFr(inf.reste)}`);
+  if (!court) {
+    const lien = document.createElement("span");
+    el.appendChild(lien);
+    paymentIntentStripeCourse(course.id).then(pi => {
+      if (!pi) return;
+      lien.innerHTML = ` <a href="https://dashboard.stripe.com/payments/${encodeURIComponent(pi)}" target="_blank" rel="noopener" style="display:inline-block; margin-left:6px; padding:3px 9px; border-radius:8px; background:#fff; border:1px solid #635bff; color:#635bff; font-weight:700; text-decoration:none; font-size:.8rem;">🔎 Vérifier dans Stripe</a>`;
+      const a = lien.querySelector("a"); if (a) a.addEventListener("click", ev => ev.stopPropagation());
+    });
+  }
+  return el;
+}
+
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -4433,6 +4507,7 @@ function construireCarteAdmin(course) {
   btnSupprimerRapide.addEventListener("click", (e) => { e.stopPropagation(); supprimerCourse(course); });
   entete.appendChild(btnSupprimerRapide);
   div.appendChild(entete);
+  { const bp = blocPayeEnLigneAdmin(course, false); if (bp) entete.firstElementChild.appendChild(bp); }
 
   const corps = document.createElement("div");
   corps.className = "corps-course-admin";
@@ -4504,7 +4579,9 @@ function construireCarteAdmin(course) {
   if (course.origine === "client" && !["annulee", "refusee", "en_attente"].includes(course.statut)) {
     const etat = document.createElement("div");
     let txt, fond, coul;
-    if (course.acompte_paye) { txt = course.paiement_choisi === "total" ? "✅ PAYÉ EN TOTALITÉ" : "✅ ACOMPTE PAYÉ (" + Number(course.acompte_montant || 0).toFixed(2) + " €)"; fond = "#e7f5ec"; coul = "#1f6b3f"; }
+    const _inf = infoPayeEnLigneAdmin(course);
+    if (_inf) { txt = _inf.tout ? "✅ PAYÉ EN TOTALITÉ PAR BANCONTACT (" + eurosFr(_inf.enLigne) + ")" : "✅ ACOMPTE PAYÉ PAR BANCONTACT (" + eurosFr(_inf.enLigne) + ") · reste " + eurosFr(_inf.reste); fond = "#e7f5ec"; coul = "#1f6b3f"; }
+    else if (course.acompte_paye) { txt = course.paiement_choisi === "total" ? "✅ PAYÉ EN TOTALITÉ" : "✅ ACOMPTE PAYÉ (" + Number(course.acompte_montant || 0).toFixed(2) + " €)"; fond = "#e7f5ec"; coul = "#1f6b3f"; }
     else if (course.statut === "acompte_declare") { txt = "⏳ Le client DIT avoir payé — vérifie ton compte puis confirme"; fond = "#fdf1dc"; coul = "#8a5a00"; }
     else if (course.sans_acompte_autorise) { txt = "🤝 Course autorisée SANS acompte (décision de la centrale)"; fond = "#eef4fb"; coul = "#1d4f86"; }
     else if (course.statut === "prix_envoye") { txt = "💶 Prix envoyé — le client n'a pas encore répondu"; fond = "#f4f4f2"; coul = "#555"; }
@@ -4625,9 +4702,9 @@ function construireCarteAdmin(course) {
     blocPrix.innerHTML = `
       <input type="number" step="0.5" placeholder="Prix à proposer (€)">
       <select class="paiement-exige" style="margin-top:6px;">
-        <option value="acompte">💶 Le client paie un acompte (30 %)</option>
-        <option value="total">💳 Le client paie la totalité à l'avance</option>
-        <option value="choix">🔀 Le client choisit (acompte ou totalité)</option>
+        <option value="choix" selected>🔀 Le client choisit (acompte ou totalité)</option>
+        <option value="acompte">💶 Acompte obligatoire (30 %)</option>
+        <option value="total">💳 Totalité obligatoire à l'avance</option>
       </select>
       <div class="note-nuit-paiement" style="display:none; margin-top:6px; font-size:.82rem; color:#4338ca; background:#eef2ff; border-radius:8px; padding:6px 8px;">🌙 Course de nuit/tôt le matin : paiement intégral exigé (conditions)</div>
       <button type="button">Envoyer le prix</button>
@@ -4872,6 +4949,7 @@ function construireCarteAdmin(course) {
     lblCh.textContent = `🚖 Chauffeur actuel : ${course.profils?.nom || "?"}${course.statut === "en_cours" ? " (course démarrée)" : course.accepte_chauffeur ? " (acceptée)" : ""} — tu peux la réattribuer à tout moment :`;
     corps.appendChild(lblCh);
   }
+  { const bpc = blocPayeEnLigneAdmin(course, true); if (bpc) corps.appendChild(bpc); }
   corps.appendChild(selectChauffeur);
   selectAvecEnregistrer(selectChauffeur, appliquerChoixChauffeur, course.chauffeur_id ? "✅ Réattribuer" : "✅ Attribuer");
 
@@ -5941,7 +6019,6 @@ async function chargerCarte() {
         }, 3000);
       }).subscribe();
     setTimeout(() => carteLeaflet.invalidateSize(), 200);
-    initTrajetJour();
   }
 
   // Pas plus d'une mise à jour toutes les 8 secondes (sinon la carte rame)
@@ -5953,115 +6030,6 @@ async function chargerCarte() {
   }
   window.__carteEnCours = true; window.__derniereCarte = Date.now();
   try { await chargerCarteInterne(); } finally { window.__carteEnCours = false; }
-}
-
-// ---------- TAXI WAL DRIVER : trajet complet d'une journée (table trajets_gps) ----------
-let coucheTrajetJour = null;
-
-function distanceKm(a, b) {
-  const R = 6371, rad = x => x * Math.PI / 180;
-  const dLat = rad(b.latitude - a.latitude), dLon = rad(b.longitude - a.longitude);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-function heureTJ(d) { return new Date(d).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }); }
-function dureeTexte(min) { min = Math.round(min); return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}` : `${min} min`; }
-
-async function initTrajetJour() {
-  const sel = document.getElementById("tj-chauffeur");
-  if (!sel || sel.dataset.pret) return;
-  sel.dataset.pret = "1";
-  const { data } = await supabase.from("profils").select("id, nom, role").in("role", ["chauffeur", "partenaire"]).order("nom");
-  sel.innerHTML = (data || []).map(c => `<option value="${c.id}">${esc(c.nom || "Chauffeur")}${c.role === "partenaire" ? " (partenaire)" : ""}</option>`).join("");
-  const d = new Date();
-  document.getElementById("tj-date").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  document.getElementById("tj-afficher").addEventListener("click", afficherTrajetJour);
-  document.getElementById("tj-effacer").addEventListener("click", () => {
-    if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
-    coucheTrajetJour = null;
-    document.getElementById("tj-resultat").innerHTML = "";
-  });
-}
-
-async function afficherTrajetJour() {
-  const res = document.getElementById("tj-resultat");
-  const chauffeurId = document.getElementById("tj-chauffeur").value;
-  const jour = document.getElementById("tj-date").value;
-  if (!chauffeurId || !jour) { res.textContent = "Choisis un chauffeur et une date."; return; }
-  res.textContent = "Chargement du trajet…";
-  const debut = new Date(jour + "T00:00:00"), fin = new Date(debut.getTime() + 24 * 3600e3);
-
-  // Récupère tous les points de la journée (par paquets de 1000)
-  let points = [], depuis = 0;
-  while (true) {
-    const { data, error } = await supabase.from("trajets_gps")
-      .select("latitude, longitude, precision_m, vitesse_kmh, enregistre_le")
-      .eq("chauffeur_id", chauffeurId)
-      .gte("enregistre_le", debut.toISOString()).lt("enregistre_le", fin.toISOString())
-      .order("enregistre_le", { ascending: true })
-      .range(depuis, depuis + 999);
-    if (error) { res.textContent = "Erreur : " + error.message; return; }
-    points = points.concat(data || []);
-    if (!data || data.length < 1000) break;
-    depuis += 1000;
-  }
-  // On ignore les points trop imprécis (> 100 m)
-  points = points.filter(p => p.precision_m == null || p.precision_m <= 100);
-
-  if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
-  coucheTrajetJour = null;
-  if (points.length < 2) {
-    res.innerHTML = "Aucun trajet enregistré pour ce jour.<br><span style='color:#777; font-size:.82rem;'>Les trajets complets seront enregistrés dès que le chauffeur utilisera l'app Taxi Wal Driver (ou l'app chauffeur ouverte).</span>";
-    return;
-  }
-
-  // Kilomètres (on ignore les sauts GPS impossibles > 200 km/h)
-  let km = 0;
-  for (let i = 1; i < points.length; i++) {
-    const d = distanceKm(points[i - 1], points[i]);
-    const h = (new Date(points[i].enregistre_le) - new Date(points[i - 1].enregistre_le)) / 3600e3;
-    if (h > 0 && d / h > 200) continue;
-    km += d;
-  }
-
-  // Arrêts : le chauffeur reste dans un rayon de 120 m pendant au moins 5 minutes
-  const arrets = [];
-  let i = 0;
-  while (i < points.length) {
-    let j = i + 1;
-    while (j < points.length && distanceKm(points[i], points[j]) <= 0.12) j++;
-    const minutes = (new Date(points[j - 1].enregistre_le) - new Date(points[i].enregistre_le)) / 60000;
-    if (minutes >= 5) { arrets.push({ p: points[i], de: points[i].enregistre_le, a: points[j - 1].enregistre_le, minutes }); i = j; }
-    else i++;
-  }
-  // Trous dans le suivi (plus de 10 minutes sans aucun point = GPS coupé / app fermée)
-  const trous = [];
-  for (let k = 1; k < points.length; k++) {
-    const min = (new Date(points[k].enregistre_le) - new Date(points[k - 1].enregistre_le)) / 60000;
-    if (min > 10) trous.push({ de: points[k - 1].enregistre_le, a: points[k].enregistre_le, minutes: min });
-  }
-
-  coucheTrajetJour = L.layerGroup().addTo(carteLeaflet);
-  const ligne = L.polyline(points.map(p => [p.latitude, p.longitude]), { color: "#c8102e", weight: 4, opacity: .85 }).addTo(coucheTrajetJour);
-  const pastille = (txt, fond) => L.divIcon({ className: "", iconSize: [0, 0], html: `<div style="transform:translate(-50%,-50%); background:${fond}; color:#fff; font-weight:800; font-size:11px; padding:3px 7px; border-radius:999px; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); white-space:nowrap;">${txt}</div>` });
-  L.marker([points[0].latitude, points[0].longitude], { icon: pastille("Départ " + heureTJ(points[0].enregistre_le), "#1f8a4c") }).addTo(coucheTrajetJour);
-  const der = points[points.length - 1];
-  L.marker([der.latitude, der.longitude], { icon: pastille("Fin " + heureTJ(der.enregistre_le), "#111") }).addTo(coucheTrajetJour);
-  arrets.forEach((a, n) => {
-    L.marker([a.p.latitude, a.p.longitude], { icon: pastille(`⏸️ ${n + 1} · ${dureeTexte(a.minutes)}`, "#d97706") })
-      .addTo(coucheTrajetJour)
-      .bindPopup(`<b>Arrêt ${n + 1}</b><br>de ${heureTJ(a.de)} à ${heureTJ(a.a)}<br>${dureeTexte(a.minutes)}`);
-  });
-  carteLeaflet.fitBounds(ligne.getBounds(), { padding: [40, 40] });
-
-  const dureeTotale = (new Date(der.enregistre_le) - new Date(points[0].enregistre_le)) / 60000;
-  const totalArrets = arrets.reduce((s, a) => s + a.minutes, 0);
-  res.innerHTML = `
-    <div><b>${km.toFixed(1)} km</b> parcourus · de <b>${heureTJ(points[0].enregistre_le)}</b> à <b>${heureTJ(der.enregistre_le)}</b> (${dureeTexte(dureeTotale)})</div>
-    <div>⏸️ <b>${arrets.length}</b> arrêt(s) de 5 min ou plus, au total <b>${dureeTexte(totalArrets)}</b></div>
-    ${arrets.length ? `<ol style="margin:8px 0 0; padding-left:20px;">${arrets.map(a => `<li>${heureTJ(a.de)} → ${heureTJ(a.a)} : <b>${dureeTexte(a.minutes)}</b></li>`).join("")}</ol>` : ""}
-    ${trous.length ? `<div style="margin-top:8px; color:#b45309;">⚠️ Suivi interrompu ${trous.length} fois (GPS coupé ou app fermée) :<br>${trous.map(t => `${heureTJ(t.de)} → ${heureTJ(t.a)} (${dureeTexte(t.minutes)})`).join("<br>")}</div>` : ""}
-  `;
 }
 
 function centrerSurChauffeurs(meme) {
@@ -6094,7 +6062,6 @@ async function chargerCarteInterne() {
 
   dernieresPositionsCarte = positions || [];
   afficherListeChauffeursCarte(positions, coursesParChauffeur);
-  majTableauBordChauffeurs(positions).catch(e => console.error("Tableau de bord chauffeurs :", e));
   setTimeout(() => centrerSurChauffeurs(false), 300);
 
   Object.keys(lignesRouteCarte).forEach(chauffeurId => {
@@ -6171,127 +6138,6 @@ async function chargerCarteInterne() {
 setInterval(() => {
   if (document.getElementById("section-carte").classList.contains("visible")) chargerCarte();
 }, 15000);
-
-// ================== TABLEAU DE BORD : statut, temps libre, prochaine course, ETA, attentes du jour ==================
-const etaApprocheCache = {}; // chauffeurId -> { calculeA, minutes, cle }
-function distanceVolOiseauKm(aLat, aLon, bLat, bLon) {
-  const R = 6371, r = x => x * Math.PI / 180;
-  const h = Math.sin(r(bLat - aLat) / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(r(bLon - aLon) / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-async function etaVersPriseEnCharge(chauffeurId, lat, lon, adresse) {
-  const c = etaApprocheCache[chauffeurId];
-  if (c && c.cle === adresse && Date.now() - c.calculeA < 30000) return c.minutes; // max 1 appel / 30 s / chauffeur
-  const dest = await geocoderAdresse(adresse);
-  if (!dest) return null;
-  let minutes = null;
-  try {
-    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${dest.lon},${dest.lat}?overview=false`);
-    const d = await res.json();
-    if (d.routes && d.routes[0]) minutes = Math.round(d.routes[0].duration / 60);
-  } catch (e) { /* repli ci-dessous */ }
-  if (minutes == null) minutes = Math.round(distanceVolOiseauKm(lat, lon, dest.lat, dest.lon) * 1.3 / 40 * 60);
-  etaApprocheCache[chauffeurId] = { calculeA: Date.now(), minutes, cle: adresse };
-  return minutes;
-}
-function dureeTexte(min) {
-  min = Math.max(0, Math.round(min));
-  return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}`;
-}
-function heureCourte(d) { return new Date(d).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }); }
-
-async function majTableauBordChauffeurs(positions) {
-  const zone = document.getElementById("tableau-bord-chauffeurs");
-  if (!zone) return;
-  const debut = new Date(); debut.setHours(0, 0, 0, 0);
-  const fin = new Date(debut.getTime() + 24 * 3600e3);
-  const { data: courses } = await supabase.from("courses")
-    .select("id, chauffeur_id, statut, date_heure, duree_min, client_nom, adresse_depart, accepte_chauffeur, profils:chauffeur_id(nom)")
-    .not("chauffeur_id", "is", null)
-    .gte("date_heure", debut.toISOString()).lt("date_heure", fin.toISOString())
-    .in("statut", ["assignee", "en_cours", "terminee"])
-    .order("date_heure", { ascending: true });
-  const liste = courses || [];
-  // Heures réelles de début / fin tirées de l'historique des statuts
-  const debutReel = {}, finReelle = {};
-  if (liste.length) {
-    const { data: hist } = await supabase.from("courses_historique")
-      .select("course_id, quand, nouveau_statut")
-      .in("course_id", liste.map(c => c.id))
-      .in("nouveau_statut", ["en_cours", "terminee"]);
-    (hist || []).forEach(h => {
-      if (h.nouveau_statut === "en_cours" && (!debutReel[h.course_id] || h.quand < debutReel[h.course_id])) debutReel[h.course_id] = h.quand;
-      if (h.nouveau_statut === "terminee" && (!finReelle[h.course_id] || h.quand > finReelle[h.course_id])) finReelle[h.course_id] = h.quand;
-    });
-  }
-  const debutDe = c => new Date(debutReel[c.id] || c.date_heure).getTime();
-  const finDe = c => finReelle[c.id] ? new Date(finReelle[c.id]).getTime()
-    : (c.statut === "terminee" ? debutDe(c) + (Number(c.duree_min) || 30) * 60000 : null);
-
-  const parChauffeur = {};
-  liste.forEach(c => { (parChauffeur[c.chauffeur_id] = parChauffeur[c.chauffeur_id] || []).push(c); });
-  const posParChauffeur = {};
-  (positions || []).forEach(p => { posParChauffeur[p.chauffeur_id] = p; });
-  const ids = [...new Set([...Object.keys(parChauffeur), ...Object.keys(posParChauffeur)])];
-  const maintenant = Date.now();
-
-  const cartes = [], lignesJour = [];
-  for (const id of ids) {
-    const cs = parChauffeur[id] || [];
-    const p = posParChauffeur[id];
-    const nom = p?.profils?.nom || cs[0]?.profils?.nom || "Chauffeur";
-    const enCours = cs.find(c => c.statut === "en_cours");
-    const prochaine = cs.filter(c => c.statut === "assignee").sort((a, b) => new Date(a.date_heure) - new Date(b.date_heure))[0];
-    const terminees = cs.filter(c => c.statut === "terminee");
-    const derniereFin = terminees.map(finDe).filter(Boolean).sort((a, b) => b - a)[0];
-    const minAvantProchaine = prochaine ? (new Date(prochaine.date_heure).getTime() - maintenant) / 60000 : null;
-    let statut, couleur;
-    if (enCours) { statut = "🚕 En course"; couleur = "var(--rouge)"; }
-    else if (prochaine && prochaine.accepte_chauffeur && minAvantProchaine <= 90) { statut = "🧭 En route vers le client"; couleur = "#3b82c4"; }
-    else { statut = "✅ Libre"; couleur = "var(--vert, #1f8a4c)"; }
-
-    let html = `<div class="cc-chauffeur" style="border-left-color:${couleur}"><h4>${esc(nom)} — <span style="color:${couleur}">${statut}</span></h4>`;
-    if (!enCours) html += `<div class="cc-ligne">⏳ Libre depuis : <b>${derniereFin ? dureeTexte((maintenant - derniereFin) / 60000) + " (fin à " + heureCourte(derniereFin) + ")" : "aucune course terminée aujourd'hui"}</b></div>`;
-    if (prochaine) {
-      html += `<div class="cc-ligne">📅 Prochaine course : <b>${heureCourte(prochaine.date_heure)}</b> — ${esc(prochaine.client_nom || "Client")}</div>
-        <div class="cc-ligne">📍 Prise en charge : <b>${esc(prochaine.adresse_depart || "?")}</b></div>
-        <div class="cc-ligne">⏱️ ETA jusqu'au client : <b id="tb-eta-${id}">${p && !enCours ? "calcul…" : (enCours ? "après la course en cours" : "position inconnue")}</b></div>`;
-    } else html += `<div class="cc-ligne">📅 Pas d'autre course prévue aujourd'hui</div>`;
-    html += `</div>`;
-    cartes.push(html);
-
-    if (prochaine && p && !enCours && prochaine.adresse_depart) {
-      etaVersPriseEnCharge(id, p.latitude, p.longitude, prochaine.adresse_depart).then(min => {
-        const el = document.getElementById(`tb-eta-${id}`);
-        if (!el) return;
-        if (min == null) { el.textContent = "indisponible"; return; }
-        const arrivee = Date.now() + min * 60000;
-        const retard = Math.round((arrivee - new Date(prochaine.date_heure).getTime()) / 60000);
-        el.innerHTML = `≈ ${min} min (arrivée ~${heureCourte(arrivee)}) — ` + (retard > 0
-          ? `<span style="color:var(--rouge)">🔴 en retard de ${retard} min</span>`
-          : `<span style="color:var(--vert, #1f8a4c)">🟢 à l'heure</span>`);
-      });
-    }
-
-    // Temps d'attente entre deux courses terminées / en cours (fin N → début N+1)
-    const faites = cs.filter(c => c.statut !== "assignee").sort((a, b) => debutDe(a) - debutDe(b));
-    let totalVide = 0; const attentes = [];
-    for (let i = 1; i < faites.length; i++) {
-      const f = finDe(faites[i - 1]); if (!f) continue;
-      const att = Math.max(0, (debutDe(faites[i]) - f) / 60000);
-      totalVide += att;
-      attentes.push(`${heureCourte(f)} → ${heureCourte(debutDe(faites[i]))} : <b>${dureeTexte(att)}</b>`);
-    }
-    if (faites.length) lignesJour.push(`<tr><td style="padding:6px;"><b>${esc(nom)}</b></td><td style="padding:6px;">${faites.length}</td><td style="padding:6px; font-size:.8rem;">${attentes.join("<br>") || "—"}</td><td style="padding:6px;"><b>${dureeTexte(totalVide)}</b></td></tr>`);
-  }
-
-  zone.innerHTML = `<h3 style="margin:10px 0;">📋 Tableau de bord des chauffeurs</h3>` +
-    (cartes.join("") || '<p style="color:var(--gris);">Aucun chauffeur actif aujourd\'hui.</p>') +
-    `<h3 style="margin:14px 0 8px;">🕒 Temps à vide du jour</h3>` +
-    (lignesJour.length ? `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:.85rem; background:var(--noir-2); border-radius:12px;">
-      <thead><tr style="text-align:left; color:var(--gris);"><th style="padding:6px;">Chauffeur</th><th style="padding:6px;">Courses</th><th style="padding:6px;">Attentes (fin → début suivante)</th><th style="padding:6px;">Total à vide</th></tr></thead>
-      <tbody>${lignesJour.join("")}</tbody></table></div>` : '<p style="color:var(--gris);">Pas encore de course faite aujourd\'hui.</p>');
-}
 
 async function chargerCaisse() {
   const conteneur = document.getElementById("liste-caisse");
@@ -7872,6 +7718,22 @@ function construireVehiculeAdmin(vehicule) {
     ["identite_exploitant", "Société (feuille de route) — vide = Rasikh international", "text"]
   ];
 
+  // Vignette photo (présentation) : van si 7+ places ou nom Trafic/van, sinon berline
+  const entete = document.createElement("div");
+  entete.className = "entete-veh";
+  const estVan = (parseInt(vehicule.places, 10) || 0) >= 7 || /trafic|van|vito|minibus/i.test(vehicule.nom || "");
+  const vignette = document.createElement("img");
+  vignette.className = "vignette-veh";
+  vignette.src = estVan ? "img/van-principal.webp" : "img/berline.webp";
+  vignette.alt = ""; vignette.width = 64; vignette.height = 48;
+  if (!estVan) vignette.style.objectPosition = "center 78%";
+  vignette.loading = "lazy"; vignette.decoding = "async";
+  vignette.onerror = () => vignette.remove();
+  const titreVeh = document.createElement("div");
+  titreVeh.innerHTML = `<b>${esc(vehicule.nom || "Véhicule")}</b><small>${vehicule.places ? esc(String(vehicule.places)) + " places" : ""}${vehicule.plaque ? " · " + esc(vehicule.plaque) : ""}</small>`;
+  entete.appendChild(vignette); entete.appendChild(titreVeh);
+  div.appendChild(entete);
+
   const grille = document.createElement("div");
   grille.className = "grille2-veh";
   champs.forEach(([champ, libelle, type]) => {
@@ -8417,44 +8279,5 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
 
 rendreLignesVehiculesModale([{}]);
 </script>
-<script>
-// ===== Taxi Wal : carillon doux (Web Audio, aucun fichier) + déverrouillage audio iOS =====
-(function () {
-  let ctx = null;
-  function getCtx() {
-    try { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; }
-    return ctx;
-  }
-  function deverrouiller() {
-    const c = getCtx(); if (!c) return;
-    if (c.state === "suspended") c.resume().catch(() => {});
-    try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {}
-  }
-  ["pointerdown", "touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, deverrouiller, { passive: true }));
-  // Carillon 3 notes (do-mi-sol aigu), ~1 s, enveloppe douce façon cloche
-  window.twCarillon = function (fois) {
-    const c = getCtx(); if (!c) return;
-    try {
-      if (c.state === "suspended") c.resume().catch(() => {});
-      const sortie = c.createGain(); sortie.gain.value = 0.35; sortie.connect(c.destination);
-      const n = Math.max(1, fois || 1);
-      for (let r = 0; r < n; r++) {
-        [[1046.5, 0], [1318.5, 0.16], [1568, 0.32]].forEach(([f, d]) => {
-          const t = c.currentTime + 0.03 + r * 1.3 + d;
-          [[1, 0.5], [2.01, 0.08]].forEach(([m, v]) => {
-            const o = c.createOscillator(), g = c.createGain();
-            o.type = "sine"; o.frequency.value = f * m;
-            g.gain.setValueAtTime(0.0001, t);
-            g.gain.exponentialRampToValueAtTime(v, t + 0.015);
-            g.gain.exponentialRampToValueAtTime(0.0001, t + (m === 1 ? 0.8 : 0.3));
-            o.connect(g).connect(sortie); o.start(t); o.stop(t + 0.85);
-          });
-        });
-      }
-    } catch (e) {}
-  };
-})();
-</script>
-<script src="push-natif.js"></script>
 </body>
 </html>
