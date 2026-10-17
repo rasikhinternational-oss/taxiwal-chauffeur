@@ -652,6 +652,7 @@ window.onerror = function(msg, url, line, col, err) {
 </header>
 
 <div id="bandeau-feuille-oubliee" style="display:none; margin:16px 20px 0; background:#fdecee; border:1px solid #f0c4c4; border-radius:10px; padding:12px; font-size:.88rem; color:#8a2020;"></div>
+<div id="bandeau-service-nuit" style="display:none; margin:16px 20px 0; background:#e8f1fb; border:1px solid #bcd4ee; border-radius:10px; padding:12px; font-size:.88rem; color:#1d4f7a;"></div>
 
 <div id="sections-passees"></div>
 
@@ -1134,6 +1135,72 @@ document.getElementById("entete-service-repliable").addEventListener("click", ()
 let toutesLesFeuillesDuJour = [];
 let vehiculesActifsCache = [];
 
+// ================== SERVICE DE NUIT ==================
+// Un chauffeur qui commence le 17 à 18:00 et finit le 18 à 04:00 garde UNE seule feuille
+// (datée du 17) pendant tout son service : pas de blocage « feuille pas clôturée » ni de
+// nouvelle feuille vide à minuit. Au-delà de 16 h après le début, la règle normale revient.
+const DUREE_MAX_SERVICE_MS = 16 * 3600e3;
+function dateHierISO() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() - 1);
+  return dateLocaleISO(d);
+}
+function jjmm(iso) { return iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : ""; }
+// Début réel du service d'une feuille (heure locale) : date_service + heure_debut, sinon created_at
+function debutServiceFeuille(f) {
+  if (!f) return null;
+  const cree = f.created_at ? new Date(f.created_at).getTime() : NaN;
+  const hm = frMinutes(f.heure_debut);
+  if (hm !== null && f.date_service) {
+    const [y, mo, d] = f.date_service.split("-").map(Number);
+    let t = new Date(y, mo - 1, d, Math.floor(hm / 60), hm % 60).getTime();
+    // Feuille ouverte après minuit (ex. changement de voiture à 01:00) mais datée de la veille
+    if (!isNaN(cree) && t < cree - 12 * 3600e3) t += 864e5;
+    return t;
+  }
+  return isNaN(cree) ? null : cree;
+}
+// Feuille d'hier dont le service a commencé il y a moins de 16 h (ignorerSignature : vrai même si signée)
+function estServiceEnCours(f, ignorerSignature) {
+  if (!f || f.verifiee_admin) return false;
+  if (!ignorerSignature && (f.verrouillee || f.signee)) return false;
+  if (f.date_service !== dateHierISO()) return false;
+  const t = debutServiceFeuille(f);
+  return t !== null && (Date.now() - t) < DUREE_MAX_SERVICE_MS;
+}
+// En-tête (sous-titre + date d'identité) et bandeau bleu « service de nuit »
+function mettreAJourAffichageDate() {
+  if (!feuilleActuelle) return;
+  const ds = feuilleActuelle.date_service;
+  const aujourdHui = dateLocaleISO();
+  const nuit = ds && ds < aujourdHui && estServiceEnCours(feuilleActuelle, true);
+  const bandeauNuit = document.getElementById("bandeau-service-nuit");
+  if (nuit) {
+    const plage = jjmm(ds) + " → " + jjmm(aujourdHui);
+    document.getElementById("sous-titre").textContent = "Feuille du " + plage + " (service de nuit)";
+    document.getElementById("identite-date").textContent = plage;
+    if (!feuilleActuelle.verrouillee && !feuilleActuelle.signee) {
+      // Début du service = feuille la plus ancienne de la nuit (avant un éventuel changement de voiture)
+      const debuts = [feuilleActuelle, ...toutesLesFeuillesDuJour.filter(f => f.date_service === ds)]
+        .map(debutServiceFeuille).filter(t => t !== null);
+      const debut = debuts.length ? new Date(Math.min(...debuts)) : null;
+      const quand = debut
+        ? "le " + jjmm(dateLocaleISO(debut)) + " à " + String(debut.getHours()).padStart(2, "0") + ":" + String(debut.getMinutes()).padStart(2, "0")
+        : "le " + jjmm(ds);
+      bandeauNuit.innerHTML = `🌙 <b>Service de nuit commencé ${esc(quand)}</b> — continue sur cette feuille et signe-la à la fin de ton service.`
+        + (window.noteFeuillesAnciennesNuit || "");
+      bandeauNuit.style.display = "block";
+    } else {
+      bandeauNuit.style.display = "none";
+    }
+  } else {
+    document.getElementById("sous-titre").textContent = "Feuille du " + ds;
+    document.getElementById("identite-date").textContent = (ds || "").split("-").reverse().join("/");
+    bandeauNuit.style.display = "none";
+  }
+}
+
 (async () => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { document.getElementById("erreur").textContent = "Connecte-toi d'abord depuis l'app chauffeur."; return; }
@@ -1145,7 +1212,7 @@ let vehiculesActifsCache = [];
   // elle doit rester modifiable tant qu'elle n'est pas terminée, même des jours après.
   const { data: feuillesNonCloturees } = await supabase
     .from("feuilles_route")
-    .select("id, date_service, heure_debut, verifiee_admin, lignes_feuille_route(count)")
+    .select("id, date_service, heure_debut, verifiee_admin, signee, verrouillee, created_at, lignes_feuille_route(count)")
     .eq("chauffeur_id", user.id)
     .eq("verrouillee", false)
     .lt("date_service", aujourdHui)
@@ -1153,11 +1220,18 @@ let vehiculesActifsCache = [];
   // Une feuille d'un jour précédent compte comme "à clôturer" seulement si le chauffeur a
   // vraiment travaillé ce jour-là (heure de début ou au moins une course) — pas les feuilles
   // vides créées automatiquement un jour de congé.
+  const aTravaille = f => f.heure_debut || ((f.lignes_feuille_route && f.lignes_feuille_route[0] && f.lignes_feuille_route[0].count) || 0) > 0;
+  // Service de nuit encore en cours (feuille d'hier commencée il y a moins de 16 h) :
+  // ce n'est PAS une feuille oubliée — le chauffeur continue dessus et la signe à la fin.
+  const feuillesNuitEnCours = (feuillesNonCloturees || []).filter(f => !f.verifiee_admin && aTravaille(f) && estServiceEnCours(f));
+  const idsNuit = new Set(feuillesNuitEnCours.map(f => f.id));
+  const feuilleNuit = feuillesNuitEnCours.slice().sort((a, b) => String(a.created_at || "").localeCompare(String(b.created_at || ""))).pop() || null;
   const feuillesOubliees = (feuillesNonCloturees || []).filter(f =>
-    !f.verifiee_admin && (f.heure_debut || ((f.lignes_feuille_route && f.lignes_feuille_route[0] && f.lignes_feuille_route[0].count) || 0) > 0));
+    !f.verifiee_admin && aTravaille(f) && !idsNuit.has(f.id));
 
   const bandeau = document.getElementById("bandeau-feuille-oubliee");
   bandeau.style.display = "none";
+  window.noteFeuillesAnciennesNuit = "";
   // Seules les feuilles des 3 derniers jours bloquent (hier, avant-hier…). Les très anciennes
   // non clôturées sont seulement signalées : c'est à la centrale de les régler.
   const limiteBlocage = dateLocaleISO(new Date(Date.now() - 3 * 864e5));
@@ -1168,7 +1242,12 @@ let vehiculesActifsCache = [];
     bandeau.innerHTML = `⚠️ Tu as ${feuillesAnciennes.length} ancienne(s) feuille(s) jamais clôturée(s) (la plus ancienne : ${esc(new Date(p.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}) — <a href="feuille-de-route.html?feuille=${p.id}" style="color:#8a2020; text-decoration:underline; font-weight:700;">l'ouvrir</a>`;
     bandeau.style.display = "block";
   }
-  if (feuillesBloquantes.length > 0) {
+  const ouvreLaNuit = feuilleNuit && (!idDepuisUrl || idsNuit.has(idDepuisUrl));
+  if (feuillesBloquantes.length > 0 && ouvreLaNuit) {
+    // Pendant un service de nuit on ne bloque pas : simple rappel discret des autres feuilles.
+    const p = feuillesBloquantes[0];
+    window.noteFeuillesAnciennesNuit = `<br><span style="font-size:.82rem;">ℹ️ Il reste aussi ${feuillesBloquantes.length} autre(s) feuille(s) non clôturée(s) (la première : ${esc(new Date(p.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}) — <a href="feuille-de-route.html?feuille=${p.id}" style="color:#1d4f7a; text-decoration:underline;">l'ouvrir</a> après ton service.</span>`;
+  } else if (feuillesBloquantes.length > 0) {
     const premiere = feuillesBloquantes[0];
     const dateLisible = new Date(premiere.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
     // RÈGLE : tant que la feuille d'un jour précédent n'est pas clôturée, le chauffeur ne peut
@@ -1199,6 +1278,20 @@ let vehiculesActifsCache = [];
       .order("created_at", { ascending: true });
     toutesLesFeuillesDuJour = (memeJour || [feuilleCiblee]).filter(f => !f.verifiee_admin);
     feuilleActuelle = feuilleCiblee;
+  } else if (feuilleNuit) {
+    // Service de nuit en cours : on reste sur la feuille d'hier (pas de nouvelle feuille à minuit)
+    dateAAfficher = feuilleNuit.date_service;
+    const { data: memeNuit } = await supabase
+      .from("feuilles_route").select("*").eq("chauffeur_id", user.id).eq("date_service", dateAAfficher)
+      .order("created_at", { ascending: true });
+    toutesLesFeuillesDuJour = (memeNuit || []).filter(f => !f.verifiee_admin);
+    feuilleActuelle = toutesLesFeuillesDuJour.find(f => f.id === feuilleNuit.id);
+    if (!feuilleActuelle) {
+      const { data: fn } = await supabase.from("feuilles_route").select("*").eq("id", feuilleNuit.id).maybeSingle();
+      if (!fn) { document.getElementById("erreur").textContent = "Feuille introuvable. Recharge la page."; return; }
+      feuilleActuelle = fn;
+      toutesLesFeuillesDuJour.push(fn);
+    }
   } else {
     let { data: feuilles } = await supabase
       .from("feuilles_route")
@@ -1234,6 +1327,7 @@ let vehiculesActifsCache = [];
 
   document.getElementById("sous-titre").textContent = "Feuille du " + dateAAfficher;
   document.getElementById("identite-date").textContent = dateAAfficher.split("-").reverse().join("/");
+  mettreAJourAffichageDate();
 
   await chargerFeuilleActive(user);
   activerMiseAJourEnDirect(user.id);
@@ -1293,6 +1387,9 @@ async function ouvrirChangementVehicule() {
   const aujourdHui = dateLocaleISO();
   const heureMaintenant = new Date().toTimeString().slice(0, 5);
   const actuelleOuverte = feuilleActuelle && !feuilleActuelle.verrouillee;
+  // Service de nuit en cours : la nouvelle feuille (autre voiture) garde la date du début du service
+  const dateNouvelleFeuille = (actuelleOuverte && feuilleActuelle.date_service < aujourdHui && estServiceEnCours(feuilleActuelle))
+    ? feuilleActuelle.date_service : aujourdHui;
 
   // 1) La feuille de la voiture actuelle doit être complète, puis elle est clôturée (signée)
   if (actuelleOuverte) {
@@ -1322,7 +1419,7 @@ async function ouvrirChangementVehicule() {
 
   const { data: nouvelleFeuille, error } = await supabase
     .from("feuilles_route")
-    .insert({ chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehiculeChoisi.id, heure_debut: heureMaintenant })
+    .insert({ chauffeur_id: user.id, date_service: dateNouvelleFeuille, vehicule_id: vehiculeChoisi.id, heure_debut: heureMaintenant })
     .select().single();
   if (error) { alert("Erreur : " + error.message); return; }
 
@@ -1341,6 +1438,7 @@ async function chargerFeuilleActive(user) {
   ouvrirFermerService(!feuilleActuelle.heure_debut);
   await chargerLignes();
   appliquerVerrouillage();
+  mettreAJourAffichageDate();
   activerMiseAJourEnDirect(user.id);
 }
 
@@ -1422,6 +1520,9 @@ async function rechargerSilencieusement() {
   await chargerLignes();
   if (verrouChange) appliquerVerrouillage();
   else if (feuilleActuelle.verrouillee) remplirResumeSignee();
+  // Passage de minuit pendant un service de nuit : on reste sur la même feuille, seul l'affichage
+  // de la date devient « 17/10 → 18/10 » (aucun basculement vers une nouvelle feuille du jour).
+  mettreAJourAffichageDate();
   if (idPleinEcran) {
     ligneEnPleinEcran = null;
     document.body.classList.remove("mode-plein-ecran");
@@ -2508,7 +2609,13 @@ function appliquerVerrouillage() {
   const verrou = feuilleActuelle.verrouillee;
   // Feuille d'un jour précédent qu'on vient de clôturer → on propose d'ouvrir la suivante / celle du jour
   const aujourdHuiIso = dateLocaleISO();
-  if (verrou && feuilleActuelle.date_service < aujourdHuiIso) {
+  if (verrou && feuilleActuelle.date_service < aujourdHuiIso && estServiceEnCours(feuilleActuelle, true)) {
+    // Fin d'un service de nuit : simple confirmation, sans pousser vers une nouvelle feuille
+    const bandeauFeuille = document.getElementById("bandeau-feuille-oubliee");
+    bandeauFeuille.style.background = "#e7f5ec"; bandeauFeuille.style.borderColor = "#b7dfc5"; bandeauFeuille.style.color = "#1f6b3f";
+    bandeauFeuille.innerHTML = `✅ Feuille du service de nuit ${esc(jjmm(feuilleActuelle.date_service) + " → " + jjmm(aujourdHuiIso))} clôturée. Bon repos !`;
+    bandeauFeuille.style.display = "block";
+  } else if (verrou && feuilleActuelle.date_service < aujourdHuiIso) {
     const bandeauFeuille = document.getElementById("bandeau-feuille-oubliee");
     bandeauFeuille.style.background = "#e7f5ec"; bandeauFeuille.style.borderColor = "#b7dfc5"; bandeauFeuille.style.color = "#1f6b3f";
     bandeauFeuille.innerHTML = `✅ Feuille du ${esc(new Date(feuilleActuelle.date_service + "T12:00:00").toLocaleDateString("fr-BE"))} clôturée.<br>
