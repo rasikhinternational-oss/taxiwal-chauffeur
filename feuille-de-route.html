@@ -27,6 +27,73 @@
   }
   window.alert = function (msg) { file.push(msg); suivant(); };
 })();
+// Confirmation dans la page (remplace window.confirm, qui peut rester invisible sur iPhone).
+// Renvoie une Promise<boolean> : true si "OK", false si "Annuler".
+function confirmerDansPage(message, okLabel, cancelLabel) {
+  return new Promise(function (resolve) {
+    function ouvrir() {
+      var fond = document.createElement("div");
+      fond.className = "modale-confirmer-dans-page";
+      fond.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;";
+      var boite = document.createElement("div");
+      boite.style.cssText = "background:#fff;color:#111;max-width:440px;width:100%;border-radius:16px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.3);font:16px/1.4 -apple-system,Arial,sans-serif;max-height:80vh;overflow:auto;";
+      var texte = document.createElement("div");
+      texte.style.cssText = "white-space:pre-wrap;word-break:break-word;";
+      texte.textContent = String(message == null ? "" : message);
+      var ok = document.createElement("button");
+      ok.type = "button"; ok.className = "btn-confirmer-ok"; ok.textContent = okLabel || "OK";
+      ok.style.cssText = "margin-top:14px;width:100%;padding:16px;border:none;border-radius:12px;background:#1f8a4c;color:#fff;font-weight:800;font-size:1.1rem;";
+      var annuler = document.createElement("button");
+      annuler.type = "button"; annuler.className = "btn-confirmer-annuler"; annuler.textContent = cancelLabel || "Annuler";
+      annuler.style.cssText = "margin-top:10px;width:100%;padding:14px;border:none;border-radius:12px;background:#e5e5e5;color:#111;font-weight:700;font-size:1rem;";
+      var fini = false;
+      function fermer(v) { if (fini) return; fini = true; fond.remove(); resolve(v); }
+      ok.onclick = function (e) { e.stopPropagation(); fermer(true); };
+      annuler.onclick = function (e) { e.stopPropagation(); fermer(false); };
+      boite.addEventListener("click", function (e) { e.stopPropagation(); });
+      boite.appendChild(texte); boite.appendChild(ok); boite.appendChild(annuler); fond.appendChild(boite);
+      document.body.appendChild(fond);
+    }
+    if (document.body) ouvrir(); else document.addEventListener("DOMContentLoaded", ouvrir, { once: true });
+  });
+}
+
+// Saisie d'un texte dans la page (remplace window.prompt, qui peut rester invisible sur iPhone).
+// Renvoie une Promise<string|null> : le texte saisi, ou null si "Annuler".
+function demanderTexteDansPage(message, valeurInitiale, okLabel) {
+  return new Promise(function (resolve) {
+    function ouvrir() {
+      var fond = document.createElement("div");
+      fond.className = "modale-texte-dans-page";
+      fond.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;";
+      var boite = document.createElement("div");
+      boite.style.cssText = "background:#fff;color:#111;max-width:440px;width:100%;border-radius:16px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.3);font:16px/1.4 -apple-system,Arial,sans-serif;max-height:80vh;overflow:auto;";
+      var texte = document.createElement("div");
+      texte.style.cssText = "white-space:pre-wrap;word-break:break-word;margin-bottom:10px;";
+      texte.textContent = String(message == null ? "" : message);
+      var champ = document.createElement("input");
+      champ.type = "text"; champ.className = "champ-texte-dans-page";
+      champ.value = valeurInitiale == null ? "" : String(valeurInitiale);
+      champ.style.cssText = "width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid #bbb;border-radius:10px;";
+      var ok = document.createElement("button");
+      ok.type = "button"; ok.className = "btn-confirmer-ok"; ok.textContent = okLabel || "OK";
+      ok.style.cssText = "margin-top:14px;width:100%;padding:16px;border:none;border-radius:12px;background:#1f8a4c;color:#fff;font-weight:800;font-size:1.1rem;";
+      var annuler = document.createElement("button");
+      annuler.type = "button"; annuler.className = "btn-confirmer-annuler"; annuler.textContent = "Annuler";
+      annuler.style.cssText = "margin-top:10px;width:100%;padding:14px;border:none;border-radius:12px;background:#e5e5e5;color:#111;font-weight:700;font-size:1rem;";
+      var fini = false;
+      function fermer(v) { if (fini) return; fini = true; fond.remove(); resolve(v); }
+      ok.onclick = function (e) { e.stopPropagation(); fermer(champ.value); };
+      annuler.onclick = function (e) { e.stopPropagation(); fermer(null); };
+      champ.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); fermer(champ.value); } });
+      boite.addEventListener("click", function (e) { e.stopPropagation(); });
+      boite.appendChild(texte); boite.appendChild(champ); boite.appendChild(ok); boite.appendChild(annuler); fond.appendChild(boite);
+      document.body.appendChild(fond);
+      try { champ.focus(); } catch (e) {}
+    }
+    if (document.body) ouvrir(); else document.addEventListener("DOMContentLoaded", ouvrir, { once: true });
+  });
+}
 
 // En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
 window.addEventListener("error", function (e) {
@@ -55,12 +122,15 @@ function ajouterTexteLibre(select, valeurActuelle) {
   select.addEventListener("change", (ev) => {
     if (select.value !== "__ecrire__") return;
     ev.stopImmediatePropagation();
-    const texte = (prompt("Écris ton texte (il apparaîtra tel quel sur la feuille de route) :") || "").trim();
+    select.value = valeurActuelle || "";
+    demanderTexteDansPage("Écris ton texte (il apparaîtra tel quel sur la feuille de route) :", "").then(function (saisi) {
+    const texte = (saisi || "").trim();
     if (!texte) { select.value = valeurActuelle || ""; return; }
     select.add(new Option("✏️ " + texte, texte), select.options.length - 1);
     select.value = texte;
     valeurActuelle = texte;
     select.dispatchEvent(new Event("change"));
+    });
   }, true);
 }
 // ================== « Y ALLER » : ouvrir l'adresse dans l'app GPS au choix ==================
@@ -369,12 +439,13 @@ function saisieDansCarte(el) {
 async function cloturerLigneEnBase(ligne) {
   if (ligne.course_id && !estCourseManuelle(ligne) && !estTermineeParCentrale(ligne)) {
     const modesCourse = ["cash", "carte", "facture", "uber", "cheque_social", "qr", "uber_cash"];
-    const { error } = await supabase.from("courses")
-      .update({ statut: "terminee", mode_paiement: modesCourse.includes(ligne.mode_paiement) ? ligne.mode_paiement : null })
-      .eq("id", ligne.course_id);
+    const { error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: ligne.course_id },
+      payload: { statut: "terminee", mode_paiement: modesCourse.includes(ligne.mode_paiement) ? ligne.mode_paiement : null },
+      label: "Clôture de la course (terminée)" });
     if (error) return error;
   }
-  const { error } = await supabase.from("lignes_feuille_route").update({ cloturee: true }).eq("id", ligne.id);
+  const { error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id },
+    payload: { cloturee: true }, label: "Clôture de la course" });
   if (error) return error;
   ligne.cloturee = true;
   lignesAClotureAuto.delete(String(ligne.id));
@@ -785,9 +856,443 @@ window.onerror = function(msg, url, line, col, err) {
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script>
+// ================== MODE HORS LIGNE (pas de réseau) ==================
+// - Lectures : la dernière réponse reçue du serveur est gardée sur le téléphone ; sans réseau, l'app
+//   s'affiche avec ces données (il faut avoir ouvert l'app au moins une fois avec du réseau).
+// - Écritures : sans réseau, la modification est appliquée tout de suite à l'écran et mise dans une
+//   file d'attente (dans l'ordre) ; elle est envoyée automatiquement dès que le réseau revient.
+// - Les appels à la centrale (refuser / prévenir) ne sont PAS mis en attente : il faut du réseau.
+(function () {
+  "use strict";
+  var PROJET = "dgtsgylgqucyzujvfkgo";
+  var CLE_SESSION = "sb-" + PROJET + "-auth-token";
+  var CACHE_DONNEES = "taxiwal-donnees-v1";
+  var CLES_FILES = ["taxiwal_outbox_chauffeur", "taxiwal_outbox_feuille"];
+  var DELAI_RESEAU_MS = 12000;
+  var etat = { app: "chauffeur", client: null, apresSync: null, reseauKO: false, enCours: false, enVol: null, flashJusqua: 0, abandonArme: false };
+
+  // ---- stockage local (localStorage, avec repli en mémoire si bloqué / plein) ----
+  var memoire = {}, echecs = {};
+  function lsGet(k) {
+    if (echecs[k]) return k in memoire ? memoire[k] : null;
+    try { return window.localStorage.getItem(k); } catch (e) { return k in memoire ? memoire[k] : null; }
+  }
+  function lsSet(k, v) {
+    memoire[k] = v;
+    try { window.localStorage.setItem(k, v); delete echecs[k]; } catch (e) { echecs[k] = true; }
+  }
+  function lsDel(k) { delete memoire[k]; delete echecs[k]; try { window.localStorage.removeItem(k); } catch (e) {} }
+
+  function uuid() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+    var b = new Uint8Array(16);
+    try { crypto.getRandomValues(b); } catch (e) { for (var i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256); }
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    var h = Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join("");
+    return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+  }
+  function copie(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
+
+  // ---- détection « pas de réseau » (≠ refus du serveur / règle de sécurité) ----
+  function estErreurReseau(err, status) {
+    if (status === 0 || status === 408 || status === 429 || (status >= 500 && status < 600)) return true;
+    if (!err) return false;
+    if (err.name === "AuthRetryableFetchError" || err.name === "AbortError" || err.name === "TimeoutError") return true;
+    if (err.status === 0) return true;
+    var m = String(err.message || err || "");
+    return /Failed to fetch|NetworkError|Load failed|network|AbortError|TimeoutError|FetchError|signal is aborted|hors ligne/i.test(m);
+  }
+  function estErreurJwt(err, status) {
+    if (status === 401) return true;
+    var m = String((err && (err.message || err.code)) || "");
+    return /JWT|PGRST30/i.test(m);
+  }
+  function horsLigne() { return navigator.onLine === false || etat.reseauKO; }
+
+  // ---- session enregistrée sur le téléphone (pour démarrer sans réseau) ----
+  function sessionLocale() {
+    try {
+      var s = JSON.parse(window.localStorage.getItem(CLE_SESSION) || "null");
+      if (s && s.currentSession) s = s.currentSession;
+      return (s && s.access_token && s.user) ? s : null;
+    } catch (e) { return null; }
+  }
+  function utilisateurLocal() { var s = sessionLocale(); return s ? s.user : null; }
+
+  // ---- file d'attente des écritures ----
+  function cleFile() { return etat.app === "feuille" ? CLES_FILES[1] : CLES_FILES[0]; }
+  function lireFileCle(k) { try { var f = JSON.parse(lsGet(k) || "[]"); return Array.isArray(f) ? f : []; } catch (e) { return []; } }
+  function lireFile() { return lireFileCle(cleFile()); }
+  function ecrireFile(f) { if (f.length) lsSet(cleFile(), JSON.stringify(f)); else lsDel(cleFile()); }
+  function toutesLesOps() { var t = []; CLES_FILES.forEach(function (k) { t = t.concat(lireFileCle(k)); }); return t; }
+  function ajouterALaFile(item) {
+    var f = lireFile();
+    var der = f[f.length - 1];
+    // Plusieurs modifications de suite de la même ligne : regroupées en une seule (ordre conservé)
+    if (der && item.op === "update" && der.op === "update" && der.table === item.table && !der.erreur && der.id !== etat.enVol
+        && JSON.stringify(der.match) === JSON.stringify(item.match) && !!der.verifier === !!item.verifier) {
+      Object.assign(der.payload, item.payload);
+      der.local = Object.assign({}, der.local || {}, item.local || {});
+      der.label = item.label || der.label;
+    } else {
+      f.push({ id: item.id, cree: item.cree, op: item.op, table: item.table, payload: item.payload, match: item.match,
+        fn: item.fn, args: item.args, local: item.local, verifier: !!item.verifier, label: item.label || "" });
+    }
+    ecrireFile(f);
+  }
+  function retirer(id) { ecrireFile(lireFile().filter(function (x) { return x.id !== id; })); }
+  function marquerErreur(id, msg) {
+    var f = lireFile();
+    f.forEach(function (x) { if (x.id === id) x.erreur = msg; });
+    ecrireFile(f);
+  }
+  function enAttentePour(table, id) {
+    return toutesLesOps().some(function (o) {
+      return o.table === table && ((o.match && String(o.match.id) === String(id)) || (o.op === "upsert" && o.payload && String(o.payload.id) === String(id)));
+    });
+  }
+
+  // ---- les modifications en attente sont « posées » sur les données lues ----
+  function correspond(r, match) {
+    if (!r || !match) return false;
+    return Object.keys(match).every(function (k) { return String(r[k]) === String(match[k]); });
+  }
+  function filtresOK(url, row) {
+    var p;
+    try { p = new URL(url, location.href).searchParams; } catch (e) { return true; }
+    var ok = true;
+    p.forEach(function (v, k) {
+      if (!ok || ["select", "order", "limit", "offset", "or", "and"].indexOf(k) >= 0 || k.indexOf(".") >= 0 || !(k in row)) return;
+      if (v.indexOf("eq.") === 0) ok = String(row[k]) === v.slice(3);
+      else if (v.indexOf("neq.") === 0) ok = String(row[k]) !== v.slice(4);
+      else if (/^(lt|lte|gt|gte)\./.test(v)) {
+        // ex. date_service=lt.2026-10-18 : une ligne ajoutée hors ligne ne doit pas apparaître dans une liste qui l'exclut
+        var op = v.slice(0, v.indexOf(".")), ref = v.slice(op.length + 1), val = row[k];
+        if (val == null) ok = false;
+        else {
+          var a = val, bb = ref;
+          if (!isNaN(Number(val)) && !isNaN(Number(ref)) && String(val).trim() !== "" && ref.trim() !== "") { a = Number(val); bb = Number(ref); }
+          else { a = String(val); }
+          ok = op === "lt" ? a < bb : op === "lte" ? a <= bb : op === "gt" ? a > bb : a >= bb;
+        }
+      }
+      else if (v.indexOf("in.(") === 0) ok = v.slice(4, -1).split(",").map(function (x) { return x.replace(/^"|"$/g, ""); }).indexOf(String(row[k])) >= 0;
+      else if (v === "is.null") ok = row[k] === null;
+    });
+    return ok;
+  }
+  function tableDeUrl(url) { var m = /\/rest\/v1\/([^?\/]+)/.exec(url); return m ? decodeURIComponent(m[1]) : null; }
+  function poserModifs(texte, url) {
+    var ops = toutesLesOps();
+    if (!ops.length) return texte;
+    var table = tableDeUrl(url);
+    var data;
+    try { data = JSON.parse(texte); } catch (e) { return texte; }
+    var tableau = Array.isArray(data);
+    var rows = tableau ? data : (data && typeof data === "object" ? [data] : []);
+    ops.forEach(function (o) {
+      var vals = o.local || (o.op === "update" ? o.payload : null);
+      if (o.op === "upsert") {
+        if (o.table === table && tableau && vals && !rows.some(function (r) { return String(r.id) === String(vals.id); }) && filtresOK(url, vals)) rows.push(copie(vals));
+        return;
+      }
+      if (!vals || !o.match) return;
+      rows.forEach(function (r) {
+        if (o.table === table && correspond(r, o.match)) Object.assign(r, vals);
+        // Données imbriquées (ex. « courses » dans une ligne de feuille de route)
+        var fk = o.table.replace(/s$/, "") + "_id";
+        if (r && r[o.table] && typeof r[o.table] === "object" && !Array.isArray(r[o.table]) && o.match.id != null && String(r[fk]) === String(o.match.id)) Object.assign(r[o.table], vals);
+      });
+    });
+    return JSON.stringify(tableau ? rows : (rows[0] || data));
+  }
+
+  // ---- copie locale des lectures ----
+  function lireEntete(h, nom) { if (!h) return ""; try { return (typeof h.get === "function" ? h.get(nom) : (h[nom] || h[nom.toLowerCase()])) || ""; } catch (e) { return ""; } }
+  function cleCache(url, init) { return url + (url.indexOf("?") >= 0 ? "&" : "?") + "__accept=" + encodeURIComponent(lireEntete(init && init.headers, "Accept")); }
+  function ouvrirCache() {
+    try { return window.caches ? caches.open(CACHE_DONNEES).catch(function () { return null; }) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); }
+  }
+  function sauverCache(cle, texte, ct, cr) {
+    ouvrirCache().then(function (c) {
+      if (c) return c.put(cle, new Response(texte, { headers: { "content-type": ct || "application/json", "content-range": cr || "" } }));
+      lsSet("twc:" + cle, JSON.stringify({ t: texte, ct: ct, cr: cr }));
+    }).catch(function () {});
+  }
+  function lireCache(cle) {
+    return ouvrirCache().then(function (c) {
+      if (c) return c.match(cle).then(function (r) { return r ? r.text().then(function (t) { return { t: t, ct: r.headers.get("content-type"), cr: r.headers.get("content-range") }; }) : null; });
+      var v = lsGet("twc:" + cle);
+      return v ? JSON.parse(v) : null;
+    }).catch(function () { return null; });
+  }
+  function reponse(texte, ct, cr, status, statusText) {
+    var h = { "content-type": ct || "application/json" };
+    if (cr) h["content-range"] = cr;
+    return new Response(texte, { status: status || 200, statusText: statusText || "OK", headers: h });
+  }
+  function depuisCache(cle, url, init) {
+    return lireCache(cle).then(function (c) {
+      if (c) return reponse(poserModifs(c.t, url), c.ct, c.cr);
+      // Jamais lu avec du réseau : liste vide (+ ce qui a été ajouté hors ligne)
+      if (/vnd\.pgrst\.object/.test(lireEntete(init && init.headers, "Accept"))) return null;
+      return reponse(poserModifs("[]", url), "application/json", "*/0");
+    });
+  }
+  function viderCacheDonnees() {
+    try { if (window.caches) caches.delete(CACHE_DONNEES).catch(function () {}); } catch (e) {}
+    try { Object.keys(window.localStorage).forEach(function (k) { if (k.indexOf("twc:") === 0) window.localStorage.removeItem(k); }); } catch (e) {}
+  }
+
+  function signalerReseau(ko) {
+    if (etat.reseauKO === ko) return;
+    etat.reseauKO = ko;
+    majBandeau();
+    if (!ko) planifier(300);
+  }
+
+  // fetch utilisé par supabase-js : délai maximum, copie locale des lectures, repli hors ligne
+  function fetchHL(input, init) {
+    init = init || {};
+    var url = typeof input === "string" ? input : (input && input.url) || String(input);
+    var methode = String(init.method || (input && input.method) || "GET").toUpperCase();
+    var cle = (methode === "GET" && url.indexOf("/rest/v1/") >= 0) ? cleCache(url, init) : null;
+    if (cle && navigator.onLine === false) {
+      return depuisCache(cle, url, init).then(function (r) { if (r) return r; throw new TypeError("Failed to fetch (hors ligne)"); });
+    }
+    var ctrl = new AbortController();
+    var minuterie = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, DELAI_RESEAU_MS);
+    if (init.signal) { if (init.signal.aborted) ctrl.abort(); else init.signal.addEventListener("abort", function () { ctrl.abort(); }); }
+    var opts = Object.assign({}, init, { signal: ctrl.signal });
+    return fetch(input, opts).then(function (rep) {
+      clearTimeout(minuterie);
+      signalerReseau(false);
+      if (!cle || !rep.ok) return rep;
+      return rep.text().then(function (texte) {
+        sauverCache(cle, texte, rep.headers.get("content-type"), rep.headers.get("content-range"));
+        return reponse(poserModifs(texte, url), rep.headers.get("content-type"), rep.headers.get("content-range"), rep.status, rep.statusText);
+      });
+    }, function (err) {
+      clearTimeout(minuterie);
+      if (init.signal && init.signal.aborted) throw err;
+      signalerReseau(true);
+      if (!cle) throw err;
+      return depuisCache(cle, url, init).then(function (r) { if (r) return r; throw err; });
+    });
+  }
+
+  // ---- exécution d'une écriture ----
+  async function executer(item, avecRetour) {
+    var sb = etat.client, q;
+    if (item.op === "update") {
+      q = sb.from(item.table).update(item.payload);
+      Object.keys(item.match || {}).forEach(function (k) { q = q.eq(k, item.match[k]); });
+      if (avecRetour && item.select) q = q.select(item.select);
+      else if (item.verifier) q = q.select("id");
+      if (avecRetour && item.select && item.single === "maybe") q = q.maybeSingle();
+      else if (avecRetour && item.select && item.single) q = q.single();
+    } else if (item.op === "upsert") {
+      q = sb.from(item.table).upsert(item.payload, { onConflict: "id", ignoreDuplicates: true });
+      if (avecRetour && item.select) q = q.select(item.select).maybeSingle();
+    } else if (item.op === "rpc") {
+      q = sb.rpc(item.fn, item.args);
+    } else {
+      return { error: { message: "Opération inconnue" }, reseau: false };
+    }
+    var r;
+    try { r = await q; } catch (e) { r = { data: null, error: e, status: 0 }; }
+    var err = r.error || null;
+    if (err && item.op === "upsert" && err.code === "23505") err = null; // déjà enregistré (envoi précédent arrivé)
+    var reseau = !!err && estErreurReseau(err, r.status);
+    return { data: r.data, error: err, status: r.status, reseau: reseau, jwt: !!err && !reseau && estErreurJwt(err, r.status) };
+  }
+
+  // Écriture « robuste » : directe si possible, sinon mise en attente (jamais bloquant pour le chauffeur).
+  // Renvoie { data, error } comme supabase, avec enAttente: true si la modification attend le réseau.
+  async function ecrire(spec) {
+    spec.id = uuid();
+    spec.cree = Date.now();
+    if (spec.local === undefined) spec.local = spec.payload ? copie(spec.payload) : null;
+    if (!lireFile().length && navigator.onLine !== false) {
+      var r = await executer(spec, true);
+      if (!r.reseau) {
+        if (r.error) return { data: null, error: r.error };
+        return { data: spec.op === "upsert" ? (r.data || spec.optimiste || null) : r.data, error: null };
+      }
+    }
+    ajouterALaFile(spec);
+    majBandeau();
+    planifier(1500);
+    return { data: spec.optimiste === undefined ? null : spec.optimiste, error: null, enAttente: true };
+  }
+
+  // ---- renvoi automatique de la file ----
+  function prendreVerrou() {
+    var k = "taxiwal_verrou_" + etat.app, v = Number(lsGet(k) || 0);
+    if (v && Date.now() - v < 60000) return false;
+    lsSet(k, String(Date.now()));
+    return true;
+  }
+  function libererVerrou() { lsDel("taxiwal_verrou_" + etat.app); }
+  var minuteriePlan = null;
+  function planifier(ms) { clearTimeout(minuteriePlan); minuteriePlan = setTimeout(function () { rejouer(false); }, ms || 0); }
+
+  async function rejouer(manuel) {
+    if (etat.enCours || !etat.client) return;
+    if (!lireFile().length) { majBandeau(); return; }
+    if (navigator.onLine === false) { majBandeau(); return; }
+    if (!prendreVerrou()) return;
+    etat.enCours = true;
+    majBandeau();
+    var faits = 0, jwtEssais = 0;
+    try {
+      while (true) {
+        var item = lireFile()[0];
+        if (!item) break;
+        if (item.erreur && !manuel) break;
+        manuel = false;
+        etat.enVol = item.id;
+        var r = await executer(item, false);
+        etat.enVol = null;
+        if (!r.error && item.verifier && Array.isArray(r.data) && !r.data.length)
+          r = { error: { message: "La course n'est plus à toi (retirée ou modifiée par la centrale)." }, reseau: false };
+        if (!r.error) { retirer(item.id); faits++; lsSet("taxiwal_verrou_" + etat.app, String(Date.now())); continue; }
+        if (r.reseau) break;
+        if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
+        marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error));
+        break;
+      }
+    } finally {
+      etat.enCours = false; etat.enVol = null; libererVerrou();
+    }
+    if (faits) {
+      if (!lireFile().length) etat.flashJusqua = Date.now() + 3000;
+      if (etat.apresSync) { try { etat.apresSync(); } catch (e) { console.warn(e); } }
+    }
+    majBandeau();
+  }
+
+  // ---- bandeau ----
+  var minuterieFlash = null;
+  function majBandeau() {
+    if (!document.body) return;
+    var b = document.getElementById("bandeau-hors-ligne");
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "bandeau-hors-ligne";
+      b.style.cssText = "position:fixed;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:99990;border-radius:12px;padding:9px 12px;font:600 14px/1.35 -apple-system,Arial,sans-serif;color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.25);display:none;";
+      document.body.appendChild(b);
+    }
+    var f = lireFile(), n = f.length, err = f.filter(function (x) { return x.erreur; })[0];
+    var html = "", fond = "";
+    if (err) {
+      fond = "#b3141b";
+      html = "⚠️ Une modification n'a pas pu être enregistrée" + (err.label ? " (" + echapper(err.label) + ")" : "") + " :<br><span style=\"font-weight:400\">" + echapper(err.erreur) + "</span>"
+        + (n > 1 ? "<br><span style=\"font-weight:400\">" + (n - 1) + " autre(s) modification(s) attendent derrière.</span>" : "")
+        + "<div style=\"display:flex;gap:8px;margin-top:8px\"><button type=\"button\" data-hl=\"reessayer\" style=\"flex:1;padding:10px;border:none;border-radius:10px;background:#fff;color:#b3141b;font-weight:800\">🔁 Réessayer</button>"
+        + "<button type=\"button\" data-hl=\"abandonner\" style=\"flex:1;padding:10px;border:2px solid #fff;border-radius:10px;background:transparent;color:#fff;font-weight:800\">" + (etat.abandonArme ? "Oui, abandonner" : "🗑️ Abandonner") + "</button></div>";
+    } else if (etat.enCours) {
+      fond = "#1d4f86"; html = "🔄 Envoi en cours…";
+    } else if (horsLigne()) {
+      fond = "#333"; html = "📴 Hors ligne — tu peux continuer, tout sera envoyé dès le retour du réseau (" + n + " en attente)";
+    } else if (n) {
+      fond = "#b86e00"; html = "⏳ " + n + " modification(s) en attente d'envoi…";
+    } else if (Date.now() < etat.flashJusqua) {
+      fond = "#1f8a4c"; html = "✅ Tout est synchronisé";
+      clearTimeout(minuterieFlash); minuterieFlash = setTimeout(majBandeau, etat.flashJusqua - Date.now() + 50);
+    }
+    if (!html) { b.style.display = "none"; b.dataset.etat = ""; return; }
+    b.style.background = fond;
+    b.style.pointerEvents = err ? "auto" : "none";
+    b.dataset.etat = err ? "erreur" : etat.enCours ? "envoi" : horsLigne() ? "hors-ligne" : n ? "attente" : "ok";
+    if (b._html !== html) { b.innerHTML = html; b._html = html; }
+    b.style.display = "block";
+  }
+  function echapper(t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest && e.target.closest("[data-hl]");
+    if (!t) return;
+    e.stopPropagation();
+    var err = lireFile().filter(function (x) { return x.erreur; })[0];
+    if (t.dataset.hl === "reessayer") { etat.abandonArme = false; rejouer(true); return; }
+    if (t.dataset.hl === "abandonner") {
+      if (!etat.abandonArme) { etat.abandonArme = true; majBandeau(); setTimeout(function () { etat.abandonArme = false; majBandeau(); }, 6000); return; }
+      etat.abandonArme = false;
+      if (err) retirer(err.id);
+      majBandeau();
+      if (etat.apresSync) { try { etat.apresSync(); } catch (_) {} }
+      rejouer(false);
+    }
+  }, true);
+
+  window.addEventListener("online", function () { majBandeau(); planifier(500); });
+  window.addEventListener("offline", function () { etat.reseauKO = true; majBandeau(); });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") planifier(300); });
+  window.addEventListener("focus", function () { planifier(300); });
+  setInterval(function () { if (lireFile().length) rejouer(false); }, 20000);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", majBandeau); else setTimeout(majBandeau, 0);
+
+  // ---- branchement sur le client supabase ----
+  function installer(client, cfg) {
+    etat.client = client;
+    etat.app = (cfg && cfg.app) || "chauffeur";
+    etat.apresSync = (cfg && cfg.apresSync) || null;
+    var auth = client.auth;
+    var getSessionOrig = auth.getSession.bind(auth), getUserOrig = auth.getUser.bind(auth);
+    // Sans réseau : la session enregistrée sur le téléphone suffit (pas de renvoi vers la connexion)
+    auth.getSession = async function () {
+      if (horsLigne()) { var s = sessionLocale(); if (s) return { data: { session: s }, error: null }; }
+      var r = await getSessionOrig();
+      if (r && r.data && !r.data.session && r.error && estErreurReseau(r.error, r.error.status)) {
+        var s2 = sessionLocale(); if (s2) return { data: { session: s2 }, error: null };
+      }
+      return r;
+    };
+    auth.getUser = async function (jwt) {
+      if (!jwt && horsLigne()) { var u = utilisateurLocal(); if (u) return { data: { user: u }, error: null }; }
+      var r;
+      try { r = await getUserOrig(jwt); } catch (e) { r = { data: { user: null }, error: e }; }
+      if (r && r.data && r.data.user) return r;
+      if (!jwt && r && r.error && (estErreurReseau(r.error, r.error.status) || horsLigne())) {
+        var u2 = utilisateurLocal(); if (u2) return { data: { user: u2 }, error: null };
+      }
+      return r;
+    };
+    majBandeau();
+    planifier(2000);
+  }
+
+  window.TWHL = {
+    fetch: fetchHL, installer: installer, ecrire: ecrire, rejouer: rejouer, enAttentePour: enAttentePour,
+    estErreurReseau: estErreurReseau, horsLigne: horsLigne, utilisateurLocal: utilisateurLocal,
+    viderCacheDonnees: viderCacheDonnees, uuid: uuid, nbEnAttente: function () { return lireFile().length; },
+    file: lireFile, majBandeau: majBandeau
+  };
+})();
+</script>
+<script>
 const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Hors ligne : délai maximum + dernières données gardées sur le téléphone + file d'attente (voir TWHL)
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: TWHL.fetch } });
+TWHL.installer(supabase, { app: "feuille", apresSync: () => { try { rechargerSilencieusement(); } catch (e) {} } });
+// Dernière feuille ouverte, gardée sur le téléphone : permet de rouvrir l'app sans réseau
+// (y compris après minuit pendant un service de nuit).
+function sauverInstantaneFeuille() {
+  try {
+    const u = TWHL.utilisateurLocal();
+    if (!feuilleActuelle || !u) return;
+    localStorage.setItem("taxiwal_feuille_instantane", JSON.stringify({ uid: u.id, feuille: feuilleActuelle, toutes: toutesLesFeuillesDuJour, quand: Date.now() }));
+  } catch (e) {}
+}
+function lireInstantaneFeuille(uid) {
+  try {
+    const x = JSON.parse(localStorage.getItem("taxiwal_feuille_instantane") || "null");
+    return x && x.uid === uid && x.feuille ? x : null;
+  } catch (e) { return null; }
+}
+// Texte d'état d'une ligne quand la modification attend le réseau
+const TEXTE_EN_ATTENTE = "⏳ Gardé sur le téléphone — envoi au retour du réseau";
 
 function esc(valeur) {
   if (valeur === null || valeur === undefined) return "";
@@ -1208,15 +1713,43 @@ function mettreAJourAffichageDate() {
   const aujourdHui = dateLocaleISO();
   const idDepuisUrl = new URLSearchParams(location.search).get("feuille");
 
+  // Pas de réseau : on rouvre directement la dernière feuille ouverte sur ce téléphone si elle est
+  // toujours celle du service en cours (feuille du jour, ou service de nuit commencé hier)
+  // (service de nuit : seulement s'il n'est pas déjà signé, comme avec du réseau)
+  async function ouvrirDepuisInstantane() {
+    const inst = lireInstantaneFeuille(user.id);
+    const f0 = inst && inst.feuille;
+    const valable = f0 && !f0.verifiee_admin && (!idDepuisUrl || idDepuisUrl === f0.id)
+      && (f0.date_service === aujourdHui || estServiceEnCours(f0));
+    if (!valable) return false;
+    {
+      const { data: fLocale } = await supabase.from("feuilles_route").select("*").eq("id", f0.id).maybeSingle();
+      feuilleActuelle = fLocale || f0;
+      toutesLesFeuillesDuJour = (inst.toutes || []).filter(f => f.date_service === feuilleActuelle.date_service && !f.verifiee_admin);
+      if (!toutesLesFeuillesDuJour.some(f => f.id === feuilleActuelle.id)) toutesLesFeuillesDuJour.push(feuilleActuelle);
+      toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
+      const { data: vehs } = await supabase.from("vehicules").select("*").eq("actif", true);
+      vehiculesActifsCache = vehs || [];
+      document.getElementById("sous-titre").textContent = "Feuille du " + feuilleActuelle.date_service;
+      document.getElementById("identite-date").textContent = feuilleActuelle.date_service.split("-").reverse().join("/");
+      mettreAJourAffichageDate();
+      await chargerFeuilleActive(user);
+      return true;
+    }
+  }
+  if (TWHL.horsLigne() && await ouvrirDepuisInstantane()) return;
+
   // Avertit toujours d'une éventuelle feuille oubliée d'un jour précédent (jamais clôturée) —
   // elle doit rester modifiable tant qu'elle n'est pas terminée, même des jours après.
-  const { data: feuillesNonCloturees } = await supabase
+  // (sans filtre de date dans la requête : la même requête chaque jour, donc la copie gardée sur le
+  //  téléphone reste utilisable hors ligne après minuit → la feuille de nuit est retrouvée, pas de doublon)
+  const { data: feuillesNonClotureesToutes } = await supabase
     .from("feuilles_route")
     .select("id, date_service, heure_debut, verifiee_admin, signee, verrouillee, created_at, lignes_feuille_route(count)")
     .eq("chauffeur_id", user.id)
     .eq("verrouillee", false)
-    .lt("date_service", aujourdHui)
     .order("date_service", { ascending: true });
+  const feuillesNonCloturees = (feuillesNonClotureesToutes || []).filter(f => f.date_service && f.date_service < aujourdHui);
   // Une feuille d'un jour précédent compte comme "à clôturer" seulement si le chauffeur a
   // vraiment travaillé ce jour-là (heure de début ou au moins une course) — pas les feuilles
   // vides créées automatiquement un jour de congé.
@@ -1308,12 +1841,15 @@ function mettreAJourAffichageDate() {
       document.getElementById("erreur").innerHTML = '<div style="background:#e7f5ec; color:#1f6b3f; border-radius:10px; padding:16px; font-weight:600; text-align:center;">✅ Ta feuille de route du jour a été vérifiée et validée par la direction. Rien d\'autre à faire.</div>';
       return;
     }
+    // Sans réseau, la liste peut être vide faute de copie locale : on rouvre d'abord la feuille gardée
+    // sur le téléphone (feuille du jour / service de nuit) au lieu d'en créer une deuxième
+    if ((!feuilles || feuilles.length === 0) && TWHL.horsLigne() && await ouvrirDepuisInstantane()) return;
     if (!feuilles || feuilles.length === 0) {
-      const { data: nouvelle, error } = await supabase
-        .from("feuilles_route")
-        .insert({ chauffeur_id: user.id, date_service: aujourdHui })
-        .select().single();
-      if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+      const champsF = { id: TWHL.uuid(), chauffeur_id: user.id, date_service: aujourdHui };
+      const localeF = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champsF);
+      const { data: nouvelle, error } = await TWHL.ecrire({ table: "feuilles_route", op: "upsert", payload: champsF,
+        select: "*", optimiste: localeF, local: localeF, label: "Nouvelle feuille du jour" });
+      if (error || !nouvelle) { document.getElementById("erreur").textContent = "Erreur : " + (error ? error.message : "feuille non créée"); return; }
       feuilles = [nouvelle];
     }
 
@@ -1329,8 +1865,7 @@ function mettreAJourAffichageDate() {
   document.getElementById("identite-date").textContent = dateAAfficher.split("-").reverse().join("/");
   mettreAJourAffichageDate();
 
-  await chargerFeuilleActive(user);
-  activerMiseAJourEnDirect(user.id);
+  await chargerFeuilleActive(user); // (branche aussi le temps réel)
 })();
 
 // Affiche uniquement le bouton de changement de véhicule — les véhicules déjà utilisés
@@ -1394,7 +1929,7 @@ async function ouvrirChangementVehicule() {
   // 1) La feuille de la voiture actuelle doit être complète, puis elle est clôturée (signée)
   if (actuelleOuverte) {
     if (!feuilleActuelle.heure_fin) {
-      const { error } = await supabase.from("feuilles_route").update({ heure_fin: heureMaintenant }).eq("id", feuilleActuelle.id);
+      const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { heure_fin: heureMaintenant }, label: "Heure de fin" });
       if (!error) feuilleActuelle.heure_fin = heureMaintenant;
     }
     const manques = manquesSignature();
@@ -1408,20 +1943,22 @@ async function ouvrirChangementVehicule() {
   }
   const vehiculeChoisi = await choisirVehicule();
   if (!vehiculeChoisi) return;
-  if (!confirm((actuelleOuverte ? "La feuille de la voiture actuelle va être clôturée (signée).\n\n" : "") +
-      `Ouvrir une nouvelle feuille avec « ${vehiculeChoisi.nom}${vehiculeChoisi.plaque ? " · " + vehiculeChoisi.plaque : ""} » à partir de ${heureMaintenant} ?`)) return;
+  if (!(await confirmerDansPage((actuelleOuverte ? "La feuille de la voiture actuelle va être clôturée (signée).\n\n" : "") +
+      `Ouvrir une nouvelle feuille avec « ${vehiculeChoisi.nom}${vehiculeChoisi.plaque ? " · " + vehiculeChoisi.plaque : ""} » à partir de ${heureMaintenant} ?`, "🚗 Oui, nouvelle feuille", "Annuler"))) return;
 
   if (actuelleOuverte) {
-    const { error: errSigne } = await supabase.from("feuilles_route").update({ signee: true }).eq("id", feuilleActuelle.id);
+    const { error: errSigne } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
+      payload: { signee: true }, local: { signee: true, verrouillee: true }, label: "Clôture de la feuille (changement de voiture)" });
     if (errSigne) { alert("Erreur à la clôture de la feuille actuelle : " + errSigne.message); return; }
     feuilleActuelle.verrouillee = true; feuilleActuelle.signee = true;
   }
 
-  const { data: nouvelleFeuille, error } = await supabase
-    .from("feuilles_route")
-    .insert({ chauffeur_id: user.id, date_service: dateNouvelleFeuille, vehicule_id: vehiculeChoisi.id, heure_debut: heureMaintenant })
-    .select().single();
-  if (error) { alert("Erreur : " + error.message); return; }
+  // Identifiant créé sur le téléphone : la nouvelle feuille peut être ouverte même sans réseau
+  const champsNouvelle = { id: TWHL.uuid(), chauffeur_id: user.id, date_service: dateNouvelleFeuille, vehicule_id: vehiculeChoisi.id, heure_debut: heureMaintenant };
+  const localeNouvelle = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champsNouvelle);
+  const { data: nouvelleFeuille, error } = await TWHL.ecrire({ table: "feuilles_route", op: "upsert", payload: champsNouvelle,
+    select: "*", optimiste: localeNouvelle, local: localeNouvelle, label: "Nouvelle feuille (changement de voiture)" });
+  if (error || !nouvelleFeuille) { alert("Erreur : " + (error ? error.message : "feuille non créée")); return; }
 
   if (!toutesLesFeuillesDuJour.some(f => f.id === nouvelleFeuille.id)) toutesLesFeuillesDuJour.push(nouvelleFeuille);
   feuilleActuelle = nouvelleFeuille;
@@ -1440,6 +1977,7 @@ async function chargerFeuilleActive(user) {
   appliquerVerrouillage();
   mettreAJourAffichageDate();
   activerMiseAJourEnDirect(user.id);
+  sauverInstantaneFeuille();
 }
 
 // Affiche, en lecture seule et tout en haut de la même page, chaque véhicule déjà utilisé
@@ -1523,6 +2061,7 @@ async function rechargerSilencieusement() {
   // Passage de minuit pendant un service de nuit : on reste sur la même feuille, seul l'affichage
   // de la date devient « 17/10 → 18/10 » (aucun basculement vers une nouvelle feuille du jour).
   mettreAJourAffichageDate();
+  sauverInstantaneFeuille();
   if (idPleinEcran) {
     ligneEnPleinEcran = null;
     document.body.classList.remove("mode-plein-ecran");
@@ -1557,11 +2096,11 @@ function activerMiseAJourEnDirect(userId) {
     .on("postgres_changes", { event: "DELETE", schema: "public", table: "lignes_feuille_route" }, planifierRechargement)
     .on("postgres_changes", { event: "*", schema: "public", table: "courses", filter: `chauffeur_id=eq.${userId}` }, planifierRechargement)
     .subscribe();
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") planifierRechargement();
-  });
 }
+// (un seul écouteur : avant, un de plus était ajouté à chaque ouverture / changement de feuille)
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && feuilleActuelle) planifierRechargement();
+});
 
 async function remplirIdentite(user) {
   const { data: profil } = await supabase.from("profils").select("nom").eq("id", user.id).maybeSingle();
@@ -1575,7 +2114,7 @@ async function remplirIdentite(user) {
   } else {
     ({ data: vehicule } = await supabase.from("vehicules").select("*").eq("chauffeur_id", user.id).eq("actif", true).maybeSingle());
     if (vehicule) {
-      await supabase.from("feuilles_route").update({ vehicule_id: vehicule.id }).eq("id", feuilleActuelle.id);
+      await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { vehicule_id: vehicule.id }, label: "Véhicule" });
       feuilleActuelle.vehicule_id = vehicule.id;
     }
   }
@@ -1587,7 +2126,7 @@ async function remplirIdentite(user) {
   selectVehicule.innerHTML = `<option value="">— Aucun —</option>` +
     (tousLesVehicules || []).map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("");
   selectVehicule.onchange = async () => {
-    const { error } = await supabase.from("feuilles_route").update({ vehicule_id: selectVehicule.value || null }).eq("id", feuilleActuelle.id);
+    const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { vehicule_id: selectVehicule.value || null }, label: "Véhicule" });
     if (error) { alert("Erreur : " + error.message); return; }
     feuilleActuelle.vehicule_id = selectVehicule.value || null;
     await remplirIdentite(user);
@@ -1624,13 +2163,15 @@ Object.keys(champsEntete).forEach(idHtml => {
     const champBdd = champsEntete[idHtml];
     const valeur = e.target.value === "" ? null : e.target.value;
     const erreurEl = document.getElementById("erreur");
-    const { error } = await supabase.from("feuilles_route")
-      .update({ [champBdd]: valeur }).eq("id", feuilleActuelle.id);
+    const { error, enAttente } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
+      payload: { [champBdd]: valeur }, label: "Service : " + champBdd });
     if (error) { erreurEl.textContent = "⚠️ Non enregistré : " + error.message; erreurEl.style.color = "var(--rouge)"; return; }
     feuilleActuelle[champBdd] = valeur;
-    erreurEl.style.color = "var(--vert)";
-    erreurEl.textContent = "✓ Enregistré";
-    setTimeout(() => { if (erreurEl.textContent === "✓ Enregistré") erreurEl.textContent = ""; }, 2000);
+    sauverInstantaneFeuille();
+    const okTexte = enAttente ? TEXTE_EN_ATTENTE : "✓ Enregistré";
+    erreurEl.style.color = enAttente ? "#b86e00" : "var(--vert)";
+    erreurEl.textContent = okTexte;
+    setTimeout(() => { if (erreurEl.textContent === okTexte) erreurEl.textContent = ""; }, 2500);
     calculerTotaux();
   });
 });
@@ -1883,10 +2424,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
           : `<button type="button" class="st-mod" style="width:100%; padding:8px; border-radius:8px; border:1px dashed #b3141b; background:#fff; color:#b3141b; font-weight:700; font-size:.82rem;">✏️ Écrire un texte au lieu du montant</button>`;
         zoneTexte.querySelector(".st-mod").addEventListener("click", async (ev) => {
           ev.stopPropagation();
-          const t = prompt("Texte à la place du montant (laisse vide pour effacer) :", ligne.sommes_texte || "");
+          const t = await demanderTexteDansPage("Texte à la place du montant (laisse vide pour effacer) :", ligne.sommes_texte || "");
           if (t === null) return;
           const val = t.trim() || null;
-          const { error } = await supabase.from("lignes_feuille_route").update({ sommes_texte: val }).eq("id", ligne.id);
+          const { error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id }, payload: { sommes_texte: val }, label: "Texte « sommes perçues »" });
           if (error) { alert("Erreur : " + error.message); return; }
           ligne.sommes_texte = val;
           rendreTexte();
@@ -1903,6 +2444,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     lab.textContent = libelle;
     const input = (estPaiement || estTypeCourse || estMotif || estSansPrix) ? document.createElement("select") : document.createElement("input");
     inputsParChamp[champ] = input;
+    input.dataset.champ = champ;
     if (estPaiement) {
       input.innerHTML = `
         <option value="">— Choisir —</option>
@@ -1988,7 +2530,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     }
     input.addEventListener("change", async (e) => {
       if (estTypeCourse && e.target.value === "prive") {
-        if (!confirm("Confirmer qu'il s'agit bien d'un trajet privé, non facturé au client (ex : carwash, déplacement pour la société) ?\n\nN'oublie pas d'indiquer l'adresse et d'écrire une note expliquant le motif.")) {
+        if (!(await confirmerDansPage("Confirmer qu'il s'agit bien d'un trajet privé, non facturé au client (ex : carwash, déplacement pour la société) ?\n\nN'oublie pas d'indiquer l'adresse et d'écrire une note expliquant le motif.", "Oui, trajet privé", "Annuler"))) {
           e.target.value = ligne.type_course || "normale";
           return;
         }
@@ -2013,9 +2555,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (champ === "prix_taximetre" && valeur !== null && ligne.motif_sans_prix) maj.motif_sans_prix = null;
       // Motif qui implique un paiement (école / contrat → facture, Uber, annulée) : mode choisi d'office s'il est vide
       if (champ === "motif_sans_prix" && valeur && MOTIFS_AVEC_PAIEMENT[valeur] && !ligne.mode_paiement) maj.mode_paiement = MOTIFS_AVEC_PAIEMENT[valeur];
-      const { data: ligneServeur, error } = await supabase
-        .from("lignes_feuille_route").update(maj).eq("id", ligne.id)
-        .select("*").maybeSingle();
+      const { data: ligneServeur, error, enAttente } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update",
+        match: { id: ligne.id }, payload: maj, select: "*", single: "maybe",
+        optimiste: Object.assign({}, ligne, maj), label: "Course n° " + numeroAffiche + " : " + champ });
       if (!error && ligneServeur) {
         Object.assign(ligne, ligneServeur);
         if ("motif_sans_prix" in maj || "prix_taximetre" in maj) {
@@ -2049,6 +2591,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
         if (nonEnregistre) {
           etatEl.textContent = "⚠️ Non enregistré — réessaie";
           etatEl.className = "etat-sauvegarde erreur";
+        } else if (enAttente) {
+          etatEl.textContent = TEXTE_EN_ATTENTE;
+          etatEl.className = "etat-sauvegarde en-cours";
         } else {
           etatEl.textContent = "✓ Enregistré";
           etatEl.className = "etat-sauvegarde ok";
@@ -2094,8 +2639,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
     onChange: async (liste) => {
       const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
       if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde"; }
-      const { error } = await supabase.from("lignes_feuille_route").update({ arrets: liste }).eq("id", ligne.id);
-      if (etatEl) { etatEl.textContent = error ? "⚠️ Non enregistré" : "✓ Enregistré"; etatEl.className = "etat-sauvegarde " + (error ? "erreur" : "ok"); }
+      const { error, enAttente } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id }, payload: { arrets: liste }, label: "Adresses supplémentaires" });
+      if (etatEl) { etatEl.textContent = error ? "⚠️ Non enregistré" : enAttente ? TEXTE_EN_ATTENTE : "✓ Enregistré"; etatEl.className = "etat-sauvegarde " + (error ? "erreur" : enAttente ? "en-cours" : "ok"); }
       if (!error) ligne.arrets = liste;
     }
   });
@@ -2189,7 +2734,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
     }
   }
   async function enregistrerRecu() {
-    const { error } = await supabase.rpc("maj_note_billet_ligne", { p_ligne: ligne.id, p_champ: "montant_recu", p_valeur: inputRecu.value });
+    const { error } = await TWHL.ecrire({ op: "rpc", fn: "maj_note_billet_ligne", args: { p_ligne: ligne.id, p_champ: "montant_recu", p_valeur: inputRecu.value },
+      table: "lignes_feuille_route", match: { id: ligne.id }, local: { montant_recu: nombreOuNull(inputRecu.value) }, label: "Billet reçu" });
     if (!error) ligne.montant_recu = nombreOuNull(inputRecu.value);
   }
   blocMonnaie.querySelectorAll(".rm-billets button").forEach(b => b.addEventListener("click", () => {
@@ -2243,10 +2789,11 @@ function construireLigneHtml(ligne, numeroAffiche) {
   });
   note.addEventListener("change", async () => {
     const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
-    const { error } = await supabase.rpc("maj_note_billet_ligne", { p_ligne: ligne.id, p_champ: "note_chauffeur", p_valeur: note.value });
+    const { error, enAttente } = await TWHL.ecrire({ op: "rpc", fn: "maj_note_billet_ligne", args: { p_ligne: ligne.id, p_champ: "note_chauffeur", p_valeur: note.value },
+      table: "lignes_feuille_route", match: { id: ligne.id }, local: { note_chauffeur: note.value.trim() || null }, label: "Note" });
     if (etatEl) {
-      etatEl.textContent = error ? "⚠️ Note non enregistrée" : "✓ Note enregistrée";
-      etatEl.className = "etat-sauvegarde " + (error ? "erreur" : "ok");
+      etatEl.textContent = error ? "⚠️ Note non enregistrée" : enAttente ? TEXTE_EN_ATTENTE : "✓ Note enregistrée";
+      etatEl.className = "etat-sauvegarde " + (error ? "erreur" : enAttente ? "en-cours" : "ok");
     }
     if (!error) ligne.note_chauffeur = note.value.trim() || null;
   });
@@ -2273,7 +2820,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         if (premiere) premiere.scrollIntoView({ block: "center", behavior: "smooth" });
         return;
       }
-      if (!confirm("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).")) return;
+      if (!(await confirmerDansPage("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).", "✅ Oui, clôturer", "Annuler"))) return;
       const err = await cloturerLigneEnBase(ligne);
       if (err) { alert("Erreur : " + err.message); return; }
       afficherToast("✅ Course clôturée");
@@ -2295,8 +2842,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
     majBouton();
     btnSignaler.addEventListener("click", async () => {
       if (ligne.signalee_erreur) {
-        if (!confirm("Annuler ta demande à la centrale pour cette course ?")) return;
-        const { error } = await supabase.from("lignes_feuille_route").update({ signalee_erreur: false }).eq("id", ligne.id);
+        if (!(await confirmerDansPage("Annuler ta demande à la centrale pour cette course ?", "Oui, annuler la demande", "Non"))) return;
+        const { error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id }, payload: { signalee_erreur: false }, label: "Annulation de la demande à la centrale" });
         if (error) { alert("Erreur : " + error.message); return; }
         ligne.signalee_erreur = false; ligne.signalee_erreur_motif = null; majBouton();
         return;
@@ -2304,8 +2851,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
       const motif = await demanderMotifCorrection(numeroAffiche);
       if (!motif) return;
       btnSignaler.disabled = true;
-      const { error } = await supabase.from("lignes_feuille_route")
-        .update({ signalee_erreur: true, signalee_erreur_motif: motif }).eq("id", ligne.id);
+      const { error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id },
+        payload: { signalee_erreur: true, signalee_erreur_motif: motif }, label: "Demande à la centrale" });
       btnSignaler.disabled = false;
       if (error) { alert("Impossible d'envoyer : " + error.message); return; }
       ligne.signalee_erreur = true; ligne.signalee_erreur_motif = motif;
@@ -2521,6 +3068,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
   return div;
 }
 
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js", { scope: "./", updateViaCache: "none" }).catch(e => console.error("Service worker :", e));
+}
+
 document.getElementById("btn-ajouter-ligne").addEventListener("click", async () => {
   const prochainNumero = lignesActuelles.length > 0
     ? Math.max(...lignesActuelles.map(l => l.n_ordre || 0)) + 1 : 1;
@@ -2534,12 +3085,13 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
   }
   if (indexDepartAuto === null) indexDepartAuto = indexDebutFeuille(feuilleActuelle);
 
-  const { data, error } = await supabase
-    .from("lignes_feuille_route")
-    .insert({ feuille_route_id: feuilleActuelle.id, n_ordre: prochainNumero, index_depart: indexDepartAuto })
-    .select().single();
+  // Identifiant créé sur le téléphone : la ligne peut être ajoutée puis remplie même sans réseau
+  const champsLigne = { id: TWHL.uuid(), feuille_route_id: feuilleActuelle.id, n_ordre: prochainNumero, index_depart: indexDepartAuto };
+  const ligneLocale = Object.assign({ cloturee: false, created_at: new Date().toISOString(), courses: null }, champsLigne);
+  const { data, error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "upsert", payload: champsLigne,
+    select: "*", optimiste: ligneLocale, local: ligneLocale, label: "Nouvelle course n° " + prochainNumero });
 
-  if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
+  if (error || !data) { document.getElementById("erreur").textContent = "Erreur : " + (error ? error.message : "ligne non créée"); return; }
   lignesActuelles.push(data);
   etatManuelLignes.set(data.id, true);
   afficherLignes();
@@ -2577,12 +3129,13 @@ document.getElementById("btn-signer-confirmer").addEventListener("click", async 
   document.getElementById("etape-signature").style.display = "none";
 
   const idsAVerrouiller = [feuilleActuelle.id];
-  const { error } = await supabase.from("feuilles_route")
-    .update({ signee: true }).in("id", idsAVerrouiller);
+  const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: idsAVerrouiller[0] },
+    payload: { signee: true }, local: { signee: true, verrouillee: true }, label: "Signature de la feuille" });
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
   feuilleActuelle.verrouillee = true;
   feuilleActuelle.signee = true;
+  sauverInstantaneFeuille();
   afficherLignes();
   appliquerVerrouillage();
   afficherSelecteurFeuilles();
@@ -2694,17 +3247,74 @@ function celluleSommesImpression(l, fmt) {
   if (estUber) return "Payé sur Uber";
   return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "");
 }
+// ================== IMPRESSION COMPATIBLE IPHONE ==================
+// Safari (iPhone) bloque window.open s'il n'est pas appelé tout de suite dans le clic (pas après un
+// await). On ouvre donc la fenêtre AU DÉBUT du clic puis on la remplit ; si elle est quand même
+// bloquée (ou app installée sur l'écran d'accueil), la feuille s'affiche dans la page, avec un
+// bouton « 🖨️ Imprimer ». Plus jamais de simple message d'erreur.
+function estAppEcranAccueil() {
+  try { return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches; } catch (e) { return false; }
+}
+function ouvrirFenetreImpression() {
+  if (estAppEcranAccueil()) return null;
+  let w = null;
+  try { w = window.open("", "_blank"); } catch (e) { w = null; }
+  if (w) {
+    try { w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Préparation…</title></head><body style="font:16px -apple-system,sans-serif; padding:24px; color:#333;">⏳ Préparation de la feuille de route…</body></html>'); } catch (e) {}
+  }
+  return w;
+}
+function afficherImpression(fenetre, html) {
+  if (fenetre && !fenetre.closed) {
+    try { fenetre.document.open(); fenetre.document.write(html); fenetre.document.close(); return; } catch (e) {}
+  }
+  afficherImpressionDansPage(html);
+}
+function afficherImpressionDansPage(html) {
+  const ancien = document.getElementById("overlay-impression");
+  if (ancien) ancien.remove();
+  const ov = document.createElement("div");
+  ov.id = "overlay-impression";
+  ov.style.cssText = "position:fixed; inset:0; z-index:2147483000; background:#d9d9d9; display:flex; flex-direction:column;";
+  const barre = document.createElement("div");
+  barre.style.cssText = "display:flex; gap:8px; padding:10px; padding-top:max(10px, env(safe-area-inset-top)); background:#fff; border-bottom:1px solid #ccc; flex-shrink:0;";
+  const bFermer = document.createElement("button");
+  bFermer.type = "button"; bFermer.textContent = "✕ Fermer";
+  bFermer.style.cssText = "flex:1; padding:12px; border-radius:10px; border:1px solid #bbb; background:#f2f2f0; color:#222; font-size:1rem; font-weight:700;";
+  const bImprimer = document.createElement("button");
+  bImprimer.type = "button"; bImprimer.textContent = "🖨️ Imprimer";
+  bImprimer.style.cssText = "flex:2; padding:12px; border-radius:10px; border:none; background:#c81e2c; color:#fff; font-size:1rem; font-weight:800;";
+  barre.appendChild(bFermer); barre.appendChild(bImprimer);
+  const zone = document.createElement("div");
+  zone.style.cssText = "flex:1; overflow:auto; -webkit-overflow-scrolling:touch;";
+  const ifr = document.createElement("iframe");
+  ifr.title = "Feuille de route à imprimer";
+  ifr.style.cssText = "width:100%; height:100%; border:0; background:#fff; display:block;";
+  ifr.addEventListener("load", () => {
+    try {
+      const d = ifr.contentDocument;
+      const b = d && d.querySelector(".barre-actions-impression");
+      if (b) b.style.display = "none";          // ses boutons (Retour / Imprimer) sont remplacés par la barre du haut
+    } catch (e) {}
+  });
+  ifr.srcdoc = html;
+  zone.appendChild(ifr);
+  ov.appendChild(barre); ov.appendChild(zone);
+  document.body.appendChild(ov);
+  bFermer.addEventListener("click", () => ov.remove());
+  bImprimer.addEventListener("click", () => {
+    try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) { window.print(); }
+  });
+}
 document.getElementById("btn-imprimer-fr").addEventListener("click", async () => {
   const anomaliesImpression = anomaliesFeuille(lignesActuelles, feuilleActuelle);
-  if (anomaliesImpression.total && !confirm(messageConfirmImpression(anomaliesImpression))) return;
-  const fenetre = window.open("", "_blank");
-  if (!fenetre) { alert("Le navigateur a bloqué l'ouverture de la fenêtre d'impression. Autorise les pop-ups pour ce site."); return; }
-  fenetre.document.write("Préparation de la feuille de route…");
+  if (anomaliesImpression.total && !(await confirmerDansPage(messageConfirmImpression(anomaliesImpression), "🖨️ Imprimer quand même", "Annuler"))) return;
+  // Ouverte tout de suite dans le clic (avant les await) ; null = affichage dans la page à la fin
+  const fenetre = ouvrirFenetreImpression();
 
   const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from("feuilles_route")
-    .update({ imprimee_a: new Date().toISOString(), imprimee_par: user?.id || null })
-    .eq("id", feuilleActuelle.id);
+  await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
+    payload: { imprimee_a: new Date().toISOString(), imprimee_par: user?.id || null }, label: "Impression" });
 
   // Un bloc "Service + Courses" par véhicule utilisé aujourd'hui, tous à la suite sur le même
   // document — même s'il y a eu un changement de véhicule en cours de journée.
@@ -2932,11 +3542,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
 <\/script>
   </body></html>`;
 
-  const fenetre2 = fenetre.closed ? null : fenetre;
-  if (!fenetre2) { alert("La fenêtre d'impression a été fermée trop tôt."); return; }
-  fenetre2.document.open();
-  fenetre2.document.write(html);
-  fenetre2.document.close();
+  afficherImpression(fenetre, html);
 });
 </script>
 </body>

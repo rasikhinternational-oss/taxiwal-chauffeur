@@ -9,6 +9,13 @@ function dateLocaleISO(d) {
 }
 // État du paiement en ligne (défini tout en haut pour être disponible dès le premier affichage)
 var _etatPaiement = null;
+// Message d'erreur renvoyé par la fonction paiement-en-ligne (en cas de code HTTP 4xx/5xx, supabase-js
+// ne remplit pas « data » : le message { erreur } est dans error.context)
+async function messageErreurPaiement(error, data, defaut) {
+  if (data && data.erreur) return data.erreur;
+  try { if (error && error.context && typeof error.context.json === "function") { const j = await error.context.json(); if (j && j.erreur) return j.erreur; } } catch (e) {}
+  return defaut;
+}
 async function etatPaiementEnLigne() {
   if (_etatPaiement) return _etatPaiement;
   try { const { data } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "etat" } }); _etatPaiement = (data && data.etat) || "inactif"; } catch (e) { _etatPaiement = "inactif"; }
@@ -90,7 +97,7 @@ window.onerror = function(msg, url, line, col, err) {
     width:100%; padding:14px; border-radius:10px; border:none;
     background:var(--rouge); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
   }
-  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; }
+  button.secondaire{ background:var(--noir-2); border:1px solid #cfcfcd; margin-top:10px; color:var(--blanc); }
   button.vert{ background:var(--vert); }
   #btn-visiter-site{
     width:100%; padding:14px; border-radius:10px; text-align:center; box-sizing:border-box;
@@ -221,7 +228,7 @@ window.onerror = function(msg, url, line, col, err) {
   .bloc-paiement .ligne-info{ text-align:left; font-size:.85rem; margin:6px 0; color:var(--gris); }
   .bloc-paiement .ligne-info b{ color:var(--blanc); user-select:all; }
   .bloc-paiement .note-instant{ font-size:.78rem; color:#8a6d1e; margin-top:8px; text-align:left; }
-  #btn-copier-iban{ background:#dcdcda; margin-top:10px; font-size:.85rem; padding:10px; }
+  #btn-copier-iban{ background:#dcdcda; color:var(--blanc); margin-top:10px; font-size:.85rem; padding:10px; }
   .bloc-paiement .btn-copie{ background:#e6e6e3; color:#111; border:none; border-radius:8px; width:100%; margin-top:8px; font-size:.88rem; padding:11px; font-weight:600; box-sizing:border-box; }
   .bloc-paiement .btn-contact{ display:block; text-align:center; text-decoration:none; border-radius:8px; padding:12px; margin-top:8px; font-weight:700; color:#fff; }
   .bloc-paiement .btn-contact.wa{ background:#25a244; }
@@ -828,7 +835,9 @@ document.addEventListener("click", (e) => {
 function echeancePaiementCourse(course) {
   const depart = new Date(course.date_heure);
   const heure = parseInt(partiesDateBruxelles(depart).hh, 10);
-  if (heure >= 22 || heure < 6) return { urgent: true, texte: "🌙 Paiement intégral exigé maintenant (course de nuit/tôt le matin)" };
+  if (heure >= 22 || heure < 6) return { urgent: true, texte: (course.paiement_exige && course.paiement_exige !== "total")
+    ? "🌙 Paiement à faire maintenant (course de nuit/tôt le matin)"      // Taxi Wal a accepté un acompte pour cette course
+    : "🌙 Paiement intégral exigé maintenant (course de nuit/tôt le matin)" };
   if (depart.getTime() - Date.now() < 24 * 3600 * 1000) return { urgent: true, texte: "⏱️ Paiement immédiat obligatoire (départ dans moins de 24h)" };
   const limite = new Date(depart.getTime() - 5 * 24 * 3600 * 1000);
   if (limite.getTime() <= Date.now()) return { urgent: true, texte: "⏱️ Paiement immédiat obligatoire (le délai de 5 jours avant le départ est dépassé)" };
@@ -1447,8 +1456,11 @@ function construireBlocCashClient(course) {
     const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id, retour: location.origin + location.pathname } });
     if (error || !data || !data.url) {
       bp.disabled = false; bp.textContent = libelle;
-      err((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement (QR code) ci-dessous.");
-      chargerMesCourses();
+      const msg = await messageErreurPaiement(error, data, "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement (QR code) ci-dessous.");
+      err(msg);
+      // la course est passée en « acompte à payer » : on recharge (le QR virement s'affiche), puis on montre le message
+      await chargerMesCourses();
+      alert(msg);
       return;
     }
     window.location.href = data.url;
@@ -1649,7 +1661,7 @@ async function construireCarteCourseClient(course) {
         const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id, retour: location.origin + location.pathname } });
         if (error || !data || !data.url) {
           btn.disabled = false; btn.textContent = "📱 Payer avec Bancontact · " + montantAPayer + " €";
-          alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement ci-dessous.");
+          alert(await messageErreurPaiement(error, data, "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement ci-dessous."));
           return;
         }
         window.location.href = data.url;
@@ -1735,7 +1747,7 @@ async function construireCarteCourseClient(course) {
       blocReste.innerHTML = `
         <div style="font-weight:800; font-size:1.05rem;">💶 Reste à payer : ${esc(resteTxt.replace(".", ","))} €</div>
         <div class="note-instant" style="color:var(--gris); margin-top:2px;">Tu peux le payer maintenant (rien à payer au chauffeur ensuite), ou le payer au chauffeur.</div>
-        <button type="button" class="btn-payer-reste" style="display:none; margin-top:8px;">📱 Payer le reste avec Bancontact · ${esc(resteTxt)} €</button>
+        <button type="button" class="btn-payer-reste" style="display:none; margin-top:8px;">📱 Payer le reste avec Bancontact · ${esc(resteTxt.replace(".", ","))} €</button>
         <button type="button" class="btn-qr-reste btn-copie" style="margin-top:8px;">🏦 Payer le reste par QR code virement</button>
         <div class="zone-qr-reste" style="display:none; text-align:center;">
           ${qrReste ? `<img src="${qrReste}" alt="QR code de virement (reste ${esc(resteTxt)} €)" style="width:220px; height:220px; padding:14px; background:#fff; image-rendering:pixelated;">` : ""}
@@ -1755,8 +1767,8 @@ async function construireCarteCourseClient(course) {
           b.disabled = true; b.textContent = "Ouverture du paiement…";
           const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", choix: "reste", course_id: course.id, retour: location.origin + location.pathname } });
           if (error || !data || !data.url) {
-            b.disabled = false; b.textContent = "📱 Payer le reste avec Bancontact · " + resteTxt + " €";
-            alert((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement.");
+            b.disabled = false; b.textContent = "📱 Payer le reste avec Bancontact · " + resteTxt.replace(".", ",") + " €";
+            alert(await messageErreurPaiement(error, data, "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement."));
             return;
           }
           window.location.href = data.url;

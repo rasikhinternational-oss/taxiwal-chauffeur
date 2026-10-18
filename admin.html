@@ -547,6 +547,10 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-historique-fa .lh-fleche{ color:var(--gris); }
   .feuille-admin{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:14px; border-left:4px solid var(--gris); }
   .feuille-admin.verrouillee-fa{ border-left-color:var(--vert); }
+  .feuille-admin.feuille-nuit-fa{ border-left-color:#2563eb; box-shadow:0 0 0 2px #bfdbfe; }
+  .bandeau-nuit-fa{ background:#1e40af; color:#fff; font-weight:800; font-size:.9rem; padding:9px 12px; border-radius:8px; margin-bottom:10px; }
+  .feuille-vide-nuit-fa{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 12px; margin-bottom:14px; border-radius:10px; background:#f1f1ef; color:#8a8a86; font-size:.8rem; opacity:.8; }
+  .feuille-vide-nuit-fa button{ width:auto; padding:4px 9px; font-size:.75rem; border-radius:6px; border:1px solid #cfcfcd; background:#fff; color:#6b6b67; }
   .feuille-admin h3{ margin:0 0 4px; font-size:1rem; }
   .feuille-admin .sous{ color:var(--gris); font-size:.82rem; margin-bottom:10px; }
   .feuille-admin .entete-fa-titre{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; }
@@ -1627,7 +1631,7 @@ function adminOccupe(ignorerDelai = false) {
       && !actif.closest("#pastille-nouveautes")) return "saisie";
   if (selectOuvertAdmin && selectOuvertAdmin.isConnected) return "liste";
   if ([...document.querySelectorAll(".form-modif-course, .bloc-edition-admin")].some(f => f.style.display !== "none" && estAfficheAdmin(f))) return "formulaire";
-  if ([...document.querySelectorAll('[id^="modale"], [id$="-modale"], .fenetre-edition-admin')].some(estAfficheAdmin)) return "fenetre";
+  if ([...document.querySelectorAll('[id^="modale"], [id$="-modale"], .fenetre-edition-admin, .modale-reponse-cash')].some(estAfficheAdmin)) return "fenetre";
   if ([...document.querySelectorAll('.course [data-modifie="1"]')].some(estAfficheAdmin)) return "modifie";
   if (!ignorerDelai && Date.now() - (window.derniereInteractionAdmin || 0) < DELAI_CALME_ADMIN) return "activite";
   return "";
@@ -4413,7 +4417,8 @@ function paymentIntentStripeCourse(courseId) {
     _piStripeParCourse.set(courseId, supabase.from("paiements").select("stripe_payment_intent, recu_at")
       .eq("course_id", courseId).eq("methode", "bancontact").not("stripe_payment_intent", "is", null)
       .order("recu_at", { ascending: false }).limit(1)
-      .then(({ data }) => (data && data[0] && data[0].stripe_payment_intent) || null, () => null));
+      .then(({ data }) => (data && data[0] && data[0].stripe_payment_intent) || null, () => null)
+      .then(pi => { if (!pi) _piStripeParCourse.delete(courseId); return pi; }));   // pas encore connu : on redemandera au prochain affichage
   }
   return _piStripeParCourse.get(courseId);
 }
@@ -6487,13 +6492,14 @@ async function chargerHistoriqueFeuillesChauffeur() {
 }
 
 async function ouvrirApercuHistoriqueFeuille(feuille, chauffeur) {
+  const fenetre = ouvrirFenetreImpression();   // tout de suite, avant tout await (iPhone)
   const { data: lignes, error } = await supabase
     .from("lignes_feuille_route")
     .select("*, courses(statut, mode_paiement, date_heure)")
     .eq("feuille_route_id", feuille.id)
     .order("n_ordre", { ascending: true });
-  if (error) { alert("Erreur : " + error.message); return; }
-  imprimerFeuilleDeRoute(feuille, lignes || [], chauffeur || { nom: "" }, feuille.date_service);
+  if (error) { if (fenetre) { try { fenetre.close(); } catch (e) {} } alert("Erreur : " + error.message); return; }
+  imprimerFeuilleDeRoute(feuille, lignes || [], chauffeur || { nom: "" }, feuille.date_service, fenetre);
 }
 
 function decalerDateFA(jours) {
@@ -6536,9 +6542,14 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
 
   if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
 
+  // ---- Services de nuit : feuilles datées de la VEILLE (jour où le service a commencé) ----
+  // Ex. service du 17/10 18:00 → 18/10 05:00 = une seule feuille datée du 17/10. En regardant le 18/10,
+  // l'admin doit la voir aussi (sinon il croit que tout est perdu).
+  const { veille: dateVeille, feuillesNuit, lignesNuit } = await chargerFeuillesNuitVeille(dateChoisie);
+
   // Toute personne qui a une feuille ce jour-là est affichée, même si son compte n'a pas le rôle
   // « chauffeur » (ex. compte admin utilisé pour rouler) ou s'il est désactivé.
-  (feuilles || []).forEach(f => {
+  [...(feuilles || []), ...feuillesNuit].forEach(f => {
     if (!chauffeurs.some(c => c.id === f.chauffeur_id)) {
       chauffeurs.push({ id: f.chauffeur_id, nom: ((f.profils && f.profils.nom) || "Compte sans nom") + " (autre compte)" });
     }
@@ -6567,12 +6578,47 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
     return;
   }
   const sansFeuille = [];
+  const enCoursNuit = dateChoisie === dateLocaleISO();
+  // 1) D'abord les services de nuit (feuille de la veille), bien visibles
+  chauffeursAffiches.forEach(chauffeur => {
+    const nuitChauffeur = feuillesNuit.filter(f => f.chauffeur_id === chauffeur.id);
+    nuitChauffeur.forEach((feuille, idx) => {
+      const lignes = trierLignesChrono(lignesNuit.filter(l => l.feuille_route_id === feuille.id), feuille);
+      const carte = construireFeuilleAdmin(feuille, lignes, feuille.date_service, chauffeur, nuitChauffeur.length > 1 ? idx + 1 : null, nuitChauffeur.length);
+      carte.classList.add("feuille-nuit-fa");
+      const bandeau = document.createElement("div");
+      bandeau.className = "bandeau-nuit-fa";
+      bandeau.textContent = (enCoursNuit ? "🌙 Service de nuit en cours — " : "🌙 Service de nuit (non signé) — ")
+        + jjmmFA(feuille.date_service) + " → " + jjmmFA(dateChoisie)
+        + " · feuille datée du " + new Date(feuille.date_service + "T12:00:00").toLocaleDateString("fr-BE");
+      // Dans l'en-tête (1er enfant) : en liste compacte, seuls les 1ers enfants de la carte sont visibles
+      const enteteCarte = carte.firstElementChild;
+      enteteCarte.insertBefore(bandeau, enteteCarte.firstChild);
+      conteneur.appendChild(carte);
+    });
+  });
+  // 2) Puis les feuilles du jour choisi
   chauffeursAffiches.forEach(chauffeur => {
     const feuillesChauffeur = (feuilles || []).filter(f => f.chauffeur_id === chauffeur.id);
-    if (feuillesChauffeur.length === 0) { sansFeuille.push(chauffeur); return; }
+    const aNuit = feuillesNuit.some(f => f.chauffeur_id === chauffeur.id);
+    if (feuillesChauffeur.length === 0) { if (!aNuit) sansFeuille.push(chauffeur); return; }
     feuillesChauffeur.forEach((feuille, idx) => {
       const lignes = trierLignesChrono((toutesLignes || []).filter(l => l.feuille_route_id === feuille.id), feuille);
-      conteneur.appendChild(construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, feuillesChauffeur.length > 1 ? idx + 1 : null, feuillesChauffeur.length));
+      const construire = () => construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, feuillesChauffeur.length > 1 ? idx + 1 : null, feuillesChauffeur.length);
+      // Chauffeur en service de nuit + feuille VIDE datée du jour : petite ligne grisée (pas de confusion)
+      if (aNuit && !lignes.length && !feuille.heure_debut && !feuillesEnGrand.has(feuille.id) && !feuillesDepliees.has(feuille.id)) {
+        const petite = document.createElement("div");
+        petite.className = "feuille-vide-nuit-fa";
+        petite.innerHTML = `<span>${esc(feuille.nom_chauffeur_affiche || feuille.profils?.nom || chauffeur.nom || "Chauffeur")} — feuille du ${esc(jjmmFA(dateChoisie))} <i>(feuille vide)</i></span>`;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = "Afficher";
+        b.addEventListener("click", () => { feuillesDepliees.add(feuille.id); petite.replaceWith(construire()); });
+        petite.appendChild(b);
+        conteneur.appendChild(petite);
+        return;
+      }
+      conteneur.appendChild(construire());
     });
   });
   if (sansFeuille.length) {
@@ -6600,6 +6646,73 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
   if (!conteneur.querySelector(".feuille-admin") && !sansFeuille.length) conteneur.innerHTML = '<p id="feuilles-vide">Aucune feuille ce jour-là.</p>';
 }
 document.getElementById("filtre-chauffeur-fa").addEventListener("change", () => chargerFeuillesAdmin());
+
+// ================== SERVICE DE NUIT (vue du jour admin) ==================
+// Même logique que l'app chauffeur (feuille-de-route.html : debutServiceFeuille / estServiceEnCours).
+const DUREE_MAX_SERVICE_NUIT_MS = 16 * 3600e3;
+function jjmmFA(iso) { return iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : ""; }
+function veilleISO(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  dt.setDate(dt.getDate() - 1);
+  return dateLocaleISO(dt);
+}
+// Début réel du service : date_service + heure_debut (heure locale), sinon created_at
+function debutServiceFeuilleFA(f) {
+  if (!f) return null;
+  const cree = f.created_at ? new Date(f.created_at).getTime() : NaN;
+  const hm = frMinutes(f.heure_debut);
+  if (hm !== null && f.date_service) {
+    const [y, mo, d] = f.date_service.split("-").map(Number);
+    let t = new Date(y, mo - 1, d, Math.floor(hm / 60), hm % 60).getTime();
+    // Feuille ouverte après minuit (ex. changement de voiture à 01:00) mais datée de la veille
+    if (!isNaN(cree) && t < cree - 12 * 3600e3) t += 864e5;
+    return t;
+  }
+  return isNaN(cree) ? null : cree;
+}
+// Feuilles datées de la veille de dateChoisie qui font partie d'un service de nuit :
+//  - dateChoisie = aujourd'hui : règle « en cours » de l'app chauffeur (non signée, < 16 h, a travaillé)
+//  - autre jour : feuille non signée avec au moins une course après minuit (heure < début − 2 h)
+async function chargerFeuillesNuitVeille(dateChoisie) {
+  const veille = veilleISO(dateChoisie);
+  const vide = { veille, feuillesNuit: [], lignesNuit: [] };
+  try {
+    const { data: candidates, error } = await supabase
+      .from("feuilles_route")
+      .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
+      .eq("date_service", veille)
+      .order("created_at", { ascending: true });
+    if (error || !candidates || !candidates.length) return vide;
+    const nonSignees = candidates.filter(f => !f.verifiee_admin && !f.signee && !f.verrouillee);
+    if (!nonSignees.length) return vide;
+    const { data: lignes } = await supabase.from("lignes_feuille_route")
+      .select("*, courses(statut, mode_paiement, date_heure)")
+      .in("feuille_route_id", nonSignees.map(f => f.id))
+      .order("n_ordre", { ascending: true });
+    const toutes = lignes || [];
+    const lignesDe = id => toutes.filter(l => l.feuille_route_id === id);
+    let feuillesNuit;
+    if (dateChoisie === dateLocaleISO()) {
+      feuillesNuit = nonSignees.filter(f => {
+        if (!f.heure_debut && !lignesDe(f.id).length) return false;
+        const t = debutServiceFeuilleFA(f);
+        return t !== null && (Date.now() - t) < DUREE_MAX_SERVICE_NUIT_MS;
+      });
+    } else {
+      feuillesNuit = nonSignees.filter(f => {
+        const debut = frMinutes(f.heure_debut);
+        if (debut === null) return false;
+        return lignesDe(f.id).some(l => { const h = frMinutes(l.embarquement_heure); return h !== null && h < debut - 120; });
+      });
+    }
+    const ids = new Set(feuillesNuit.map(f => f.id));
+    return { veille, feuillesNuit, lignesNuit: toutes.filter(l => ids.has(l.feuille_route_id)) };
+  } catch (e) {
+    console.error("Services de nuit :", e);
+    return vide;
+  }
+}
 
 function minutesDepuisHeure(heureStr) {
   if (!heureStr) return null;
@@ -7567,11 +7680,80 @@ function calcTotalHeures(debut, fin) {
   return (dMin !== null && fMin !== null) ? formatDureeMinutes((fMin - dMin + 1440) % 1440) : "";
 }
 
-function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
+// ================== IMPRESSION COMPATIBLE IPHONE ==================
+// Safari (iPhone) bloque window.open s'il n'est pas appelé tout de suite dans le clic (pas après un
+// await). On ouvre donc la fenêtre AU DÉBUT du clic puis on la remplit ; si elle est quand même
+// bloquée (ou app installée sur l'écran d'accueil), la feuille s'affiche dans la page, avec un
+// bouton « 🖨️ Imprimer ». Plus jamais de simple message d'erreur.
+function estAppEcranAccueil() {
+  try { return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches; } catch (e) { return false; }
+}
+function ouvrirFenetreImpression() {
+  if (estAppEcranAccueil()) return null;
+  let w = null;
+  try { w = window.open("", "_blank"); } catch (e) { w = null; }
+  if (w) {
+    try { w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Préparation…</title></head><body style="font:16px -apple-system,sans-serif; padding:24px; color:#333;">⏳ Préparation de la feuille de route…</body></html>'); } catch (e) {}
+  }
+  return w;
+}
+function afficherImpression(fenetre, html) {
+  if (fenetre && !fenetre.closed) {
+    try { fenetre.document.open(); fenetre.document.write(html); fenetre.document.close(); return; } catch (e) {}
+  }
+  afficherImpressionDansPage(html);
+}
+function afficherImpressionDansPage(html) {
+  const ancien = document.getElementById("overlay-impression");
+  if (ancien) ancien.remove();
+  const ov = document.createElement("div");
+  ov.id = "overlay-impression";
+  ov.style.cssText = "position:fixed; inset:0; z-index:2147483000; background:#d9d9d9; display:flex; flex-direction:column;";
+  const barre = document.createElement("div");
+  barre.style.cssText = "display:flex; gap:8px; padding:10px; padding-top:max(10px, env(safe-area-inset-top)); background:#fff; border-bottom:1px solid #ccc; flex-shrink:0;";
+  const bFermer = document.createElement("button");
+  bFermer.type = "button"; bFermer.textContent = "✕ Fermer";
+  bFermer.style.cssText = "flex:1; padding:12px; border-radius:10px; border:1px solid #bbb; background:#f2f2f0; color:#222; font-size:1rem; font-weight:700;";
+  const bImprimer = document.createElement("button");
+  bImprimer.type = "button"; bImprimer.textContent = "🖨️ Imprimer";
+  bImprimer.style.cssText = "flex:2; padding:12px; border-radius:10px; border:none; background:#c81e2c; color:#fff; font-size:1rem; font-weight:800;";
+  barre.appendChild(bFermer); barre.appendChild(bImprimer);
+  const zone = document.createElement("div");
+  zone.style.cssText = "flex:1; overflow:auto; -webkit-overflow-scrolling:touch;";
+  const ifr = document.createElement("iframe");
+  ifr.title = "Feuille de route à imprimer";
+  ifr.style.cssText = "width:100%; height:100%; border:0; background:#fff; display:block;";
+  ifr.addEventListener("load", () => {
+    try {
+      const d = ifr.contentDocument;
+      const b = d && d.querySelector(".barre-actions-impression");
+      if (b) b.style.display = "none";          // ses boutons (Retour / Imprimer) sont remplacés par la barre du haut
+    } catch (e) {}
+  });
+  ifr.srcdoc = html;
+  zone.appendChild(ifr);
+  ov.appendChild(barre); ov.appendChild(zone);
+  document.body.appendChild(ov);
+  bFermer.addEventListener("click", () => ov.remove());
+  bImprimer.addEventListener("click", () => {
+    try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) { window.print(); }
+  });
+}
+
+// fenetrePreouverte : fenêtre déjà ouverte au début du clic (chemins avec chargement async).
+// Sans ce paramètre, la fenêtre est ouverte ici, de façon synchrone (appel direct depuis un clic).
+function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetrePreouverte) {
+  const preouverte = arguments.length >= 5;
+  let fenetre = preouverte ? fenetrePreouverte : null;
   // Ordre chronologique + contrôle des index avant impression (rien n'est surligné sur la feuille imprimée)
   lignes = trierLignesChrono(lignes || [], feuille);
   const anomaliesImpression = anomaliesFeuille(lignes, feuille);
-  if (anomaliesImpression.total && !confirm(messageConfirmImpression(anomaliesImpression))) return;
+  if (anomaliesImpression.total) {
+    // La question doit s'afficher dans CETTE page : une fenêtre déjà ouverte la cacherait (iPhone)
+    if (fenetre) { try { fenetre.close(); } catch (e) {} fenetre = null; }
+    if (!confirm(messageConfirmImpression(anomaliesImpression))) return;
+  }
+  if (!preouverte) fenetre = ouvrirFenetreImpression();
   const dateLisible = new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE");
   const vehicule = feuille.vehicules;
   const identiteFeuille = feuille.identite_exploitant || vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
@@ -7787,10 +7969,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie) {
 <\/script>
   </body></html>`;
 
-  const fenetre = window.open("", "_blank");
-  if (!fenetre) { alert("Le navigateur a bloqué l'ouverture de la fenêtre d'impression. Autorise les pop-ups pour ce site."); return; }
-  fenetre.document.write(html);
-  fenetre.document.close();
+  afficherImpression(fenetre, html);
 }
 
 async function chargerVehiculesAdmin() {

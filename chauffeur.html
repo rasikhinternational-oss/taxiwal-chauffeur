@@ -59,6 +59,42 @@ function confirmerDansPage(message, okLabel, cancelLabel) {
   });
 }
 
+// Saisie d'un texte dans la page (remplace window.prompt, qui peut rester invisible sur iPhone).
+// Renvoie une Promise<string|null> : le texte saisi, ou null si "Annuler".
+function demanderTexteDansPage(message, valeurInitiale, okLabel) {
+  return new Promise(function (resolve) {
+    function ouvrir() {
+      var fond = document.createElement("div");
+      fond.className = "modale-texte-dans-page";
+      fond.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;";
+      var boite = document.createElement("div");
+      boite.style.cssText = "background:#fff;color:#111;max-width:440px;width:100%;border-radius:16px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.3);font:16px/1.4 -apple-system,Arial,sans-serif;max-height:80vh;overflow:auto;";
+      var texte = document.createElement("div");
+      texte.style.cssText = "white-space:pre-wrap;word-break:break-word;margin-bottom:10px;";
+      texte.textContent = String(message == null ? "" : message);
+      var champ = document.createElement("input");
+      champ.type = "text"; champ.className = "champ-texte-dans-page";
+      champ.value = valeurInitiale == null ? "" : String(valeurInitiale);
+      champ.style.cssText = "width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid #bbb;border-radius:10px;";
+      var ok = document.createElement("button");
+      ok.type = "button"; ok.className = "btn-confirmer-ok"; ok.textContent = okLabel || "OK";
+      ok.style.cssText = "margin-top:14px;width:100%;padding:16px;border:none;border-radius:12px;background:#1f8a4c;color:#fff;font-weight:800;font-size:1.1rem;";
+      var annuler = document.createElement("button");
+      annuler.type = "button"; annuler.className = "btn-confirmer-annuler"; annuler.textContent = "Annuler";
+      annuler.style.cssText = "margin-top:10px;width:100%;padding:14px;border:none;border-radius:12px;background:#e5e5e5;color:#111;font-weight:700;font-size:1rem;";
+      var fini = false;
+      function fermer(v) { if (fini) return; fini = true; fond.remove(); resolve(v); }
+      ok.onclick = function (e) { e.stopPropagation(); fermer(champ.value); };
+      annuler.onclick = function (e) { e.stopPropagation(); fermer(null); };
+      champ.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); fermer(champ.value); } });
+      boite.addEventListener("click", function (e) { e.stopPropagation(); });
+      boite.appendChild(texte); boite.appendChild(champ); boite.appendChild(ok); boite.appendChild(annuler); fond.appendChild(boite);
+      document.body.appendChild(fond);
+      try { champ.focus(); } catch (e) {}
+    }
+    if (document.body) ouvrir(); else document.addEventListener("DOMContentLoaded", ouvrir, { once: true });
+  });
+}
 // En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
 window.addEventListener("error", function (e) {
   try {
@@ -339,6 +375,24 @@ window.onerror = function(msg, url, line, col, err) {
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
     background:#fde3cc; color:#8a4a00; margin-bottom:10px; margin-left:6px; font-weight:600;
   }
+  .bloc-avant-course{ display:flex; flex-direction:column; gap:8px; margin:0 0 10px; }
+  .bloc-avant-course button{ width:100%; padding:14px; border:none; border-radius:12px; color:#fff; font-weight:800; font-size:1rem; cursor:pointer; }
+  .info-avertissement-envoye{ background:#fdf3e0; color:#6b4300; border:1px solid #f0d9a6; border-radius:10px; padding:8px 10px; font-size:.85rem; font-weight:600; }
+  .ttw-fond{ position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center; }
+  .ttw-boite{ background:#fff; color:#111; width:100%; max-width:540px; max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px); font:16px/1.4 -apple-system,Arial,sans-serif; }
+  .ttw-titre{ font-weight:900; font-size:1.15rem; margin-bottom:8px; }
+  .ttw-bloc{ background:#f4f4f2; border-radius:12px; padding:10px 12px; margin:8px 0; font-size:.95rem; }
+  .ttw-gros{ font-size:1.25rem; font-weight:900; }
+  .ttw-etat{ border-radius:12px; padding:12px; margin:8px 0; font-size:1.15rem; font-weight:900; text-align:center; }
+  .ttw-etat.ok{ background:#e7f5ec; color:#136b37; border:2px solid #1f8a4c; }
+  .ttw-etat.retard{ background:#fdecee; color:#b3141b; border:2px solid #b3141b; }
+  .ttw-btn{ display:block; width:100%; margin:8px 0 0; padding:15px; border:none; border-radius:12px; color:#fff; font-weight:800; font-size:1.05rem; cursor:pointer; }
+  .ttw-btn.gris{ background:#e5e5e5; color:#111; }
+  .ttw-chips{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  .ttw-chip{ padding:10px 12px; border-radius:20px; border:2px solid #cfcfcd; background:#fff; color:#111; font-weight:700; font-size:.92rem; cursor:pointer; }
+  .ttw-chip.actif{ border-color:#1d4f86; background:#e8f0fa; color:#1d4f86; }
+  .ttw-boite textarea{ width:100%; box-sizing:border-box; min-height:80px; padding:12px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; font-family:inherit; }
+  .ttw-erreur{ color:#b3141b; font-weight:700; font-size:.9rem; min-height:1em; margin-top:6px; }
   .course-actions{ display:flex; gap:8px; }
   .course-actions button{ font-size:.9rem; padding:10px; }
   #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
@@ -587,6 +641,421 @@ window.onerror = function(msg, url, line, col, err) {
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script>
+// ================== MODE HORS LIGNE (pas de réseau) ==================
+// - Lectures : la dernière réponse reçue du serveur est gardée sur le téléphone ; sans réseau, l'app
+//   s'affiche avec ces données (il faut avoir ouvert l'app au moins une fois avec du réseau).
+// - Écritures : sans réseau, la modification est appliquée tout de suite à l'écran et mise dans une
+//   file d'attente (dans l'ordre) ; elle est envoyée automatiquement dès que le réseau revient.
+// - Les appels à la centrale (refuser / prévenir) ne sont PAS mis en attente : il faut du réseau.
+(function () {
+  "use strict";
+  var PROJET = "dgtsgylgqucyzujvfkgo";
+  var CLE_SESSION = "sb-" + PROJET + "-auth-token";
+  var CACHE_DONNEES = "taxiwal-donnees-v1";
+  var CLES_FILES = ["taxiwal_outbox_chauffeur", "taxiwal_outbox_feuille"];
+  var DELAI_RESEAU_MS = 12000;
+  var etat = { app: "chauffeur", client: null, apresSync: null, reseauKO: false, enCours: false, enVol: null, flashJusqua: 0, abandonArme: false };
+
+  // ---- stockage local (localStorage, avec repli en mémoire si bloqué / plein) ----
+  var memoire = {}, echecs = {};
+  function lsGet(k) {
+    if (echecs[k]) return k in memoire ? memoire[k] : null;
+    try { return window.localStorage.getItem(k); } catch (e) { return k in memoire ? memoire[k] : null; }
+  }
+  function lsSet(k, v) {
+    memoire[k] = v;
+    try { window.localStorage.setItem(k, v); delete echecs[k]; } catch (e) { echecs[k] = true; }
+  }
+  function lsDel(k) { delete memoire[k]; delete echecs[k]; try { window.localStorage.removeItem(k); } catch (e) {} }
+
+  function uuid() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+    var b = new Uint8Array(16);
+    try { crypto.getRandomValues(b); } catch (e) { for (var i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256); }
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    var h = Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join("");
+    return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+  }
+  function copie(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
+
+  // ---- détection « pas de réseau » (≠ refus du serveur / règle de sécurité) ----
+  function estErreurReseau(err, status) {
+    if (status === 0 || status === 408 || status === 429 || (status >= 500 && status < 600)) return true;
+    if (!err) return false;
+    if (err.name === "AuthRetryableFetchError" || err.name === "AbortError" || err.name === "TimeoutError") return true;
+    if (err.status === 0) return true;
+    var m = String(err.message || err || "");
+    return /Failed to fetch|NetworkError|Load failed|network|AbortError|TimeoutError|FetchError|signal is aborted|hors ligne/i.test(m);
+  }
+  function estErreurJwt(err, status) {
+    if (status === 401) return true;
+    var m = String((err && (err.message || err.code)) || "");
+    return /JWT|PGRST30/i.test(m);
+  }
+  function horsLigne() { return navigator.onLine === false || etat.reseauKO; }
+
+  // ---- session enregistrée sur le téléphone (pour démarrer sans réseau) ----
+  function sessionLocale() {
+    try {
+      var s = JSON.parse(window.localStorage.getItem(CLE_SESSION) || "null");
+      if (s && s.currentSession) s = s.currentSession;
+      return (s && s.access_token && s.user) ? s : null;
+    } catch (e) { return null; }
+  }
+  function utilisateurLocal() { var s = sessionLocale(); return s ? s.user : null; }
+
+  // ---- file d'attente des écritures ----
+  function cleFile() { return etat.app === "feuille" ? CLES_FILES[1] : CLES_FILES[0]; }
+  function lireFileCle(k) { try { var f = JSON.parse(lsGet(k) || "[]"); return Array.isArray(f) ? f : []; } catch (e) { return []; } }
+  function lireFile() { return lireFileCle(cleFile()); }
+  function ecrireFile(f) { if (f.length) lsSet(cleFile(), JSON.stringify(f)); else lsDel(cleFile()); }
+  function toutesLesOps() { var t = []; CLES_FILES.forEach(function (k) { t = t.concat(lireFileCle(k)); }); return t; }
+  function ajouterALaFile(item) {
+    var f = lireFile();
+    var der = f[f.length - 1];
+    // Plusieurs modifications de suite de la même ligne : regroupées en une seule (ordre conservé)
+    if (der && item.op === "update" && der.op === "update" && der.table === item.table && !der.erreur && der.id !== etat.enVol
+        && JSON.stringify(der.match) === JSON.stringify(item.match) && !!der.verifier === !!item.verifier) {
+      Object.assign(der.payload, item.payload);
+      der.local = Object.assign({}, der.local || {}, item.local || {});
+      der.label = item.label || der.label;
+    } else {
+      f.push({ id: item.id, cree: item.cree, op: item.op, table: item.table, payload: item.payload, match: item.match,
+        fn: item.fn, args: item.args, local: item.local, verifier: !!item.verifier, label: item.label || "" });
+    }
+    ecrireFile(f);
+  }
+  function retirer(id) { ecrireFile(lireFile().filter(function (x) { return x.id !== id; })); }
+  function marquerErreur(id, msg) {
+    var f = lireFile();
+    f.forEach(function (x) { if (x.id === id) x.erreur = msg; });
+    ecrireFile(f);
+  }
+  function enAttentePour(table, id) {
+    return toutesLesOps().some(function (o) {
+      return o.table === table && ((o.match && String(o.match.id) === String(id)) || (o.op === "upsert" && o.payload && String(o.payload.id) === String(id)));
+    });
+  }
+
+  // ---- les modifications en attente sont « posées » sur les données lues ----
+  function correspond(r, match) {
+    if (!r || !match) return false;
+    return Object.keys(match).every(function (k) { return String(r[k]) === String(match[k]); });
+  }
+  function filtresOK(url, row) {
+    var p;
+    try { p = new URL(url, location.href).searchParams; } catch (e) { return true; }
+    var ok = true;
+    p.forEach(function (v, k) {
+      if (!ok || ["select", "order", "limit", "offset", "or", "and"].indexOf(k) >= 0 || k.indexOf(".") >= 0 || !(k in row)) return;
+      if (v.indexOf("eq.") === 0) ok = String(row[k]) === v.slice(3);
+      else if (v.indexOf("neq.") === 0) ok = String(row[k]) !== v.slice(4);
+      else if (/^(lt|lte|gt|gte)\./.test(v)) {
+        // ex. date_service=lt.2026-10-18 : une ligne ajoutée hors ligne ne doit pas apparaître dans une liste qui l'exclut
+        var op = v.slice(0, v.indexOf(".")), ref = v.slice(op.length + 1), val = row[k];
+        if (val == null) ok = false;
+        else {
+          var a = val, bb = ref;
+          if (!isNaN(Number(val)) && !isNaN(Number(ref)) && String(val).trim() !== "" && ref.trim() !== "") { a = Number(val); bb = Number(ref); }
+          else { a = String(val); }
+          ok = op === "lt" ? a < bb : op === "lte" ? a <= bb : op === "gt" ? a > bb : a >= bb;
+        }
+      }
+      else if (v.indexOf("in.(") === 0) ok = v.slice(4, -1).split(",").map(function (x) { return x.replace(/^"|"$/g, ""); }).indexOf(String(row[k])) >= 0;
+      else if (v === "is.null") ok = row[k] === null;
+    });
+    return ok;
+  }
+  function tableDeUrl(url) { var m = /\/rest\/v1\/([^?\/]+)/.exec(url); return m ? decodeURIComponent(m[1]) : null; }
+  function poserModifs(texte, url) {
+    var ops = toutesLesOps();
+    if (!ops.length) return texte;
+    var table = tableDeUrl(url);
+    var data;
+    try { data = JSON.parse(texte); } catch (e) { return texte; }
+    var tableau = Array.isArray(data);
+    var rows = tableau ? data : (data && typeof data === "object" ? [data] : []);
+    ops.forEach(function (o) {
+      var vals = o.local || (o.op === "update" ? o.payload : null);
+      if (o.op === "upsert") {
+        if (o.table === table && tableau && vals && !rows.some(function (r) { return String(r.id) === String(vals.id); }) && filtresOK(url, vals)) rows.push(copie(vals));
+        return;
+      }
+      if (!vals || !o.match) return;
+      rows.forEach(function (r) {
+        if (o.table === table && correspond(r, o.match)) Object.assign(r, vals);
+        // Données imbriquées (ex. « courses » dans une ligne de feuille de route)
+        var fk = o.table.replace(/s$/, "") + "_id";
+        if (r && r[o.table] && typeof r[o.table] === "object" && !Array.isArray(r[o.table]) && o.match.id != null && String(r[fk]) === String(o.match.id)) Object.assign(r[o.table], vals);
+      });
+    });
+    return JSON.stringify(tableau ? rows : (rows[0] || data));
+  }
+
+  // ---- copie locale des lectures ----
+  function lireEntete(h, nom) { if (!h) return ""; try { return (typeof h.get === "function" ? h.get(nom) : (h[nom] || h[nom.toLowerCase()])) || ""; } catch (e) { return ""; } }
+  function cleCache(url, init) { return url + (url.indexOf("?") >= 0 ? "&" : "?") + "__accept=" + encodeURIComponent(lireEntete(init && init.headers, "Accept")); }
+  function ouvrirCache() {
+    try { return window.caches ? caches.open(CACHE_DONNEES).catch(function () { return null; }) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); }
+  }
+  function sauverCache(cle, texte, ct, cr) {
+    ouvrirCache().then(function (c) {
+      if (c) return c.put(cle, new Response(texte, { headers: { "content-type": ct || "application/json", "content-range": cr || "" } }));
+      lsSet("twc:" + cle, JSON.stringify({ t: texte, ct: ct, cr: cr }));
+    }).catch(function () {});
+  }
+  function lireCache(cle) {
+    return ouvrirCache().then(function (c) {
+      if (c) return c.match(cle).then(function (r) { return r ? r.text().then(function (t) { return { t: t, ct: r.headers.get("content-type"), cr: r.headers.get("content-range") }; }) : null; });
+      var v = lsGet("twc:" + cle);
+      return v ? JSON.parse(v) : null;
+    }).catch(function () { return null; });
+  }
+  function reponse(texte, ct, cr, status, statusText) {
+    var h = { "content-type": ct || "application/json" };
+    if (cr) h["content-range"] = cr;
+    return new Response(texte, { status: status || 200, statusText: statusText || "OK", headers: h });
+  }
+  function depuisCache(cle, url, init) {
+    return lireCache(cle).then(function (c) {
+      if (c) return reponse(poserModifs(c.t, url), c.ct, c.cr);
+      // Jamais lu avec du réseau : liste vide (+ ce qui a été ajouté hors ligne)
+      if (/vnd\.pgrst\.object/.test(lireEntete(init && init.headers, "Accept"))) return null;
+      return reponse(poserModifs("[]", url), "application/json", "*/0");
+    });
+  }
+  function viderCacheDonnees() {
+    try { if (window.caches) caches.delete(CACHE_DONNEES).catch(function () {}); } catch (e) {}
+    try { Object.keys(window.localStorage).forEach(function (k) { if (k.indexOf("twc:") === 0) window.localStorage.removeItem(k); }); } catch (e) {}
+  }
+
+  function signalerReseau(ko) {
+    if (etat.reseauKO === ko) return;
+    etat.reseauKO = ko;
+    majBandeau();
+    if (!ko) planifier(300);
+  }
+
+  // fetch utilisé par supabase-js : délai maximum, copie locale des lectures, repli hors ligne
+  function fetchHL(input, init) {
+    init = init || {};
+    var url = typeof input === "string" ? input : (input && input.url) || String(input);
+    var methode = String(init.method || (input && input.method) || "GET").toUpperCase();
+    var cle = (methode === "GET" && url.indexOf("/rest/v1/") >= 0) ? cleCache(url, init) : null;
+    if (cle && navigator.onLine === false) {
+      return depuisCache(cle, url, init).then(function (r) { if (r) return r; throw new TypeError("Failed to fetch (hors ligne)"); });
+    }
+    var ctrl = new AbortController();
+    var minuterie = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, DELAI_RESEAU_MS);
+    if (init.signal) { if (init.signal.aborted) ctrl.abort(); else init.signal.addEventListener("abort", function () { ctrl.abort(); }); }
+    var opts = Object.assign({}, init, { signal: ctrl.signal });
+    return fetch(input, opts).then(function (rep) {
+      clearTimeout(minuterie);
+      signalerReseau(false);
+      if (!cle || !rep.ok) return rep;
+      return rep.text().then(function (texte) {
+        sauverCache(cle, texte, rep.headers.get("content-type"), rep.headers.get("content-range"));
+        return reponse(poserModifs(texte, url), rep.headers.get("content-type"), rep.headers.get("content-range"), rep.status, rep.statusText);
+      });
+    }, function (err) {
+      clearTimeout(minuterie);
+      if (init.signal && init.signal.aborted) throw err;
+      signalerReseau(true);
+      if (!cle) throw err;
+      return depuisCache(cle, url, init).then(function (r) { if (r) return r; throw err; });
+    });
+  }
+
+  // ---- exécution d'une écriture ----
+  async function executer(item, avecRetour) {
+    var sb = etat.client, q;
+    if (item.op === "update") {
+      q = sb.from(item.table).update(item.payload);
+      Object.keys(item.match || {}).forEach(function (k) { q = q.eq(k, item.match[k]); });
+      if (avecRetour && item.select) q = q.select(item.select);
+      else if (item.verifier) q = q.select("id");
+      if (avecRetour && item.select && item.single === "maybe") q = q.maybeSingle();
+      else if (avecRetour && item.select && item.single) q = q.single();
+    } else if (item.op === "upsert") {
+      q = sb.from(item.table).upsert(item.payload, { onConflict: "id", ignoreDuplicates: true });
+      if (avecRetour && item.select) q = q.select(item.select).maybeSingle();
+    } else if (item.op === "rpc") {
+      q = sb.rpc(item.fn, item.args);
+    } else {
+      return { error: { message: "Opération inconnue" }, reseau: false };
+    }
+    var r;
+    try { r = await q; } catch (e) { r = { data: null, error: e, status: 0 }; }
+    var err = r.error || null;
+    if (err && item.op === "upsert" && err.code === "23505") err = null; // déjà enregistré (envoi précédent arrivé)
+    var reseau = !!err && estErreurReseau(err, r.status);
+    return { data: r.data, error: err, status: r.status, reseau: reseau, jwt: !!err && !reseau && estErreurJwt(err, r.status) };
+  }
+
+  // Écriture « robuste » : directe si possible, sinon mise en attente (jamais bloquant pour le chauffeur).
+  // Renvoie { data, error } comme supabase, avec enAttente: true si la modification attend le réseau.
+  async function ecrire(spec) {
+    spec.id = uuid();
+    spec.cree = Date.now();
+    if (spec.local === undefined) spec.local = spec.payload ? copie(spec.payload) : null;
+    if (!lireFile().length && navigator.onLine !== false) {
+      var r = await executer(spec, true);
+      if (!r.reseau) {
+        if (r.error) return { data: null, error: r.error };
+        return { data: spec.op === "upsert" ? (r.data || spec.optimiste || null) : r.data, error: null };
+      }
+    }
+    ajouterALaFile(spec);
+    majBandeau();
+    planifier(1500);
+    return { data: spec.optimiste === undefined ? null : spec.optimiste, error: null, enAttente: true };
+  }
+
+  // ---- renvoi automatique de la file ----
+  function prendreVerrou() {
+    var k = "taxiwal_verrou_" + etat.app, v = Number(lsGet(k) || 0);
+    if (v && Date.now() - v < 60000) return false;
+    lsSet(k, String(Date.now()));
+    return true;
+  }
+  function libererVerrou() { lsDel("taxiwal_verrou_" + etat.app); }
+  var minuteriePlan = null;
+  function planifier(ms) { clearTimeout(minuteriePlan); minuteriePlan = setTimeout(function () { rejouer(false); }, ms || 0); }
+
+  async function rejouer(manuel) {
+    if (etat.enCours || !etat.client) return;
+    if (!lireFile().length) { majBandeau(); return; }
+    if (navigator.onLine === false) { majBandeau(); return; }
+    if (!prendreVerrou()) return;
+    etat.enCours = true;
+    majBandeau();
+    var faits = 0, jwtEssais = 0;
+    try {
+      while (true) {
+        var item = lireFile()[0];
+        if (!item) break;
+        if (item.erreur && !manuel) break;
+        manuel = false;
+        etat.enVol = item.id;
+        var r = await executer(item, false);
+        etat.enVol = null;
+        if (!r.error && item.verifier && Array.isArray(r.data) && !r.data.length)
+          r = { error: { message: "La course n'est plus à toi (retirée ou modifiée par la centrale)." }, reseau: false };
+        if (!r.error) { retirer(item.id); faits++; lsSet("taxiwal_verrou_" + etat.app, String(Date.now())); continue; }
+        if (r.reseau) break;
+        if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
+        marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error));
+        break;
+      }
+    } finally {
+      etat.enCours = false; etat.enVol = null; libererVerrou();
+    }
+    if (faits) {
+      if (!lireFile().length) etat.flashJusqua = Date.now() + 3000;
+      if (etat.apresSync) { try { etat.apresSync(); } catch (e) { console.warn(e); } }
+    }
+    majBandeau();
+  }
+
+  // ---- bandeau ----
+  var minuterieFlash = null;
+  function majBandeau() {
+    if (!document.body) return;
+    var b = document.getElementById("bandeau-hors-ligne");
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "bandeau-hors-ligne";
+      b.style.cssText = "position:fixed;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:99990;border-radius:12px;padding:9px 12px;font:600 14px/1.35 -apple-system,Arial,sans-serif;color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.25);display:none;";
+      document.body.appendChild(b);
+    }
+    var f = lireFile(), n = f.length, err = f.filter(function (x) { return x.erreur; })[0];
+    var html = "", fond = "";
+    if (err) {
+      fond = "#b3141b";
+      html = "⚠️ Une modification n'a pas pu être enregistrée" + (err.label ? " (" + echapper(err.label) + ")" : "") + " :<br><span style=\"font-weight:400\">" + echapper(err.erreur) + "</span>"
+        + (n > 1 ? "<br><span style=\"font-weight:400\">" + (n - 1) + " autre(s) modification(s) attendent derrière.</span>" : "")
+        + "<div style=\"display:flex;gap:8px;margin-top:8px\"><button type=\"button\" data-hl=\"reessayer\" style=\"flex:1;padding:10px;border:none;border-radius:10px;background:#fff;color:#b3141b;font-weight:800\">🔁 Réessayer</button>"
+        + "<button type=\"button\" data-hl=\"abandonner\" style=\"flex:1;padding:10px;border:2px solid #fff;border-radius:10px;background:transparent;color:#fff;font-weight:800\">" + (etat.abandonArme ? "Oui, abandonner" : "🗑️ Abandonner") + "</button></div>";
+    } else if (etat.enCours) {
+      fond = "#1d4f86"; html = "🔄 Envoi en cours…";
+    } else if (horsLigne()) {
+      fond = "#333"; html = "📴 Hors ligne — tu peux continuer, tout sera envoyé dès le retour du réseau (" + n + " en attente)";
+    } else if (n) {
+      fond = "#b86e00"; html = "⏳ " + n + " modification(s) en attente d'envoi…";
+    } else if (Date.now() < etat.flashJusqua) {
+      fond = "#1f8a4c"; html = "✅ Tout est synchronisé";
+      clearTimeout(minuterieFlash); minuterieFlash = setTimeout(majBandeau, etat.flashJusqua - Date.now() + 50);
+    }
+    if (!html) { b.style.display = "none"; b.dataset.etat = ""; return; }
+    b.style.background = fond;
+    b.style.pointerEvents = err ? "auto" : "none";
+    b.dataset.etat = err ? "erreur" : etat.enCours ? "envoi" : horsLigne() ? "hors-ligne" : n ? "attente" : "ok";
+    if (b._html !== html) { b.innerHTML = html; b._html = html; }
+    b.style.display = "block";
+  }
+  function echapper(t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest && e.target.closest("[data-hl]");
+    if (!t) return;
+    e.stopPropagation();
+    var err = lireFile().filter(function (x) { return x.erreur; })[0];
+    if (t.dataset.hl === "reessayer") { etat.abandonArme = false; rejouer(true); return; }
+    if (t.dataset.hl === "abandonner") {
+      if (!etat.abandonArme) { etat.abandonArme = true; majBandeau(); setTimeout(function () { etat.abandonArme = false; majBandeau(); }, 6000); return; }
+      etat.abandonArme = false;
+      if (err) retirer(err.id);
+      majBandeau();
+      if (etat.apresSync) { try { etat.apresSync(); } catch (_) {} }
+      rejouer(false);
+    }
+  }, true);
+
+  window.addEventListener("online", function () { majBandeau(); planifier(500); });
+  window.addEventListener("offline", function () { etat.reseauKO = true; majBandeau(); });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") planifier(300); });
+  window.addEventListener("focus", function () { planifier(300); });
+  setInterval(function () { if (lireFile().length) rejouer(false); }, 20000);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", majBandeau); else setTimeout(majBandeau, 0);
+
+  // ---- branchement sur le client supabase ----
+  function installer(client, cfg) {
+    etat.client = client;
+    etat.app = (cfg && cfg.app) || "chauffeur";
+    etat.apresSync = (cfg && cfg.apresSync) || null;
+    var auth = client.auth;
+    var getSessionOrig = auth.getSession.bind(auth), getUserOrig = auth.getUser.bind(auth);
+    // Sans réseau : la session enregistrée sur le téléphone suffit (pas de renvoi vers la connexion)
+    auth.getSession = async function () {
+      if (horsLigne()) { var s = sessionLocale(); if (s) return { data: { session: s }, error: null }; }
+      var r = await getSessionOrig();
+      if (r && r.data && !r.data.session && r.error && estErreurReseau(r.error, r.error.status)) {
+        var s2 = sessionLocale(); if (s2) return { data: { session: s2 }, error: null };
+      }
+      return r;
+    };
+    auth.getUser = async function (jwt) {
+      if (!jwt && horsLigne()) { var u = utilisateurLocal(); if (u) return { data: { user: u }, error: null }; }
+      var r;
+      try { r = await getUserOrig(jwt); } catch (e) { r = { data: { user: null }, error: e }; }
+      if (r && r.data && r.data.user) return r;
+      if (!jwt && r && r.error && (estErreurReseau(r.error, r.error.status) || horsLigne())) {
+        var u2 = utilisateurLocal(); if (u2) return { data: { user: u2 }, error: null };
+      }
+      return r;
+    };
+    majBandeau();
+    planifier(2000);
+  }
+
+  window.TWHL = {
+    fetch: fetchHL, installer: installer, ecrire: ecrire, rejouer: rejouer, enAttentePour: enAttentePour,
+    estErreurReseau: estErreurReseau, horsLigne: horsLigne, utilisateurLocal: utilisateurLocal,
+    viderCacheDonnees: viderCacheDonnees, uuid: uuid, nbEnAttente: function () { return lireFile().length; },
+    file: lireFile, majBandeau: majBandeau
+  };
+})();
+</script>
+<script>
 const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 if (!window.supabase) {
@@ -610,8 +1079,11 @@ try {
       autoRefreshToken: true,
       detectSessionInUrl: false,
       storage: stockageSecurise
-    }
+    },
+    // Hors ligne : délai maximum + dernières données gardées sur le téléphone (voir TWHL)
+    global: { fetch: window.TWHL ? window.TWHL.fetch : undefined }
   });
+  if (window.TWHL) window.TWHL.installer(supabase, { app: "chauffeur", apresSync: () => { try { chargerCourses(); } catch (e) {} } });
 } catch (e) {
   document.body.insertAdjacentHTML("afterbegin",
     '<div style="background:#c81e2c;color:#fff;padding:14px;text-align:center;font-weight:600;">' +
@@ -1467,6 +1939,7 @@ document.addEventListener("click", () => {
 document.getElementById("btn-deconnexion-chauffeur").addEventListener("click", async () => {
   if (!(await confirmerDansPage("Se déconnecter de l'application Taxi Wal ?", "Se déconnecter", "Annuler"))) return;
   arreterPartagePosition();
+  try { TWHL.viderCacheDonnees(); } catch (e) {}
   await supabase.auth.signOut();
   location.reload();
 });
@@ -1813,7 +2286,7 @@ function construireCarteCourse(course) {
     </div>` : "";
 
   div.innerHTML = `
-    ${course.numero_reservation ? `<div style="font-size:.72rem; font-weight:700; color:#1d4f86; margin-bottom:3px;">N° ${esc(course.numero_reservation)}</div>` : ""}<span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}${badgeGroupe}
+    ${course.numero_reservation ? `<div style="font-size:.72rem; font-weight:700; color:#1d4f86; margin-bottom:3px;">N° ${esc(course.numero_reservation)}</div>` : ""}<span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}${window.TWHL && TWHL.enAttentePour("courses", course.id) ? " · ⏳ en attente d'envoi" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}${badgeGroupe}
     <h3>${esc(course.client_nom) || "Client"}</h3>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
@@ -1845,6 +2318,26 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
     actions.appendChild(btnAccepter);
   }
 
+  // Avant de démarrer : vérifier si on peut être à l'heure, prévenir la centrale, ou refuser la course
+  if (course.statut === "assignee") {
+    const blocAvant = document.createElement("div");
+    blocAvant.className = "bloc-avant-course";
+    if (course.avertissement_chauffeur && course.avertissement_chauffeur_id === course.chauffeur_id) {
+      const info = document.createElement("div");
+      info.className = "info-avertissement-envoye";
+      info.textContent = "💬 Tu as prévenu la centrale : « " + course.avertissement_chauffeur + " »";
+      blocAvant.appendChild(info);
+    }
+    const bOu = creerBouton("📍 Où j'en suis ? (distance & temps)", () => ouvrirPanneauOuJenSuis(course));
+    bOu.className = "btn-ou-jen-suis"; bOu.style.background = "#1d4f86";
+    const bPrev = creerBouton("💬 Prévenir la centrale (retard…)", () => ouvrirModalePrevenir(course, false));
+    bPrev.className = "btn-prevenir-centrale"; bPrev.style.background = "#b86e00";
+    const bRef = creerBouton("❌ Refuser la course", () => ouvrirModaleRefus(course));
+    bRef.className = "btn-refuser-course"; bRef.style.background = "#8a2020";
+    blocAvant.appendChild(bOu); blocAvant.appendChild(bPrev); blocAvant.appendChild(bRef);
+    div.appendChild(blocAvant);
+  }
+
   if (course.statut === "assignee" || course.statut === "en_cours") {
     // Avant le départ : on va CHERCHER le client ; course démarrée : on va à la DESTINATION
     const versClient = course.statut !== "en_cours";
@@ -1866,10 +2359,10 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
     const btnAbsent = creerBouton("🚫 Client absent", async () => {
       if (!(await confirmerDansPage("Le client ne s'est pas présenté ? Cette course va être marquée annulée.", "🚫 Oui, client absent", "Annuler"))) return;
       idsRetiresParMoi.add(course.id);
-      const { error } = await supabase.from("courses").update({
-        statut: "annulee", annulee_par: "chauffeur", motif_annulation: "non_presente"
-      }).eq("id", course.id);
-      if (error) { alert("Erreur : " + error.message); return; }
+      const { error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: course.id },
+        payload: { statut: "annulee", annulee_par: "chauffeur", motif_annulation: "non_presente" },
+        label: "Client absent" });
+      if (error) { idsRetiresParMoi.delete(course.id); alert("Erreur : " + error.message); return; }
       chargerCourses();
     });
     btnAbsent.style.background = "#8a2020";
@@ -1923,6 +2416,195 @@ function creerBouton(texte, onClick) {
   btn.textContent = texte;
   btn.addEventListener("click", onClick);
   return btn;
+}
+
+// ================== 📍 OÙ J'EN SUIS ? / 💬 PRÉVENIR LA CENTRALE / ❌ REFUSER UNE COURSE ==================
+const ttwCacheGeo = {};
+async function ttwGeocoder(adresse) {
+  const cle = String(adresse || "").trim();
+  if (!cle) return null;
+  if (ttwCacheGeo[cle]) return ttwCacheGeo[cle];
+  try {
+    const r = await fetch("https://photon.komoot.io/api/?lang=fr&limit=1&lat=50.45&lon=3.95&q=" + encodeURIComponent(cle));
+    const d = await r.json();
+    const f = d.features && d.features[0];
+    if (f) return (ttwCacheGeo[cle] = { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] });
+  } catch (e) { /* repli Nominatim */ }
+  try {
+    const r = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=be,fr&q=" + encodeURIComponent(cle));
+    const d = await r.json();
+    if (d && d[0]) return (ttwCacheGeo[cle] = { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) });
+  } catch (e) {}
+  return null;
+}
+async function ttwItineraire(points) {
+  const coords = points.map(p => p.lon + "," + p.lat).join(";");
+  const r = await fetch("https://router.project-osrm.org/route/v1/driving/" + coords + "?overview=false");
+  const d = await r.json();
+  const rt = d && d.routes && d.routes[0];
+  if (!rt) throw new Error("itinéraire introuvable");
+  return { km: rt.distance / 1000, min: rt.duration / 60 };
+}
+const ttwKm = km => (Math.round(km * 10) / 10).toString().replace(".", ",") + " km";
+const ttwMin = m => { m = Math.max(1, Math.round(m)); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); };
+const ttwHeure = d => new Date(d).toLocaleTimeString("fr-BE", { timeZone: "Europe/Brussels", hour: "2-digit", minute: "2-digit" });
+const ttwLibelleCourse = c => c.numero_reservation ? "Course " + c.numero_reservation : "Course du " + new Date(c.date_heure).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+function ttwOuvrirFond(html) {
+  document.querySelectorAll(".ttw-fond").forEach(x => x.remove());
+  const fond = document.createElement("div");
+  fond.className = "ttw-fond";
+  fond.innerHTML = `<div class="ttw-boite">${html}</div>`;
+  fond.addEventListener("click", (e) => { if (e.target === fond) fond.remove(); });
+  fond.querySelector(".ttw-boite").addEventListener("click", (e) => e.stopPropagation());
+  document.body.appendChild(fond);
+  return fond;
+}
+
+function ouvrirPanneauOuJenSuis(course) {
+  const arrets = (Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse);
+  const fond = ttwOuvrirFond(`
+    <div class="ttw-titre">📍 Où j'en suis ? — ${esc(ttwLibelleCourse(course))}</div>
+    <div class="ttw-bloc"><b>🕒 Heure de la course :</b> <span class="ttw-gros">${esc(ttwHeure(course.date_heure))}</span>
+      <span style="color:#555; font-size:.85rem;">(${esc(new Date(course.date_heure).toLocaleDateString("fr-BE", { timeZone: "Europe/Brussels", weekday: "long", day: "2-digit", month: "2-digit" }))})</span></div>
+    <div class="ttw-bloc ttw-vers-client"><b>🚖 Toi → client</b><br><span class="ttw-attente">📡 Recherche de ta position…</span></div>
+    <div class="ttw-etat-zone"></div>
+    <div class="ttw-bloc"><b>🟢 Prise en charge :</b> ${esc(course.adresse_depart || "?")}<br>
+      ${arrets.map(a => `<b>${a.type === "prise" ? "📍 Prise en charge" : "🏁 Dépose"} :</b> ${esc(a.adresse)}<br>`).join("")}
+      <b>🔴 Destination :</b> ${esc(course.adresse_arrivee || "?")}</div>
+    <div class="ttw-bloc ttw-trajet"><b>🛣️ Trajet de la course (client → destination)</b><br><span>${course.distance_km ? "📏 " + esc(ttwKm(Number(course.distance_km))) + (course.duree_min ? " · ⏱️ " + esc(ttwMin(course.duree_min)) : "") : "Calcul…"}</span></div>
+    ${course.accepte_chauffeur ? "" : `<button type="button" class="ttw-btn ttw-accepter" style="background:#1f8a4c;">✅ Accepter</button>`}
+    <button type="button" class="ttw-btn ttw-accepter-prevenir" style="background:#b86e00;">${course.accepte_chauffeur ? "💬 Prévenir la centrale" : "✅ Accepter + prévenir la centrale"}</button>
+    <button type="button" class="ttw-btn ttw-refuser" style="background:#8a2020;">❌ Refuser la course</button>
+    <button type="button" class="ttw-btn gris ttw-fermer">Fermer</button>`);
+  const q = s => fond.querySelector(s);
+  q(".ttw-fermer").addEventListener("click", () => fond.remove());
+  const bAcc = q(".ttw-accepter");
+  if (bAcc) bAcc.addEventListener("click", async () => { bAcc.disabled = true; fond.remove(); await accepterCourse(course.id); });
+  q(".ttw-accepter-prevenir").addEventListener("click", () => { fond.remove(); ouvrirModalePrevenir(course, !course.accepte_chauffeur); });
+  q(".ttw-refuser").addEventListener("click", () => { fond.remove(); ouvrirModaleRefus(course); });
+
+  // Trajet de la course si la centrale ne l'a pas enregistré
+  if (!course.distance_km) {
+    (async () => {
+      try {
+        const pts = await Promise.all([course.adresse_depart, ...arrets.map(a => a.adresse), course.adresse_arrivee].map(ttwGeocoder));
+        if (pts.some(p => !p)) throw new Error("adresse");
+        const it = await ttwItineraire(pts);
+        q(".ttw-trajet span").textContent = "📏 " + ttwKm(it.km) + " · ⏱️ " + ttwMin(it.min);
+      } catch (e) { q(".ttw-trajet span").textContent = "Trajet non calculable (adresse introuvable)."; }
+    })();
+  }
+
+  // Position actuelle → client
+  const zone = q(".ttw-vers-client .ttw-attente");
+  obtenirPosition().then(async (pos) => {
+    if (!document.body.contains(fond)) return;
+    zone.textContent = "🧮 Calcul de l'itinéraire…";
+    try {
+      const client = await ttwGeocoder(course.adresse_depart);
+      if (!client) throw new Error("Adresse du client introuvable sur la carte.");
+      const it = await ttwItineraire([{ lat: pos.coords.latitude, lon: pos.coords.longitude }, client]);
+      const arrivee = new Date(Date.now() + it.min * 60000);
+      const ecart = Math.round((arrivee.getTime() - new Date(course.date_heure).getTime()) / 60000);
+      zone.innerHTML = `Tu es à <span class="ttw-gros">${esc(ttwKm(it.km))}</span> / <span class="ttw-gros">${esc(ttwMin(it.min))}</span> du client<br>
+        Arrivée estimée chez le client (si tu pars maintenant) : <b>${esc(ttwHeure(arrivee))}</b><br>
+        Heure de la course : <b>${esc(ttwHeure(course.date_heure))}</b>`;
+      q(".ttw-etat-zone").innerHTML = ecart > 0
+        ? `<div class="ttw-etat retard">⚠️ Retard estimé : ${esc(ttwMin(ecart))}</div>`
+        : `<div class="ttw-etat ok">✅ À l'heure${ecart < -5 ? " (marge : " + esc(ttwMin(-ecart)) + ")" : ""}</div>`;
+      if (ecart > 0) fond.dataset.retard = String(ecart);
+    } catch (e) {
+      zone.textContent = "⚠️ " + (e && e.message && !/fetch|network/i.test(e.message) ? e.message : "Calcul impossible pour le moment (connexion ?). Réessaie dans un instant.");
+    }
+  }, (err) => { if (document.body.contains(fond)) zone.textContent = messageErreurPosition(err); });
+}
+
+function ttwModaleMessage({ titre, intro, chips, placeholder, boutons }) {
+  const fond = ttwOuvrirFond(`
+    <div class="ttw-titre">${titre}</div>
+    ${intro ? `<div style="font-size:.9rem; color:#444; margin-bottom:6px;">${intro}</div>` : ""}
+    <div class="ttw-chips">${chips.map((c, i) => `<button type="button" class="ttw-chip" data-i="${i}">${esc(c)}</button>`).join("")}</div>
+    <textarea class="ttw-texte" maxlength="1000" placeholder="${esc(placeholder || "")}"></textarea>
+    <div class="ttw-erreur"></div>
+    ${boutons.map((b, i) => `<button type="button" class="ttw-btn" data-b="${i}" style="background:${b.couleur};">${esc(b.texte)}</button>`).join("")}
+    <button type="button" class="ttw-btn gris ttw-fermer">Annuler</button>`);
+  const zone = fond.querySelector(".ttw-texte"), err = fond.querySelector(".ttw-erreur");
+  fond.querySelector(".ttw-fermer").addEventListener("click", () => fond.remove());
+  fond.querySelectorAll(".ttw-chip").forEach(ch => ch.addEventListener("click", () => {
+    fond.querySelectorAll(".ttw-chip").forEach(x => x.classList.remove("actif"));
+    ch.classList.add("actif");
+    zone.value = chips[Number(ch.dataset.i)];
+  }));
+  fond.querySelectorAll("[data-b]").forEach(btn => btn.addEventListener("click", async () => {
+    const texte = zone.value.trim();
+    err.textContent = "";
+    if (texte.length < 2) { err.textContent = "✍️ Choisis un message ou écris-le."; zone.focus(); return; }
+    const tous = fond.querySelectorAll(".ttw-btn");
+    tous.forEach(x => x.disabled = true);
+    const avant = btn.textContent; btn.textContent = "⏳ Envoi…";
+    let ok = false;
+    try { ok = await boutons[Number(btn.dataset.b)].action(texte, err); } catch (e) { err.textContent = "Erreur : " + (e.message || e); }
+    if (ok) fond.remove(); else { tous.forEach(x => x.disabled = false); btn.textContent = avant; }
+  }));
+  return fond;
+}
+
+function ttwMessageErreurRpc(error) {
+  const m = String((error && error.message) || error || "");
+  if (navigator.onLine === false || TWHL.estErreurReseau(error, error && error.status)) return "📵 Pas de réseau : appelle la centrale.";
+  if (m.includes("COURSE_PLUS_A_TOI")) return "❌ Cette course ne t'est plus attribuée.";
+  if (m.includes("COURSE_DEJA_DEMARREE")) return "❌ La course est déjà démarrée : appelle la centrale.";
+  if (m.includes("MOTIF_REQUIS") || m.includes("MESSAGE_REQUIS")) return "✍️ Écris ton message.";
+  return "Erreur : " + m + " — vérifie ta connexion et réessaie.";
+}
+
+function ouvrirModalePrevenir(course, accepterParDefaut) {
+  const boutons = [];
+  const envoyer = (accepter) => async (texte, err) => {
+    if (navigator.onLine === false) { err.textContent = "📵 Pas de réseau : appelle la centrale."; return false; }
+    const { error } = await supabase.rpc("chauffeur_prevenir_centrale", { p_course: course.id, p_message: texte, p_accepter: accepter });
+    if (error) { err.textContent = ttwMessageErreurRpc(error); if (String(error.message || "").includes("COURSE_PLUS_A_TOI")) chargerCourses(); return false; }
+    alert(accepter ? "✅ Course acceptée et centrale prévenue." : "✅ Message envoyé à la centrale.");
+    chargerCourses();
+    try { chmCharger(); } catch (e) {}
+    return true;
+  };
+  if (!course.accepte_chauffeur) boutons.push({ texte: "✅ Envoyer et accepter la course", couleur: "#1f8a4c", action: envoyer(true) });
+  boutons.push({ texte: "💬 Envoyer seulement", couleur: "#b86e00", action: envoyer(false) });
+  if (!accepterParDefaut && boutons.length > 1) boutons.reverse();
+  const fond = ttwModaleMessage({
+    titre: "💬 Prévenir la centrale — " + esc(ttwLibelleCourse(course)),
+    intro: "La centrale reçoit ton message tout de suite.",
+    chips: ["Attention, je préfère vous prévenir : je serai en retard de 5 min",
+            "Attention, je préfère vous prévenir : je serai en retard de 10 min",
+            "Attention, je préfère vous prévenir : je serai en retard de 15 min",
+            "Attention, je préfère vous prévenir : je serai en retard de 20 min",
+            "Je serai un peu en avance"],
+    placeholder: "Ou écris ton message ici…",
+    boutons
+  });
+  return fond;
+}
+
+function ouvrirModaleRefus(course) {
+  ttwModaleMessage({
+    titre: "❌ Refuser — " + esc(ttwLibelleCourse(course)),
+    intro: "La course retourne à la centrale pour être donnée à un autre chauffeur. <b>Explique pourquoi</b> :",
+    chips: ["Je ne peux pas être à l'heure", "Trop loin", "Je suis déjà sur une course", "Problème véhicule"],
+    placeholder: "Raison du refus (obligatoire)…",
+    boutons: [{ texte: "❌ Oui, refuser la course", couleur: "#8a2020", action: async (texte, err) => {
+      if (navigator.onLine === false) { err.textContent = "📵 Pas de réseau : appelle la centrale."; return false; }
+      idsRetiresParMoi.add(course.id);
+      const { error } = await supabase.rpc("chauffeur_refuser_course", { p_course: course.id, p_motif: texte });
+      if (error) { idsRetiresParMoi.delete(course.id); err.textContent = ttwMessageErreurRpc(error); return false; }
+      document.querySelectorAll(".carte-en-grand").forEach(el => { if (el.dataset.courseId === course.id) { el.classList.remove("carte-en-grand"); document.body.classList.remove("carte-grand-ouverte"); } });
+      alert("✅ Course refusée. La centrale est prévenue et va la donner à un autre chauffeur.");
+      chargerCourses();
+      try { chmCharger(); } catch (e) {}
+      return true;
+    } }]
+  });
 }
 
 async function chargerDemandesOuvertes() {
@@ -2010,10 +2692,9 @@ async function changerStatut(courseId, nouveauStatut) {
 }
 
 async function accepterCourse(courseId) {
-  const { data, error } = await supabase
-    .from("courses")
-    .update({ accepte_chauffeur: true, accepte_a: new Date().toISOString() })
-    .eq("id", courseId).select("id");
+  const { data, error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: courseId },
+    payload: { accepte_chauffeur: true, accepte_a: new Date().toISOString() },
+    select: "id", verifier: true, optimiste: [{ id: courseId }], label: "Accepter la course" });
 
   if (error) { alert("Impossible d'accepter : " + error.message); return; }
   if (!data || !data.length) { alert("❌ Course retirée par la centrale : elle n'est plus à toi."); chargerCourses(); return; }
@@ -2026,10 +2707,8 @@ async function demarrerCourse(courseId, accepterAussi) {
   if (accepterAussi) { maj.accepte_chauffeur = true; maj.accepte_a = new Date().toISOString(); }
   let data, error;
   try {
-    ({ data, error } = await supabase
-      .from("courses")
-      .update(maj)
-      .eq("id", courseId).select("id"));
+    ({ data, error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: courseId },
+      payload: maj, select: "id", verifier: true, optimiste: [{ id: courseId }], label: "Démarrer la course" }));
   } catch (e) { error = e; }
 
   if (error) { alert("❌ Impossible de démarrer la course : " + (error.message || error) + "\n\nVérifie ta connexion et réessaie."); return; }
@@ -2047,7 +2726,7 @@ async function ouvrirModalePaiement(courseId) {
     const { data: c } = await supabase.from("courses")
       .select("prix, surprime, acompte_montant, acompte_paye, paiement_choisi, reste_a_payer, mode_paiement, paye_en_ligne_montant")
       .eq("id", courseId).maybeSingle();
-    const enc = montantAEncaisser(c);
+    const enc = montantAEncaisser(c || (dernieresCoursesChauffeur || []).find(x => x.id === courseId));
     if (enc && enc.payeEnLigneTout) {
       if (await confirmerDansPage("✅ Course DÉJÀ PAYÉE PAR BANCONTACT (" + eurosChauffeur(enc.enLigne) + ").\n\nNe rien encaisser auprès du client.\n\nTerminer la course maintenant ?", "✅ Oui, terminer", "Annuler")) {
         await terminerAvecPaiement("qr");
@@ -2078,10 +2757,10 @@ document.getElementById("btn-paiement-qr").addEventListener("click", async () =>
   if (!courseEnFinDePaiement) return;
   const { data: c } = await supabase.from("courses")
     .select("prix, surprime, acompte_montant, acompte_paye, paiement_choisi, reste_a_payer, mode_paiement, date_heure, paye_en_ligne_montant").eq("id", courseEnFinDePaiement).maybeSingle();
-  const enc = montantAEncaisser(c);
+  const enc = montantAEncaisser(c || (dernieresCoursesChauffeur || []).find(x => x.id === courseEnFinDePaiement));
   let montant = enc ? enc.reste : 0;
   if (!(montant > 0)) {
-    const saisi = prompt("Montant à payer par le client (€) :");
+    const saisi = await demanderTexteDansPage("Montant à payer par le client (€) :", "", "Afficher le QR code");
     montant = parseFloat(String(saisi || "").replace(",", "."));
     if (!(montant > 0)) return;
   }
@@ -2104,10 +2783,9 @@ document.getElementById("oqc-recu").addEventListener("click", async () => {
 
 async function terminerAvecPaiement(mode) {
   if (!courseEnFinDePaiement) return;
-  const { data, error } = await supabase
-    .from("courses")
-    .update({ statut: "terminee", mode_paiement: mode })
-    .eq("id", courseEnFinDePaiement).select("id");
+  const { data, error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: courseEnFinDePaiement },
+    payload: { statut: "terminee", mode_paiement: mode }, select: "id", verifier: true,
+    optimiste: [{ id: courseEnFinDePaiement }], label: "Terminer la course (" + (libellePaiement(mode) || mode) + ")" });
 
   modalePaiement.style.display = "none";
   courseEnFinDePaiement = null;
@@ -2172,6 +2850,7 @@ function arreterPartagePosition() {
 
 async function envoyerPositionLue(pos) {
   dernierEnvoiPosition = Date.now();
+  if (navigator.onLine === false) return; // hors ligne : position non envoyée (pas de file d'attente)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from("positions_chauffeurs").upsert({
@@ -2212,6 +2891,7 @@ async function envoyerPosition() {
   }
   navigator.geolocation.getCurrentPosition(async (pos) => {
     derniereLecturePosition = pos; dernierEnvoiPosition = Date.now();
+    if (navigator.onLine === false) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -2234,7 +2914,7 @@ async function metPositionIndisponible() {
 }
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(e => console.error("Service worker :", e));
+  navigator.serviceWorker.register("sw.js", { scope: "./", updateViaCache: "none" }).catch(e => console.error("Service worker :", e));
 }
 
 let evenementInstallation = null;
