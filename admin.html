@@ -788,7 +788,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <div id="ecran-login-admin">
   <div class="tw-photo tw-hero-login">
-    <img src="img/van-principal.webp" alt="Véhicule Taxi Wal" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+    <img src="van-principal.webp" alt="Véhicule Taxi Wal" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
     <div class="tw-voile"></div>
   </div>
   <img src="icon-192.png" alt="Taxi Wal" style="width:64px; height:64px; border-radius:16px; display:block; margin:0 auto 14px; animation:logo-pulse 3.5s ease-in-out infinite;">
@@ -2831,6 +2831,7 @@ document.getElementById("ev-ajouter").addEventListener("click", () => ouvrirEdit
 // ================== DEMANDES DES CLIENTS (app client) ==================
 const FILTRES_DEMANDES = [
   ["nouvelles", "🆕 Nouvelles", c => c.statut === "en_attente"],
+  ["cash", "💵 Demandes cash", c => demandeCashEnAttente(c)],
   ["prix", "💶 Prix envoyé", c => c.statut === "prix_envoye"],
   ["paiement", "⏳ Paiement en attente", c => ["attente_acompte", "acompte_declare"].includes(c.statut)],
   ["confirmees", "✅ Confirmées / payées", c => ["confirmee", "assignee", "en_cours"].includes(c.statut) && c.acompte_paye],
@@ -2869,14 +2870,15 @@ function afficherDemandesClients() {
       <div class="rd-adr">🟢 ${esc(c.adresse_depart || "?")}</div>
       <div class="rd-adr">🔴 ${esc(c.adresse_arrivee || "?")}${c.distance_km ? ` <span class="rd-km">· ${String(c.distance_km).replace(".", ",")} km</span>` : ""}</div>
       ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} € · ${c.paiement_exige === "total" ? "totalité demandée" : c.paiement_exige === "choix" ? "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " € ou totalité, au choix du client" : "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " €"}</div>` : ""}
-      ${c.notes ? `<div class="rd-note">📝 ${esc(c.notes)}</div>` : ""}`;
+      ${c.notes ? `<div class="rd-note">📝 ${esc(c.notes)}</div>` : ""}
+      ${demandeCashEnAttente(c) ? `<div style="margin-top:6px; padding:8px 10px; border-radius:10px; background:#1f8a4c; color:#fff; font-weight:900;">💵 Client demande à payer CASH — ouvre la course pour répondre</div>` : ""}`;
     const btnGrand = carte.querySelector(".btn-carte-grand");
     if (btnGrand && btnGrand.nextSibling) carte.insertBefore(resume, btnGrand.nextSibling); else carte.insertBefore(resume, carte.firstChild);
     zone.appendChild(carte);
   });
   }
   // pastille sur le bouton du menu : demandes à traiter (nouvelles + paiements déclarés + messages)
-  const aTraiter = clients.filter(c => c.statut === "en_attente" || c.statut === "acompte_declare" || (c.message_client_paiement && c.statut === "attente_acompte")).length;
+  const aTraiter = clients.filter(c => c.statut === "en_attente" || c.statut === "acompte_declare" || (c.message_client_paiement && c.statut === "attente_acompte" && (!c.demande_cash_at || demandeCashEnAttente(c))) || demandeCashEnAttente(c)).length;
   const btnNav = document.querySelector('nav button[data-onglet="demandes-clients"]');
   if (btnNav) {
     let p = btnNav.querySelector(".badge-demandes");
@@ -3545,7 +3547,9 @@ function demarrerChatChauffeursAdmin() {
           const texte = String(m.texte || "");
           if (m.course_id) await chatChargerInfosCourses([m.course_id]);
           const numMsg = m.course_id ? (chatInfosCourses.get(m.course_id) || {}).numero_reservation : null;
-          alerteImportanteAdmin("💬 Message chauffeur" + (numMsg ? " · " + esc(numMsg) : ""), `${esc(nom)}${numMsg ? " (réservation " + esc(numMsg) + ")" : ""} : ${esc(texte.slice(0, 120))}${texte.length > 120 ? "…" : ""}`, course, "#5a3d8a", "#f3eefb");
+          const estRefus = texte.startsWith("❌") && m.course_id, estAvert = texte.startsWith("⚠️") && m.course_id;
+          if (estRefus || estAvert) { try { chargerCoursesAdmin(true); } catch (e) {} }
+          alerteImportanteAdmin((estRefus ? "❌ Course REFUSÉE par le chauffeur — à réattribuer" : estAvert ? "⚠️ Avertissement chauffeur" : "💬 Message chauffeur") + (numMsg ? " · " + esc(numMsg) : ""), `${esc(nom)}${numMsg ? " (réservation " + esc(numMsg) + ")" : ""} : ${esc(texte.slice(0, 160))}${texte.length > 160 ? "…" : ""}`, course, estRefus ? "#b3141b" : estAvert ? "#b86e00" : "#5a3d8a", estRefus ? "#fdecee" : estAvert ? "#fdf3e0" : "#f3eefb");
           const pile = document.getElementById("pile-alertes-admin");
           const alerte = pile && pile.lastElementChild;
           if (alerte) {
@@ -4074,7 +4078,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   rafraichissementsEnAttente.delete("courses");
 
   if (idsCoursesConnusAdmin === null) {
-    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement }]));
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at }]));
   } else {
     (courses || []).forEach(c => {
       const ancien = idsCoursesConnusAdmin.get(c.id);
@@ -4089,7 +4093,9 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           alerteImportanteAdmin("✅ PAIEMENT REÇU", `${c.client_nom || "Le client"} a payé ${montantPaiement}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.`, c, "#1f6b3f", "#e7f5ec");
           if (document.getElementById("section-paiements")?.classList.contains("visible")) setTimeout(chargerPaiements, 1500);
         }
-        if (!ancien.msg && c.message_client_paiement) {
+        if (c.demande_cash_at && ancien.cash !== c.demande_cash_at && demandeCashEnAttente(c)) {
+          alerteImportanteAdmin("💵 Client demande à payer CASH", `${esc(c.client_nom || "Le client")} souhaite payer en cash dans la voiture (${esc(Number((Number(c.prix) || 0) + (Number(c.surprime) || 0)).toFixed(2))} €).<br>Ouvre la course et réponds : ✅ Cash accepté · 💳 Acompte 30 % · 🔒 Totalité à l'avance.`, c, "#14532d", "#e9f7ef");
+        } else if (!ancien.msg && c.message_client_paiement) {
           alerteImportanteAdmin("🙋 Message du client sur le paiement", `${c.client_nom || "Le client"} : « ${esc(c.message_client_paiement)} »`, c, "#1d4f86", "#eef4fb");
         }
         if (!ancien.accepte && c.accepte_chauffeur) {
@@ -4110,7 +4116,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: `❌ Course annulée — ${motifLisible} (${nomChauffeurPourNotif(c)})`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
-      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement });
+      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at });
     });
   }
 
@@ -4436,6 +4442,82 @@ function blocPayeEnLigneAdmin(course, court) {
   return el;
 }
 
+// ---- 💵 Demande du client « payer en cash dans la voiture » ----
+function demandeCashEnAttente(c) {
+  return !!(c && c.demande_cash_at && !c.acompte_paye && !["annulee", "refusee", "terminee"].includes(c.statut)
+    && (!c.reponse_admin_at || new Date(c.reponse_admin_at) < new Date(c.demande_cash_at)));
+}
+function texteDefautReponseCash(course, decision) {
+  const total = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+  const ac = Math.round(total * 0.30 * 100) / 100;
+  const f = (n) => (Math.round(n * 100) / 100).toFixed(2).replace(".", ",");
+  if (decision === "cash") return "✅ C'est confirmé : vous payez la totalité en cash au chauffeur.";
+  if (decision === "acompte") return `Pour cette course, nous vous demandons un acompte de 30 % (${f(ac)} €) pour confirmer la réservation. Le reste (${f(total - ac)} €) se règle directement au chauffeur. Merci de votre compréhension !`;
+  return "Malheureusement, pour cette course, nous ne pouvons pas accepter le paiement sur place. Nous vous demandons de régler la totalité à l'avance pour confirmer votre réservation. Lors de vos prochaines courses avec nous, le paiement en cash pourra vous être proposé. Merci de votre compréhension 🙏";
+}
+// Fenêtre (dans la page) : relire / modifier le message puis l'envoyer au client
+function ouvrirReponseCashAdmin(course, decision) {
+  const titres = { cash: "✅ Cash accepté", acompte: "💳 Acompte 30 % demandé", total: "🔒 Totalité à l'avance" };
+  const couleurs = { cash: "#1f8a4c", acompte: "#1d4f86", total: "#b3141b" };
+  const fond = document.createElement("div");
+  fond.className = "modale-reponse-cash";
+  fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:7000; display:flex; align-items:flex-end; justify-content:center;";
+  fond.innerHTML = `<div style="background:#fff; color:#111; width:100%; max-width:560px; border-radius:16px 16px 0 0; padding:18px; box-sizing:border-box; max-height:92vh; overflow-y:auto;">
+    <div style="font-size:1.15rem; font-weight:900; color:${couleurs[decision]};">${titres[decision]}</div>
+    <div style="font-size:.85rem; color:#555; margin:4px 0 10px;">${esc(course.client_nom || "Client")} · ${esc(quandCourseTexte(course.date_heure))} · ${esc(eurosFr((Number(course.prix) || 0) + (Number(course.surprime) || 0)))}</div>
+    <label style="font-weight:700; font-size:.9rem;">Message envoyé au client (tu peux le modifier) :</label>
+    <textarea class="rc-texte" rows="6" style="width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; font-family:inherit;"></textarea>
+    ${decision === "cash" ? `<div style="font-size:.82rem; color:#1f6b3f; margin-top:6px;">La course sera confirmée SANS paiement en ligne : le chauffeur encaisse la totalité en cash.</div>` : `<div style="font-size:.82rem; color:#1d4f86; margin-top:6px;">Le client ne pourra confirmer qu'après avoir payé ${decision === "acompte" ? "l'acompte de 30 %" : "la totalité"} (bouton Bancontact direct dans son app).</div>`}
+    <div class="rc-erreur" style="display:none; color:#b3141b; font-weight:700; margin-top:8px;"></div>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button type="button" class="rc-envoyer" style="flex:2; padding:15px; border:none; border-radius:10px; background:${couleurs[decision]}; color:#fff; font-weight:900; font-size:1.02rem;">📨 Envoyer au client</button>
+      <button type="button" class="rc-annuler" style="flex:1; padding:15px; border-radius:10px; border:1px solid #cfcfcd; background:#fff; color:#333; font-weight:700;">Annuler</button>
+    </div></div>`;
+  fond.querySelector(".rc-texte").value = texteDefautReponseCash(course, decision);
+  const fermer = () => fond.remove();
+  fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
+  fond.querySelector(".rc-annuler").addEventListener("click", fermer);
+  fond.querySelector(".rc-envoyer").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true; b.textContent = "Envoi…";
+    const { error } = await supabase.rpc("admin_repondre_cash", { p_course: course.id, p_decision: decision, p_message: fond.querySelector(".rc-texte").value });
+    if (error) {
+      b.disabled = false; b.textContent = "📨 Envoyer au client";
+      const z = fond.querySelector(".rc-erreur"); z.textContent = "Erreur : " + error.message; z.style.display = "block";
+      return;
+    }
+    fermer();
+    toastAdmin(decision === "cash" ? "✅ Cash accepté : course confirmée, à attribuer à un chauffeur." : "📨 Réponse envoyée au client.", couleurs[decision]);
+    chargerCoursesAdmin();
+  });
+  document.body.appendChild(fond);
+  setTimeout(() => fond.querySelector(".rc-texte").focus(), 50);
+}
+// Bloc « 💵 Client demande à payer CASH » + 3 gros boutons (ou rappel de la décision prise)
+function blocDemandeCashAdmin(course) {
+  if (!course.demande_cash_at) return null;
+  const bloc = document.createElement("div");
+  bloc.className = "bloc-demande-cash-admin";
+  const quand = new Date(course.demande_cash_at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  if (demandeCashEnAttente(course)) {
+    bloc.style.cssText = "background:#e9f7ef; border:3px solid #1f8a4c; border-radius:12px; padding:12px; margin:8px 0;";
+    bloc.innerHTML = `<div style="font-weight:900; font-size:1.05rem; color:#14532d;">💵 Client demande à payer CASH</div>
+      <div style="font-size:.84rem; color:#333; margin:2px 0 10px;">Demande du ${esc(quand)}${estCourseDeNuit(course.date_heure) ? " · 🌙 course de nuit" : ""}. Choisis ta réponse :</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button type="button" data-cash="cash" style="padding:15px; border:none; border-radius:10px; background:#1f8a4c; color:#fff; font-weight:900; font-size:1.02rem;">✅ Cash accepté</button>
+        <button type="button" data-cash="acompte" style="padding:15px; border:none; border-radius:10px; background:#1d4f86; color:#fff; font-weight:900; font-size:1.02rem;">💳 Acompte 30 % demandé</button>
+        <button type="button" data-cash="total" style="padding:15px; border:none; border-radius:10px; background:#b3141b; color:#fff; font-weight:900; font-size:1.02rem;">🔒 Totalité à l'avance</button>
+      </div>`;
+    bloc.querySelectorAll("button[data-cash]").forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirReponseCashAdmin(course, b.dataset.cash); }));
+  } else {
+    const dec = course.reponse_admin_paiement === "acceptee" ? "cash" : (course.paiement_exige === "acompte" ? "acompte" : "total");
+    const lib = { cash: "✅ Tu as ACCEPTÉ le cash — le chauffeur encaisse la totalité", acompte: "💳 Tu as demandé un acompte de 30 % (" + eurosFr(course.acompte_montant) + ")", total: "🔒 Tu as demandé la totalité à l'avance" }[dec];
+    bloc.style.cssText = "background:#f4f4f2; border-radius:10px; padding:10px 12px; margin:8px 0; font-size:.86rem;";
+    bloc.innerHTML = `<div><b>💵 Le client avait demandé à payer cash</b> (${esc(quand)})</div><div style="margin-top:4px; font-weight:800; color:${dec === "cash" ? "#1f6b3f" : "#1d4f86"};">${esc(lib)} — réponse envoyée.</div>`;
+  }
+  return bloc;
+}
+
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -4486,6 +4568,17 @@ function construireCarteAdmin(course) {
   const badgeSousTraitant = course.profils?.role === "partenaire" ? `<span class="badge-ar">🤝 Sous-traitant${course.montant_commission ? ` (${Number(course.montant_commission).toFixed(2)} € commission)` : ""}</span>` : "";
   const badgeMarcheOuvert = course.ouverte_marche ? `<span class="badge-ar">📢 Ouverte aux chauffeurs</span>` : "";
   const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour auto (aller-retour)</span>` : "";
+  // ❌ Refus / ⚠️ avertissement envoyés par le chauffeur depuis son app
+  const hhmmMsg = (d) => d ? new Date(d).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const aReattribuer = course.refus_chauffeur_at && !course.chauffeur_id && !["annulee", "terminee", "refusee"].includes(course.statut);
+  const blocRefusChauffeur = !course.refus_chauffeur_at ? "" : aReattribuer
+    ? `<div class="bloc-refus-chauffeur" style="margin:6px 0; padding:10px 12px; border-radius:10px; background:#fdecee; border:2px solid #b3141b; color:#7a0f14; font-size:.92rem;">
+        <div style="font-weight:900; font-size:1rem;">❌ Refusée par ${esc(course.refus_chauffeur_nom || "le chauffeur")} — À RÉATTRIBUER</div>
+        <div style="margin-top:2px;"><b>Raison :</b> ${esc(course.refus_chauffeur_motif || "")} <span style="color:#555; font-size:.8rem;">(${esc(hhmmMsg(course.refus_chauffeur_at))})</span></div></div>`
+    : `<div class="bloc-refus-chauffeur" style="margin:6px 0; padding:6px 10px; border-radius:8px; background:#f4f4f2; color:#555; font-size:.82rem;">ℹ️ Refusée avant par ${esc(course.refus_chauffeur_nom || "un chauffeur")} : ${esc(course.refus_chauffeur_motif || "")} (${esc(hhmmMsg(course.refus_chauffeur_at))})</div>`;
+  const blocAvertChauffeur = course.avertissement_chauffeur && course.chauffeur_id && course.avertissement_chauffeur_id === course.chauffeur_id && ["assignee", "en_cours"].includes(course.statut)
+    ? `<div class="bloc-avert-chauffeur" style="margin:6px 0; padding:10px 12px; border-radius:10px; background:#fdf3e0; border:2px solid #b86e00; color:#6b4300; font-size:.92rem;">
+        <b>⚠️ Message chauffeur (${esc(nomChauffeur)}) :</b> ${esc(course.avertissement_chauffeur)} <span style="color:#555; font-size:.8rem;">(${esc(hhmmMsg(course.avertissement_chauffeur_at))})</span></div>` : "";
 
   const dejaOuverte = coursesOuvertes.has(course.id);
 
@@ -4494,7 +4587,9 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      ${badgeNumeroResa(course.numero_reservation)}<span class="statut-label">${labelStatut}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}
+      ${badgeNumeroResa(course.numero_reservation)}<span class="statut-label">${labelStatut}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}${aReattribuer ? `<span class="badge-ar" style="background:#b3141b; color:#fff;">❌ Refusée — à réattribuer</span>` : ""}${blocAvertChauffeur ? `<span class="badge-ar" style="background:#b86e00; color:#fff;">⚠️ Message chauffeur</span>` : ""}
+      ${blocRefusChauffeur}${blocAvertChauffeur}
+      ${demandeCashEnAttente(course) ? `<div class="badge-cash-admin" style="display:inline-block; margin:6px 0; padding:6px 12px; border-radius:999px; background:#1f8a4c; color:#fff; font-weight:900; font-size:.9rem;">💵 Client demande à payer CASH</div>` : ""}
       <h3>${esc(course.client_nom) || "Client"} — ${prixAffiche.startsWith("🚕") ? prixAffiche : esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
     </div>
@@ -4599,7 +4694,10 @@ function construireCarteAdmin(course) {
     info.style.cssText = "background:#fff7e6; border:1px solid #f0d49a; border-radius:10px; padding:10px; margin:8px 0; font-size:.86rem;";
     info.innerHTML = (course.paiement_choisi === "total" ? `<div><b>💶 Le client a choisi de payer la TOTALITÉ</b> (${((Number(course.prix) || 0) + (Number(course.surprime) || 0)).toFixed(2)} €)</div>` : "") +
       (course.message_client_paiement ? `<div style="margin-top:4px;"><b>🙋 Message du client</b>${course.message_client_at ? " (" + new Date(course.message_client_at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + ")" : ""} : « ${esc(course.message_client_paiement)} »</div>` : "");
-    if (course.message_client_paiement) {
+    if (course.demande_cash_at) {
+      const bc = blocDemandeCashAdmin(course);
+      if (bc) info.appendChild(bc);
+    } else if (course.message_client_paiement) {
       if (course.reponse_admin_paiement) {
         info.innerHTML += `<div style="margin-top:6px; font-weight:700; color:${course.reponse_admin_paiement === "acceptee" ? "#1f6b3f" : "#b3141b"};">
           ${course.reponse_admin_paiement === "acceptee" ? "✅ Tu as ACCEPTÉ (paiement en espèces / à bord)" : "❌ Tu as REFUSÉ (acompte obligatoire)"} — réponse envoyée au client.</div>`;
@@ -7732,7 +7830,7 @@ function construireVehiculeAdmin(vehicule) {
   const estVan = (parseInt(vehicule.places, 10) || 0) >= 7 || /trafic|van|vito|minibus/i.test(vehicule.nom || "");
   const vignette = document.createElement("img");
   vignette.className = "vignette-veh";
-  vignette.src = estVan ? "img/van-principal.webp" : "img/berline.webp";
+  vignette.src = estVan ? "van-principal.webp" : "berline.webp";
   vignette.alt = ""; vignette.width = 64; vignette.height = 48;
   if (!estVan) vignette.style.objectPosition = "center 78%";
   vignette.loading = "lazy"; vignette.decoding = "async";

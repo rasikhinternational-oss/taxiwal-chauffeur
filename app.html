@@ -226,6 +226,15 @@ window.onerror = function(msg, url, line, col, err) {
   .bloc-paiement .btn-contact{ display:block; text-align:center; text-decoration:none; border-radius:8px; padding:12px; margin-top:8px; font-weight:700; color:#fff; }
   .bloc-paiement .btn-contact.wa{ background:#25a244; }
   .bloc-paiement .btn-contact.mail{ background:#3b82c4; }
+  .bloc-cash{ border-radius:12px; padding:12px; margin-top:8px; font-size:.95rem; }
+  .bloc-cash.demande{ background:#fff; border:2px dashed #1f8a4c; }
+  .bloc-cash.attente{ background:#fff7e0; color:#8a5a00; font-weight:700; text-align:center; }
+  .bloc-cash.ok{ background:rgba(31,138,76,.12); color:var(--vert); font-weight:700; }
+  .bloc-cash.paye{ background:#eef4fb; color:#1d4f86; }
+  .bloc-cash .btn-cash{ background:#1f8a4c; font-size:1.08rem; font-weight:800; padding:16px; }
+  .bloc-cash .btn-payer-cash{ background:#1d4f86; font-size:1.08rem; font-weight:800; padding:16px; margin-top:10px; }
+  .bloc-cash .msg-centrale{ white-space:pre-wrap; margin:6px 0 0; color:#333; font-weight:500; }
+  .bloc-cash .err-cash{ color:var(--rouge); font-size:.85rem; margin-top:6px; }
   .bloc-verif{ background:rgba(59,130,196,.12); border-radius:10px; padding:12px; margin-top:6px; font-size:.85rem; color:var(--bleu); }
 
   .badge-marque{
@@ -395,7 +404,7 @@ window.onerror = function(msg, url, line, col, err) {
 <!-- ÉCRAN CONNEXION -->
 <div id="ecran-login">
   <div class="tw-photo tw-hero-login">
-    <img src="img/van-principal.webp" alt="Véhicule Taxi Wal" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+    <img src="van-principal.webp" alt="Véhicule Taxi Wal" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
     <div class="tw-voile"></div>
     <div class="tw-texte"><b>Taxi Wal</b><span>Région Mons-Borinage · gares &amp; aéroports</span></div>
   </div>
@@ -441,7 +450,7 @@ window.onerror = function(msg, url, line, col, err) {
   <section id="section-reserver" class="visible">
     <span class="badge-marque">TAXI WAL</span>
     <div class="tw-photo tw-hero-reserver">
-      <img src="img/van-principal.webp" alt="Véhicule Taxi Wal" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+      <img src="van-principal.webp" alt="Véhicule Taxi Wal" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
       <div class="tw-voile"></div>
       <div class="tw-texte"><b>Où allons-nous ?</b><span>Région Mons-Borinage · gares &amp; aéroports</span></div>
     </div>
@@ -524,7 +533,7 @@ window.onerror = function(msg, url, line, col, err) {
     <div class="champ">
       <label>Bagages (optionnel)</label>
       <input type="number" id="input-bagages" value="0" min="0">
-      <div class="tw-photo tw-photo-bagages"><img src="img/van-bagages.webp" alt="Coffre du van Taxi Wal" width="720" height="540" loading="lazy" decoding="async" style="object-position:center 40%;" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';"></div>
+      <div class="tw-photo tw-photo-bagages"><img src="van-bagages.webp" alt="Coffre du van Taxi Wal" width="720" height="540" loading="lazy" decoding="async" style="object-position:center 40%;" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';"></div>
     </div>
     <div class="champ">
       <label>Notes pour le chauffeur (optionnel)</label>
@@ -1345,6 +1354,108 @@ function estCourseDeNuit(dateHeure) {
   return h >= 22 || h < 6;
 }
 
+// ---- Demande « je paie en cash dans la voiture » ----
+// "aucune" | "attente" | "cash" | "acompte" | "total"
+function etatDemandeCash(course) {
+  if (!course.demande_cash_at) return "aucune";
+  if (!course.reponse_admin_at || new Date(course.reponse_admin_at) < new Date(course.demande_cash_at)) return "attente";
+  if (course.reponse_admin_paiement === "acceptee") return "cash";
+  return course.paiement_exige === "acompte" ? "acompte" : "total";
+}
+function construireBlocCashClient(course) {
+  const etat = etatDemandeCash(course);
+  const fin = ["annulee", "refusee", "terminee", "expiree", "no_show"].includes(course.statut);
+  if (fin) return null;
+  const eu2 = (n) => (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace(".", ",") + " €";
+  const bloc = document.createElement("div");
+  if (etat === "aucune") {
+    if (!["prix_envoye", "attente_acompte"].includes(course.statut) || course.acompte_paye || course.sans_acompte_autorise) return null;
+    bloc.className = "bloc-cash demande";
+    bloc.innerHTML = `<button type="button" class="btn-cash">💵 Je souhaite payer en cash (dans la voiture)</button>
+      <div class="note-instant" style="color:var(--gris); margin-top:6px; font-size:.8rem;">La centrale vérifie et vous répond rapidement.</div>
+      <div class="err-cash" style="display:none;"></div>`;
+    const b = bloc.querySelector(".btn-cash");
+    b.addEventListener("click", async () => {
+      b.disabled = true; b.textContent = "Envoi…";
+      const { error } = await supabase.rpc("client_demander_cash", { p_course: course.id });
+      if (error) {
+        b.disabled = false; b.textContent = "💵 Je souhaite payer en cash (dans la voiture)";
+        const e = bloc.querySelector(".err-cash"); e.textContent = "Erreur : " + error.message; e.style.display = "block";
+        return;
+      }
+      chargerMesCourses();
+    });
+    return bloc;
+  }
+  if (etat === "attente") {
+    if (course.acompte_paye) return null;
+    bloc.className = "bloc-cash attente";
+    bloc.textContent = "⏳ Demande de paiement cash envoyée — la centrale vous répond rapidement.";
+    return bloc;
+  }
+  if (etat === "cash") {
+    bloc.className = "bloc-cash ok";
+    const defaut = "✅ C'est confirmé : vous payez la totalité en cash au chauffeur.";
+    bloc.innerHTML = `<div style="font-size:1.02rem;">${esc(defaut)}</div>` +
+      (course.reponse_admin_message && course.reponse_admin_message.trim() !== defaut ? `<div class="msg-centrale">${esc(course.reponse_admin_message)}</div>` : "");
+    return bloc;
+  }
+  // acompte 30 % ou totalité demandés
+  const total = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+  const montant = etat === "acompte" ? (Number(course.acompte_montant) || 0) : total;
+  bloc.className = "bloc-cash paye";
+  bloc.innerHTML = `<div style="font-weight:800;">${etat === "acompte" ? "💳 Acompte de 30 % demandé" : "🔒 Totalité à payer à l'avance"}</div>
+    <div class="msg-centrale">${esc(course.reponse_admin_message || "")}</div>`;
+  if (course.acompte_paye) return bloc;
+  if (course.statut !== "prix_envoye") {
+    // Le bloc de paiement juste en dessous (Bancontact / QR) applique déjà le montant exigé
+    bloc.innerHTML += `<div style="margin-top:8px; font-weight:800;">👇 Payez ${esc(eu2(montant))} ci-dessous (Bancontact ou QR code) pour confirmer votre course.</div>`;
+    return bloc;
+  }
+  const libelle = (etat === "acompte" ? "💳 Payer l'acompte de 30 % · " : "💳 Payer la totalité · ") + eu2(montant) + " par Bancontact";
+  bloc.innerHTML += `
+    <label class="accepte-conditions${course.conditions_acceptees_at ? " ok" : ""}" style="margin-top:10px;">
+      <input type="checkbox" class="cb-conditions-cash" ${course.conditions_acceptees_at ? "checked" : ""}>
+      <span>J'ai lu et j'accepte les <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button> <span style="color:var(--rouge);">*</span></span>
+    </label>
+    <button type="button" class="btn-payer-cash">${esc(libelle)}</button>
+    ${etat === "acompte" ? `<div class="note-instant" style="color:#1d4f86; margin-top:6px;">Le reste (${esc(eu2(total - montant))}) se règle directement au chauffeur.</div>` : ""}
+    <div class="err-cash" style="display:none;"></div>`;
+  const cb = bloc.querySelector(".cb-conditions-cash");
+  const bp = bloc.querySelector(".btn-payer-cash");
+  const err = (t) => { const e = bloc.querySelector(".err-cash"); e.textContent = t; e.style.display = t ? "block" : "none"; };
+  const maj = () => { bp.disabled = !cb.checked; };
+  maj();
+  cb.addEventListener("change", async () => {
+    maj(); err("");
+    const { data, error } = await supabase.rpc("client_accepter_conditions", { p_course: course.id, p_accepte: cb.checked });
+    if (!error) course.conditions_acceptees_at = cb.checked ? (data || new Date().toISOString()) : null;
+  });
+  bp.addEventListener("click", async () => {
+    if (!cb.checked) { err("Merci d'accepter d'abord les conditions de paiement et d'annulation."); return; }
+    err(""); bp.disabled = true; bp.textContent = "Ouverture du paiement…";
+    if (course.statut === "prix_envoye") {
+      const { error } = await supabase.from("courses").update({ statut: "attente_acompte" }).eq("id", course.id);
+      if (error) { bp.disabled = false; bp.textContent = libelle; err("Erreur : " + error.message); return; }
+    }
+    const etatEnLigne = await etatPaiementEnLigne();
+    if (etatEnLigne !== "actif" && etatEnLigne !== "test") {
+      // Pas de Bancontact : on affiche le QR code virement (bloc de paiement ci-dessous)
+      await chargerMesCourses();
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id, retour: location.origin + location.pathname } });
+    if (error || !data || !data.url) {
+      bp.disabled = false; bp.textContent = libelle;
+      err((data && data.erreur) || "Le paiement en ligne est indisponible pour le moment. Tu peux payer par virement (QR code) ci-dessous.");
+      chargerMesCourses();
+      return;
+    }
+    window.location.href = data.url;
+  });
+  return bloc;
+}
+
 async function construireCarteCourseClient(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -1454,6 +1565,10 @@ async function construireCarteCourseClient(course) {
     div.appendChild(bloc);
   }
 
+  // --- Demande de paiement en cash / réponse de la centrale ---
+  const blocCash = construireBlocCashClient(course);
+  if (blocCash) div.appendChild(blocCash);
+
   // --- Acompte à payer : QR code + IBAN + bouton "j'ai payé" ---
   if (course.statut === "attente_acompte") {
     const communication = communicationCourse(course);
@@ -1509,8 +1624,8 @@ async function construireCarteCourseClient(course) {
         <a class="btn-copie" href="${urlQrPaiement({ montant: montantAPayer, communication })}" target="_blank" rel="noopener" style="display:block; text-decoration:none; text-align:center;">🖼️ Ouvrir le QR en grand (appui long → enregistrer)</a>
       </div>
       <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">${payeTout ? "J'ai payé la totalité" : "J'ai payé l'acompte"}</button>
-      <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;">🙋 Je ne peux pas payer à l'avance</button>
-      ${course.message_client_paiement ? `<div class="lien-chat-paiement">✅ Ton message a été envoyé. Ta conversation est dans l'onglet 💬 Messages : Taxi Wal te répond là.<button type="button" class="btn-ouvrir-chat-paiement">💬 Ouvrir mes messages</button></div>` : ""}
+      <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;${course.demande_cash_at ? " display:none;" : ""}">🙋 Je ne peux pas payer à l'avance</button>
+      ${course.message_client_paiement && !course.demande_cash_at ? `<div class="lien-chat-paiement">✅ Ton message a été envoyé. Ta conversation est dans l'onglet 💬 Messages : Taxi Wal te répond là.<button type="button" class="btn-ouvrir-chat-paiement">💬 Ouvrir mes messages</button></div>` : ""}
       <div class="bloc-contact-dispatch" style="display:none;">
         <div class="note-instant" style="color:var(--gris);">Pas de souci, on reste ouverts : explique-nous ta situation, on trouve une solution ensemble (paiement à bord, facture…).</div>
         <textarea class="message-paiement" rows="3" placeholder="Ex : je n'ai pas de carte bancaire, je préfère payer en espèces au chauffeur…" style="width:100%; box-sizing:border-box; margin-top:8px; padding:10px; border-radius:10px; border:1px solid #cfcfcd; font-size:.95rem;">${esc(course.message_client_paiement || "")}</textarea>
@@ -1666,7 +1781,7 @@ async function construireCarteCourseClient(course) {
   }
 
   // --- Réponse de Taxi Wal à la demande « je ne peux pas payer à l'avance » ---
-  if (course.reponse_admin_paiement && course.reponse_admin_message) {
+  if (course.reponse_admin_paiement && course.reponse_admin_message && !course.demande_cash_at) {
     const rep = document.createElement("div");
     const ok = course.reponse_admin_paiement === "acceptee";
     rep.style.cssText = `margin-top:10px; border-radius:12px; padding:12px 14px; font-size:.92rem; background:${ok ? "rgba(31,138,76,.12)" : "rgba(200,30,44,.08)"}; color:${ok ? "var(--vert)" : "#8a1520"};`;
@@ -2116,7 +2231,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   VEHICULES.forEach(([val, ico, nom, det]) => {
     const b = document.createElement("div");
     b.className = "rz-vehicule"; b.dataset.val = val;
-    const photoVeh = { berline: "img/berline.webp", van: "img/van-principal.webp" }[val];
+    const photoVeh = { berline: "berline.webp", van: "van-principal.webp" }[val];
     b.innerHTML = (photoVeh ? `<div class="rz-v-photo"><img src="${photoVeh}" alt="" width="160" height="64" loading="lazy" decoding="async" style="object-position:center ${val === "berline" ? "78%" : "55%"};" onerror="this.parentNode.style.display='none'"></div>` : "") + `<div class="rz-v-icone">${ico}</div><div class="rz-v-nom">${nom}</div><div class="rz-v-detail">${det}</div>`;
     b.addEventListener("click", () => { selVeh.value = val; selVeh.dispatchEvent(new Event("change", { bubbles: true })); majVehicules(); });
     grille.appendChild(b);
