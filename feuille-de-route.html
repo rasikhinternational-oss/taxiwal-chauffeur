@@ -385,7 +385,7 @@ function resumeLigneFermee(l, numero) {
   else if (mode) argent = mode;
   else argent = "—";
   return {
-    ligne1: `N° ${numero} · ${frHHMM(l.embarquement_heure)} → ${frHHMM(l.debarquement_heure)} · ${argent}`,
+    ligne1: `N° ${numero} · ${frHHMM(l.embarquement_heure)} → ${frHHMM(l.debarquement_heure)} · ${argent}${Number(l.pourboire) > 0 ? " · +" + formatEuro(Number(l.pourboire)) + " pourboire" : ""}`,
     ligne2: `${lieuCourt(l.embarquement_lieu)} → ${lieuCourt(l.debarquement_lieu)}`
   };
 }
@@ -662,6 +662,14 @@ window.onerror = function(msg, url, line, col, err) {
   .rendu-monnaie .rm-billets button.choisi{ background:var(--vert); color:#fff; border-color:var(--vert); }
   .rendu-monnaie .rm-resultat{ font-size:1.25rem; font-weight:800; text-align:center; padding:10px; border-radius:8px; background:#eaf5ee; color:var(--vert); }
   .rendu-monnaie .rm-resultat.manque{ background:#fdecee; color:var(--rouge); }
+  .wrap-pourboire .pb-sous{ font-weight:600; font-size:.75rem; color:var(--gris); }
+  .wrap-pourboire .input-pourboire{ border-color:#c89b00; }
+  .wrap-pourboire .pb-aide{ margin-top:6px; font-size:.82rem; line-height:1.35; background:#fff8e1; border:1px solid #e8c547; color:#5c4500; border-radius:8px; padding:8px; }
+  .wrap-pourboire .pb-aide button{ display:block; width:100%; margin-top:6px; padding:9px; border-radius:8px; border:1px solid #c89b00; background:#fff; color:#5c4500; font-weight:700; font-size:.85rem; }
+  .resume-totaux{ margin:10px 0 4px; padding:10px 12px; border-radius:10px; background:#f4f6f2; border:1px solid #dcdcda; font-size:.95rem; }
+  .resume-totaux .rt-ligne{ display:flex; justify-content:space-between; gap:10px; padding:3px 0; }
+  .resume-totaux .rt-pb{ color:#7a5c00; }
+  .resume-totaux .rt-pb small{ display:block; font-size:.75rem; font-weight:600; color:var(--gris); }
   .rendu-monnaie .rm-resultat.vide{ background:#f0f1ee; color:var(--gris); font-size:.9rem; font-weight:600; }
   #bloc-caisse .caisse-principale{ background:#eaf5ee; border:2px solid var(--vert); border-radius:10px; padding:14px; text-align:center; margin-bottom:12px; }
   #bloc-caisse .caisse-principale .cp-montant{ font-size:1.8rem; font-weight:800; color:var(--vert); }
@@ -742,6 +750,7 @@ window.onerror = function(msg, url, line, col, err) {
   <h2>Feuille signée <span id="statut-feuille-resume" style="display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#f9d6d6; color:#b83232;">Verrouillée</span></h2>
   <div class="ligne-resume"><span>Horaires</span><b id="resume-horaires">—</b></div>
   <div class="ligne-resume"><span>Recettes</span><b id="resume-recettes">—</b></div>
+  <div class="ligne-resume"><span>Pourboires (non compris dans la recette)</span><b id="resume-pourboires">—</b></div>
   <div class="ligne-resume"><span>Nombre de courses</span><b id="resume-nb-courses">—</b></div>
   <button id="btn-voir-details">▾ Voir le détail de la feuille</button>
 </div>
@@ -817,6 +826,7 @@ window.onerror = function(msg, url, line, col, err) {
 <div class="bloc" id="bloc-courses">
   <h2>Courses</h2>
   <div id="liste-lignes"></div>
+  <div id="resume-totaux-feuille" class="resume-totaux" style="display:none"></div>
   <div id="overlay-qr">
     <div style="font-weight:700; font-size:1.1rem;">📱 Paiement par QR code</div>
     <div class="oq-montant" id="oq-montant"></div>
@@ -869,6 +879,7 @@ window.onerror = function(msg, url, line, col, err) {
   var CACHE_DONNEES = "taxiwal-donnees-v1";
   var CLES_FILES = ["taxiwal_outbox_chauffeur", "taxiwal_outbox_feuille"];
   var DELAI_RESEAU_MS = 12000;
+  var MSG_FEUILLE_DOUBLON = "Impossible de créer une 2e feuille ce jour-là pour l'instant — contacte la centrale";
   var etat = { app: "chauffeur", client: null, apresSync: null, reseauKO: false, enCours: false, enVol: null, flashJusqua: 0, abandonArme: false };
 
   // ---- stockage local (localStorage, avec repli en mémoire si bloqué / plein) ----
@@ -1102,7 +1113,17 @@ window.onerror = function(msg, url, line, col, err) {
     var r;
     try { r = await q; } catch (e) { r = { data: null, error: e, status: 0 }; }
     var err = r.error || null;
-    if (err && item.op === "upsert" && err.code === "23505") err = null; // déjà enregistré (envoi précédent arrivé)
+    if (err && item.op === "upsert" && err.code === "23505") {
+      // Avec ON CONFLICT (id) DO NOTHING, un même id déjà envoyé ne lève pas d'erreur : un 23505 vient alors
+      // d'une AUTRE contrainte unique (ex. une seule feuille par chauffeur et par jour) → refus définitif,
+      // affiché clairement (pas une erreur réseau, pas d'attente sans fin dans la file).
+      var txt23505 = String((err.message || "") + " " + (err.details || ""));
+      if (item.table === "feuilles_route" && !/_pkey\b/.test(txt23505)) {
+        err = { code: "23505", message: MSG_FEUILLE_DOUBLON, details: err.message || null };
+      } else {
+        err = null; // déjà enregistré (envoi précédent arrivé)
+      }
+    }
     var reseau = !!err && estErreurReseau(err, r.status);
     return { data: r.data, error: err, status: r.status, reseau: reseau, jwt: !!err && !reseau && estErreurJwt(err, r.status) };
   }
@@ -1266,7 +1287,7 @@ window.onerror = function(msg, url, line, col, err) {
     fetch: fetchHL, installer: installer, ecrire: ecrire, rejouer: rejouer, enAttentePour: enAttentePour,
     estErreurReseau: estErreurReseau, horsLigne: horsLigne, utilisateurLocal: utilisateurLocal,
     viderCacheDonnees: viderCacheDonnees, uuid: uuid, nbEnAttente: function () { return lireFile().length; },
-    file: lireFile, majBandeau: majBandeau
+    file: lireFile, majBandeau: majBandeau, MSG_FEUILLE_DOUBLON: MSG_FEUILLE_DOUBLON
   };
 })();
 </script>
@@ -1674,6 +1695,69 @@ function estServiceEnCours(f, ignorerSignature) {
   const t = debutServiceFeuille(f);
   return t !== null && (Date.now() - t) < DUREE_MAX_SERVICE_MS;
 }
+// Service commencé il y a moins de 16 h (quelle que soit la date de la feuille)
+function serviceRecent(f) {
+  const t = debutServiceFeuille(f);
+  return t !== null && (Date.now() - t) < DUREE_MAX_SERVICE_MS;
+}
+
+// ================== PLUSIEURS FEUILLES (même jour / jours qui se chevauchent) ==================
+// Un chauffeur peut avoir plusieurs feuilles le même jour (ex. 18–24 h de service d'affilée).
+// La « fenêtre » d'une feuille = les feuilles de sa date + (si elle est d'aujourd'hui ou du service
+// de nuit d'hier) les feuilles d'aujourd'hui et le service de nuit d'hier encore dans les 16 h.
+function feuilleDansFenetre(f, cur) {
+  if (!f || f.verifiee_admin) return false;
+  if (!cur || f.date_service === cur.date_service) return true;
+  const auj = dateLocaleISO(), hier = dateHierISO();
+  const curFenetre = cur.date_service === auj || (cur.date_service === hier && estServiceEnCours(cur, true));
+  if (!curFenetre) return false;
+  return f.date_service === auj || (f.date_service === hier && estServiceEnCours(f, true));
+}
+// Feuille dont le service a commencé le plus récemment (une feuille vraiment commencée passe avant une feuille vide)
+function feuilleLaPlusRecente(liste, idsCommencees) {
+  if (!liste || !liste.length) return null;
+  const cle = f => ((f.heure_debut || (idsCommencees && idsCommencees.has(f.id))) ? 1e14 : 0) + (debutServiceFeuille(f) || 0);
+  return liste.slice().sort((a, b) => (cle(a) - cle(b)) || String(a.created_at || "").localeCompare(String(b.created_at || ""))).pop();
+}
+function trierFeuillesParDebut(liste) {
+  return liste.slice().sort((a, b) => ((debutServiceFeuille(a) || 0) - (debutServiceFeuille(b) || 0)) || String(a.created_at || "").localeCompare(String(b.created_at || "")));
+}
+// Dernière feuille choisie à la main par le chauffeur (rouverte en priorité au prochain démarrage)
+function memoriserFeuilleChoisie(f) {
+  try {
+    const u = TWHL.utilisateurLocal();
+    if (f && u) localStorage.setItem("taxiwal_feuille_choisie", JSON.stringify({ uid: u.id, id: f.id, quand: Date.now() }));
+  } catch (e) {}
+}
+function lireFeuilleChoisie(uid) {
+  try {
+    const x = JSON.parse(localStorage.getItem("taxiwal_feuille_choisie") || "null");
+    return x && x.uid === uid && (Date.now() - x.quand) < DUREE_MAX_SERVICE_MS ? x.id : null;
+  } catch (e) { return null; }
+}
+// Feuilles de la même date que la feuille actuelle (impression, caisse du jour, véhicules précédents)
+function feuillesMemeDate() {
+  if (!feuilleActuelle) return toutesLesFeuillesDuJour.slice();
+  const l = toutesLesFeuillesDuJour.filter(f => f.date_service === feuilleActuelle.date_service).map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
+  return l.length ? l : [feuilleActuelle];
+}
+// Remplit toutesLesFeuillesDuJour avec la fenêtre de la feuille actuelle (garde les feuilles créées hors ligne)
+async function chargerFeuillesFenetre(uid) {
+  if (!feuilleActuelle) return;
+  const dates = [...new Set([feuilleActuelle.date_service, dateLocaleISO(), dateHierISO()])];
+  let liste = null;
+  try {
+    const { data, error } = await supabase.from("feuilles_route").select("*").eq("chauffeur_id", uid)
+      .in("date_service", dates).order("created_at", { ascending: true });
+    if (!error && Array.isArray(data)) liste = data;
+  } catch (e) {}
+  if (!liste) liste = toutesLesFeuillesDuJour.slice();
+  toutesLesFeuillesDuJour.forEach(f => { if (!liste.some(x => x.id === f.id)) liste.push(f); });
+  liste = liste.filter(f => f.id === feuilleActuelle.id || feuilleDansFenetre(f, feuilleActuelle))
+    .map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
+  if (!liste.some(f => f.id === feuilleActuelle.id)) liste.push(feuilleActuelle);
+  toutesLesFeuillesDuJour = trierFeuillesParDebut(liste);
+}
 // En-tête (sous-titre + date d'identité) et bandeau bleu « service de nuit »
 function mettreAJourAffichageDate() {
   if (!feuilleActuelle) return;
@@ -1725,7 +1809,7 @@ function mettreAJourAffichageDate() {
     {
       const { data: fLocale } = await supabase.from("feuilles_route").select("*").eq("id", f0.id).maybeSingle();
       feuilleActuelle = fLocale || f0;
-      toutesLesFeuillesDuJour = (inst.toutes || []).filter(f => f.date_service === feuilleActuelle.date_service && !f.verifiee_admin);
+      toutesLesFeuillesDuJour = (inst.toutes || []).filter(f => feuilleDansFenetre(f, feuilleActuelle));
       if (!toutesLesFeuillesDuJour.some(f => f.id === feuilleActuelle.id)) toutesLesFeuillesDuJour.push(feuilleActuelle);
       toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
       const { data: vehs } = await supabase.from("vehicules").select("*").eq("actif", true);
@@ -1759,8 +1843,12 @@ function mettreAJourAffichageDate() {
   const feuillesNuitEnCours = (feuillesNonCloturees || []).filter(f => !f.verifiee_admin && aTravaille(f) && estServiceEnCours(f));
   const idsNuit = new Set(feuillesNuitEnCours.map(f => f.id));
   const feuilleNuit = feuillesNuitEnCours.slice().sort((a, b) => String(a.created_at || "").localeCompare(String(b.created_at || ""))).pop() || null;
+  // Feuille dont le service a commencé il y a moins de 16 h (ex. nouvelle feuille ouverte avec le bouton
+  // « ➕ Nouvelle feuille de route ») : jamais « oubliée », jamais bloquante.
+  const recentes = (feuillesNonClotureesToutes || []).filter(f => !f.verifiee_admin && f.heure_debut && serviceRecent(f));
+  const idsRecentes = new Set(recentes.map(f => f.id));
   const feuillesOubliees = (feuillesNonCloturees || []).filter(f =>
-    !f.verifiee_admin && aTravaille(f) && !idsNuit.has(f.id));
+    !f.verifiee_admin && aTravaille(f) && !idsNuit.has(f.id) && !idsRecentes.has(f.id));
 
   const bandeau = document.getElementById("bandeau-feuille-oubliee");
   bandeau.style.display = "none";
@@ -1775,10 +1863,14 @@ function mettreAJourAffichageDate() {
     bandeau.innerHTML = `⚠️ Tu as ${feuillesAnciennes.length} ancienne(s) feuille(s) jamais clôturée(s) (la plus ancienne : ${esc(new Date(p.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}) — <a href="feuille-de-route.html?feuille=${p.id}" style="color:#8a2020; text-decoration:underline; font-weight:700;">l'ouvrir</a>`;
     bandeau.style.display = "block";
   }
-  const ouvreLaNuit = feuilleNuit && (!idDepuisUrl || idsNuit.has(idDepuisUrl));
+  // Un service est en cours (nuit d'hier, ou feuille du jour commencée il y a < 16 h) : on ne bloque pas.
+  const serviceEnCoursOuvert = !!feuilleNuit || recentes.some(f => f.date_service === aujourdHui);
+  const ouvreLaNuit = serviceEnCoursOuvert && (!idDepuisUrl || idsNuit.has(idDepuisUrl) || idsRecentes.has(idDepuisUrl));
+  let rappelAutresFeuilles = null;
   if (feuillesBloquantes.length > 0 && ouvreLaNuit) {
-    // Pendant un service de nuit on ne bloque pas : simple rappel discret des autres feuilles.
+    // Pendant un service en cours on ne bloque pas : simple rappel discret des autres feuilles.
     const p = feuillesBloquantes[0];
+    rappelAutresFeuilles = p;
     window.noteFeuillesAnciennesNuit = `<br><span style="font-size:.82rem;">ℹ️ Il reste aussi ${feuillesBloquantes.length} autre(s) feuille(s) non clôturée(s) (la première : ${esc(new Date(p.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}) — <a href="feuille-de-route.html?feuille=${p.id}" style="color:#1d4f7a; text-decoration:underline;">l'ouvrir</a> après ton service.</span>`;
   } else if (feuillesBloquantes.length > 0) {
     const premiere = feuillesBloquantes[0];
@@ -1811,20 +1903,6 @@ function mettreAJourAffichageDate() {
       .order("created_at", { ascending: true });
     toutesLesFeuillesDuJour = (memeJour || [feuilleCiblee]).filter(f => !f.verifiee_admin);
     feuilleActuelle = feuilleCiblee;
-  } else if (feuilleNuit) {
-    // Service de nuit en cours : on reste sur la feuille d'hier (pas de nouvelle feuille à minuit)
-    dateAAfficher = feuilleNuit.date_service;
-    const { data: memeNuit } = await supabase
-      .from("feuilles_route").select("*").eq("chauffeur_id", user.id).eq("date_service", dateAAfficher)
-      .order("created_at", { ascending: true });
-    toutesLesFeuillesDuJour = (memeNuit || []).filter(f => !f.verifiee_admin);
-    feuilleActuelle = toutesLesFeuillesDuJour.find(f => f.id === feuilleNuit.id);
-    if (!feuilleActuelle) {
-      const { data: fn } = await supabase.from("feuilles_route").select("*").eq("id", feuilleNuit.id).maybeSingle();
-      if (!fn) { document.getElementById("erreur").textContent = "Feuille introuvable. Recharge la page."; return; }
-      feuilleActuelle = fn;
-      toutesLesFeuillesDuJour.push(fn);
-    }
   } else {
     let { data: feuilles } = await supabase
       .from("feuilles_route")
@@ -1836,33 +1914,60 @@ function mettreAJourAffichageDate() {
     // Une feuille validée par la direction disparaît de l'app chauffeur (elle reste 30 jours côté admin).
     const feuillesValidees = (feuilles || []).filter(f => f.verifiee_admin);
     feuilles = (feuilles || []).filter(f => !f.verifiee_admin);
-    if (feuilles.length === 0 && feuillesValidees.length > 0) {
+    if (feuilles.length === 0 && feuillesValidees.length > 0 && !feuilleNuit) {
       document.getElementById("sous-titre").textContent = "Feuille du " + aujourdHui;
       document.getElementById("erreur").innerHTML = '<div style="background:#e7f5ec; color:#1f6b3f; border-radius:10px; padding:16px; font-weight:600; text-align:center;">✅ Ta feuille de route du jour a été vérifiée et validée par la direction. Rien d\'autre à faire.</div>';
       return;
     }
+    // Service de nuit en cours : les feuilles d'hier (pas de nouvelle feuille vide à minuit)
+    let nuitRows = [];
+    if (feuilleNuit) {
+      const { data: memeNuit } = await supabase
+        .from("feuilles_route").select("*").eq("chauffeur_id", user.id).eq("date_service", feuilleNuit.date_service)
+        .order("created_at", { ascending: true });
+      nuitRows = (memeNuit || []).filter(f => !f.verifiee_admin);
+      if (!nuitRows.some(f => f.id === feuilleNuit.id)) {
+        const { data: fn } = await supabase.from("feuilles_route").select("*").eq("id", feuilleNuit.id).maybeSingle();
+        if (fn) nuitRows.push(fn);
+        else if (!feuilles.length) { document.getElementById("erreur").textContent = "Feuille introuvable. Recharge la page."; return; }
+      }
+    }
     // Sans réseau, la liste peut être vide faute de copie locale : on rouvre d'abord la feuille gardée
     // sur le téléphone (feuille du jour / service de nuit) au lieu d'en créer une deuxième
-    if ((!feuilles || feuilles.length === 0) && TWHL.horsLigne() && await ouvrirDepuisInstantane()) return;
-    if (!feuilles || feuilles.length === 0) {
+    if (!nuitRows.length && feuilles.length === 0 && TWHL.horsLigne() && await ouvrirDepuisInstantane()) return;
+    // Feuilles encore ouvertes : nuit en cours (hier) + feuilles du jour non clôturées
+    const ouvertes = [...nuitRows.filter(f => idsNuit.has(f.id) && !f.verrouillee), ...feuilles.filter(f => !f.verrouillee)];
+    if (!ouvertes.length && feuilles.length === 0) {
       const champsF = { id: TWHL.uuid(), chauffeur_id: user.id, date_service: aujourdHui };
       const localeF = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champsF);
       const { data: nouvelle, error } = await TWHL.ecrire({ table: "feuilles_route", op: "upsert", payload: champsF,
         select: "*", optimiste: localeF, local: localeF, label: "Nouvelle feuille du jour" });
       if (error || !nouvelle) { document.getElementById("erreur").textContent = "Erreur : " + (error ? error.message : "feuille non créée"); return; }
       feuilles = [nouvelle];
+      ouvertes.push(nouvelle);
     }
-
-    toutesLesFeuillesDuJour = feuilles;
-    // La feuille active est la dernière non clôturée ; sinon la plus récente (toutes clôturées)
-    feuilleActuelle = feuilles.find(f => !f.verrouillee) || feuilles[feuilles.length - 1];
+    // Plusieurs feuilles ouvertes (ex. nuit d'hier + nouvelle feuille d'aujourd'hui) : celle que le
+    // chauffeur a choisie en dernier, sinon celle dont le service a commencé le plus récemment.
+    const idChoisi = lireFeuilleChoisie(user.id);
+    feuilleActuelle = ouvertes.find(f => f.id === idChoisi) || feuilleLaPlusRecente(ouvertes, idsNuit) || feuilles[feuilles.length - 1];
+    toutesLesFeuillesDuJour = [...nuitRows, ...feuilles];
   }
+  dateAAfficher = feuilleActuelle.date_service;
 
   const { data: vehicules } = await supabase.from("vehicules").select("*").eq("actif", true);
   vehiculesActifsCache = vehicules || [];
+  // Liste du sélecteur : toutes les feuilles de cette date + service de nuit d'hier / feuilles d'aujourd'hui
+  await chargerFeuillesFenetre(user.id);
 
   document.getElementById("sous-titre").textContent = "Feuille du " + dateAAfficher;
   document.getElementById("identite-date").textContent = dateAAfficher.split("-").reverse().join("/");
+  // Rappel des autres feuilles non clôturées : dans le bandeau de nuit si on est sur la nuit, sinon bandeau discret
+  if (rappelAutresFeuilles && !(feuilleActuelle.date_service < aujourdHui && estServiceEnCours(feuilleActuelle, true))) {
+    const p = rappelAutresFeuilles;
+    window.noteFeuillesAnciennesNuit = "";
+    bandeau.innerHTML = `ℹ️ Il te reste ${feuillesBloquantes.length} feuille(s) non clôturée(s) (la première : ${esc(new Date(p.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}) — <a href="feuille-de-route.html?feuille=${p.id}" style="color:#8a2020; text-decoration:underline; font-weight:700;">l'ouvrir</a> après ton service.`;
+    bandeau.style.display = "block";
+  }
   mettreAJourAffichageDate();
 
   await chargerFeuilleActive(user); // (branche aussi le temps réel)
@@ -1880,25 +1985,65 @@ function afficherSelecteurFeuilles() {
     document.getElementById("bloc-identite").insertAdjacentElement("beforebegin", barre);
   }
   barre.innerHTML = "";
-  const btnChanger = document.createElement("button");
-  btnChanger.type = "button";
+  // 1) Plusieurs feuilles (même jour / nuit d'hier + aujourd'hui) : liste pour passer de l'une à l'autre
+  const liste = trierFeuillesParDebut(toutesLesFeuillesDuJour.map(f => (feuilleActuelle && f.id === feuilleActuelle.id) ? feuilleActuelle : f));
+  if (liste.length > 1) {
+    const titre = document.createElement("div");
+    titre.style.cssText = "font-weight:800; font-size:.9rem; margin-bottom:6px; color:#333;";
+    titre.textContent = "📋 Mes feuilles de route (" + liste.length + ")";
+    barre.appendChild(titre);
+    const aujourdHui = dateLocaleISO();
+    liste.forEach(f => {
+      const actuelle = feuilleActuelle && f.id === feuilleActuelle.id;
+      const v = vehiculesActifsCache.find(x => x.id === f.vehicule_id);
+      const nuit = f.date_service < aujourdHui && estServiceEnCours(f, true);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn-choix-feuille" + (actuelle ? " actuelle" : "");
+      b.dataset.feuilleId = f.id;
+      b.innerHTML = `<span style="display:block;">${actuelle ? "👉 " : ""}<b>${esc(nuit ? jjmm(f.date_service) + " → " + jjmm(aujourdHui) + " (nuit)" : jjmm(f.date_service))}</b>`
+        + ` · ${esc(v ? v.nom : "Véhicule ?")} · dès ${esc(frHHMM(f.heure_debut))}</span>`
+        + `<span style="display:block; font-size:.8rem; font-weight:600; color:${f.verrouillee ? "#1f6b3f" : "#8a5a00"};">${f.verrouillee ? "✅ Signée" : "📝 En cours"}${actuelle ? " — feuille affichée" : " — toucher pour l'ouvrir"}</span>`;
+      b.style.cssText = "display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:6px; border-radius:10px; font-size:.9rem; background:"
+        + (actuelle ? "#eef4fb; border:2px solid #1d4f86;" : "#fff; border:1px solid #ccc;");
+      if (!actuelle) b.addEventListener("click", () => basculerVersFeuille(f.id));
+      barre.appendChild(b);
+    });
+  }
+  // 2) Changement de voiture (clôture la feuille actuelle) — seulement si elle est encore ouverte
   const signee = feuilleActuelle && feuilleActuelle.verrouillee;
-  btnChanger.textContent = signee ? "➕ Ouvrir une nouvelle feuille (autre voiture)" : "🚗 Je change de voiture → nouvelle feuille";
-  btnChanger.style.cssText = "width:100%; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid var(--vert); background:#eef8f1; color:var(--vert); font-weight:800;";
-  btnChanger.addEventListener("click", ouvrirChangementVehicule);
-  barre.appendChild(btnChanger);
+  if (!signee) {
+    const btnChanger = document.createElement("button");
+    btnChanger.type = "button";
+    btnChanger.id = "btn-changer-vehicule";
+    btnChanger.textContent = "🚗 Je change de voiture → nouvelle feuille";
+    btnChanger.style.cssText = "width:100%; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid var(--vert); background:#eef8f1; color:var(--vert); font-weight:800;";
+    btnChanger.addEventListener("click", ouvrirChangementVehicule);
+    barre.appendChild(btnChanger);
+  }
+  // 3) Nouvelle feuille : toujours possible (même pendant un service de nuit, après signature, etc.)
+  const btnNouvelle = document.createElement("button");
+  btnNouvelle.type = "button";
+  btnNouvelle.id = "btn-nouvelle-feuille";
+  btnNouvelle.textContent = "➕ Nouvelle feuille de route";
+  btnNouvelle.style.cssText = "width:100%; margin-top:8px; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:800;";
+  btnNouvelle.addEventListener("click", ouvrirNouvelleFeuille);
+  barre.appendChild(btnNouvelle);
 }
 
-function choisirVehicule() {
+function choisirVehicule(titre) {
   return new Promise((resolve) => {
     const fond = document.createElement("div");
     fond.style.cssText = "position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center;";
     const boite = document.createElement("div");
     boite.style.cssText = "background:#fff; color:#111; width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px); max-height:85vh; overflow:auto;";
-    boite.innerHTML = '<div style="font-weight:800; font-size:1.05rem; margin-bottom:10px;">🚗 Avec quelle voiture continues-tu ?</div>';
+    boite.className = "modale-choix-vehicule";
+    boite.innerHTML = '<div style="font-weight:800; font-size:1.05rem; margin-bottom:10px;">' + esc(titre || "🚗 Avec quelle voiture continues-tu ?") + '</div>';
     vehiculesActifsCache.forEach(v => {
       const b = document.createElement("button");
       b.type = "button";
+      b.className = "btn-choix-vehicule";
+      b.dataset.vehiculeId = v.id;
       const actuelle = feuilleActuelle && feuilleActuelle.vehicule_id === v.id;
       b.textContent = (v.nom || "Véhicule") + (v.plaque ? " · " + v.plaque : "") + (actuelle ? "  (voiture actuelle)" : "");
       b.style.cssText = "display:block; width:100%; text-align:left; padding:14px; margin-bottom:8px; border-radius:12px; border:1px solid #ccc; background:" + (actuelle ? "#f3f3f3" : "#fff") + "; font-size:1rem; font-weight:700;";
@@ -1958,12 +2103,165 @@ async function ouvrirChangementVehicule() {
   const localeNouvelle = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champsNouvelle);
   const { data: nouvelleFeuille, error } = await TWHL.ecrire({ table: "feuilles_route", op: "upsert", payload: champsNouvelle,
     select: "*", optimiste: localeNouvelle, local: localeNouvelle, label: "Nouvelle feuille (changement de voiture)" });
-  if (error || !nouvelleFeuille) { alert("Erreur : " + (error ? error.message : "feuille non créée")); return; }
+  if (error || !nouvelleFeuille) { alert(messageErreurCreationFeuille(error)); afficherLignes(); appliquerVerrouillage(); afficherSelecteurFeuilles(); return; }
 
   if (!toutesLesFeuillesDuJour.some(f => f.id === nouvelleFeuille.id)) toutesLesFeuillesDuJour.push(nouvelleFeuille);
   feuilleActuelle = nouvelleFeuille;
+  memoriserFeuilleChoisie(nouvelleFeuille);
+  reinitialiserBandeauFeuille();
   await chargerFeuilleActive(user);
   alert("✅ Nouvelle feuille ouverte pour « " + vehiculeChoisi.nom + " ». Remplis les compteurs de DÉBUT de cette voiture.");
+}
+
+// ---- ➕ Nouvelle feuille de route (sans obligation de clôturer la feuille actuelle) ----
+// Choix de la date + que faire de la feuille actuelle. Renvoie { date, signer } ou null (annulé).
+function choisirOptionsNouvelleFeuille(vehicule) {
+  return new Promise((resolve) => {
+    const aujourdHui = dateLocaleISO();
+    const cur = feuilleActuelle;
+    const curOuverte = cur && !cur.verrouillee;
+    const dateCur = cur && cur.date_service;
+    const nuitCur = cur && dateCur < aujourdHui && estServiceEnCours(cur, true);
+    let dateChoisie = aujourdHui;
+    const fond = document.createElement("div");
+    fond.className = "modale-nouvelle-feuille";
+    fond.style.cssText = "position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center;";
+    const boite = document.createElement("div");
+    boite.style.cssText = "background:#fff; color:#111; width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px); max-height:88vh; overflow:auto; font-size:1rem;";
+    const st = "display:block; width:100%; text-align:left; padding:13px; margin-bottom:8px; border-radius:12px; font-size:1rem; font-weight:700;";
+    let html = `<div style="font-weight:800; font-size:1.05rem; margin-bottom:4px;">➕ Nouvelle feuille de route</div>
+      <div style="font-size:.88rem; color:#555; margin-bottom:12px;">Voiture : <b>${esc(vehicule.nom || "Véhicule")}${vehicule.plaque ? " · " + esc(vehicule.plaque) : ""}</b> · début à ${esc(heureMaintenantTexte())}</div>
+      <div style="font-weight:700; margin-bottom:6px;">📅 Date de la nouvelle feuille</div>
+      <button type="button" class="nf-date" data-date="${aujourdHui}" style="${st}">Aujourd'hui (${esc(jjmm(aujourdHui))})</button>`;
+    if (dateCur && dateCur !== aujourdHui) {
+      html += `<button type="button" class="nf-date" data-date="${esc(dateCur)}" style="${st}">Garder la date de la feuille actuelle (${esc(jjmm(dateCur))}${nuitCur ? " — service de nuit" : ""})</button>`;
+    }
+    if (curOuverte) {
+      html += `<div style="font-weight:700; margin:12px 0 6px;">La feuille actuelle (${esc(jjmm(dateCur))}${cur.heure_debut ? ", dès " + esc(frHHMM(cur.heure_debut)) : ""}) n'est pas signée :</div>
+        <button type="button" class="nf-action" data-action="signer" style="${st} border:none; background:#b3141b; color:#fff;">✍️ Signer la feuille actuelle d'abord</button>
+        <button type="button" class="nf-action" data-action="garder" style="${st} border:none; background:#1d4f86; color:#fff;">📂 Garder la feuille actuelle ouverte</button>
+        <div style="font-size:.8rem; color:#666; margin:-2px 0 10px;">(Tu pourras revenir dessus et la signer plus tard avec la liste « Mes feuilles de route ».)</div>`;
+    } else {
+      html += `<button type="button" class="nf-action" data-action="creer" style="${st} border:none; background:#1f8a4c; color:#fff; margin-top:12px;">➕ Créer la nouvelle feuille</button>`;
+    }
+    html += `<button type="button" class="nf-annuler" style="display:block; width:100%; padding:12px; border-radius:12px; border:1px solid #ccc; background:#fff;">Annuler</button>`;
+    boite.innerHTML = html;
+    const majDates = () => boite.querySelectorAll(".nf-date").forEach(b => {
+      const on = b.dataset.date === dateChoisie;
+      b.classList.toggle("choisie", on);
+      b.style.border = on ? "2px solid #1d4f86" : "1px solid #ccc";
+      b.style.background = on ? "#eef4fb" : "#fff";
+      b.textContent = b.textContent.replace(/^✔ /, "");
+      if (on) b.textContent = "✔ " + b.textContent;
+    });
+    majDates();
+    boite.querySelectorAll(".nf-date").forEach(b => b.addEventListener("click", () => { dateChoisie = b.dataset.date; majDates(); }));
+    const fermer = (v) => { fond.remove(); resolve(v); };
+    boite.querySelectorAll(".nf-action").forEach(b => b.addEventListener("click", () => fermer({ date: dateChoisie, signer: b.dataset.action === "signer" })));
+    boite.querySelector(".nf-annuler").addEventListener("click", () => fermer(null));
+    fond.addEventListener("click", (e) => { if (e.target === fond) fermer(null); });
+    fond.appendChild(boite);
+    document.body.appendChild(fond);
+  });
+}
+
+// Signature de la feuille actuelle avant d'en ouvrir une nouvelle : même contrôle que « Signer la feuille »
+async function signerFeuilleActuelleAvantNouvelle() {
+  if (!feuilleActuelle || feuilleActuelle.verrouillee) return true;
+  // Heure de fin remplie automatiquement seulement si c'est la SEULE chose qui manque
+  if (!feuilleActuelle.heure_fin && manquesSignature().length === 1) {
+    const h = heureMaintenantTexte();
+    const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { heure_fin: h }, label: "Heure de fin" });
+    if (!error) { feuilleActuelle.heure_fin = h; try { remplirEntete(); } catch (_) {} }
+  }
+  const manques = manquesSignature();
+  if (manques.length) {
+    alert("✍️ Impossible de signer la feuille actuelle, il manque :\n• " + manques.join("\n• ")
+      + "\n\nComplète-la puis réessaie — ou choisis « Garder la feuille actuelle ouverte ».");
+    try { ouvrirFermerService(true); } catch (_) {}
+    const bloc = document.getElementById("bloc-service-repliable") || document.getElementById("bloc-identite");
+    if (bloc) bloc.scrollIntoView({ block: "start", behavior: "smooth" });
+    return false;
+  }
+  if (!(await confirmerDansPage("🔒 Je signe et je clôture la feuille actuelle (elle ne pourra plus être modifiée), puis j'ouvre la nouvelle feuille.", "🔒 Je signe et je clôture", "Annuler"))) return false;
+  const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
+    payload: { signee: true }, local: { signee: true, verrouillee: true }, label: "Signature de la feuille" });
+  if (error) { alert("Erreur à la signature de la feuille actuelle : " + error.message); return false; }
+  feuilleActuelle.verrouillee = true; feuilleActuelle.signee = true;
+  sauverInstantaneFeuille();
+  return true;
+}
+
+function messageErreurCreationFeuille(error) {
+  if (error && (error.code === "23505" || error.message === TWHL.MSG_FEUILLE_DOUBLON)) return "⛔ " + TWHL.MSG_FEUILLE_DOUBLON + ".";
+  return "Erreur : " + (error ? error.message : "feuille non créée");
+}
+
+// Bandeau « feuille oubliée / clôturée » : remis à zéro quand on change de feuille dans la page
+function reinitialiserBandeauFeuille() {
+  const b = document.getElementById("bandeau-feuille-oubliee");
+  if (!b) return;
+  b.style.display = "none"; b.style.background = ""; b.style.borderColor = ""; b.style.color = "";
+}
+
+let creationFeuilleEnCours = false;
+async function ouvrirNouvelleFeuille() {
+  if (creationFeuilleEnCours) return;
+  if (vehiculesActifsCache.length === 0) { alert("Aucun véhicule actif enregistré."); return; }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { alert("Connecte-toi d'abord depuis l'app chauffeur."); return; }
+  const vehicule = await choisirVehicule("➕ Nouvelle feuille de route — avec quelle voiture ?");
+  if (!vehicule) return;
+  const choix = await choisirOptionsNouvelleFeuille(vehicule);
+  if (!choix) return;
+  creationFeuilleEnCours = true;
+  try {
+    if (choix.signer && !(await signerFeuilleActuelleAvantNouvelle())) { afficherSelecteurFeuilles(); appliquerVerrouillage(); return; }
+    const heure = heureMaintenantTexte();
+    // Identifiant créé sur le téléphone : la nouvelle feuille peut être ouverte même sans réseau
+    const champs = { id: TWHL.uuid(), chauffeur_id: user.id, date_service: choix.date, vehicule_id: vehicule.id, heure_debut: heure };
+    const locale = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champs);
+    const { data: nouvelle, error } = await TWHL.ecrire({ table: "feuilles_route", op: "upsert", payload: champs,
+      select: "*", optimiste: locale, local: locale, label: "Nouvelle feuille de route" });
+    if (error || !nouvelle) {
+      alert(messageErreurCreationFeuille(error));
+      if (choix.signer) { afficherLignes(); appliquerVerrouillage(); afficherSelecteurFeuilles(); }
+      return;
+    }
+    toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
+    if (!toutesLesFeuillesDuJour.some(f => f.id === nouvelle.id)) toutesLesFeuillesDuJour.push(nouvelle);
+    feuilleActuelle = nouvelle;
+    memoriserFeuilleChoisie(nouvelle);
+    toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.filter(f => f.id === nouvelle.id || feuilleDansFenetre(f, nouvelle));
+    reinitialiserBandeauFeuille();
+    mettreAJourAffichageDate();
+    await chargerFeuilleActive(user);
+    window.scrollTo(0, 0);
+    afficherToast("✅ Nouvelle feuille ouverte (" + (vehicule.nom || "véhicule") + ", " + jjmm(choix.date) + ", dès " + heure + ")");
+  } finally {
+    creationFeuilleEnCours = false;
+  }
+}
+
+// Passer d'une feuille à l'autre (liste « Mes feuilles de route »)
+async function basculerVersFeuille(id) {
+  if (!feuilleActuelle || id === feuilleActuelle.id) return;
+  const cible = toutesLesFeuillesDuJour.find(f => f.id === id);
+  if (!cible) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  let fraiche = null;
+  try { const r = await supabase.from("feuilles_route").select("*").eq("id", id).maybeSingle(); fraiche = r && r.data; } catch (e) {}
+  toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
+  feuilleActuelle = fraiche || cible;
+  toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.map(f => f.id === id ? feuilleActuelle : f);
+  memoriserFeuilleChoisie(feuilleActuelle);
+  if (ligneEnPleinEcran) { try { fermerPleinEcran(); } catch (_) { ligneEnPleinEcran = null; document.body.classList.remove("mode-plein-ecran"); } }
+  document.getElementById("etape-signature").style.display = "none";
+  reinitialiserBandeauFeuille();
+  mettreAJourAffichageDate(); // en-tête à jour tout de suite (avant le chargement des courses)
+  await chargerFeuilleActive(user);
+  window.scrollTo(0, 0);
 }
 
 async function chargerFeuilleActive(user) {
@@ -1986,7 +2284,7 @@ async function chargerFeuilleActive(user) {
 async function afficherSectionsPassees() {
   const zone = document.getElementById("sections-passees");
   zone.innerHTML = "";
-  const passees = toutesLesFeuillesDuJour.filter(f => f.id !== feuilleActuelle.id);
+  const passees = feuillesMemeDate().filter(f => f.id !== feuilleActuelle.id);
   if (passees.length === 0) { document.getElementById("vehicule-actuel-titre").style.display = "none"; return; }
   document.getElementById("vehicule-actuel-titre").style.display = "block";
 
@@ -2006,15 +2304,24 @@ async function afficherSectionsPassees() {
     const div = document.createElement("div");
     div.className = "section-passee";
     div.innerHTML = `
-      <div class="sp-titre">✅ ${esc(vehicule?.nom) || "Véhicule"}${vehicule?.plaque ? " (" + esc(vehicule.plaque) + ")" : ""}</div>
-      <div class="sp-sous">De ${valeurOuTiret(f.heure_debut?.slice(0,5))} à ${valeurOuTiret(f.heure_fin?.slice(0,5))} · ${(lignes||[]).length} course(s)</div>
+      <div class="sp-titre">${f.verrouillee ? "✅" : "📝"} ${esc(vehicule?.nom) || "Véhicule"}${vehicule?.plaque ? " (" + esc(vehicule.plaque) + ")" : ""}</div>
+      <div class="sp-sous">De ${valeurOuTiret(f.heure_debut?.slice(0,5))} à ${valeurOuTiret(f.heure_fin?.slice(0,5))} · ${(lignes||[]).length} course(s)${f.verrouillee ? "" : " · <b>pas encore signée</b>"}</div>
       <div class="sp-ligne"><span>Km parcourus</span><b>${km}</b></div>
       <div class="sp-ligne"><span>Recettes</span><b>${recettes}</b></div>
+      ${pourboiresDesLignes(lignes) > 0 ? `<div class="sp-ligne"><span>Pourboires (hors recette)</span><b>${esc(formatEuro(pourboiresDesLignes(lignes)))}</b></div>` : ""}
       ${(lignes||[]).map((l, i) => {
         const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
         return `<div class="sp-course">Course ${i + 1} · ${esc(trajet)}</div>`;
       }).join("")}
     `;
+    if (!f.verrouillee) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "btn-ouvrir-section-passee";
+      b.textContent = "📂 Ouvrir cette feuille";
+      b.style.cssText = "margin-top:8px; width:100%; padding:10px; border-radius:10px; border:1px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:700;";
+      b.addEventListener("click", () => basculerVersFeuille(f.id));
+      div.appendChild(b);
+    }
     zone.appendChild(div);
   }
 }
@@ -2056,7 +2363,7 @@ async function rechargerSilencieusement() {
   remplirEntete();
   calculerTotaux();
   await chargerLignes();
-  if (verrouChange) appliquerVerrouillage();
+  if (verrouChange) { appliquerVerrouillage(); afficherSelecteurFeuilles(); }
   else if (feuilleActuelle.verrouillee) remplirResumeSignee();
   // Passage de minuit pendant un service de nuit : on reste sur la même feuille, seul l'affichage
   // de la date devient « 17/10 → 18/10 » (aucun basculement vers une nouvelle feuille du jour).
@@ -2193,10 +2500,38 @@ async function chargerLignes() {
 // ================== CAISSE DU JOUR ==================
 // Toutes les courses de la journée (tous véhicules), forfaits compris, classées par mode de paiement.
 let minuterieCaisse = null;
-function planifierCaisse() { clearTimeout(minuterieCaisse); minuterieCaisse = setTimeout(afficherCaisse, 300); }
+// Recette (même règle que recette_feuille en base : sommes perçues seulement, hors Uber / privé)
+// et pourboires (toujours à part, jamais dans la recette), calculés sur les lignes du téléphone
+// (à jour même hors ligne).
+function recetteDesLignes(lignes) {
+  return (lignes || []).reduce((s, l) => {
+    const somme = nombreOuNull(l.sommes_percues);
+    if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+    if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
+    return s + (somme !== null ? somme : 0);
+  }, 0);
+}
+function pourboiresDesLignes(lignes) {
+  return Math.round((lignes || []).reduce((s, l) => s + (Number(l.pourboire) > 0 ? Number(l.pourboire) : 0), 0) * 100) / 100;
+}
+function totauxLignesLocales(lignes) {
+  return { recette: Math.round(recetteDesLignes(lignes) * 100) / 100, pourboires: pourboiresDesLignes(lignes),
+           nbPourboires: (lignes || []).filter(l => Number(l.pourboire) > 0).length };
+}
+function majTotauxFeuilleLocale() {
+  const zone = document.getElementById("resume-totaux-feuille");
+  if (!zone || !feuilleActuelle) return;
+  const t = totauxLignesLocales(lignesActuelles);
+  zone.style.display = (lignesActuelles || []).length ? "" : "none";
+  zone.innerHTML = `<div class="rt-ligne"><span>Recette (sommes perçues)</span><b id="rt-recette">${esc(formatEuro(t.recette))}</b></div>
+    <div class="rt-ligne rt-pb"><span>💶 Pourboires${t.nbPourboires ? " · " + t.nbPourboires : ""}<small>non compris dans la recette</small></span><b id="rt-pourboires">${esc(formatEuro(t.pourboires))}</b></div>`;
+  const rp = document.getElementById("resume-pourboires");
+  if (rp) rp.textContent = formatEuro(t.pourboires);
+}
+function planifierCaisse() { try { majTotauxFeuilleLocale(); } catch (e) { console.warn(e); } clearTimeout(minuterieCaisse); minuterieCaisse = setTimeout(afficherCaisse, 300); }
 async function afficherCaisse() {
   const zone = document.getElementById("contenu-caisse");
-  const ids = toutesLesFeuillesDuJour.map(f => f.id);
+  const ids = feuillesMemeDate().map(f => f.id);
   if (!ids.length) return;
   const { data: lignes, error } = await supabase
     .from("lignes_feuille_route").select("*").in("feuille_route_id", ids);
@@ -2232,12 +2567,8 @@ async function afficherCaisse() {
   // Uniquement les sommes perçues : sans somme notée, la ligne compte 0 € (pas de repli taximètre).
   // Uber / Uber cash / privé ne comptent jamais
   // (TVA déclarée par Uber) ; une annulée compte seulement si une somme perçue est notée.
-  const totalGeneral = (lignes || []).reduce((s, l) => {
-    const somme = nombreOuNull(l.sommes_percues);
-    if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
-    if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
-    return s + (somme !== null ? somme : 0);
-  }, 0);
+  const totalGeneral = recetteDesLignes(lignes);
+  const totalPourboiresJour = pourboiresDesLignes(lignes);
   const especesDansCaisse = modes.cash.total + modes.uber_cash.total;
 
   let html = `
@@ -2252,6 +2583,7 @@ async function afficherCaisse() {
   });
   if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
   html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber)</span><b>${formatEuro(totalGeneral)}</b></div>`;
+  if (totalPourboiresJour > 0) html += `<div class="caisse-ligne caisse-pourboires"><span>💶 Pourboires du jour (non compris dans la recette)</span><b>${formatEuro(totalPourboiresJour)}</b></div>`;
   if (nbAnnulees) html += `<div class="caisse-ligne"><span>❌ Courses annulées (rien encaissé)</span><b>${nbAnnulees}</b></div>`;
   if (sansMode) html += `<div class="caisse-alerte">⚠️ ${sansMode} course(s) sans mode de paiement : choisis Cash, Carte… sinon elles ne comptent pas dans la caisse.</div>`;
   if (sansMontant) html += `<div class="caisse-alerte">⚠️ ${sansMontant} course(s) sans prix rempli.</div>`;
@@ -2295,6 +2627,7 @@ function afficherLignes() {
   nouveaux.forEach((el, i) => {
     if (conteneur.children[i] !== el) conteneur.insertBefore(el, conteneur.children[i] || null);
   });
+  try { majTotauxFeuilleLocale(); } catch (e) { console.warn(e); }
   window.scrollTo(0, positionPage);
 }
 
@@ -2688,6 +3021,66 @@ function construireLigneHtml(ligne, numeroAffiche) {
     });
   })();
 
+  // ---- Pourboire : noté à part, JAMAIS compris dans la recette (sommes perçues) ----
+  // Modifiable jusqu'à la signature (même course clôturée), comme la note. Hors ligne : file d'attente.
+  const wrapPourboire = document.createElement("div");
+  wrapPourboire.className = "wrap-pourboire";
+  wrapPourboire.innerHTML = `<label>💶 Pourboire (€) <span class="pb-sous">hors recette</span></label>
+    <input type="text" inputmode="decimal" class="input-pourboire" data-champ="pourboire" placeholder="0" autocomplete="off">
+    <div class="pb-aide" style="display:none"></div>`;
+  const inputPb = wrapPourboire.querySelector(".input-pourboire");
+  const aidePb = wrapPourboire.querySelector(".pb-aide");
+  const pbAffiche = v => (v == null || v === "" || !(Number(v) > 0)) ? "" : String(Math.round(Number(v) * 100) / 100);
+  inputPb.value = pbAffiche(ligne.pourboire);
+  inputPb.disabled = !!feuilleActuelle.verrouillee;
+  let pbAuto = false;   // pourboire pré-rempli automatiquement (montant reçu − sommes perçues)
+  let recuTape = false; // le montant reçu a été TAPÉ (un billet 10/20/50/100 = monnaie à rendre, pas de pré-remplissage)
+  async function enregistrerPourboire() {
+    const brut = String(inputPb.value || "").trim().replace(",", ".");
+    const v = brut === "" ? null : Number(brut);
+    const ancien = (ligne.pourboire == null || ligne.pourboire === "") ? null : Number(ligne.pourboire);
+    if (v !== null && (!isFinite(v) || v < 0)) {
+      alert("Pourboire : indique un montant positif en euros (ex : 5).");
+      inputPb.value = pbAffiche(ancien); pbAuto = false; mettreAJourRenduMonnaie();
+      return;
+    }
+    const val = (v === null || v === 0) ? null : Math.round(v * 100) / 100;
+    if ((ancien || null) === val) return;
+    const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+    if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
+    const { error, enAttente } = await TWHL.ecrire({ op: "rpc", fn: "maj_note_billet_ligne",
+      args: { p_ligne: ligne.id, p_champ: "pourboire", p_valeur: val === null ? "" : String(val) },
+      table: "lignes_feuille_route", match: { id: ligne.id }, local: { pourboire: val }, label: "Pourboire course n° " + numeroAffiche });
+    if (error) {
+      inputPb.value = pbAffiche(ancien); pbAuto = false;
+      if (etatEl) { etatEl.textContent = "⚠️ Pourboire non enregistré — réessaie"; etatEl.className = "etat-sauvegarde erreur"; }
+      alert("⚠️ Pourboire non enregistré : " + (error.message || error));
+      mettreAJourRenduMonnaie();
+      return;
+    }
+    ligne.pourboire = val;
+    if (etatEl) {
+      etatEl.textContent = enAttente ? TEXTE_EN_ATTENTE : "✓ Pourboire enregistré";
+      etatEl.className = "etat-sauvegarde " + (enAttente ? "en-cours" : "ok");
+      if (!enAttente) setTimeout(() => { if (etatEl.textContent === "✓ Pourboire enregistré") etatEl.textContent = ""; }, 2500);
+    }
+    majTotauxFeuilleLocale();
+    planifierCaisse();
+  }
+  inputPb.addEventListener("input", () => { pbAuto = false; mettreAJourRenduMonnaie(); });
+  inputPb.addEventListener("change", enregistrerPourboire);
+  aidePb.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-pb]");
+    if (!b || feuilleActuelle.verrouillee) return;
+    e.stopPropagation();
+    inputPb.value = b.dataset.pb === "0" ? "" : b.dataset.pb;
+    pbAuto = false;
+    if (b.dataset.pb === "0") recuTape = false;
+    mettreAJourRenduMonnaie();
+    enregistrerPourboire();
+  });
+  wrapsParChamp["sommes_percues"].insertAdjacentElement("afterend", wrapPourboire);
+
   // ---- Calculatrice "rendu monnaie" (paiement cash) ----
   // Reste utilisable tant que la feuille n'est pas signée, même si la course est terminée.
   const feuilleSignee = feuilleActuelle.verrouillee;
@@ -2696,7 +3089,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   blocMonnaie.innerHTML = `
     <div class="rm-titre">💶 Rendu monnaie</div>
     <div class="rm-prix"></div>
-    <label>Billet / montant reçu du client</label>
+    <label>Montant reçu du client (billet)</label>
     <div class="rm-billets">
       <button type="button" data-v="10">10</button><button type="button" data-v="20">20</button>
       <button type="button" data-v="50">50</button><button type="button" data-v="100">100</button>
@@ -2723,30 +3116,58 @@ function construireLigneHtml(ligne, numeroAffiche) {
     blocMonnaie.querySelectorAll(".rm-billets button").forEach(b =>
       b.classList.toggle("choisi", recu !== null && +b.dataset.v === recu));
     zoneResultat.className = "rm-resultat";
+    const diff = (prix !== null && recu !== null) ? Math.round((recu - prix) * 100) / 100 : null;
+    // Pourboire automatique : montant TAPÉ > sommes perçues → la différence (modifiable)
+    if (diff !== null && diff > 0 && recuTape && !feuilleSignee && (inputPb.value.trim() === "" || pbAuto)) {
+      inputPb.value = String(diff); pbAuto = true;
+    } else if (pbAuto && !(diff !== null && diff > 0)) {
+      inputPb.value = ""; pbAuto = false;
+    }
+    const pbSaisi = nombreOuNull(inputPb.value);
     if (prix === null || recu === null) {
       zoneResultat.classList.add("vide");
       zoneResultat.textContent = "Touche le billet reçu pour voir combien rendre";
     } else if (recu >= prix) {
-      zoneResultat.textContent = "À rendre : " + formatEuro(recu - prix);
+      const pbGarde = pbSaisi !== null && pbSaisi > 0 ? Math.min(pbSaisi, diff) : 0;
+      zoneResultat.textContent = pbGarde > 0
+        ? (diff - pbGarde > 0 ? "À rendre : " + formatEuro(diff - pbGarde) + " (pourboire " + formatEuro(pbGarde) + " gardé)" : "Rien à rendre : " + formatEuro(pbGarde) + " de pourboire")
+        : "À rendre : " + formatEuro(recu - prix);
     } else {
       zoneResultat.classList.add("manque");
       zoneResultat.textContent = "⚠️ Il manque " + formatEuro(prix - recu);
     }
+    // Aide sous le champ pourboire
+    if (!feuilleSignee && diff !== null && diff > 0 && pbAuto) {
+      aidePb.innerHTML = `✨ Pré-rempli : reçu ${esc(formatEuro(recu))} − course ${esc(formatEuro(prix))} = <b>${esc(formatEuro(diff))}</b>. Tu as rendu la monnaie ?
+        <button type="button" data-pb="0">↩️ Monnaie rendue (pas de pourboire)</button>`;
+      aidePb.style.display = "";
+    } else if (!feuilleSignee && diff !== null && diff > 0 && pbSaisi === null) {
+      aidePb.innerHTML = `Le client laisse la monnaie ? <button type="button" data-pb="${diff}">🎁 Pourboire ${esc(formatEuro(diff))}</button>`;
+      aidePb.style.display = "";
+    } else { aidePb.innerHTML = ""; aidePb.style.display = "none"; }
   }
   async function enregistrerRecu() {
     const { error } = await TWHL.ecrire({ op: "rpc", fn: "maj_note_billet_ligne", args: { p_ligne: ligne.id, p_champ: "montant_recu", p_valeur: inputRecu.value },
       table: "lignes_feuille_route", match: { id: ligne.id }, local: { montant_recu: nombreOuNull(inputRecu.value) }, label: "Billet reçu" });
     if (!error) ligne.montant_recu = nombreOuNull(inputRecu.value);
+    // Pourboire pré-rempli (ou retiré) automatiquement : enregistré avec le montant reçu
+    const pbActuel = nombreOuNull(inputPb.value);
+    if (pbAuto || (pbActuel === null && ligne.pourboire != null)) enregistrerPourboire();
   }
   blocMonnaie.querySelectorAll(".rm-billets button").forEach(b => b.addEventListener("click", () => {
     if (feuilleSignee) return;
+    recuTape = false;
+    if (pbAuto) { inputPb.value = ""; pbAuto = false; }
     inputRecu.value = b.dataset.v;
     mettreAJourRenduMonnaie();
     enregistrerRecu();
   }));
-  inputRecu.addEventListener("input", mettreAJourRenduMonnaie);
+  inputRecu.addEventListener("input", () => { recuTape = true; mettreAJourRenduMonnaie(); });
   inputRecu.addEventListener("change", enregistrerRecu);
-  ["sommes_percues", "prix_taximetre"].forEach(c => inputsParChamp[c].addEventListener("input", mettreAJourRenduMonnaie));
+  ["sommes_percues", "prix_taximetre"].forEach(c => {
+    inputsParChamp[c].addEventListener("input", mettreAJourRenduMonnaie);
+    inputsParChamp[c].addEventListener("change", () => { if (pbAuto) { mettreAJourRenduMonnaie(); enregistrerPourboire(); } });
+  });
   corps.insertBefore(blocMonnaie, wrapsParChamp["numero_dossier"]);
   mettreAJourRenduMonnaie();
 
@@ -2884,6 +3305,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     wrapsParChamp["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
     // Facture : on peut noter le montant facturé (imprimé « 170 » puis « FACTURE Taxi Vert n° 123 »)
     wrapsParChamp["sommes_percues"].style.display = (estUber || estPrive || estAnnulee) ? "none" : "";
+    wrapPourboire.style.display = ((estUber || estPrive || estAnnulee) && !(Number(ligne.pourboire) > 0)) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = "none"; // remplacé par le bloc « Facture : pour qui ? »
     blocPayeur.style.display = (!estPrive && (estFacture || inputsParChamp["motif_sans_prix"].value === "Contrat / sur facture")) ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
@@ -3148,6 +3570,7 @@ function remplirResumeSignee() {
   const rd = parseFloat(feuilleActuelle.recettes_debut), rf = parseFloat(feuilleActuelle.recettes_fin);
   document.getElementById("resume-recettes").textContent =
     (!isNaN(rd) && !isNaN(rf)) ? (rf - rd).toFixed(2) + " €" : "—";
+  document.getElementById("resume-pourboires").textContent = formatEuro(totauxLignesLocales(lignesActuelles).pourboires);
   document.getElementById("resume-nb-courses").textContent = lignesActuelles.length;
 }
 
@@ -3166,7 +3589,9 @@ function appliquerVerrouillage() {
     // Fin d'un service de nuit : simple confirmation, sans pousser vers une nouvelle feuille
     const bandeauFeuille = document.getElementById("bandeau-feuille-oubliee");
     bandeauFeuille.style.background = "#e7f5ec"; bandeauFeuille.style.borderColor = "#b7dfc5"; bandeauFeuille.style.color = "#1f6b3f";
-    bandeauFeuille.innerHTML = `✅ Feuille du service de nuit ${esc(jjmm(feuilleActuelle.date_service) + " → " + jjmm(aujourdHuiIso))} clôturée. Bon repos !`;
+    bandeauFeuille.innerHTML = `✅ Feuille du service de nuit ${esc(jjmm(feuilleActuelle.date_service) + " → " + jjmm(aujourdHuiIso))} clôturée. Bon repos !`
+      + `<br><button type="button" class="btn-nouvelle-feuille-bandeau" style="display:inline-block; margin-top:8px; padding:10px 14px; background:#1d4f86; color:#fff; border:none; border-radius:10px; font-weight:700;">➕ Nouvelle feuille de route</button>`;
+    bandeauFeuille.querySelector(".btn-nouvelle-feuille-bandeau").addEventListener("click", ouvrirNouvelleFeuille);
     bandeauFeuille.style.display = "block";
   } else if (verrou && feuilleActuelle.date_service < aujourdHuiIso) {
     const bandeauFeuille = document.getElementById("bandeau-feuille-oubliee");
@@ -3270,6 +3695,253 @@ function afficherImpression(fenetre, html) {
   }
   afficherImpressionDansPage(html);
 }
+// ================== PDF DE LA FEUILLE (iPhone / app écran d'accueil) ==================
+// Sur iPhone (app installée sur l'écran d'accueil), window.print() et iframe.print() ne font souvent RIEN.
+// On fabrique donc un vrai PDF A4 directement dans le téléphone (sans bibliothèque externe, marche
+// aussi sans réseau) à partir de la feuille déjà mise en page dans l'aperçu (une page PDF par page
+// de l'aperçu : toutes les courses, plusieurs pages si besoin), puis on l'envoie à la feuille de
+// partage iOS (« Imprimer », « Enregistrer dans Fichiers »…) ; sinon on le télécharge / l'ouvre.
+const PDF_FEUILLE = (function () {
+  const PT = 72 / 25.4, LARG = 595.28, HAUT = 841.89, MARGE_MM = 8, ZONE_L = 194, ZONE_H = 281;
+  const SPECIAUX = { "€": 128, "‚": 130, "„": 132, "…": 133, "Œ": 140, "‘": 145, "’": 146, "“": 147, "”": 148, "•": 149, "–": 150, "—": 151, "™": 153, "œ": 156, "Ÿ": 159 };
+  function winAnsi(texte) {
+    let o = "";
+    for (const ch of String(texte)) {
+      const c = ch.codePointAt(0);
+      let b = null;
+      if (ch === "→") { o += "->"; continue; }
+      if (ch === "←") { o += "<-"; continue; }
+      if (c === 160 || c === 8239 || c === 8201) b = 32;
+      else if (c >= 32 && c < 127) b = c;
+      else if (c >= 161 && c <= 255) b = c;
+      else if (SPECIAUX[ch] !== undefined) b = SPECIAUX[ch];
+      if (b === null) continue; // émojis et symboles non imprimables en Helvetica : ignorés
+      const s = String.fromCharCode(b);
+      o += (s === "(" || s === ")" || s === "\\") ? "\\" + s : s;
+    }
+    return o;
+  }
+  let ctxMesure = null;
+  function largeurNaturelle(texte, gras) {
+    // Largeur (en « em ») du texte en Helvetica (Arial / Liberation Sans ont les mêmes chasses)
+    if (!ctxMesure) { const c = document.createElement("canvas"); ctxMesure = c.getContext("2d"); }
+    if (!ctxMesure) return null;
+    ctxMesure.font = (gras ? "bold " : "") + "100px Helvetica, Arial, 'Liberation Sans', sans-serif";
+    return ctxMesure.measureText(texte.replace(/\s+/g, " ")).width / 100;
+  }
+  function couleur(css) {
+    const m = /rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)(?:[ ,/]+([\d.]+))?/.exec(css || "");
+    if (!m) return null;
+    if (m[4] !== undefined && parseFloat(m[4]) < 0.05) return null;
+    return [m[1], m[2], m[3]].map(x => (Math.min(255, parseFloat(x)) / 255).toFixed(3)).join(" ");
+  }
+  const n2 = v => (Math.round(v * 100) / 100).toString();
+
+  function dessinerPage(P, win) {
+    const doc = P.ownerDocument;
+    const R = P.getBoundingClientRect();
+    if (!R.width || !R.height) return null;
+    let s = ZONE_L / R.width;                       // mm par pixel
+    if (R.height * s > ZONE_H) s = ZONE_H / R.height; // page plus haute que l'A4 : réduite pour tenir
+    const ox = MARGE_MM + (ZONE_L - R.width * s) / 2;
+    const X = x => (ox + (x - R.left) * s) * PT;
+    const Y = y => HAUT - (MARGE_MM + (y - R.top) * s) * PT;
+    const ops = [];
+    // 1) Fonds colorés et bordures (cadres des tableaux)
+    const elements = [P].concat(Array.prototype.slice.call(P.querySelectorAll("*")));
+    for (const el of elements) {
+      if (/^(SCRIPT|STYLE|TEMPLATE)$/.test(el.tagName)) continue;
+      const cs = win.getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const fond = el === P ? null : couleur(cs.backgroundColor);
+      if (fond && fond !== "1.000 1.000 1.000") ops.push(`${fond} rg ${n2(X(r.left))} ${n2(Y(r.bottom))} ${n2(r.width * s * PT)} ${n2(r.height * s * PT)} re f`);
+      [["Top", r.left, r.top, r.right, r.top, 1], ["Bottom", r.left, r.bottom, r.right, r.bottom, -1],
+       ["Left", r.left, r.top, r.left, r.bottom, 1], ["Right", r.right, r.top, r.right, r.bottom, -1]].forEach(([cote, x1, y1, x2, y2, sens]) => {
+        const w = parseFloat(cs["border" + cote + "Width"]) || 0;
+        const st = cs["border" + cote + "Style"];
+        if (w <= 0 || st === "none" || st === "hidden") return;
+        const col = couleur(cs["border" + cote + "Color"]);
+        if (!col) return;
+        const d = sens * w / 2;
+        const horiz = cote === "Top" || cote === "Bottom";
+        const ax = horiz ? x1 : x1 + d, ay = horiz ? y1 + d : y1, bx = horiz ? x2 : x2 + d, by = horiz ? y2 + d : y2;
+        ops.push(`${col} RG ${n2(Math.max(0.3, w * s * PT))} w ${n2(X(ax))} ${n2(Y(ay))} m ${n2(X(bx))} ${n2(Y(by))} l S`);
+      });
+    }
+    // 2) Textes, mot par mot à leur vraie place (regroupés par ligne)
+    const parcours = doc.createTreeWalker(P, NodeFilter.SHOW_TEXT);
+    const plage = doc.createRange();
+    let n;
+    while ((n = parcours.nextNode())) {
+      const t = n.nodeValue;
+      if (!t || !t.trim()) continue;
+      const el = n.parentElement;
+      if (!el || el.closest("script,style,template")) continue;
+      const cs = win.getComputedStyle(el);
+      if (cs.visibility === "hidden") continue;
+      // Zone visible (texte coupé par un parent « overflow: hidden », ex. adresses sur 2 lignes)
+      let clip = null;
+      for (let a = el; a && a !== P.parentElement; a = a.parentElement) {
+        const ca = win.getComputedStyle(a);
+        if (ca.overflowX !== "visible" || ca.overflowY !== "visible") {
+          const ra = a.getBoundingClientRect();
+          clip = clip ? { l: Math.max(clip.l, ra.left), t: Math.max(clip.t, ra.top), r: Math.min(clip.r, ra.right), b: Math.min(clip.b, ra.bottom) }
+            : { l: ra.left, t: ra.top, r: ra.right, b: ra.bottom };
+        }
+      }
+      const taillePx = parseFloat(cs.fontSize) || 12;
+      const gras = (parseInt(cs.fontWeight, 10) || 400) >= 600 || cs.fontWeight === "bold";
+      const col = couleur(cs.color) || "0 0 0";
+      const majuscules = cs.textTransform === "uppercase";
+      let run = null;
+      const vider = () => {
+        if (!run) return;
+        const texte = majuscules ? run.texte.toUpperCase() : run.texte;
+        const enc = winAnsi(texte);
+        if (enc.trim()) {
+          const taillePt = taillePx * s * PT;
+          const nat = largeurNaturelle(texte, gras);
+          const largPt = (run.r - run.l) * s * PT;
+          let tz = nat ? 100 * largPt / (nat * taillePt) : 100;
+          if (!isFinite(tz) || tz <= 0) tz = 100;
+          tz = Math.max(45, Math.min(130, tz));
+          const base = run.t + (run.h - taillePx) / 2 + taillePx * 0.8;
+          ops.push(`BT /${gras ? "F2" : "F1"} ${n2(taillePt)} Tf ${n2(tz)} Tz ${col} rg ${n2(X(run.l))} ${n2(Y(base))} Td (${enc}) Tj ET`);
+        }
+        run = null;
+      };
+      const re = /\S+/g;
+      let m;
+      while ((m = re.exec(t))) {
+        plage.setStart(n, m.index); plage.setEnd(n, m.index + m[0].length);
+        const rects = plage.getClientRects();
+        if (!rects.length) continue;
+        const r = rects[0];
+        if (!r.width && !r.height) continue;
+        if (clip) { const cx = r.left + r.width / 2, cy = r.top + r.height / 2; if (cx < clip.l - 1 || cx > clip.r + 1 || cy < clip.t - 1 || cy > clip.b + 1) continue; }
+        if (run && Math.abs(r.top - run.t) < 2 && r.left >= run.r - 1) { run.texte += " " + m[0]; run.r = r.right; }
+        else { vider(); run = { texte: m[0], l: r.left, r: r.right, t: r.top, h: r.height }; }
+      }
+      vider();
+    }
+    return ops.join("\n");
+  }
+
+  function assembler(contenus) {
+    const objs = [];
+    objs[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+    objs[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+    objs[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+    const kids = [];
+    contenus.forEach((c, i) => {
+      const pid = 5 + i * 2, cid = pid + 1;
+      kids.push(pid + " 0 R");
+      objs[pid] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${LARG} ${HAUT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${cid} 0 R >>`;
+      objs[cid] = `<< /Length ${c.length} >>\nstream\n${c}\nendstream`;
+    });
+    objs[2] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${kids.length} >>`;
+    let out = "%PDF-1.4\n%âãÏÓ\n";
+    const decal = [];
+    for (let i = 1; i < objs.length; i++) { decal[i] = out.length; out += i + " 0 obj\n" + objs[i] + "\nendobj\n"; }
+    const xref = out.length;
+    out += "xref\n0 " + objs.length + "\n0000000000 65535 f \n";
+    for (let i = 1; i < objs.length; i++) out += String(decal[i]).padStart(10, "0") + " 00000 n \n";
+    out += "trailer\n<< /Size " + objs.length + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n";
+    const octets = new Uint8Array(out.length);
+    for (let i = 0; i < out.length; i++) octets[i] = out.charCodeAt(i) & 255;
+    return new Blob([octets], { type: "application/pdf" });
+  }
+
+  // Document (déjà affiché) de l'aperçu → Blob PDF
+  function creer(doc) {
+    const win = doc.defaultView;
+    let pages = Array.prototype.slice.call(doc.querySelectorAll("#pages .page"));
+    if (!pages.length) pages = [doc.getElementById("source") || doc.body];
+    const contenus = pages.map(p => dessinerPage(p, win)).filter(c => c !== null && c.length);
+    if (!contenus.length) throw new Error("la feuille est vide ou pas encore affichée");
+    return assembler(contenus);
+  }
+  function nomFichier(doc) {
+    const titre = String((doc && doc.title) || "").replace(/^\s*Feuille de route\s*[—-]\s*/i, "");
+    const slug = titre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return "feuille-de-route" + (slug ? "-" + slug : "") + ".pdf";
+  }
+  return { creer, nomFichier };
+})();
+
+// Boutons de l'aperçu dans la page : « 🖨️ Imprimer » (PDF → partage iOS) + « Imprimer (navigateur) »
+async function imprimerPdfDepuisApercu(ifr, zoneStatut) {
+  const statut = (texte, type, html) => {
+    zoneStatut.style.display = "block";
+    zoneStatut.dataset.etat = type;
+    zoneStatut.style.background = type === "erreur" ? "#fdecec" : type === "ok" ? "#e7f5ec" : "#eef4fb";
+    zoneStatut.style.color = type === "erreur" ? "#8a1f1f" : type === "ok" ? "#1f6b3f" : "#1d4f86";
+    zoneStatut.textContent = texte;
+    if (html) zoneStatut.appendChild(html);
+  };
+  statut("⏳ Création du PDF de la feuille de route…", "attente");
+  try {
+    let doc = ifr.contentDocument;
+    if (!doc || doc.readyState !== "complete" || !doc.body) {
+      await new Promise(r => { ifr.addEventListener("load", r, { once: true }); setTimeout(r, 4000); });
+      doc = ifr.contentDocument;
+    }
+    if (!doc || !doc.body) throw new Error("l'aperçu de la feuille n'est pas chargé");
+    await new Promise(r => setTimeout(r, 30)); // laisse l'écran afficher le message
+    const blob = PDF_FEUILLE.creer(doc);
+    if (!blob || !blob.size) throw new Error("PDF vide");
+    const nom = PDF_FEUILLE.nomFichier(doc);
+    window.__dernierPdfFeuille = { blob, nom };
+    let fichier = null;
+    try { fichier = new File([blob], nom, { type: "application/pdf" }); } catch (e) { fichier = null; }
+    const peutPartager = !!(fichier && navigator.canShare && navigator.share && (() => { try { return navigator.canShare({ files: [fichier] }); } catch (e) { return false; } })());
+    const ouvrirOuTelecharger = () => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = nom; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "📄 Ouvrir le PDF";
+      a.style.cssText = "display:inline-block; margin-left:8px; padding:6px 10px; border-radius:8px; background:#1f8a4c; color:#fff; font-weight:700; text-decoration:none;";
+      const dl = a.cloneNode(true); dl.style.display = "none"; document.body.appendChild(dl);
+      try { dl.click(); } catch (e) {}
+      setTimeout(() => dl.remove(), 1000);
+      statut("✅ PDF prêt (" + nom + ").", "ok", a);
+    };
+    if (peutPartager) {
+      const partager = async () => {
+        try {
+          await navigator.share({ files: [fichier], title: nom.replace(/\.pdf$/, "") });
+          statut("✅ PDF envoyé — choisis « Imprimer » ou « Enregistrer dans Fichiers ».", "ok");
+        } catch (e) {
+          if (e && e.name === "AbortError") {
+            const b = document.createElement("button");
+            b.type = "button"; b.textContent = "📤 Partager / imprimer le PDF";
+            b.style.cssText = "margin-left:8px; padding:6px 10px; border-radius:8px; border:none; background:#1d4f86; color:#fff; font-weight:700;";
+            b.addEventListener("click", partager);
+            statut("Partage annulé. ", "ok", b);
+          } else if (e && e.name === "NotAllowedError") {
+            // Le téléphone demande un nouveau toucher (le PDF a pris trop de temps) : un bouton de plus
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "btn-partager-pdf"; b.textContent = "📤 Partager / imprimer le PDF";
+            b.style.cssText = "margin-left:8px; padding:6px 10px; border-radius:8px; border:none; background:#1d4f86; color:#fff; font-weight:700;";
+            b.addEventListener("click", partager);
+            statut("✅ PDF prêt. Touche le bouton : ", "ok", b);
+          } else {
+            ouvrirOuTelecharger();
+          }
+        }
+      };
+      await partager();
+    } else {
+      ouvrirOuTelecharger();
+    }
+  } catch (e) {
+    console.error("PDF feuille de route :", e);
+    statut("⚠️ Impossible de créer le PDF : " + ((e && e.message) || e) + ". Essaie « Imprimer (navigateur) ».", "erreur");
+  }
+}
+
 function afficherImpressionDansPage(html) {
   const ancien = document.getElementById("overlay-impression");
   if (ancien) ancien.remove();
@@ -3284,7 +3956,16 @@ function afficherImpressionDansPage(html) {
   const bImprimer = document.createElement("button");
   bImprimer.type = "button"; bImprimer.textContent = "🖨️ Imprimer";
   bImprimer.style.cssText = "flex:2; padding:12px; border-radius:10px; border:none; background:#c81e2c; color:#fff; font-size:1rem; font-weight:800;";
-  barre.appendChild(bFermer); barre.appendChild(bImprimer);
+  bImprimer.className = "btn-imprimer-pdf";
+  const bNavigateur = document.createElement("button");
+  bNavigateur.type = "button"; bNavigateur.className = "btn-imprimer-navigateur"; bNavigateur.textContent = "Imprimer (navigateur)";
+  bNavigateur.style.cssText = "flex:1.4; padding:12px 6px; border-radius:10px; border:1px solid #bbb; background:#fff; color:#222; font-size:.85rem; font-weight:700;";
+  barre.appendChild(bFermer); barre.appendChild(bImprimer); barre.appendChild(bNavigateur);
+  // Message pendant la création du PDF / erreur (dans la page, jamais d'alerte système)
+  const zoneStatut = document.createElement("div");
+  zoneStatut.className = "statut-pdf-impression";
+  zoneStatut.setAttribute("role", "status");
+  zoneStatut.style.cssText = "display:none; padding:9px 12px; font:600 14px/1.35 -apple-system,Arial,sans-serif; border-bottom:1px solid #ccc; flex-shrink:0;";
   const zone = document.createElement("div");
   zone.style.cssText = "flex:1; overflow:auto; -webkit-overflow-scrolling:touch;";
   const ifr = document.createElement("iframe");
@@ -3299,10 +3980,18 @@ function afficherImpressionDansPage(html) {
   });
   ifr.srcdoc = html;
   zone.appendChild(ifr);
-  ov.appendChild(barre); ov.appendChild(zone);
+  ov.appendChild(barre); ov.appendChild(zoneStatut); ov.appendChild(zone);
   document.body.appendChild(ov);
   bFermer.addEventListener("click", () => ov.remove());
-  bImprimer.addEventListener("click", () => {
+  let pdfEnCours = false;
+  bImprimer.addEventListener("click", async () => {
+    if (pdfEnCours) return;
+    pdfEnCours = true; bImprimer.disabled = true; bImprimer.style.opacity = ".6";
+    try { await imprimerPdfDepuisApercu(ifr, zoneStatut); }
+    finally { pdfEnCours = false; bImprimer.disabled = false; bImprimer.style.opacity = "1"; }
+  });
+  // Impression classique (ordinateur) : boîte d'impression du navigateur
+  bNavigateur.addEventListener("click", () => {
     try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) { window.print(); }
   });
 }
@@ -3319,7 +4008,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   // Un bloc "Service + Courses" par véhicule utilisé aujourd'hui, tous à la suite sur le même
   // document — même s'il y a eu un changement de véhicule en cours de journée.
   const blocsVehicules = [];
-  for (const f of toutesLesFeuillesDuJour) {
+  for (const f of feuillesMemeDate()) {
     const { data: vehicule } = f.vehicule_id
       ? await supabase.from("vehicules").select("*").eq("id", f.vehicule_id).maybeSingle()
       : { data: null };
@@ -3351,8 +4040,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
           return esc(l.prix_taximetre) + typeLibre;
         })()}</td>
         <td>${celluleSommesImpression(l, fmtVal)}</td>
+        <td class="pb">${Number(l.pourboire) > 0 ? esc(formatEuro(Number(l.pourboire)).replace(" €", "")) : ""}</td>
       </tr>`;
     }).join("");
+    const totalPbF = pourboiresDesLignes(lignesF);
 
     blocsVehicules.push(`
       <table>
@@ -3360,7 +4051,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(vehicule?.nom) || "—"}</span></td>
             <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(f.numero_identification || vehicule?.numero_identification) || "—"}</span></td></tr>
       </table>
-      <h2>Service ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
+      <h2>Service ${feuillesMemeDate().length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
       <table>
         <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
         <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${fmtVal(f.interruptions)}</td>
@@ -3376,19 +4067,23 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut ?? (f.recettes_fin != null ? "0.00" : ""))}</td></tr>
         <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
       </table>
-      <h2>Courses ${toutesLesFeuillesDuJour.length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
+      <h2>Courses ${feuillesMemeDate().length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
       <table class="courses-table">
         <thead>
         <tr>
           <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
           <th colspan="3">Embarquement</th><th colspan="3">Débarquement</th>
-          <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th>
+          <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th><th rowspan="2">Pour&shy;boire</th>
         </tr>
         <tr><th>Index</th><th>Lieu</th><th>Heure</th><th>Index</th><th>Lieu</th><th>Heure</th></tr>
         </thead>
         <tbody>
         ${lignesHtml}
         </tbody>
+      </table>
+      <table class="totaux-pourboires">
+        <tr><td>Recette (somme des sommes perçues) : <b>${esc(formatEuro(recetteDesLignes(lignesF)))}</b></td>
+            <td>Total pourboires (hors recette) : <b>${esc(formatEuro(totalPbF))}</b></td></tr>
       </table>
     `);
   }
@@ -3413,7 +4108,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     .courses-table td:nth-child(5), .courses-table td:nth-child(8) { width: 5%; }
     .courses-table td:nth-child(9) { width: 7%; }
     .courses-table td:nth-child(10) { width: 11%; }
-    .courses-table td.lieu { width: 25%; text-align: left; }
+    .courses-table td:nth-child(11) { width: 6%; }
+    .courses-table td.lieu { width: 22%; text-align: left; }
+    .totaux-pourboires td { font-size: 8pt; text-align: right; padding: 2px 6px; }
+    .totaux-pourboires td:first-child { width: 50%; }
     .courses-table td b { white-space: nowrap; letter-spacing: 0 !important; }
     .lieu-l { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; word-break: break-word; }
     .signature { margin-top: 10px; }
@@ -3452,7 +4150,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     </div>
     <template id="tpl-pied">
       <div class="signature">Signature du chauffeur : ______________________________</div>
-      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.${toutesLesFeuillesDuJour.length > 1 ? " Journée avec changement de véhicule : un bloc par véhicule utilisé." : ""}</div>
+      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.${feuillesMemeDate().length > 1 ? " Journée avec changement de véhicule : un bloc par véhicule utilisé." : ""}</div>
       <div class="num-page"></div>
     </template>
     <script>

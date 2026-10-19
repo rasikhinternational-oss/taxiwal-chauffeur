@@ -611,9 +611,25 @@ window.onerror = function(msg, url, line, col, err) {
 <div id="chm-toast"></div>
 
 <div id="modale-paiement" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:60; align-items:flex-end;">
-  <div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:24px;">
-    <h2 style="margin-top:0; font-size:1.1rem;">Comment le client a-t-il payé ?</h2>
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
+  <div style="background:var(--noir-2); width:100%; border-radius:16px 16px 0 0; padding:24px; max-height:92vh; overflow-y:auto; box-sizing:border-box;">
+    <h2 id="mp-titre" style="margin-top:0; font-size:1.1rem;">Comment le client a-t-il payé ?</h2>
+    <div id="mp-deja-paye" style="display:none; margin:10px 0; padding:12px 14px; border-radius:12px; background:#1f8a4c; color:#fff; border:3px solid #136b37;">
+      <div id="mp-deja-paye-texte" style="font-size:1.1rem; font-weight:900; line-height:1.25;">✅ Course DÉJÀ PAYÉE PAR BANCONTACT</div>
+      <div style="font-size:.95rem; font-weight:700; margin-top:4px;">Ne rien encaisser auprès du client.</div>
+    </div>
+    <div id="mp-pourboire-bloc" style="margin-top:10px; padding:10px 12px; border-radius:12px; border:1px solid #e8c547; background:#fff8e1; color:#3d2e00;">
+      <div id="mp-a-encaisser" style="font-weight:800; font-size:1rem;"></div>
+      <div id="mp-recu-wrap">
+        <label for="mp-recu" style="display:block; font-size:.82rem; margin:8px 0 4px;">Montant reçu du client (€) — optionnel</label>
+        <input id="mp-recu" type="text" inputmode="decimal" autocomplete="off" placeholder="ex : 35" style="width:100%; box-sizing:border-box; padding:12px; font-size:16px; border:1px solid #bbb; border-radius:10px;">
+      </div>
+      <label for="mp-pourboire" style="display:block; font-size:.82rem; margin:8px 0 4px;">💶 Pourboire reçu (€) — optionnel, hors recette</label>
+      <input id="mp-pourboire" type="text" inputmode="decimal" autocomplete="off" placeholder="0" style="width:100%; box-sizing:border-box; padding:12px; font-size:16px; border:1px solid #c89b00; border-radius:10px;">
+      <div id="mp-pb-info" style="font-size:.8rem; margin-top:6px; line-height:1.35;"></div>
+      <div id="mp-erreur" style="font-size:.85rem; margin-top:6px; color:#b3141b; font-weight:700;"></div>
+    </div>
+    <button id="btn-terminer-deja-paye" style="display:none; margin-top:12px; background:#1f8a4c;">✅ Terminer la course (déjà payée)</button>
+    <div id="mp-boutons" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
       <button id="btn-paiement-cash" style="background:var(--vert);">💶 Cash</button>
       <button id="btn-paiement-carte" style="background:var(--bleu, #3b82c4);">💳 Carte</button>
       <button id="btn-paiement-facture" style="background:#8a5a00;">🧾 Facture</button>
@@ -2719,23 +2735,66 @@ async function demarrerCourse(courseId, accepterAussi) {
 let courseEnFinDePaiement = null;
 const modalePaiement = document.getElementById("modale-paiement");
 
+// ---- Pourboire (fin de course) : noté sur la course, recopié sur la ligne de la feuille de route par la base.
+// Jamais compris dans la recette (sommes perçues). Optionnel. Hors ligne : part avec la fin de course (file d'attente).
+const mp$ = id => document.getElementById(id);
+let mpAEncaisser = null, mpPbAuto = false;
+function nombreSaisi(v) {
+  const t = String(v == null ? "" : v).trim().replace(",", ".");
+  if (t === "") return null;
+  const n = Number(t);
+  return isFinite(n) ? n : NaN;
+}
+function majInfoPourboire() {
+  const recu = nombreSaisi(mp$("mp-recu").value), info = mp$("mp-pb-info"), champPb = mp$("mp-pourboire");
+  mp$("mp-erreur").textContent = "";
+  const diff = (mpAEncaisser != null && recu !== null && !isNaN(recu)) ? Math.round((recu - mpAEncaisser) * 100) / 100 : null;
+  if (diff !== null && diff > 0 && (champPb.value.trim() === "" || mpPbAuto)) { champPb.value = String(diff); mpPbAuto = true; }
+  else if (mpPbAuto && !(diff !== null && diff > 0)) { champPb.value = ""; mpPbAuto = false; }
+  if (mpPbAuto && diff > 0) {
+    info.innerHTML = "✨ Pourboire pré-rempli : reçu " + esc(eurosChauffeur(recu)) + " − course " + esc(eurosChauffeur(mpAEncaisser)) + " = <b>" + esc(eurosChauffeur(diff)) + "</b>. Monnaie rendue ? Efface le pourboire.";
+  } else if (diff !== null && diff < 0) {
+    info.innerHTML = "⚠️ Il manque " + esc(eurosChauffeur(-diff)) + ".";
+  } else info.textContent = "Le pourboire n'entre pas dans la recette (noté à part sur la feuille de route).";
+}
+function pourboireSaisi() {
+  // undefined = erreur de saisie (message affiché) ; null = pas de pourboire
+  const v = nombreSaisi(mp$("mp-pourboire").value);
+  if (v === null || v === 0) return null;
+  if (isNaN(v) || v < 0 || v > 1000) { mp$("mp-erreur").textContent = "Pourboire : indique un montant en euros (ex : 5), ou laisse vide."; return undefined; }
+  return Math.round(v * 100) / 100;
+}
+function preparerModalePaiement(enc) {
+  const dejaPaye = !!(enc && enc.payeEnLigneTout);
+  mpAEncaisser = enc ? Math.max(0, enc.reste) : null;
+  mpPbAuto = false;
+  mp$("mp-recu").value = ""; mp$("mp-pourboire").value = ""; mp$("mp-erreur").textContent = "";
+  mp$("mp-titre").textContent = dejaPaye ? "Terminer la course" : "Comment le client a-t-il payé ?";
+  mp$("mp-deja-paye").style.display = dejaPaye ? "" : "none";
+  if (dejaPaye) mp$("mp-deja-paye-texte").textContent = "✅ Course DÉJÀ PAYÉE PAR BANCONTACT (" + eurosChauffeur(enc.enLigne) + ")";
+  mp$("btn-terminer-deja-paye").style.display = dejaPaye ? "" : "none";
+  mp$("mp-boutons").style.display = dejaPaye ? "none" : "flex";
+  mp$("mp-recu-wrap").style.display = (dejaPaye || mpAEncaisser == null || !(mpAEncaisser > 0)) ? "none" : "";
+  mp$("mp-a-encaisser").textContent = dejaPaye ? "Le client a laissé un pourboire ?" : (mpAEncaisser > 0 ? "À encaisser : " + eurosChauffeur(mpAEncaisser) : "Pourboire");
+  majInfoPourboire();
+}
+mp$("mp-recu").addEventListener("input", majInfoPourboire);
+mp$("mp-pourboire").addEventListener("input", () => { mpPbAuto = false; majInfoPourboire(); });
+
 async function ouvrirModalePaiement(courseId) {
   courseEnFinDePaiement = courseId;
-  // Course déjà payée en totalité par Bancontact (en ligne) : pas d'étape d'encaissement
+  let enc = null;
   try {
     const { data: c } = await supabase.from("courses")
       .select("prix, surprime, acompte_montant, acompte_paye, paiement_choisi, reste_a_payer, mode_paiement, paye_en_ligne_montant")
       .eq("id", courseId).maybeSingle();
-    const enc = montantAEncaisser(c || (dernieresCoursesChauffeur || []).find(x => x.id === courseId));
-    if (enc && enc.payeEnLigneTout) {
-      if (await confirmerDansPage("✅ Course DÉJÀ PAYÉE PAR BANCONTACT (" + eurosChauffeur(enc.enLigne) + ").\n\nNe rien encaisser auprès du client.\n\nTerminer la course maintenant ?", "✅ Oui, terminer", "Annuler")) {
-        await terminerAvecPaiement("qr");
-      } else courseEnFinDePaiement = null;
-      return;
-    }
+    enc = montantAEncaisser(c || (dernieresCoursesChauffeur || []).find(x => x.id === courseId));
   } catch (e) { console.error(e); }
+  // Course déjà payée en totalité par Bancontact (en ligne) : pas d'étape d'encaissement, juste « Terminer » (+ pourboire éventuel)
+  preparerModalePaiement(enc);
   modalePaiement.style.display = "flex";
 }
+document.getElementById("btn-terminer-deja-paye").addEventListener("click", () => terminerAvecPaiement("qr"));
 document.getElementById("btn-annuler-paiement").addEventListener("click", () => {
   modalePaiement.style.display = "none";
   courseEnFinDePaiement = null;
@@ -2783,9 +2842,13 @@ document.getElementById("oqc-recu").addEventListener("click", async () => {
 
 async function terminerAvecPaiement(mode) {
   if (!courseEnFinDePaiement) return;
+  const pourboire = pourboireSaisi();
+  if (pourboire === undefined) { modalePaiement.style.display = "flex"; document.getElementById("overlay-qr-chauffeur").style.display = "none"; return; }
+  const payload = { statut: "terminee", mode_paiement: mode };
+  if (pourboire !== null) payload.pourboire = pourboire;
   const { data, error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: courseEnFinDePaiement },
-    payload: { statut: "terminee", mode_paiement: mode }, select: "id", verifier: true,
-    optimiste: [{ id: courseEnFinDePaiement }], label: "Terminer la course (" + (libellePaiement(mode) || mode) + ")" });
+    payload, select: "id", verifier: true,
+    optimiste: [{ id: courseEnFinDePaiement }], label: "Terminer la course (" + (libellePaiement(mode) || mode) + ")" + (pourboire ? " + pourboire " + eurosChauffeur(pourboire) : "") });
 
   modalePaiement.style.display = "none";
   courseEnFinDePaiement = null;

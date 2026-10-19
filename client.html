@@ -283,6 +283,17 @@ fr: {
   "pp.choix": "{p} — acompte de {a} ou totalité, au choix",
   "pp.acompte": "{p} — acompte de {a}",
   "pp.accepter": "✅ Accepter ce prix",
+  "pp.voiture": "{p} — rien à payer maintenant",
+  "voit.titre": "🤝 Bonne nouvelle : vous n'avez rien à payer maintenant.",
+  "voit.texte": "Vous réglerez directement dans la voiture, avec le moyen de paiement de votre choix.",
+  "voit.accepter": "✅ Accepter le prix et confirmer",
+  "voit.conf": "✅ Réservation confirmée ! Rien à payer maintenant : vous réglerez directement dans la voiture, avec le moyen de paiement de votre choix.",
+  "pp.acompteNote": "Après acceptation : acompte de {a} à payer dans l'application (Bancontact, QR code…). Le reste ({r}) se règle dans la voiture.",
+  "pp.totalNote": "Après acceptation : la totalité ({m}) est à payer dans l'application (Bancontact, QR code…).",
+  "tot.pasPossible": "Vous ne pouvez pas payer la totalité maintenant ? Contactez la centrale :",
+  "tot.message": "💬 Message",
+  "tot.whatsapp": "🟢 WhatsApp",
+  "tot.email": "✉️ E-mail",
   "pb.choisis": "1️⃣ Choisis ce que tu veux payer :",
   "pb.montant": "Montant à payer :",
   "pb.acompteBtn": "Payer l'acompte",
@@ -671,6 +682,17 @@ nl: {
   "pp.choix": "{p} — voorschot van {a} of volledig bedrag, naar keuze",
   "pp.acompte": "{p} — voorschot van {a}",
   "pp.accepter": "✅ Deze prijs aanvaarden",
+  "pp.voiture": "{p} — nu niets te betalen",
+  "voit.titre": "🤝 Goed nieuws: u hoeft nu niets te betalen.",
+  "voit.texte": "U betaalt rechtstreeks in de wagen, met het betaalmiddel van uw keuze.",
+  "voit.accepter": "✅ Prijs aanvaarden en bevestigen",
+  "voit.conf": "✅ Reservering bevestigd! Nu niets te betalen: u betaalt rechtstreeks in de wagen, met het betaalmiddel van uw keuze.",
+  "pp.acompteNote": "Na aanvaarding: voorschot van {a} te betalen in de app (Bancontact, QR-code…). Het saldo ({r}) betaalt u in de wagen.",
+  "pp.totalNote": "Na aanvaarding: het volledige bedrag ({m}) is te betalen in de app (Bancontact, QR-code…).",
+  "tot.pasPossible": "Kunt u het volledige bedrag nu niet betalen? Neem contact op met de centrale:",
+  "tot.message": "💬 Bericht",
+  "tot.whatsapp": "🟢 WhatsApp",
+  "tot.email": "✉️ E-mail",
   "pb.choisis": "1️⃣ Kies wat u wilt betalen:",
   "pb.montant": "Te betalen bedrag:",
   "pb.acompteBtn": "Voorschot betalen",
@@ -1087,6 +1109,17 @@ en: {
   "pp.choix": "{p} — deposit of {a} or full amount, your choice",
   "pp.acompte": "{p} — deposit of {a}",
   "pp.accepter": "✅ Accept this price",
+  "pp.voiture": "{p} — nothing to pay now",
+  "voit.titre": "🤝 Good news: you have nothing to pay now.",
+  "voit.texte": "You'll pay directly in the car, with the payment method of your choice.",
+  "voit.accepter": "✅ Accept the price and confirm",
+  "voit.conf": "✅ Booking confirmed! Nothing to pay now: you'll pay directly in the car, with the payment method of your choice.",
+  "pp.acompteNote": "Once accepted: a deposit of {a} is payable in the app (Bancontact, QR code…). The balance ({r}) is paid in the car.",
+  "pp.totalNote": "Once accepted: the full amount ({m}) is payable in the app (Bancontact, QR code…).",
+  "tot.pasPossible": "Can't pay the full amount now? Contact our dispatch:",
+  "tot.message": "💬 Message",
+  "tot.whatsapp": "🟢 WhatsApp",
+  "tot.email": "✉️ Email",
   "pb.choisis": "1️⃣ Choose what you want to pay:",
   "pb.montant": "Amount to pay:",
   "pb.acompteBtn": "Pay the deposit",
@@ -1554,6 +1587,19 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .bloc-cash .btn-cash{ background:#1f8a4c; font-size:1.08rem; font-weight:800; padding:16px; }
   .bloc-cash .btn-payer-cash{ background:#1d4f86; font-size:1.08rem; font-weight:800; padding:16px; margin-top:10px; }
   .bloc-cash .msg-centrale{ white-space:pre-wrap; margin:6px 0 0; color:#333; font-weight:500; }
+  .bloc-voiture{ background:rgba(31,138,76,.10); border:2px solid #1f8a4c; border-radius:12px; padding:12px 14px; margin-top:8px; color:#14532d; }
+  .bloc-voiture .bv-titre{ font-weight:900; font-size:1.05rem; }
+  .bloc-voiture .bv-texte{ margin-top:4px; font-weight:600; }
+  .bloc-voiture .msg-centrale{ white-space:pre-wrap; margin:8px 0 0; color:#333; font-weight:500; }
+  .bloc-voiture button.bv-accepter{ margin-top:10px; width:100%; background:#1f8a4c; color:#fff; border:none; }
+  .pp-note{ font-size:.86rem; color:#555; margin:-2px 0 8px; }
+  .bloc-contact-total{ background:#f6f6f3; border-radius:10px; padding:10px 12px; margin-top:10px; color:#333; }
+  .bloc-contact-total .bct-txt{ font-size:.88rem; font-weight:700; }
+  .bloc-contact-total .bct-btns{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-top:8px; }
+  .bloc-contact-total .bct-btns > *{ display:flex; align-items:center; justify-content:center; text-align:center; min-height:44px; padding:8px 4px; margin:0; border-radius:9px; border:none; font-weight:800; font-size:.88rem; text-decoration:none; color:#fff; box-sizing:border-box; width:100%; cursor:pointer; }
+  .bloc-contact-total .bct-msg{ background:#555; }
+  .bloc-contact-total .bct-wa{ background:#25a244; }
+  .bloc-contact-total .bct-mail{ background:#3b82c4; }
   .bloc-cash .err-cash{ color:var(--rouge); font-size:.85rem; margin-top:6px; }
   .bloc-verif{ background:rgba(59,130,196,.12); border-radius:10px; padding:12px; margin-top:6px; font-size:.85rem; color:var(--bleu); }
 
@@ -2716,7 +2762,34 @@ function etatDemandeCash(course) {
   if (course.reponse_admin_paiement === "acceptee") return "cash";
   return course.paiement_exige === "acompte" ? "acompte" : "total";
 }
+// ---- Règle « 🤝 paiement dans la voiture » (client de confiance) ----
+const MSG_VOITURE_DEFAUT = "Bonne nouvelle : vous n'avez rien à payer maintenant. Vous réglerez directement dans la voiture, avec le moyen de paiement de votre choix.";
+function estPaiementVoiture(course) { return course.paiement_exige === "voiture" && !!course.sans_acompte_autorise && !course.acompte_paye; }
+function msgPersoVoiture(course) {
+  const m = (course.reponse_admin_message || "").trim();
+  return m && m !== MSG_VOITURE_DEFAUT ? m : "";
+}
+// ---- Règle « 🔒 totalité » : contacter la centrale si le client ne peut pas tout payer ----
+function construireContactTotal(course) {
+  const bloc = document.createElement("div");
+  bloc.className = "bloc-contact-total";
+  const num = course.numero_reservation || communicationCourse(course);
+  const total = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+  // Messages pré-remplis lus par la centrale : restent en français
+  const texte = `Bonjour Taxi Wal, j'ai la réservation n° ${num} (${total.toFixed(2).replace(".", ",")} €) et je ne peux pas payer la totalité maintenant. Pouvez-vous me contacter ?`;
+  bloc.innerHTML = `<div class="bct-txt">${esc(t("tot.pasPossible"))}</div>
+    <div class="bct-btns">
+      <button type="button" class="bct-msg">${esc(t("tot.message"))}</button>
+      <a class="bct-wa" target="_blank" rel="noopener">${esc(t("tot.whatsapp"))}</a>
+      <a class="bct-mail">${esc(t("tot.email"))}</a>
+    </div>`;
+  bloc.querySelector(".bct-wa").href = `https://wa.me/${DISPATCH_WHATSAPP}?text=${encodeURIComponent(texte)}`;
+  bloc.querySelector(".bct-mail").href = `mailto:${DISPATCH_EMAIL}?subject=${encodeURIComponent("Réservation n° " + num + " — paiement de la totalité")}&body=${encodeURIComponent(texte)}`;
+  bloc.querySelector(".bct-msg").addEventListener("click", () => { if (typeof window.ouvrirChatClient === "function") window.ouvrirChatClient(course.id); });
+  return bloc;
+}
 function construireBlocCashClient(course) {
+  if (estPaiementVoiture(course)) return null;
   const etat = etatDemandeCash(course);
   const fin = ["annulee", "refusee", "terminee", "expiree", "no_show"].includes(course.statut);
   if (fin) return null;
@@ -2903,15 +2976,44 @@ async function construireCarteCourseClient(course) {
   // --- Prix proposé : le client doit l'accepter avant de pouvoir payer l'acompte ---
   if (course.statut === "prix_envoye") {
     const bloc = document.createElement("div");
-    bloc.className = "bloc-prix-propose";
-    bloc.innerHTML = `
-      <div class="montant">${esc(t(course.paiement_exige === "total" ? "pp.total" : course.paiement_exige === "choix" ? "pp.choix" : "pp.acompte", { p: fmtEurC(course.prix), a: fmtEurC(course.acompte_montant) }))}</div>
-      <button type="button">${esc(t("pp.accepter"))}</button>
-    `;
-    bloc.querySelector("button").addEventListener("click", async () => {
-      await supabase.from("courses").update({ statut: "attente_acompte" }).eq("id", course.id);
+    const totalPP = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+    const accepterPrix = async (btn, libelle) => {
+      btn.disabled = true; btn.textContent = t("envoi");
+      let { error } = await supabase.rpc("client_accepter_prix", { p_course: course.id });
+      if (error && /client_accepter_prix|function/i.test(error.message || "") && !estPaiementVoiture(course)) {
+        ({ error } = await supabase.from("courses").update({ statut: "attente_acompte" }).eq("id", course.id));
+      }
+      if (error) { btn.disabled = false; btn.textContent = libelle; twAlert(t("erreur", { msg: error.message })); return; }
       chargerMesCourses();
-    });
+    };
+    if (estPaiementVoiture(course)) {
+      // 🤝 Client de confiance : il accepte le prix, rien à payer maintenant
+      bloc.className = "bloc-prix-propose";
+      const perso = msgPersoVoiture(course);
+      bloc.innerHTML = `
+        <div class="montant">${esc(t("pp.voiture", { p: fmtEurC(totalPP) }))}</div>
+        <div class="bloc-voiture">
+          <div class="bv-titre">${esc(t("voit.titre"))}</div>
+          <div class="bv-texte">${esc(t("voit.texte"))}</div>
+          ${perso ? `<div class="msg-centrale">${esc(perso)}</div>` : ""}
+          <button type="button" class="bv-accepter">${esc(t("voit.accepter"))}</button>
+        </div>`;
+      const b = bloc.querySelector(".bv-accepter");
+      b.addEventListener("click", () => accepterPrix(b, t("voit.accepter")));
+    } else {
+      bloc.className = "bloc-prix-propose";
+      const exigePP = course.paiement_exige || "choix";
+      const acPP = Number(course.acompte_montant) || 0;
+      bloc.innerHTML = `
+        <div class="montant">${esc(t(exigePP === "total" ? "pp.total" : exigePP === "choix" ? "pp.choix" : "pp.acompte", { p: fmtEurC(course.prix), a: fmtEurC(course.acompte_montant) }))}</div>
+        ${exigePP === "acompte" ? `<div class="pp-note">${esc(t("pp.acompteNote", { a: fmtEur(acPP), r: fmtEur(totalPP - acPP) }))}</div>` : ""}
+        ${exigePP === "total" ? `<div class="pp-note">${esc(t("pp.totalNote", { m: fmtEur(totalPP) }))}</div>` : ""}
+        <button type="button" class="pp-accepter">${esc(t("pp.accepter"))}</button>
+      `;
+      const b = bloc.querySelector(".pp-accepter");
+      b.addEventListener("click", () => accepterPrix(b, t("pp.accepter")));
+      if (exigePP === "total") bloc.appendChild(construireContactTotal(course));
+    }
     div.appendChild(bloc);
   }
 
@@ -2938,6 +3040,7 @@ async function construireCarteCourseClient(course) {
       ${exige === "choix" ? `<div class="note-instant" style="color:var(--gris); margin-top:4px;">${esc(t("pb.changer"))}</div>` : ""}
       <div style="font-weight:700; margin:10px 0 4px;">${exige === "choix" ? "2️⃣ " : ""}${esc(t(payeTout ? "pb.ligneTotal" : "pb.ligneAcompte", { m: fmtEur(montantAPayer) }))}</div>
       ${exige === "total" ? `<div class="note-instant" style="margin-top:0;">${esc(estCourseDeNuit(course.date_heure) ? t("pb.nuit") : t("pb.totalDemande"))}</div>` : ""}
+      ${exige === "total" ? `<div class="zone-contact-total"></div>` : ""}
       ${exige === "acompte" ? `<div class="note-instant" style="margin-top:0;">${esc(t("pb.resteChauffeur", { m: fmtEur(totalCourse - Number(course.acompte_montant || 0)) }))}</div>` : ""}
       ${(() => { const ech = echeancePaiementCourse(course); return `<div class="echeance-paiement${ech.urgent ? " urgent" : ""}">${esc(ech.texte)}</div>`; })()}
       <label class="accepte-conditions${course.conditions_acceptees_at ? " ok" : ""}">
@@ -2986,6 +3089,8 @@ async function construireCarteCourseClient(course) {
         <a class="btn-contact mail">${esc(t("pb.email"))}</a>
       </div>
     `;
+    const zoneCT = bloc.querySelector(".zone-contact-total");
+    if (zoneCT) zoneCT.appendChild(construireContactTotal(course));
     // Paiement en ligne (Stripe · Bancontact) si activé par la centrale
     etatPaiementEnLigne().then(etat => {
       if (etat !== "actif" && etat !== "test") return;
@@ -3134,7 +3239,7 @@ async function construireCarteCourseClient(course) {
   }
 
   // --- Réponse de Taxi Wal à la demande « je ne peux pas payer à l'avance » ---
-  if (course.reponse_admin_paiement && course.reponse_admin_message && !course.demande_cash_at) {
+  if (course.reponse_admin_paiement && course.reponse_admin_message && !course.demande_cash_at && course.paiement_exige !== "voiture") {
     const rep = document.createElement("div");
     const ok = course.reponse_admin_paiement === "acceptee";
     rep.style.cssText = `margin-top:10px; border-radius:12px; padding:12px 14px; font-size:.92rem; background:${ok ? "rgba(31,138,76,.12)" : "rgba(200,30,44,.08)"}; color:${ok ? "var(--vert)" : "#8a1520"};`;
@@ -3154,17 +3259,25 @@ async function construireCarteCourseClient(course) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-verif";
     bloc.style.background = "rgba(31,138,76,.12)"; bloc.style.color = "var(--vert)";
-    bloc.textContent = course.sans_acompte_autorise && !course.acompte_paye
+    bloc.textContent = estPaiementVoiture(course)
+      ? t("voit.conf")
+      : course.sans_acompte_autorise && !course.acompte_paye
       ? t("conf.sansAcompte")
       : (Number(course.paye_en_ligne_montant) > 0 && resteAPayerClient(course) <= 0
         ? t("conf.bc", { m: fmtEur(course.paye_en_ligne_montant) })
         : t("conf.acompte"));
+    if (estPaiementVoiture(course) && msgPersoVoiture(course)) {
+      const m = document.createElement("div");
+      m.style.cssText = "white-space:pre-wrap; margin-top:6px; color:#333; font-weight:500;";
+      m.textContent = msgPersoVoiture(course);
+      bloc.appendChild(m);
+    }
     div.appendChild(bloc);
   }
 
   // --- Course acceptée sans acompte : le client peut quand même signaler qu'il a déjà payé ---
   if (["confirmee", "assignee", "en_route", "sur_place"].includes(course.statut)
-      && course.sans_acompte_autorise && !course.acompte_paye && Number(course.prix) > 0) {
+      && course.sans_acompte_autorise && !course.acompte_paye && Number(course.prix) > 0 && !estPaiementVoiture(course)) {
     const bloc = document.createElement("div");
     bloc.className = "bloc-verif";
     if (course.acompte_declare_client) {

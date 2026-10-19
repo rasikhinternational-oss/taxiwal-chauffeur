@@ -265,6 +265,25 @@ window.onerror = function(msg, url, line, col, err) {
   .bloc-prix-admin{ display:flex; gap:8px; margin-bottom:8px; }
   .bloc-prix-admin input{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
   .bloc-prix-admin button{ width:auto; padding:10px 14px; font-size:.85rem; background:var(--vert); border:none; border-radius:8px; color:#fff; cursor:pointer; }
+  /* Envoi du prix + règle de paiement en 1 clic */
+  .bloc-regle-prix{ background:#fff; border:2px solid #e3e3df; border-radius:12px; padding:12px; margin:8px 0; color:#111; }
+  .bloc-regle-prix .brp-lbl{ display:block; font-weight:800; font-size:.9rem; margin-bottom:4px; }
+  .bloc-regle-prix .brp-prix{ width:100%; box-sizing:border-box; padding:12px; font-size:1.2rem; font-weight:800; border-radius:10px; border:1px solid #cfcfcd; background:#f7f7f5; color:#111; }
+  .bloc-regle-prix .brp-total{ font-size:.84rem; color:#555; margin-top:4px; min-height:1em; }
+  .bloc-regle-prix .brp-titre{ font-weight:900; font-size:.95rem; margin:12px 0 6px; }
+  .btn-regle{ display:block; width:100%; box-sizing:border-box; text-align:left; padding:14px 14px; margin:0 0 8px; border:none; border-radius:12px; color:#fff; font-weight:900; font-size:1.05rem; line-height:1.25; cursor:pointer; }
+  .btn-regle small{ display:block; font-weight:600; font-size:.8rem; opacity:.92; margin-top:3px; }
+  .btn-regle.voiture{ background:#1f8a4c; font-size:1.12rem; padding:18px 14px; box-shadow:0 3px 0 #14532d; }
+  .btn-regle.acompte{ background:#1d4f86; }
+  .btn-regle.total{ background:#b3141b; }
+  .btn-regle.conseille{ outline:3px solid #6366f1; outline-offset:2px; }
+  .btn-regle:disabled{ opacity:.55; cursor:default; }
+  .btn-regle-petit{ display:block; width:100%; padding:9px; border-radius:10px; border:1px dashed #9a9a96; background:transparent; color:#444; font-weight:700; font-size:.85rem; cursor:pointer; }
+  .bloc-regle-prix .brp-erreur, .bloc-regle-actuelle .brp-erreur{ display:none; color:#b3141b; font-weight:800; margin-top:6px; font-size:.88rem; }
+  .bloc-regle-actuelle{ background:#f6f6f3; border:1px solid #e0e0db; border-radius:12px; padding:10px 12px; margin:8px 0; color:#111; font-size:.88rem; }
+  .bloc-regle-actuelle .bra-titre{ font-weight:900; margin-bottom:6px; }
+  .bloc-regle-actuelle .btn-regle{ font-size:.95rem; padding:11px 12px; }
+  .bloc-regle-actuelle .btn-regle.voiture{ font-size:1rem; padding:13px 12px; }
   .alerte-acompte{ background:rgba(59,130,196,.15); border:1px solid var(--bleu); border-radius:8px; padding:10px; margin-bottom:8px; font-size:.85rem; }
   .alerte-acompte button{ width:100%; margin-top:8px; padding:10px; border:none; border-radius:8px; background:var(--vert); color:#fff; font-weight:600; cursor:pointer; }
 
@@ -532,13 +551,45 @@ window.onerror = function(msg, url, line, col, err) {
   #nm-liste .nm-item small{ display:block; color:var(--gris); font-size:.8rem; margin-top:2px; }
   .btn-chat-carte.chauffeur{ border-color:#5a3d8a; background:#f3eefb; color:#5a3d8a; }
   .btn-chat-carte{ display:block; width:100%; margin-top:8px; padding:10px; border-radius:9px; border:1px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:800; cursor:pointer; }
-  #feuilles-sous-onglets{ display:flex; gap:8px; margin-bottom:14px; }
+  #feuilles-sous-onglets{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
   #feuilles-sous-onglets button{ width:auto; padding:9px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
   #feuilles-sous-onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   #feuilles-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:16px; }
   #feuilles-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
   #feuilles-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; font-size:.85rem; }
   #vue-historique-fa{ display:none; }
+  /* ---- Pourboires (hors recette) ---- */
+  #vue-pourboires-fa{ display:none; }
+  .pb-periodes-fa{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+  .pb-periodes-fa button{ padding:10px 4px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; font-weight:700; cursor:pointer; }
+  .pb-periodes-fa button.actif{ background:#8a5a00; border-color:#8a5a00; color:#fff; }
+  .pb-nav-fa{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .pb-nav-fa button{ width:auto; flex:0 0 auto; padding:10px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:1rem; cursor:pointer; }
+  #pb-libelle{ flex:1; min-width:0; text-align:center; font-weight:800; font-size:.95rem; }
+  .pb-dates-fa{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .pb-dates-fa label{ display:flex; flex-direction:column; gap:3px; font-size:.78rem; color:var(--gris); min-width:0; }
+  .pb-dates-fa input{ width:100%; min-width:0; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.9rem; }
+  #pb-chauffeur{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; color:var(--blanc); font-size:.95rem; margin-bottom:10px; }
+  #pb-imprimer{ display:block; width:100%; padding:11px; border-radius:8px; border:1px solid var(--bleu); background:transparent; color:var(--bleu); font-weight:700; font-size:.9rem; margin-bottom:12px; cursor:pointer; }
+  .pb-total-general-fa{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:12px 14px; border-radius:10px; background:#fff8e1; border:1px solid #e8c547; color:#5c4500; margin-bottom:12px; }
+  .pb-total-general-fa b{ font-size:1.25rem; white-space:nowrap; }
+  .pb-total-general-fa small{ display:block; font-weight:600; font-size:.78rem; }
+  .pb-carte-fa{ border:1px solid #e4e4e1; border-radius:10px; padding:12px; margin-bottom:10px; background:#fff; }
+  .pb-carte-fa .pb-tete{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .pb-carte-fa .pb-tete b{ font-size:1rem; min-width:0; overflow-wrap:anywhere; }
+  .pb-carte-fa .pb-montant{ font-size:1.1rem; font-weight:800; color:#8a5a00; white-space:nowrap; }
+  .pb-carte-fa .pb-sous{ font-size:.8rem; color:var(--gris); margin-top:2px; }
+  .pb-jours-fa{ width:100%; border-collapse:collapse; margin-top:8px; font-size:.85rem; }
+  .pb-jours-fa td{ padding:6px 4px; border-top:1px solid #eeeeec; }
+  .pb-jours-fa td:nth-child(2){ color:var(--gris); text-align:center; }
+  .pb-jours-fa td:last-child{ text-align:right; font-weight:700; white-space:nowrap; }
+  .pb-vide-fa{ color:var(--gris); text-align:center; padding:20px 0; }
+  .totaux-recette-fa{ display:flex; flex-wrap:wrap; gap:4px 14px; font-weight:700; font-size:.85rem; margin-bottom:8px; }
+  .totaux-recette-fa .tr-recette{ color:var(--vert); }
+  .totaux-recette-fa .tr-pourboires{ color:#8a5a00; }
+  .wrap-pourboire-fa label .pb-sous-fa{ font-weight:600; font-size:.75rem; color:var(--gris); }
+  .wrap-pourboire-fa input{ border-color:#c89b00 !important; }
+  .pb-erreur-fa{ margin-top:4px; font-size:.8rem; color:#8a1f1f; font-weight:600; }
   #vue-historique-fa select{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.95rem; margin-bottom:14px; }
   .ligne-historique-fa{ display:flex; justify-content:space-between; align-items:center; background:var(--noir-2); border-radius:10px; padding:12px 14px; margin-bottom:8px; border-left:4px solid var(--gris); cursor:pointer; }
   .ligne-historique-fa.signee-fa{ border-left-color:var(--vert); }
@@ -910,6 +961,7 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="feuilles-sous-onglets">
     <button class="actif" id="btn-vue-jour-fa">📅 Vue du jour</button>
     <button id="btn-vue-historique-fa">📁 Historique par chauffeur</button>
+    <button id="btn-vue-pourboires-fa">💶 Pourboires</button>
   </div>
 
   <div id="vue-jour-fa">
@@ -928,6 +980,27 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="vue-historique-fa">
     <select id="select-chauffeur-historique"></select>
     <div id="liste-historique-fa"></div>
+  </div>
+
+  <div id="vue-pourboires-fa">
+    <div class="pb-periodes-fa" role="group" aria-label="Période">
+      <button type="button" data-periode="jour" class="actif">Jour</button>
+      <button type="button" data-periode="semaine">Semaine</button>
+      <button type="button" data-periode="mois">Mois</button>
+      <button type="button" data-periode="perso">📆 Dates</button>
+    </div>
+    <div class="pb-nav-fa">
+      <button type="button" id="pb-prev" aria-label="Période précédente">‹</button>
+      <div id="pb-libelle"></div>
+      <button type="button" id="pb-next" aria-label="Période suivante">›</button>
+    </div>
+    <div class="pb-dates-fa">
+      <label>Du <input type="date" id="pb-debut"></label>
+      <label>au <input type="date" id="pb-fin"></label>
+    </div>
+    <select id="pb-chauffeur"><option value="">👥 Tous les chauffeurs</option></select>
+    <button type="button" id="pb-imprimer">🖨️ Imprimer / PDF</button>
+    <div id="pb-resultat"></div>
   </div>
 </section>
 
@@ -1737,6 +1810,7 @@ function rafraichirFeuillesSiPossible(force = false) {
   if (document.hidden) return;
   if (!force && adminOccupe()) { rafraichissementsEnAttente.set("feuilles", () => rafraichirFeuillesSiPossible(true)); afficherPastilleNouveautes(); return; }
   if (document.getElementById("vue-historique-fa").style.display === "block") return;
+  if (document.getElementById("vue-pourboires-fa").style.display === "block") return;
   if (document.querySelector(".btn-reorg-fa.actif")) return;              // réorganisation à la main en cours
   if (saisieEnCoursFeuilles()) return;                                    // l'admin écrit dans un champ
   if (Date.now() - derniereActiviteFeuilles < 4000) return;               // saisie qui vient d'être faite (enregistrement)
@@ -2873,7 +2947,7 @@ function afficherDemandesClients() {
       <div class="rd-quand">🕐 ${esc(quand)} · 👥 ${c.passagers || 1}${c.bagages ? " · 🧳 " + c.bagages : ""}${c.aller_retour ? " · 🔁 aller-retour" : ""}</div>
       <div class="rd-adr">🟢 ${esc(c.adresse_depart || "?")}</div>
       <div class="rd-adr">🔴 ${esc(c.adresse_arrivee || "?")}${c.distance_km ? ` <span class="rd-km">· ${String(c.distance_km).replace(".", ",")} km</span>` : ""}</div>
-      ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} € · ${c.paiement_exige === "total" ? "totalité demandée" : c.paiement_exige === "choix" ? "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " € ou totalité, au choix du client" : "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " €"}</div>` : ""}
+      ${c.prix ? `<div class="rd-prix">💶 Prix envoyé : ${Number(c.prix).toFixed(2)} € · ${c.paiement_exige === "voiture" ? "🤝 paiement dans la voiture" : c.paiement_exige === "total" ? "totalité demandée" : c.paiement_exige === "choix" ? "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " € ou totalité, au choix du client" : "acompte " + Number(c.acompte_montant || 0).toFixed(2) + " €"}</div>` : ""}
       ${c.notes ? `<div class="rd-note">📝 ${esc(c.notes)}</div>` : ""}
       ${demandeCashEnAttente(c) ? `<div style="margin-top:6px; padding:8px 10px; border-radius:10px; background:#1f8a4c; color:#fff; font-weight:900;">💵 Client demande à payer CASH — ouvre la course pour répondre</div>` : ""}`;
     const btnGrand = carte.querySelector(".btn-carte-grand");
@@ -4367,6 +4441,19 @@ function quandCourseTexte(dateHeure) {
   const d = new Date(dateHeure);
   return d.toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" }) + " à " + d.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
 }
+// Prix d'une course modifié (ex. 30 → 28) : la base recalcule la ligne de la feuille, la recette et les
+// pourboires (triggers) ; on recharge les feuilles / la caisse affichées pour montrer les nouveaux totaux.
+function rafraichirTotauxApresModifPrix() {
+  try {
+    if (typeof derniereActiviteFeuilles !== "undefined") derniereActiviteFeuilles = 0;
+    if (document.getElementById("section-feuilles")?.classList.contains("visible")) {
+      if (document.getElementById("vue-pourboires-fa").style.display === "block") chargerRapportPourboires();
+      else if (document.getElementById("vue-historique-fa").style.display === "block") chargerHistoriqueFeuillesChauffeur();
+      else chargerFeuillesAdmin(true);
+    }
+    if (document.getElementById("section-caisse")?.classList.contains("visible")) chargerCaisse();
+  } catch (e) { console.error("Rafraîchissement des totaux :", e); }
+}
 const eurosFr = (n) => (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace(".", ",") + " €";
 async function adminMonId() {
   if (!chatMonId) { const { data: { user } } = await supabase.auth.getUser(); chatMonId = user ? user.id : null; }
@@ -4498,6 +4585,87 @@ function ouvrirReponseCashAdmin(course, decision) {
   document.body.appendChild(fond);
   setTimeout(() => fond.querySelector(".rc-texte").focus(), 50);
 }
+// ---- Règle de paiement d'une course (🤝 voiture · 💳 acompte · 🔒 totalité · 🔀 choix) ----
+const REGLES_PAIEMENT_ADMIN = {
+  voiture: { titre: "🤝 Paiement dans la voiture", sous: "Client de confiance · rien à payer maintenant", coul: "#1f8a4c" },
+  acompte: { titre: "💳 Acompte 30 %", sous: "Acompte dans l'app · le reste dans la voiture", coul: "#1d4f86" },
+  total: { titre: "🔒 Totalité à l'avance", sous: "Tout est payé dans l'app avant la course", coul: "#b3141b" },
+  choix: { titre: "🔀 Le client choisit", sous: "Acompte 30 % ou totalité", coul: "#555" }
+};
+function regleActuelleAdmin(course) {
+  if (course.sans_acompte_autorise && course.paiement_exige === "voiture") return "voiture";
+  if (course.sans_acompte_autorise) return "cash";
+  return ["acompte", "total", "choix"].includes(course.paiement_exige) ? course.paiement_exige : "choix";
+}
+// Même texte par défaut que la fonction SQL admin_definir_paiement
+function texteDefautRegleAdmin(course, regle) {
+  const total = Math.round(((Number(course.prix) || 0) + (Number(course.surprime) || 0)) * 100) / 100;
+  const ac = Math.round(total * 0.30 * 100) / 100;
+  const f = (n) => (Math.round(n * 100) / 100).toFixed(2).replace(".", ",");
+  if (regle === "voiture") return "Bonne nouvelle : vous n'avez rien à payer maintenant. Vous réglerez directement dans la voiture, avec le moyen de paiement de votre choix.";
+  if (regle === "acompte") return `Pour confirmer votre réservation, nous vous demandons un acompte de 30 % (${f(ac)} €), à payer dans l'application (Bancontact, virement par QR code…). Le reste (${f(total - ac)} €) se règle directement dans la voiture.`;
+  if (regle === "total") return `Pour confirmer votre réservation, nous vous demandons de régler la totalité (${f(total)} €) à l'avance dans l'application (Bancontact, virement par QR code…). Vous ne pouvez pas payer la totalité maintenant ? Contactez la centrale : par message dans l'application, sur WhatsApp au 0495 35 35 94 ou par e-mail à infotaxiwal@gmail.com.`;
+  return `Vous pouvez choisir de payer dans l'application un acompte de 30 % (${f(ac)} €) ou la totalité (${f(total)} €).`;
+}
+// Fenêtre (dans la page) : relire / modifier le message puis changer la règle de paiement
+function ouvrirRegleAdmin(course, regle) {
+  const r = REGLES_PAIEMENT_ADMIN[regle];
+  const fond = document.createElement("div");
+  fond.className = "modale-regle-paiement";
+  fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:7000; display:flex; align-items:flex-end; justify-content:center;";
+  fond.innerHTML = `<div style="background:#fff; color:#111; width:100%; max-width:560px; border-radius:16px 16px 0 0; padding:18px; box-sizing:border-box; max-height:92vh; overflow-y:auto;">
+    <div style="font-size:1.15rem; font-weight:900; color:${r.coul};">${esc(r.titre)}</div>
+    <div style="font-size:.85rem; color:#555; margin:4px 0 10px;">${esc(course.client_nom || "Client")} · ${esc(quandCourseTexte(course.date_heure))} · ${esc(eurosFr((Number(course.prix) || 0) + (Number(course.surprime) || 0)))}</div>
+    <label style="font-weight:700; font-size:.9rem;">Message envoyé au client (chat + e-mail, tu peux le modifier) :</label>
+    <textarea class="rg-texte" rows="6" style="width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; font-family:inherit;"></textarea>
+    <div style="font-size:.82rem; color:${r.coul}; margin-top:6px;">${regle === "voiture" ? "La course est confirmée sans paiement en ligne : tu peux l'attribuer à un chauffeur. Le chauffeur encaisse à la fin, avec le moyen de paiement choisi par le client." : "Le client devra payer dans l'app avant que la course puisse être attribuée à un chauffeur."}</div>
+    <div class="rg-erreur" style="display:none; color:#b3141b; font-weight:700; margin-top:8px;"></div>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button type="button" class="rg-envoyer" style="flex:2; padding:15px; border:none; border-radius:10px; background:${r.coul}; color:#fff; font-weight:900; font-size:1.02rem;">📨 Appliquer et prévenir le client</button>
+      <button type="button" class="rg-annuler" style="flex:1; padding:15px; border-radius:10px; border:1px solid #cfcfcd; background:#fff; color:#333; font-weight:700;">Annuler</button>
+    </div></div>`;
+  fond.querySelector(".rg-texte").value = texteDefautRegleAdmin(course, regle);
+  const fermer = () => fond.remove();
+  fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
+  fond.querySelector(".rg-annuler").addEventListener("click", fermer);
+  fond.querySelector(".rg-envoyer").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true; b.textContent = "Envoi…";
+    const { error } = await supabase.rpc("admin_definir_paiement", { p_course: course.id, p_regle: regle, p_prix: null, p_message: fond.querySelector(".rg-texte").value });
+    if (error) {
+      b.disabled = false; b.textContent = "📨 Appliquer et prévenir le client";
+      const z = fond.querySelector(".rg-erreur"); z.textContent = "Erreur : " + error.message; z.style.display = "block";
+      return;
+    }
+    fermer();
+    toastAdmin(regle === "voiture" ? "🤝 Paiement dans la voiture : course à attribuer à un chauffeur." : "📨 Nouvelle règle de paiement envoyée au client.", r.coul);
+    chargerCoursesAdmin();
+  });
+  document.body.appendChild(fond);
+  setTimeout(() => fond.querySelector(".rg-texte").focus(), 50);
+}
+// Bloc « Règle de paiement » sur une course dont le prix est déjà envoyé : changer en 1 clic
+function blocReglePaiementAdmin(course) {
+  if (course.origine !== "client" || !course.client_id || !(Number(course.prix) > 0) || course.acompte_paye) return null;
+  if (!["prix_envoye", "attente_acompte", "acompte_declare", "confirmee", "assignee", "en_cours"].includes(course.statut)) return null;
+  if (demandeCashEnAttente(course)) return null; // la demande cash a déjà ses 3 gros boutons
+  const actuelle = regleActuelleAdmin(course);
+  const attribuee = ["assignee", "en_cours"].includes(course.statut);
+  const bloc = document.createElement("div");
+  bloc.className = "bloc-regle-actuelle";
+  const libActuelle = actuelle === "cash" ? "✅ Cash accepté (demande du client)" : REGLES_PAIEMENT_ADMIN[actuelle].titre;
+  const autres = ["voiture", "acompte", "total"].filter(k => k !== actuelle && (k === "voiture" || !attribuee));
+  bloc.innerHTML = `<div class="bra-titre">Règle de paiement : <span style="color:${actuelle === "cash" ? "#1f6b3f" : REGLES_PAIEMENT_ADMIN[actuelle].coul};">${esc(libActuelle)}</span></div>
+    ${autres.length ? `<div style="font-size:.8rem; color:#555; margin-bottom:6px;">Changer pour :</div>` : ""}
+    ${autres.map(k => {
+      const tot = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+      const extra = k === "acompte" ? " · " + eurosFr(Math.round(tot * 0.30 * 100) / 100) : k === "total" ? " · " + eurosFr(tot) : "";
+      return `<button type="button" class="btn-regle ${k}" data-regle="${k}">${esc(REGLES_PAIEMENT_ADMIN[k].titre + extra)}<small>${esc(REGLES_PAIEMENT_ADMIN[k].sous)}</small></button>`;
+    }).join("")}
+    ${attribuee && actuelle !== "voiture" ? `<div style="font-size:.78rem; color:#777;">Course déjà attribuée : on ne peut plus exiger de paiement à l'avance.</div>` : ""}`;
+  bloc.querySelectorAll("button[data-regle]").forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirRegleAdmin(course, b.dataset.regle); }));
+  return bloc;
+}
 // Bloc « 💵 Client demande à payer CASH » + 3 gros boutons (ou rappel de la décision prise)
 function blocDemandeCashAdmin(course) {
   if (!course.demande_cash_at) return null;
@@ -4509,16 +4677,17 @@ function blocDemandeCashAdmin(course) {
     bloc.innerHTML = `<div style="font-weight:900; font-size:1.05rem; color:#14532d;">💵 Client demande à payer CASH</div>
       <div style="font-size:.84rem; color:#333; margin:2px 0 10px;">Demande du ${esc(quand)}${estCourseDeNuit(course.date_heure) ? " · 🌙 course de nuit" : ""}. Choisis ta réponse :</div>
       <div style="display:flex; flex-direction:column; gap:8px;">
-        <button type="button" data-cash="cash" style="padding:15px; border:none; border-radius:10px; background:#1f8a4c; color:#fff; font-weight:900; font-size:1.02rem;">✅ Cash accepté</button>
+        <button type="button" data-cash="voiture" style="padding:15px; border:none; border-radius:10px; background:#1f8a4c; color:#fff; font-weight:900; font-size:1.02rem;">🤝 Paiement dans la voiture (moyen au choix)</button>
+        <button type="button" data-cash="cash" style="padding:15px; border:none; border-radius:10px; background:#2f6f4a; color:#fff; font-weight:900; font-size:1.02rem;">✅ Cash accepté</button>
         <button type="button" data-cash="acompte" style="padding:15px; border:none; border-radius:10px; background:#1d4f86; color:#fff; font-weight:900; font-size:1.02rem;">💳 Acompte 30 % demandé</button>
         <button type="button" data-cash="total" style="padding:15px; border:none; border-radius:10px; background:#b3141b; color:#fff; font-weight:900; font-size:1.02rem;">🔒 Totalité à l'avance</button>
       </div>`;
-    bloc.querySelectorAll("button[data-cash]").forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirReponseCashAdmin(course, b.dataset.cash); }));
+    bloc.querySelectorAll("button[data-cash]").forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); if (b.dataset.cash === "voiture") ouvrirRegleAdmin(course, "voiture"); else ouvrirReponseCashAdmin(course, b.dataset.cash); }));
   } else {
-    const dec = course.reponse_admin_paiement === "acceptee" ? "cash" : (course.paiement_exige === "acompte" ? "acompte" : "total");
-    const lib = { cash: "✅ Tu as ACCEPTÉ le cash — le chauffeur encaisse la totalité", acompte: "💳 Tu as demandé un acompte de 30 % (" + eurosFr(course.acompte_montant) + ")", total: "🔒 Tu as demandé la totalité à l'avance" }[dec];
+    const dec = course.paiement_exige === "voiture" && course.sans_acompte_autorise ? "voiture" : course.reponse_admin_paiement === "acceptee" ? "cash" : (course.paiement_exige === "acompte" ? "acompte" : "total");
+    const lib = { voiture: "🤝 Tu as choisi : paiement dans la voiture (rien à payer maintenant)", cash: "✅ Tu as ACCEPTÉ le cash — le chauffeur encaisse la totalité", acompte: "💳 Tu as demandé un acompte de 30 % (" + eurosFr(course.acompte_montant) + ")", total: "🔒 Tu as demandé la totalité à l'avance" }[dec];
     bloc.style.cssText = "background:#f4f4f2; border-radius:10px; padding:10px 12px; margin:8px 0; font-size:.86rem;";
-    bloc.innerHTML = `<div><b>💵 Le client avait demandé à payer cash</b> (${esc(quand)})</div><div style="margin-top:4px; font-weight:800; color:${dec === "cash" ? "#1f6b3f" : "#1d4f86"};">${esc(lib)} — réponse envoyée.</div>`;
+    bloc.innerHTML = `<div><b>💵 Le client avait demandé à payer cash</b> (${esc(quand)})</div><div style="margin-top:4px; font-weight:800; color:${dec === "cash" || dec === "voiture" ? "#1f6b3f" : "#1d4f86"};">${esc(lib)} — réponse envoyée.</div>`;
   }
   return bloc;
 }
@@ -4683,6 +4852,7 @@ function construireCarteAdmin(course) {
     if (_inf) { txt = _inf.tout ? "✅ PAYÉ EN TOTALITÉ PAR BANCONTACT (" + eurosFr(_inf.enLigne) + ")" : "✅ ACOMPTE PAYÉ PAR BANCONTACT (" + eurosFr(_inf.enLigne) + ") · reste " + eurosFr(_inf.reste); fond = "#e7f5ec"; coul = "#1f6b3f"; }
     else if (course.acompte_paye) { txt = course.paiement_choisi === "total" ? "✅ PAYÉ EN TOTALITÉ" : "✅ ACOMPTE PAYÉ (" + Number(course.acompte_montant || 0).toFixed(2) + " €)"; fond = "#e7f5ec"; coul = "#1f6b3f"; }
     else if (course.statut === "acompte_declare") { txt = "⏳ Le client DIT avoir payé — vérifie ton compte puis confirme"; fond = "#fdf1dc"; coul = "#8a5a00"; }
+    else if (course.sans_acompte_autorise && course.paiement_exige === "voiture") { txt = "🤝 PAIEMENT DANS LA VOITURE (client de confiance) — rien à payer à l'avance" + (course.statut === "prix_envoye" ? " · le client doit encore accepter le prix (tu peux déjà attribuer un chauffeur)" : " · à attribuer à un chauffeur"); fond = "#e9f7ef"; coul = "#1f6b3f"; }
     else if (course.sans_acompte_autorise) { txt = "🤝 Course autorisée SANS acompte (décision de la centrale)"; fond = "#eef4fb"; coul = "#1d4f86"; }
     else if (course.statut === "prix_envoye") { txt = "💶 Prix envoyé — le client n'a pas encore répondu"; fond = "#f4f4f2"; coul = "#555"; }
     else { txt = "❌ ACOMPTE NON PAYÉ — ne pas attribuer de chauffeur"; fond = "#fdecee"; coul = "#b3141b"; }
@@ -4693,6 +4863,8 @@ function construireCarteAdmin(course) {
       if (nomPref) etat.innerHTML += `<div style="font-weight:600; font-size:.8rem; margin-top:4px;">Chauffeur choisi par le client : ${esc(nomPref)} (à attribuer après paiement)</div>`;
     }
     corps.insertBefore(etat, corps.firstChild);
+    const blocRegle = blocReglePaiementAdmin(course);
+    if (blocRegle) etat.after(blocRegle);
   }
   if (course.origine === "client" && (course.message_client_paiement || course.paiement_choisi === "total")) {
     const info = document.createElement("div");
@@ -4800,36 +4972,58 @@ function construireCarteAdmin(course) {
   }
 
   if (course.origine === "client" && course.statut === "en_attente" && course.client_id) {
+    // Envoi du prix + règle de paiement en UN clic (3 gros boutons)
     const blocPrix = document.createElement("div");
-    blocPrix.className = "bloc-prix-admin";
+    blocPrix.className = "bloc-regle-prix";
+    const surpP = Number(course.surprime) || 0;
+    const nuitP = estCourseDeNuit(course.date_heure);
     blocPrix.innerHTML = `
-      <input type="number" step="0.5" placeholder="Prix à proposer (€)">
-      <select class="paiement-exige" style="margin-top:6px;">
-        <option value="choix" selected>🔀 Le client choisit (acompte ou totalité)</option>
-        <option value="acompte">💶 Acompte obligatoire (30 %)</option>
-        <option value="total">💳 Totalité obligatoire à l'avance</option>
-      </select>
-      <div class="note-nuit-paiement" style="display:none; margin-top:6px; font-size:.82rem; color:#4338ca; background:#eef2ff; border-radius:8px; padding:6px 8px;">🌙 Course de nuit/tôt le matin : paiement intégral exigé (conditions)</div>
-      <button type="button">Envoyer le prix</button>
-    `;
-    champPrixCible = blocPrix.querySelector("input");
-    if (estCourseDeNuit(course.date_heure)) {
-      blocPrix.querySelector(".paiement-exige").value = "total";
-      blocPrix.querySelector(".note-nuit-paiement").style.display = "block";
-    }
-    blocPrix.querySelector("button").addEventListener("click", async () => {
-      const prix = parseFloat(blocPrix.querySelector("input").value);
-      if (!prix || prix <= 0) { alert("Indique un prix valide."); return; }
-      const exige = blocPrix.querySelector(".paiement-exige").value;
-      if (!confirm(`Envoyer le prix de ${prix.toFixed(2).replace(".", ",")} € au client ?`)) return;
-      const acompte = Math.round(prix * 0.3 * 100) / 100;
-      await supabase.from("courses").update({
-        prix, acompte_montant: acompte, statut: "prix_envoye", paiement_exige: exige,
-        paiement_choisi: exige === "total" ? "total" : "acompte"
-      }).eq("id", course.id);
-      notifierClientParEmail(course.id, "prix_envoye");
+      <label class="brp-lbl">💶 Prix à proposer (€)${surpP ? " — hors surprime" : ""}</label>
+      <input type="number" step="0.5" min="0" inputmode="decimal" class="brp-prix" placeholder="ex : 60">
+      <div class="brp-total"></div>
+      ${nuitP ? `<div class="note-nuit-paiement" style="margin-top:6px; font-size:.82rem; color:#4338ca; background:#eef2ff; border-radius:8px; padding:6px 8px;">🌙 Course de nuit/tôt le matin : les conditions prévoient le paiement intégral (à toi de décider).</div>` : ""}
+      <div class="brp-titre">Envoyer le prix avec :</div>
+      <button type="button" class="btn-regle voiture" data-regle="voiture">🤝 Paiement dans la voiture<small>Client de confiance · rien à payer maintenant</small></button>
+      <button type="button" class="btn-regle acompte" data-regle="acompte">💳 Acompte 30 %<span class="brp-ac"></span><small>Le client paie l'acompte dans l'app · le reste dans la voiture</small></button>
+      <button type="button" class="btn-regle total${nuitP ? " conseille" : ""}" data-regle="total">🔒 Totalité à l'avance<span class="brp-tot"></span><small>Le client paie tout dans l'app avant la course</small></button>
+      <button type="button" class="btn-regle-petit" data-regle="choix">🔀 Laisser le client choisir (acompte ou totalité)</button>
+      <div class="brp-erreur"></div>`;
+    const champ = blocPrix.querySelector(".brp-prix");
+    champPrixCible = champ;
+    const lirePrix = () => parseFloat(String(champ.value || "").replace(",", "."));
+    const majMontants = () => {
+      const p = lirePrix();
+      const ok = p > 0;
+      const tot = ok ? Math.round((p + surpP) * 100) / 100 : 0;
+      const ac = ok ? Math.round(tot * 0.30 * 100) / 100 : 0;
+      blocPrix.querySelector(".brp-ac").textContent = ok ? " · " + eurosFr(ac) : "";
+      blocPrix.querySelector(".brp-tot").textContent = ok ? " · " + eurosFr(tot) : "";
+      blocPrix.querySelector(".brp-total").textContent = ok && surpP ? `+ surprime ${eurosFr(surpP)} = total ${eurosFr(tot)}` : "";
+    };
+    champ.addEventListener("input", majMontants);
+    champ.addEventListener("change", majMontants);
+    const erreurP = (txt) => { const z = blocPrix.querySelector(".brp-erreur"); z.textContent = txt || ""; z.style.display = txt ? "block" : "none"; };
+    champ.addEventListener("input", () => erreurP(""));
+    blocPrix.querySelectorAll("button[data-regle]").forEach(b => b.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const prix = lirePrix();
+      if (!(prix > 0)) { erreurP("Indique d'abord un prix valide."); champ.focus(); return; }
+      erreurP("");
+      const boutons = blocPrix.querySelectorAll("button[data-regle]");
+      boutons.forEach(x => { x.disabled = true; });
+      const texteAvant = b.innerHTML;
+      b.textContent = "Envoi…";
+      const { error } = await supabase.rpc("admin_definir_paiement", { p_course: course.id, p_regle: b.dataset.regle, p_prix: prix, p_message: null });
+      if (error) {
+        boutons.forEach(x => { x.disabled = false; });
+        b.innerHTML = texteAvant; majMontants();
+        erreurP("Erreur : " + error.message);
+        return;
+      }
+      toastAdmin({ voiture: "🤝 Prix envoyé · paiement dans la voiture", acompte: "💳 Prix envoyé · acompte 30 % demandé", total: "🔒 Prix envoyé · totalité à l'avance", choix: "🔀 Prix envoyé · le client choisit" }[b.dataset.regle],
+        { voiture: "#1f8a4c", acompte: "#1d4f86", total: "#b3141b", choix: "#555" }[b.dataset.regle]);
       chargerCoursesAdmin();
-    });
+    }));
     corps.appendChild(blocPrix);
   }
 
@@ -4977,6 +5171,7 @@ function construireCarteAdmin(course) {
           `💶 Course ${num} : nouveau prix ${eurosFr(r.total)}. ${dejaPaye > 0 ? `Acompte déjà payé ${eurosFr(dejaPaye)}.` : "Rien n'a encore été payé."} ➡️ À encaisser auprès du client : ${resteTxt}${modeReste === "virement" && r.reste > 0 ? " (le client a été invité à payer ce reste par virement : vérifie avec la centrale avant d'encaisser)" : ""}.`);
       }
       chargerCoursesAdmin();
+      rafraichirTotauxApresModifPrix();
     });
     corps.appendChild(btnPrix);
     corps.appendChild(blocP);
@@ -5287,6 +5482,7 @@ function construireCarteAdmin(course) {
     formModif.style.display = "none";
     toastAdmin(chauffeurAPrevenir ? `✅ Course modifiée — ${nomCh} prévenu` : "✅ Course modifiée");
     chargerCoursesAdmin();
+    if ("prix" in maj || "surprime" in maj) rafraichirTotauxApresModifPrix();
   });
   formModif.querySelector(".btn-supprimer-course").addEventListener("click", () => supprimerCourse(course));
   corps.appendChild(btnModifier);
@@ -6261,7 +6457,7 @@ async function chargerCaisse() {
   // Feuilles de route de cette date, pour afficher la recette au taximètre (index de départ)
   // à côté de la caisse (encaissements par course) — les deux doivent normalement concorder.
   const { data: feuillesJour } = await supabase
-    .from("feuilles_route").select("chauffeur_id, recettes_debut, recettes_fin, verrouillee")
+    .from("feuilles_route").select("chauffeur_id, recettes_debut, recettes_fin, total_pourboires, verrouillee")
     .eq("date_service", dateChoisie);
   const feuillesParChauffeur = {};
   (feuillesJour || []).forEach(f => {
@@ -6273,7 +6469,7 @@ async function chargerCaisse() {
   const finJour = dateChoisie + "T23:59:59";
   const { data: courses } = await supabase
     .from("courses")
-    .select("chauffeur_id, prix, mode_paiement, statut, date_heure")
+    .select("chauffeur_id, prix, pourboire, mode_paiement, statut, date_heure")
     .eq("statut", "terminee")
     .gte("date_heure", debutJour)
     .lte("date_heure", finJour);
@@ -6313,6 +6509,10 @@ async function chargerCaisse() {
     const totalEncaisseApp = totalCash + somme(coursesCarte) + somme(coursesFacture) + somme(coursesCheque) + somme(coursesQr) + totalUber + totalUberCash;
     const recetteHorsUber = totalCash + somme(coursesCarte) + somme(coursesFacture) + somme(coursesCheque) + somme(coursesQr);
     const ecart = recetteTaximetre !== null ? (recetteTaximetre - totalEncaisseApp) : null;
+    // Pourboires : toujours à part, jamais dans la recette (feuilles de route, sinon courses de l'app)
+    const pourboiresJour = feuillesChauffeur.length
+      ? feuillesChauffeur.reduce((s, f) => s + (Number(f.total_pourboires) > 0 ? Number(f.total_pourboires) : 0), 0)
+      : coursesChauffeur.reduce((s, c) => s + (Number(c.pourboire) > 0 ? Number(c.pourboire) : 0), 0);
 
     const div = document.createElement("div");
     div.className = "caisse-chauffeur";
@@ -6327,6 +6527,7 @@ async function chargerCaisse() {
       <div class="caisse-ligne"><span>🚕 Uber (encaissé par Uber, hors caisse) — ${coursesUber.length} course(s)</span><b>${totalUber.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>🚕💵 Uber payé en cash (dans la caisse, hors recette) — ${coursesUberCash.length} course(s)</span><b>${totalUberCash.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>💰 Recette (hors Uber)</span><b>${recetteHorsUber.toFixed(2)} €</b></div>
+      <div class="caisse-ligne caisse-pourboires"><span>💶 Pourboires (hors recette)</span><b style="color:#8a5a00;">${pourboiresJour.toFixed(2)} €</b></div>
       <div class="caisse-total"><span>Caisse actuelle (espèces)</span><span>${caisseActuelle.toFixed(2)} €</span></div>
       ${recetteTaximetre !== null ? `
       <div class="caisse-ligne" style="margin-top:8px; border-top:2px solid #dcdcda; padding-top:10px;"><span>📟 Recette taximètre (feuille de route)</span><b>${recetteTaximetre.toFixed(2)} €</b></div>
@@ -6414,19 +6615,25 @@ document.getElementById("fa-aujourdhui").addEventListener("click", () => {
 });
 document.getElementById("fa-date").addEventListener("change", () => chargerFeuillesAdmin());
 
+// Sous-onglets des feuilles de route : vue du jour / historique / pourboires
+function montrerSousVueFA(vue) {
+  [["jour", "btn-vue-jour-fa", "vue-jour-fa"], ["historique", "btn-vue-historique-fa", "vue-historique-fa"], ["pourboires", "btn-vue-pourboires-fa", "vue-pourboires-fa"]]
+    .forEach(([v, b, z]) => {
+      document.getElementById(b).classList.toggle("actif", v === vue);
+      document.getElementById(z).style.display = v === vue ? "block" : "none";
+    });
+}
 document.getElementById("btn-vue-jour-fa").addEventListener("click", () => {
-  document.getElementById("btn-vue-jour-fa").classList.add("actif");
-  document.getElementById("btn-vue-historique-fa").classList.remove("actif");
-  document.getElementById("vue-jour-fa").style.display = "block";
-  document.getElementById("vue-historique-fa").style.display = "none";
+  montrerSousVueFA("jour");
   chargerFeuillesAdmin();
 });
 document.getElementById("btn-vue-historique-fa").addEventListener("click", () => {
-  document.getElementById("btn-vue-historique-fa").classList.add("actif");
-  document.getElementById("btn-vue-jour-fa").classList.remove("actif");
-  document.getElementById("vue-jour-fa").style.display = "none";
-  document.getElementById("vue-historique-fa").style.display = "block";
+  montrerSousVueFA("historique");
   chargerHistoriqueFeuillesChauffeur();
+});
+document.getElementById("btn-vue-pourboires-fa").addEventListener("click", () => {
+  montrerSousVueFA("pourboires");
+  chargerRapportPourboires();
 });
 document.getElementById("select-chauffeur-historique").addEventListener("change", chargerHistoriqueFeuillesChauffeur);
 
@@ -6464,12 +6671,13 @@ async function chargerHistoriqueFeuillesChauffeur() {
     const recettes = (feuille.recettes_fin != null && feuille.recettes_debut != null)
       ? (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " € de recettes"
       : "recettes non renseignées";
+    const pbHisto = Number(feuille.total_pourboires) > 0 ? Number(feuille.total_pourboires) : 0;
     const div = document.createElement("div");
     div.className = "ligne-historique-fa" + (feuille.verrouillee ? " signee-fa" : "");
     div.innerHTML = `
       <div>
         <div class="lh-date">${esc(dateLisible)}${nbAnomalies ? ` <span class="badge-anomalie-fa">⚠️ À vérifier (${nbAnomalies})</span>` : ""}</div>
-        <div class="lh-sous">${feuille.verrouillee ? "🔒 Clôturée" : "En cours"} · ${recettes}</div>
+        <div class="lh-sous">${feuille.verrouillee ? "🔒 Clôturée" : "En cours"} · ${recettes} · <span class="lh-pourboires" style="color:#8a5a00; font-weight:700;">💶 Pourboires : ${esc(eurosFr(pbHisto))} (hors recette)</span></div>
       </div>
       <div style="display:flex; gap:6px; flex-shrink:0;">
         <button type="button" class="btn-ouvrir-jour" style="padding:7px 10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; font-size:.78rem;">✏️ Ouvrir</button>
@@ -6500,6 +6708,243 @@ async function ouvrirApercuHistoriqueFeuille(feuille, chauffeur) {
     .order("n_ordre", { ascending: true });
   if (error) { if (fenetre) { try { fenetre.close(); } catch (e) {} } alert("Erreur : " + error.message); return; }
   imprimerFeuilleDeRoute(feuille, lignes || [], chauffeur || { nom: "" }, feuille.date_service, fenetre);
+}
+
+// ================== 💶 RAPPORT DES POURBOIRES (hors recette) ==================
+// Données : rpc pourboires_par_chauffeur(p_debut, p_fin) → (chauffeur_id, nom, jour, total_pourboires, nb_courses_avec_pourboire)
+const etatPb = { periode: "jour", ref: dateLocaleISO(), debut: null, fin: null, lignes: [], chargement: 0 };
+function isoDecale(iso, jours) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  dt.setDate(dt.getDate() + jours);
+  return dateLocaleISO(dt);
+}
+function bornesPeriodePb() {
+  const ref = etatPb.ref;
+  const [y, m, d] = ref.split("-").map(Number);
+  if (etatPb.periode === "semaine") {
+    const jourSem = (new Date(y, m - 1, d, 12).getDay() + 6) % 7;   // lundi = 0
+    const debut = isoDecale(ref, -jourSem);
+    return { debut, fin: isoDecale(debut, 6) };
+  }
+  if (etatPb.periode === "mois") {
+    return { debut: dateLocaleISO(new Date(y, m - 1, 1, 12)), fin: dateLocaleISO(new Date(y, m, 0, 12)) };
+  }
+  if (etatPb.periode === "perso" && etatPb.debut && etatPb.fin) {
+    return etatPb.debut <= etatPb.fin ? { debut: etatPb.debut, fin: etatPb.fin } : { debut: etatPb.fin, fin: etatPb.debut };
+  }
+  return { debut: ref, fin: ref };
+}
+function dateCourtePb(iso, opts) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("fr-BE", opts || { weekday: "short", day: "2-digit", month: "2-digit" });
+}
+function libellePeriodePb(b) {
+  if (etatPb.periode === "jour") return dateCourtePb(b.debut, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  if (etatPb.periode === "mois") {
+    const t = new Date(b.debut + "T12:00:00").toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  const f = { day: "2-digit", month: "2-digit", year: "numeric" };
+  return (etatPb.periode === "semaine" ? "Semaine du " : "Du ") + dateCourtePb(b.debut, f) + " au " + dateCourtePb(b.fin, f);
+}
+function decalerPeriodePb(sens) {
+  if (etatPb.periode === "jour") etatPb.ref = isoDecale(etatPb.ref, sens);
+  else if (etatPb.periode === "semaine") etatPb.ref = isoDecale(etatPb.ref, 7 * sens);
+  else if (etatPb.periode === "mois") {
+    const [y, m] = etatPb.ref.split("-").map(Number);
+    etatPb.ref = dateLocaleISO(new Date(y, m - 1 + sens, 1, 12));
+  } else {
+    const b = bornesPeriodePb();
+    const [y1, m1, d1] = b.debut.split("-").map(Number), [y2, m2, d2] = b.fin.split("-").map(Number);
+    const n = Math.round((new Date(y2, m2 - 1, d2, 12) - new Date(y1, m1 - 1, d1, 12)) / 864e5) + 1;
+    etatPb.debut = isoDecale(b.debut, n * sens); etatPb.fin = isoDecale(b.fin, n * sens);
+  }
+  chargerRapportPourboires();
+}
+document.querySelectorAll("#vue-pourboires-fa .pb-periodes-fa button").forEach(b => b.addEventListener("click", () => {
+  const p = b.dataset.periode;
+  if (p === "perso") {
+    const bo = bornesPeriodePb();
+    etatPb.debut = bo.debut; etatPb.fin = bo.fin;
+  } else if (etatPb.periode === "perso" && etatPb.fin) {
+    etatPb.ref = bornesPeriodePb().fin;
+  }
+  etatPb.periode = p;
+  chargerRapportPourboires();
+  if (p === "perso") document.getElementById("pb-debut").focus();
+}));
+document.getElementById("pb-prev").addEventListener("click", () => decalerPeriodePb(-1));
+document.getElementById("pb-next").addEventListener("click", () => decalerPeriodePb(1));
+["pb-debut", "pb-fin"].forEach(id => document.getElementById(id).addEventListener("change", () => {
+  const d = document.getElementById("pb-debut").value, f = document.getElementById("pb-fin").value;
+  if (!d || !f) return;
+  etatPb.periode = "perso"; etatPb.debut = d; etatPb.fin = f;
+  chargerRapportPourboires();
+}));
+document.getElementById("pb-chauffeur").addEventListener("change", () => afficherRapportPourboires());
+document.getElementById("pb-imprimer").addEventListener("click", () => imprimerRapportPourboires());
+
+function remplirSelectChauffeursPb() {
+  const sel = document.getElementById("pb-chauffeur");
+  const choisi = sel.value;
+  const noms = new Map();
+  (chauffeursCache || []).forEach(c => noms.set(c.id, c.nom || "Chauffeur"));
+  (etatPb.lignes || []).forEach(r => { if (r.chauffeur_id && !noms.has(r.chauffeur_id)) noms.set(r.chauffeur_id, r.nom || "Chauffeur"); });
+  sel.innerHTML = `<option value="">👥 Tous les chauffeurs</option>` + [...noms.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([id, nom]) => `<option value="${esc(id)}">${esc(nom)}</option>`).join("");
+  sel.value = noms.has(choisi) ? choisi : "";
+}
+
+async function chargerRapportPourboires() {
+  const b = bornesPeriodePb();
+  document.querySelectorAll("#vue-pourboires-fa .pb-periodes-fa button").forEach(x => x.classList.toggle("actif", x.dataset.periode === etatPb.periode));
+  document.getElementById("pb-libelle").textContent = libellePeriodePb(b);
+  document.getElementById("pb-debut").value = b.debut;
+  document.getElementById("pb-fin").value = b.fin;
+  const zone = document.getElementById("pb-resultat");
+  zone.innerHTML = '<p class="pb-vide-fa">Chargement…</p>';
+  const seq = ++etatPb.chargement;
+  const { data, error } = await supabase.rpc("pourboires_par_chauffeur", { p_debut: b.debut, p_fin: b.fin });
+  if (seq !== etatPb.chargement) return;
+  if (error) { etatPb.lignes = []; zone.innerHTML = `<p class="pb-vide-fa" style="color:var(--rouge);">Erreur : ${esc(error.message || String(error))}</p>`; return; }
+  etatPb.bornes = b;
+  etatPb.lignes = (Array.isArray(data) ? data : []).filter(r => r && r.jour >= b.debut && r.jour <= b.fin);
+  remplirSelectChauffeursPb();
+  afficherRapportPourboires();
+}
+
+// Regroupement par chauffeur : total, nb de courses avec pourboire, détail par jour
+function syntheseRapportPourboires() {
+  const filtre = document.getElementById("pb-chauffeur").value;
+  const parCh = new Map();
+  (etatPb.lignes || []).filter(r => !filtre || r.chauffeur_id === filtre).forEach(r => {
+    const id = r.chauffeur_id || r.nom || "?";
+    if (!parCh.has(id)) parCh.set(id, { id, nom: r.nom || "Chauffeur", total: 0, nb: 0, jours: [] });
+    const g = parCh.get(id);
+    const t = Number(r.total_pourboires) || 0, n = Number(r.nb_courses_avec_pourboire) || 0;
+    g.total = Math.round((g.total + t) * 100) / 100; g.nb += n;
+    g.jours.push({ jour: r.jour, total: t, nb: n });
+  });
+  const groupes = [...parCh.values()].sort((a, b) => b.total - a.total || a.nom.localeCompare(b.nom));
+  groupes.forEach(g => g.jours.sort((a, b) => a.jour < b.jour ? -1 : a.jour > b.jour ? 1 : 0));
+  const total = Math.round(groupes.reduce((s, g) => s + g.total, 0) * 100) / 100;
+  const nb = groupes.reduce((s, g) => s + g.nb, 0);
+  const nomFiltre = filtre ? (document.getElementById("pb-chauffeur").selectedOptions[0]?.textContent || "") : "";
+  return { groupes, total, nb, filtre, nomFiltre };
+}
+const txtCoursesPb = n => n + " course" + (n > 1 ? "s" : "") + " avec pourboire";
+
+function afficherRapportPourboires() {
+  const zone = document.getElementById("pb-resultat");
+  const syn = syntheseRapportPourboires();
+  const plusieursJours = etatPb.periode !== "jour" && (etatPb.bornes ? etatPb.bornes.debut !== etatPb.bornes.fin : true);
+  if (!syn.groupes.length) {
+    zone.innerHTML = `<div class="pb-total-general-fa"><span>Total des pourboires${syn.nomFiltre ? " — " + esc(syn.nomFiltre) : ""}<small>non compris dans la recette</small></span><b>${esc(eurosFr(0))}</b></div>
+      <p class="pb-vide-fa">Aucun pourboire noté sur cette période.</p>`;
+    return;
+  }
+  zone.innerHTML = `<div class="pb-total-general-fa"><span>${syn.groupes.length > 1 ? "Total général" : "Total des pourboires"}${syn.nomFiltre ? " — " + esc(syn.nomFiltre) : ""}<small>${esc(txtCoursesPb(syn.nb))} · non compris dans la recette</small></span><b class="pb-grand-total">${esc(eurosFr(syn.total))}</b></div>`
+    + syn.groupes.map(g => `<div class="pb-carte-fa" data-chauffeur="${esc(g.id)}">
+        <div class="pb-tete"><b>${esc(g.nom)}</b><span class="pb-montant">${esc(eurosFr(g.total))}</span></div>
+        <div class="pb-sous">${esc(txtCoursesPb(g.nb))}${plusieursJours ? " · " + g.jours.length + " jour" + (g.jours.length > 1 ? "s" : "") : ""}</div>
+        ${plusieursJours ? `<table class="pb-jours-fa"><tbody>${g.jours.map(j => `<tr><td>${esc(dateCourtePb(j.jour))}</td><td>${j.nb} course${j.nb > 1 ? "s" : ""}</td><td>${esc(eurosFr(j.total))}</td></tr>`).join("")}</tbody></table>` : ""}
+      </div>`).join("");
+}
+
+function imprimerRapportPourboires() {
+  const fenetre = ouvrirFenetreImpression();   // tout de suite dans le clic (iPhone)
+  const syn = syntheseRapportPourboires();
+  const b = etatPb.bornes || bornesPeriodePb();
+  const periode = libellePeriodePb(b);
+  const plusieursJours = b.debut !== b.fin;
+  const lignesTableau = [];
+  syn.groupes.forEach(g => {
+    if (plusieursJours) {
+      g.jours.forEach((j, i) => lignesTableau.push(`<tr><td class="g">${i === 0 ? esc(g.nom) : ""}</td><td>${esc(dateCourtePb(j.jour, { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }))}</td><td class="c">${j.nb}</td><td class="m">${esc(eurosFr(j.total))}</td></tr>`));
+      lignesTableau.push(`<tr class="st"><td colspan="2">Total ${esc(g.nom)}</td><td class="c">${g.nb}</td><td class="m">${esc(eurosFr(g.total))}</td></tr>`);
+    } else {
+      lignesTableau.push(`<tr><td class="g">${esc(g.nom)}</td><td>${esc(dateCourtePb(b.debut, { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }))}</td><td class="c">${g.nb}</td><td class="m">${esc(eurosFr(g.total))}</td></tr>`);
+    }
+  });
+  if (!lignesTableau.length) lignesTableau.push(`<tr><td colspan="4" class="c">Aucun pourboire noté sur cette période.</td></tr>`);
+  const titre = `Pourboires — ${syn.nomFiltre || "tous les chauffeurs"} — ${periode}`;
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${esc(titre)}</title>
+  <style>
+    @page { size: A4; margin: 8mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 9.5pt; line-height: 1.25; margin: 0; }
+    h1 { font-size: 14pt; margin: 0 0 2px; }
+    .sous-titre { font-size: 9pt; margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #000; padding: 3px 6px; text-align: left; }
+    th { background: #eee; font-size: 8.5pt; }
+    td.c, th.c { text-align: center; width: 16%; }
+    td.m, th.m { text-align: right; width: 18%; white-space: nowrap; }
+    td.g { font-weight: bold; width: 34%; }
+    tr.st td { background: #f4f4f4; font-weight: bold; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    thead { display: table-header-group; }
+    .total { margin-top: 8px; padding: 6px 8px; border: 2px solid #000; display: flex; justify-content: space-between; font-size: 11pt; font-weight: bold; }
+    .note { font-size: 8pt; margin-top: 6px; }
+    .num-page { font-size: 7.5pt; text-align: right; margin-top: 4px; }
+    .barre-actions-impression { display: flex; gap: 8px; margin-bottom: 10px; }
+    .barre-actions-impression button { padding: 8px 14px; border-radius: 6px; border: 1px solid #999; background: #f2f2f2; color: #000; font-size: 13px; cursor: pointer; }
+    .barre-actions-impression button.btn-imprimer-action { background: #c81e2c; color: #fff; border-color: #c81e2c; }
+    .page { width: 194mm; background: #fff; }
+    @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; outline: 8mm solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); } #pages { padding: 8mm 0; } }
+    @media print { .barre-actions-impression { display: none; } #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } }
+  </style></head>
+  <body>
+    <div class="barre-actions-impression">
+      <button onclick="window.close()">← Retour</button>
+      <button class="btn-imprimer-action" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
+    <div id="pages"></div>
+    <div id="source">
+      <div class="entete"><h1>Pourboires des chauffeurs</h1>
+        <div class="sous-titre">${esc(IDENTITE_EXPLOITANT)} · ${esc(periode)} · ${esc(syn.nomFiltre || "Tous les chauffeurs")}</div></div>
+      <table class="rapport">
+        <thead><tr><th>Chauffeur</th><th>Jour</th><th class="c">Courses avec pourboire</th><th class="m">Pourboires</th></tr></thead>
+        <tbody>${lignesTableau.join("")}</tbody>
+      </table>
+      <div class="fin">
+        <div class="total"><span>${syn.groupes.length > 1 ? "Total général" : "Total"} (${syn.nb} course${syn.nb > 1 ? "s" : ""})</span><span>${esc(eurosFr(syn.total))}</span></div>
+        <div class="note">Les pourboires ne sont jamais compris dans la recette (somme des sommes perçues). Imprimé le ${esc(new Date().toLocaleString("fr-BE"))}.</div>
+      </div>
+    </div>
+    <script>
+(function(){
+  // Une page A4 (194 × 276 mm utiles) ; si le tableau est trop long, il continue sur la page suivante (en-têtes répétés)
+  function paginer(){
+    var source = document.getElementById("source"), zone = document.getElementById("pages");
+    var m = document.createElement("div"); m.style.cssText = "position:absolute;visibility:hidden;height:270mm;width:1px;";
+    document.body.appendChild(m); var H = m.getBoundingClientRect().height; m.parentNode.removeChild(m);
+    var ok = isFinite(H) && H > 300, pages = [], page = null;
+    function nouvelle(){ page = document.createElement("div"); page.className = "page"; var n = document.createElement("div"); n.className = "num-page"; page.appendChild(n); zone.appendChild(page); pages.push(page); }
+    function ajouter(el){ page.insertBefore(el, page.lastChild); }
+    function tient(){ return !ok || page.offsetHeight <= H; }
+    nouvelle();
+    var entete = source.querySelector(".entete"), table = source.querySelector("table.rapport"), fin = source.querySelector(".fin");
+    ajouter(entete);
+    var lignes = [].slice.call(table.tBodies[0].rows);
+    var t = null;
+    function debut(){ t = table.cloneNode(false); t.appendChild(table.tHead.cloneNode(true)); t.appendChild(document.createElement("tbody")); ajouter(t); }
+    debut();
+    for (var i = 0; i < lignes.length; i++){
+      t.tBodies[0].appendChild(lignes[i]);
+      if (!tient() && t.tBodies[0].rows.length > 1){ t.tBodies[0].removeChild(lignes[i]); nouvelle(); debut(); t.tBodies[0].appendChild(lignes[i]); }
+    }
+    ajouter(fin);
+    if (!tient() && pages[pages.length - 1].children.length > 2){ page.removeChild(fin); nouvelle(); ajouter(fin); }
+    pages.forEach(function(p, k){ p.lastChild.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length) : ""; });
+    source.parentNode.removeChild(source);
+  }
+  if (document.readyState === "complete") paginer(); else window.addEventListener("load", paginer);
+})();
+<\/script>
+  </body></html>`;
+  afficherImpression(fenetre, html);
 }
 
 function decalerDateFA(jours) {
@@ -6594,6 +7039,7 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
       // Dans l'en-tête (1er enfant) : en liste compacte, seuls les 1ers enfants de la carte sont visibles
       const enteteCarte = carte.firstElementChild;
       enteteCarte.insertBefore(bandeau, enteteCarte.firstChild);
+      ajouterBoutonNouvelleFeuilleFA(carte, chauffeur, dateChoisie, feuille);
       conteneur.appendChild(carte);
     });
   });
@@ -6604,7 +7050,7 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
     if (feuillesChauffeur.length === 0) { if (!aNuit) sansFeuille.push(chauffeur); return; }
     feuillesChauffeur.forEach((feuille, idx) => {
       const lignes = trierLignesChrono((toutesLignes || []).filter(l => l.feuille_route_id === feuille.id), feuille);
-      const construire = () => construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, feuillesChauffeur.length > 1 ? idx + 1 : null, feuillesChauffeur.length);
+      const construire = () => ajouterBoutonNouvelleFeuilleFA(construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, feuillesChauffeur.length > 1 ? idx + 1 : null, feuillesChauffeur.length), chauffeur, dateChoisie, feuille);
       // Chauffeur en service de nuit + feuille VIDE datée du jour : petite ligne grisée (pas de confusion)
       if (aNuit && !lignes.length && !feuille.heure_debut && !feuillesEnGrand.has(feuille.id) && !feuillesDepliees.has(feuille.id)) {
         const petite = document.createElement("div");
@@ -6635,7 +7081,7 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
       b.addEventListener("click", async () => {
         const { data: vehicule } = await supabase.from("vehicules").select("id").eq("chauffeur_id", ch.id).eq("actif", true).limit(1).maybeSingle();
         const { error } = await supabase.from("feuilles_route").insert({ chauffeur_id: ch.id, date_service: dateChoisie, vehicule_id: vehicule?.id || null });
-        if (error) { alert("Erreur : " + error.message); return; }
+        if (error) { alert(error.code === "23505" ? "⛔ " + MSG_FEUILLE_DOUBLON_FA + "." : "Erreur : " + error.message); return; }
         chargerFeuillesAdmin(true);
       });
       ligne.appendChild(b);
@@ -6646,6 +7092,68 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
   if (!conteneur.querySelector(".feuille-admin") && !sansFeuille.length) conteneur.innerHTML = '<p id="feuilles-vide">Aucune feuille ce jour-là.</p>';
 }
 document.getElementById("filtre-chauffeur-fa").addEventListener("change", () => chargerFeuillesAdmin());
+
+// ================== PLUSIEURS FEUILLES PAR CHAUFFEUR ET PAR JOUR ==================
+// Un chauffeur (ex. le gérant qui roule 18–24 h d'affilée) peut avoir plusieurs feuilles le même jour :
+// « ➕ Ajouter une feuille » sur chaque carte crée une feuille de plus pour ce chauffeur / cette date.
+const MSG_FEUILLE_DOUBLON_FA = "Impossible de créer une 2e feuille ce jour-là pour l'instant — contacte la centrale";
+function ajouterBoutonNouvelleFeuilleFA(carte, chauffeur, dateVue, feuille) {
+  // Dans l'en-tête de la carte (visible aussi en liste compacte, où les autres actions sont masquées)
+  const entete = carte && carte.firstElementChild;
+  if (!entete || carte.querySelector(".btn-ajouter-feuille-fa")) return carte;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn-ajouter-feuille-fa";
+  b.textContent = "➕ Ajouter une feuille";
+  b.style.cssText = "display:block; width:auto; margin-top:8px; padding:7px 12px; font-size:.82rem; font-weight:700; border-radius:8px; background:#eef4fb; color:#1d4f86; border:1px solid #9cbbe0;";
+  b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirAjoutFeuilleFA(chauffeur, dateVue, feuille && feuille.vehicule_id); });
+  const ref = entete.querySelector(".btn-ouvrir-grand-fa");
+  if (ref) ref.insertAdjacentElement("afterend", b); else entete.appendChild(b);
+  return carte;
+}
+function ouvrirAjoutFeuilleFA(chauffeur, dateVue, vehiculeId) {
+  const fond = document.createElement("div");
+  fond.className = "modale-ajout-feuille-fa";
+  fond.style.cssText = "position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:14px;";
+  const st = "width:100%; box-sizing:border-box; padding:11px; border-radius:8px; border:1px solid #cfcfcd; font-size:1rem;";
+  const lab = t => `<label style="display:block; font-size:.8rem; color:var(--gris); margin:10px 0 4px;">${t}</label>`;
+  fond.innerHTML = `<div style="background:#fff; color:#111; border-radius:14px; padding:18px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto;">
+    <div style="font-weight:800; font-size:1.05rem;">➕ Nouvelle feuille de route</div>
+    <div style="font-size:.85rem; color:var(--gris); margin-top:2px;">Pour <b>${esc(chauffeur?.nom || "ce chauffeur")}</b> — une feuille de plus, les autres feuilles ne changent pas.</div>
+    ${lab("Date de la feuille")}<input type="date" class="af-date" style="${st}" value="${esc(dateVue || "")}">
+    ${lab("Véhicule")}<select class="af-vehicule" style="${st}"><option value="">— Aucun —</option>${(vehiculesCache || []).map(v => `<option value="${v.id}" ${v.id === vehiculeId ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}</select>
+    ${lab("Heure de début (facultatif)")}<input type="time" class="af-heure" style="${st}">
+    <div class="af-erreur" style="display:none; margin-top:12px; padding:10px; border-radius:8px; background:#fdecec; color:#8a1f1f; font-weight:600;"></div>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button type="button" class="af-annuler" style="flex:1; padding:13px; border-radius:10px; border:none; background:#e3e3e0; font-weight:700;">Annuler</button>
+      <button type="button" class="af-ok" style="flex:2; padding:13px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:800;">➕ Créer la feuille</button>
+    </div></div>`;
+  document.body.appendChild(fond);
+  const fermer = () => fond.remove();
+  fond.querySelector(".af-annuler").addEventListener("click", fermer);
+  fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
+  const zoneErr = fond.querySelector(".af-erreur");
+  const montrerErreur = (t) => { zoneErr.textContent = t; zoneErr.style.display = "block"; };
+  fond.querySelector(".af-ok").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const date = fond.querySelector(".af-date").value;
+    if (!date) { montrerErreur("Choisis la date de la feuille."); return; }
+    const heure = fond.querySelector(".af-heure").value;
+    const ligne = { chauffeur_id: chauffeur.id, date_service: date, vehicule_id: fond.querySelector(".af-vehicule").value || null };
+    if (heure) ligne.heure_debut = heure;
+    btn.disabled = true; btn.textContent = "Création…";
+    const { error } = await supabase.from("feuilles_route").insert(ligne);
+    if (error) {
+      btn.disabled = false; btn.textContent = "➕ Créer la feuille";
+      montrerErreur(error.code === "23505" ? "⛔ " + MSG_FEUILLE_DOUBLON_FA + "." : "Erreur : " + error.message);
+      return;
+    }
+    fermer();
+    if (date !== document.getElementById("fa-date").value) document.getElementById("fa-date").value = date;
+    derniereActiviteFeuilles = 0;
+    chargerFeuillesAdmin(true);
+  });
+}
 
 // ================== SERVICE DE NUIT (vue du jour admin) ==================
 // Même logique que l'app chauffeur (feuille-de-route.html : debutServiceFeuille / estServiceEnCours).
@@ -6875,13 +7383,44 @@ async function chargerDemandesChauffeurs() {
   });
 }
 
+// ================== RECETTE / POURBOIRES D'UNE FEUILLE ==================
+// Recette = somme des « Sommes perçues » (même règle que la base, recette_feuille).
+// Pourboires = notés à part sur chaque course, JAMAIS compris dans la recette.
+function recetteLignesFA(listeLignes) {
+  return Math.round((listeLignes || []).reduce((s, l) => {
+    if (!l) return s;
+    const somme = l.sommes_percues == null || l.sommes_percues === "" ? null : parseFloat(l.sommes_percues);
+    // Uber / Uber cash / privé : jamais (TVA déclarée par Uber) ; annulée : seulement si une somme est notée
+    if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+    if (l.mode_paiement === "annulee" && !(somme > 0)) return s;
+    // Uniquement les sommes perçues : sans somme notée, la ligne compte 0 € (pas de repli taximètre)
+    return s + ((somme !== null && !isNaN(somme)) ? somme : 0);
+  }, 0) * 100) / 100;
+}
+function pourboiresLignesFA(listeLignes) {
+  return Math.round((listeLignes || []).reduce((s, l) => s + (l && Number(l.pourboire) > 0 ? Number(l.pourboire) : 0), 0) * 100) / 100;
+}
+function totauxLignesFA(listeLignes) {
+  return { recette: recetteLignesFA(listeLignes), pourboires: pourboiresLignesFA(listeLignes),
+           nbPourboires: (listeLignes || []).filter(l => l && Number(l.pourboire) > 0).length };
+}
+// En-tête de la carte : « Recette : X € · 💶 Pourboires : Y € (hors recette) »
+// (valeurs de la base — recalculées par les triggers — sinon calcul sur les lignes)
+function texteRecetteEnteteFA(feuille, lignes) {
+  const recette = feuille.recettes_fin != null && feuille.recettes_fin !== ""
+    ? Math.round((parseFloat(feuille.recettes_fin) - (parseFloat(feuille.recettes_debut) || 0)) * 100) / 100
+    : recetteLignesFA(lignes);
+  const pb = feuille.total_pourboires != null && feuille.total_pourboires !== "" ? Number(feuille.total_pourboires) : pourboiresLignesFA(lignes);
+  return ` · Recette : <b>${esc(eurosFr(recette))}</b> · <span style="color:#8a5a00;">💶 Pourboires : <b>${esc(eurosFr(pb))}</b> (hors recette)</span>`;
+}
+
 function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroFeuille, totalFeuillesChauffeur) {
   const div = document.createElement("div");
   div.className = "feuille-admin" + (feuille.verrouillee ? " verrouillee-fa" : "");
 
   const entete = document.createElement("div");
   const identiteFeuille = feuille.identite_exploitant || feuille.vehicules?.identite_exploitant || IDENTITE_EXPLOITANT;
-  const labelFeuille = numeroFeuille ? ` — Feuille ${numeroFeuille}/${totalFeuillesChauffeur} (changement de véhicule)` : "";
+  const labelFeuille = numeroFeuille ? ` — Feuille ${numeroFeuille}/${totalFeuillesChauffeur}` : "";
   lignes = trierLignesChrono(lignes, feuille);
   const anomaliesFA = anomaliesFeuille(lignes, feuille);
   if (anomaliesFA.total) div.classList.add("feuille-anomalie-fa");
@@ -6897,7 +7436,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
             ${vehiculesCache.map(v => `<option value="${v.id}" ${v.id === feuille.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}
           </select>
           <span>· 🕐 ${feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "--:--"} → ${feuille.heure_fin ? String(feuille.heure_fin).slice(0, 5) : (feuille.heure_debut ? "en service" : "--:--")}${feuille.heure_debut && feuille.heure_fin ? (() => { const d = minutesDepuisHeure(String(feuille.heure_debut).slice(0, 5)), f = minutesDepuisHeure(String(feuille.heure_fin).slice(0, 5)); return (d !== null && f !== null) ? " (" + formatDureeMinutes((f - d + 1440) % 1440) + ")" : ""; })() : ""}</span>
-          <span>· ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}${feuille.recettes_fin != null && feuille.recettes_debut != null ? " · Recettes : " + (parseFloat(feuille.recettes_fin) - parseFloat(feuille.recettes_debut)).toFixed(2) + " €" : ""}${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</span>
+          <span>· ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}<span class="recette-entete-fa">${texteRecetteEnteteFA(feuille, lignes)}</span>${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</span>
         </div>
       </div>
       <div class="entete-fa-actions">
@@ -7031,6 +7570,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     if (type === "number") { input.type = "text"; input.inputMode = "decimal"; }
     else input.type = type;
     input.value = feuille[champ] ?? "";
+    input.dataset.champEntete = champ;
     input.addEventListener("change", async (e) => {
       const valeur = type === "number" ? (e.target.value || "").replace(",", ".") || null : (e.target.value || null);
       await supabase.from("feuilles_route").update({ [champ]: valeur }).eq("id", feuille.id);
@@ -7072,24 +7612,36 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   // Total calculé automatiquement à partir des courses de cette feuille (se remet à jour tout
   // seul dès qu'une course est ajoutée/modifiée/supprimée, puisque tout est rechargé depuis la
   // base à chaque fois) — distinct de la "Recette" du taximètre qui reste un relevé manuel.
+  // Recette = somme des sommes perçues UNIQUEMENT ; les pourboires sont affichés à part (hors recette).
   const totalPercuDiv = document.createElement("div");
-  totalPercuDiv.style.cssText = "font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:8px;";
-  function calculerTotalPercuLignes(listeLignes) {
-    return listeLignes.reduce((s, l) => {
-      // Même règle que la base (recette_feuille) : on additionne les "Sommes perçues"
-      const somme = l.sommes_percues == null || l.sommes_percues === "" ? null : parseFloat(l.sommes_percues);
-      // Uber / Uber cash / privé : jamais (TVA déclarée par Uber) ; annulée : seulement si une somme est notée
-      if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
-      if (l.mode_paiement === "annulee" && !(somme > 0)) return s;
-      // Uniquement les sommes perçues : sans somme notée, la ligne compte 0 € (pas de repli taximètre)
-      return s + ((somme !== null && !isNaN(somme)) ? somme : 0);
-    }, 0);
+  totalPercuDiv.className = "totaux-recette-fa";
+  function rendreTotauxLignesFA() {
+    const t = totauxLignesFA(lignes);
+    totalPercuDiv.innerHTML = `<span class="tr-recette">💰 Recette : ${esc(eurosFr(t.recette))}</span>`
+      + `<span class="tr-pourboires">💶 Pourboires : ${esc(eurosFr(t.pourboires))} (hors recette)${t.nbPourboires ? ` · ${t.nbPourboires} course${t.nbPourboires > 1 ? "s" : ""}` : ""}</span>`;
   }
-  totalPercuDiv.textContent = `💰 Total perçu (calculé) : ${calculerTotalPercuLignes(lignes).toFixed(2)} €`;
+  rendreTotauxLignesFA();
   corps.appendChild(totalPercuDiv);
+  // Après une modification d'une course (montant, mode, pourboire…) : totaux recalculés tout de suite,
+  // puis recette / pourboires relus dans la base (recalculés par les triggers) pour l'en-tête.
+  let majTotauxSeq = 0;
+  async function majTotauxFA() {
+    rendreTotauxLignesFA();
+    derniereActiviteFeuilles = Date.now();
+    const seq = ++majTotauxSeq;
+    try {
+      const { data: f } = await supabase.from("feuilles_route").select("recettes_debut, recettes_fin, total_pourboires").eq("id", feuille.id).maybeSingle();
+      if (seq !== majTotauxSeq || !f) return;
+      Object.assign(feuille, { recettes_debut: f.recettes_debut, recettes_fin: f.recettes_fin, total_pourboires: f.total_pourboires });
+    } catch (e) { /* hors ligne : on garde le calcul local */ }
+    const span = entete.querySelector(".recette-entete-fa");
+    if (span) span.innerHTML = texteRecetteEnteteFA(feuille, lignes);
+    const inputFinRecette = corps.querySelector('[data-champ-entete="recettes_fin"]');
+    if (inputFinRecette && document.activeElement !== inputFinRecette) inputFinRecette.value = feuille.recettes_fin ?? "";
+  }
 
   const conteneurLignes = document.createElement("div");
-  lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1, { lignes, feuille, anomalies: anomaliesFA.parId.get(ligne.id) || [] })));
+  lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1, { lignes, feuille, anomalies: anomaliesFA.parId.get(ligne.id) || [], onModif: majTotauxFA })));
 
   // ===== Ordre des courses : chronologique automatique, ou manuel (choisi par la direction) =====
   const zoneOrdre = document.createElement("div");
@@ -7098,7 +7650,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   function rendreLignesNormales() {
     conteneurLignes.innerHTML = "";
     const an = anomaliesFeuille(lignes, feuille);
-    lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1, { lignes, feuille, anomalies: an.parId.get(ligne.id) || [] })));
+    lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1, { lignes, feuille, anomalies: an.parId.get(ligne.id) || [], onModif: majTotauxFA })));
   }
   function rendreZoneOrdre() {
     const an = anomaliesFeuille(lignes, feuille);
@@ -7337,7 +7889,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
 
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${ligne.signalee_erreur ? " · <b style='color:var(--rouge)'>📨 DEMANDE DU CHAUFFEUR</b>" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")} <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${ligne.signalee_erreur ? " · <b style='color:var(--rouge)'>📨 DEMANDE DU CHAUFFEUR</b>" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")}<span class="pb-entete-ligne-fa" style="color:#8a5a00; font-weight:700;">${Number(ligne.pourboire) > 0 ? " · 💶 pourboire " + esc(eurosFr(ligne.pourboire)) : ""}</span> <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
 
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
@@ -7531,8 +8083,12 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         inputsParChampAdmin["mode_paiement"].value = ligne.mode_paiement || "";
         inputsParChampAdmin["prix_taximetre"].value = ligne.prix_taximetre ?? "";
         inputsParChampAdmin["sommes_percues"].value = ligne.sommes_percues ?? "";
+      } else {
+        ligne[champ] = valeur;
       }
       if (estPaiement || estTypeCourse) appliquerVisibilitePaiementAdmin();
+      // Recette / totaux de la feuille remis à jour tout de suite (recalculés aussi dans la base)
+      if (ctx.onModif) ctx.onModif();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     if (type === "time") {
@@ -7565,6 +8121,57 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     }
   });
   wrapsParChampAdmin["debarquement_lieu"].insertAdjacentElement("afterend", editeurArretsAdmin);
+
+  // ---- Pourboire : noté à part, JAMAIS compris dans la recette (sommes perçues) ----
+  const wrapPourboire = document.createElement("div");
+  wrapPourboire.className = "wrap-pourboire-fa";
+  wrapPourboire.innerHTML = `<label>💶 Pourboire (€) <span class="pb-sous-fa">hors recette</span></label>
+    <input type="text" inputmode="decimal" class="input-pourboire-fa" data-champ="pourboire" placeholder="0" autocomplete="off">
+    <div class="pb-erreur-fa" role="alert" style="display:none;"></div>`;
+  const inputPb = wrapPourboire.querySelector(".input-pourboire-fa");
+  const erreurPb = wrapPourboire.querySelector(".pb-erreur-fa");
+  const pbAfficheFA = v => { if (v == null || v === "" || !(Number(v) > 0)) return ""; const n = Math.round(Number(v) * 100) / 100; return (Number.isInteger(n) ? String(n) : n.toFixed(2)).replace(".", ","); };
+  inputPb.value = pbAfficheFA(ligne.pourboire);
+  const majEntetePb = () => {
+    const sp = entete.querySelector(".pb-entete-ligne-fa");
+    if (sp) sp.textContent = Number(ligne.pourboire) > 0 ? " · 💶 pourboire " + eurosFr(ligne.pourboire) : "";
+  };
+  let pbEnregistrement = false;
+  inputPb.addEventListener("click", e => e.stopPropagation());
+  inputPb.addEventListener("change", async () => {
+    erreurPb.style.display = "none";
+    const brut = String(inputPb.value || "").trim().replace(/\s|€/g, "").replace(",", ".");
+    let val = brut === "" ? null : Number(brut);
+    if (val !== null && (!isFinite(val) || val < 0)) {
+      erreurPb.textContent = "Indique un montant positif en euros (ex : 5 ou 2,50). Vide ou 0 = pas de pourboire.";
+      erreurPb.style.display = "block";
+      inputPb.value = pbAfficheFA(ligne.pourboire);
+      return;
+    }
+    if (val !== null) val = Math.round(val * 100) / 100;
+    if (val === 0) val = null;
+    const actuel = Number(ligne.pourboire) > 0 ? Math.round(Number(ligne.pourboire) * 100) / 100 : null;
+    if (val === actuel) { inputPb.value = pbAfficheFA(ligne.pourboire); return; }   // rien de changé
+    if (pbEnregistrement) return;   // un 2e « change » (perte du focus) pendant l'enregistrement
+    pbEnregistrement = true;
+    inputPb.disabled = true;
+    const { data: ligneServeur, error } = await supabase
+      .from("lignes_feuille_route").update({ pourboire: val }).eq("id", ligne.id).select("*").maybeSingle();
+    inputPb.disabled = false;
+    pbEnregistrement = false;
+    if (error) {
+      erreurPb.textContent = "⚠️ Pourboire non enregistré : " + (error.message || error);
+      erreurPb.style.display = "block";
+      inputPb.value = pbAfficheFA(ligne.pourboire);
+      return;
+    }
+    if (ligneServeur) Object.assign(ligne, ligneServeur); else ligne.pourboire = val;
+    inputPb.value = pbAfficheFA(ligne.pourboire);
+    majEntetePb();
+    appliquerVisibilitePaiementAdmin();
+    if (ctx.onModif) ctx.onModif();
+  });
+  wrapsParChampAdmin["sommes_percues"].insertAdjacentElement("afterend", wrapPourboire);
 
   // Course signalée par le chauffeur comme ouverte PAR ERREUR → l'admin la supprime
   if (ligne.signalee_erreur) {
@@ -7600,6 +8207,8 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     wrapsParChampAdmin["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee || estForfait) ? "none" : "";
     wrapsParChampAdmin["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
     wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || estUber || estPrive || estAnnulee) ? "none" : "";
+    // Pourboire : visible pour toute course encaissée (même sur facture) ; masqué pour Uber / privé / annulée sauf s'il y en a déjà un
+    wrapPourboire.style.display = ((estUber || estPrive || estAnnulee) && !(Number(ligne.pourboire) > 0)) ? "none" : "";
     wrapsParChampAdmin["numero_dossier"].style.display = estFacture ? "" : "none";
     wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionUber.style.display = estUber ? "" : "none";
@@ -7703,6 +8312,258 @@ function afficherImpression(fenetre, html) {
   }
   afficherImpressionDansPage(html);
 }
+// ================== PDF DE LA FEUILLE (iPhone / app écran d'accueil) ==================
+// Sur iPhone (app installée sur l'écran d'accueil), window.print() et iframe.print() ne font souvent RIEN.
+// On fabrique donc un vrai PDF A4 directement dans le téléphone (sans bibliothèque externe, marche
+// aussi sans réseau) à partir de la feuille déjà mise en page dans l'aperçu (une page PDF par page
+// de l'aperçu : toutes les courses, plusieurs pages si besoin), puis on l'envoie à la feuille de
+// partage iOS (« Imprimer », « Enregistrer dans Fichiers »…) ; sinon on le télécharge / l'ouvre.
+const PDF_FEUILLE = (function () {
+  const PT = 72 / 25.4, LARG = 595.28, HAUT = 841.89, MARGE_MM = 8, ZONE_L = 194, ZONE_H = 281;
+  const SPECIAUX = { "€": 128, "‚": 130, "„": 132, "…": 133, "Œ": 140, "‘": 145, "’": 146, "“": 147, "”": 148, "•": 149, "–": 150, "—": 151, "™": 153, "œ": 156, "Ÿ": 159 };
+  function winAnsi(texte) {
+    let o = "";
+    for (const ch of String(texte)) {
+      const c = ch.codePointAt(0);
+      let b = null;
+      if (ch === "→") { o += "->"; continue; }
+      if (ch === "←") { o += "<-"; continue; }
+      if (c === 160 || c === 8239 || c === 8201) b = 32;
+      else if (c >= 32 && c < 127) b = c;
+      else if (c >= 161 && c <= 255) b = c;
+      else if (SPECIAUX[ch] !== undefined) b = SPECIAUX[ch];
+      if (b === null) continue; // émojis et symboles non imprimables en Helvetica : ignorés
+      const s = String.fromCharCode(b);
+      o += (s === "(" || s === ")" || s === "\\") ? "\\" + s : s;
+    }
+    return o;
+  }
+  let ctxMesure = null;
+  function largeurNaturelle(texte, gras) {
+    // Largeur (en « em ») du texte en Helvetica (Arial / Liberation Sans ont les mêmes chasses)
+    if (!ctxMesure) { const c = document.createElement("canvas"); ctxMesure = c.getContext("2d"); }
+    if (!ctxMesure) return null;
+    ctxMesure.font = (gras ? "bold " : "") + "100px Helvetica, Arial, 'Liberation Sans', sans-serif";
+    return ctxMesure.measureText(texte.replace(/\s+/g, " ")).width / 100;
+  }
+  function couleur(css) {
+    const m = /rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)(?:[ ,/]+([\d.]+))?/.exec(css || "");
+    if (!m) return null;
+    if (m[4] !== undefined && parseFloat(m[4]) < 0.05) return null;
+    return [m[1], m[2], m[3]].map(x => (Math.min(255, parseFloat(x)) / 255).toFixed(3)).join(" ");
+  }
+  const n2 = v => (Math.round(v * 100) / 100).toString();
+
+  function dessinerPage(P, win) {
+    const doc = P.ownerDocument;
+    const R = P.getBoundingClientRect();
+    if (!R.width || !R.height) return null;
+    let s = ZONE_L / R.width;                       // mm par pixel
+    if (R.height * s > ZONE_H) s = ZONE_H / R.height; // page plus haute que l'A4 : réduite pour tenir
+    const ox = MARGE_MM + (ZONE_L - R.width * s) / 2;
+    const X = x => (ox + (x - R.left) * s) * PT;
+    const Y = y => HAUT - (MARGE_MM + (y - R.top) * s) * PT;
+    const ops = [];
+    // 1) Fonds colorés et bordures (cadres des tableaux)
+    const elements = [P].concat(Array.prototype.slice.call(P.querySelectorAll("*")));
+    for (const el of elements) {
+      if (/^(SCRIPT|STYLE|TEMPLATE)$/.test(el.tagName)) continue;
+      const cs = win.getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const fond = el === P ? null : couleur(cs.backgroundColor);
+      if (fond && fond !== "1.000 1.000 1.000") ops.push(`${fond} rg ${n2(X(r.left))} ${n2(Y(r.bottom))} ${n2(r.width * s * PT)} ${n2(r.height * s * PT)} re f`);
+      [["Top", r.left, r.top, r.right, r.top, 1], ["Bottom", r.left, r.bottom, r.right, r.bottom, -1],
+       ["Left", r.left, r.top, r.left, r.bottom, 1], ["Right", r.right, r.top, r.right, r.bottom, -1]].forEach(([cote, x1, y1, x2, y2, sens]) => {
+        const w = parseFloat(cs["border" + cote + "Width"]) || 0;
+        const st = cs["border" + cote + "Style"];
+        if (w <= 0 || st === "none" || st === "hidden") return;
+        const col = couleur(cs["border" + cote + "Color"]);
+        if (!col) return;
+        const d = sens * w / 2;
+        const horiz = cote === "Top" || cote === "Bottom";
+        const ax = horiz ? x1 : x1 + d, ay = horiz ? y1 + d : y1, bx = horiz ? x2 : x2 + d, by = horiz ? y2 + d : y2;
+        ops.push(`${col} RG ${n2(Math.max(0.3, w * s * PT))} w ${n2(X(ax))} ${n2(Y(ay))} m ${n2(X(bx))} ${n2(Y(by))} l S`);
+      });
+    }
+    // 2) Textes, mot par mot à leur vraie place (regroupés par ligne)
+    const parcours = doc.createTreeWalker(P, NodeFilter.SHOW_TEXT);
+    const plage = doc.createRange();
+    let n;
+    while ((n = parcours.nextNode())) {
+      const t = n.nodeValue;
+      if (!t || !t.trim()) continue;
+      const el = n.parentElement;
+      if (!el || el.closest("script,style,template")) continue;
+      const cs = win.getComputedStyle(el);
+      if (cs.visibility === "hidden") continue;
+      // Zone visible (texte coupé par un parent « overflow: hidden », ex. adresses sur 2 lignes)
+      let clip = null;
+      for (let a = el; a && a !== P.parentElement; a = a.parentElement) {
+        const ca = win.getComputedStyle(a);
+        if (ca.overflowX !== "visible" || ca.overflowY !== "visible") {
+          const ra = a.getBoundingClientRect();
+          clip = clip ? { l: Math.max(clip.l, ra.left), t: Math.max(clip.t, ra.top), r: Math.min(clip.r, ra.right), b: Math.min(clip.b, ra.bottom) }
+            : { l: ra.left, t: ra.top, r: ra.right, b: ra.bottom };
+        }
+      }
+      const taillePx = parseFloat(cs.fontSize) || 12;
+      const gras = (parseInt(cs.fontWeight, 10) || 400) >= 600 || cs.fontWeight === "bold";
+      const col = couleur(cs.color) || "0 0 0";
+      const majuscules = cs.textTransform === "uppercase";
+      let run = null;
+      const vider = () => {
+        if (!run) return;
+        const texte = majuscules ? run.texte.toUpperCase() : run.texte;
+        const enc = winAnsi(texte);
+        if (enc.trim()) {
+          const taillePt = taillePx * s * PT;
+          const nat = largeurNaturelle(texte, gras);
+          const largPt = (run.r - run.l) * s * PT;
+          let tz = nat ? 100 * largPt / (nat * taillePt) : 100;
+          if (!isFinite(tz) || tz <= 0) tz = 100;
+          tz = Math.max(45, Math.min(130, tz));
+          const base = run.t + (run.h - taillePx) / 2 + taillePx * 0.8;
+          ops.push(`BT /${gras ? "F2" : "F1"} ${n2(taillePt)} Tf ${n2(tz)} Tz ${col} rg ${n2(X(run.l))} ${n2(Y(base))} Td (${enc}) Tj ET`);
+        }
+        run = null;
+      };
+      const re = /\S+/g;
+      let m;
+      while ((m = re.exec(t))) {
+        plage.setStart(n, m.index); plage.setEnd(n, m.index + m[0].length);
+        const rects = plage.getClientRects();
+        if (!rects.length) continue;
+        const r = rects[0];
+        if (!r.width && !r.height) continue;
+        if (clip) { const cx = r.left + r.width / 2, cy = r.top + r.height / 2; if (cx < clip.l - 1 || cx > clip.r + 1 || cy < clip.t - 1 || cy > clip.b + 1) continue; }
+        if (run && Math.abs(r.top - run.t) < 2 && r.left >= run.r - 1) { run.texte += " " + m[0]; run.r = r.right; }
+        else { vider(); run = { texte: m[0], l: r.left, r: r.right, t: r.top, h: r.height }; }
+      }
+      vider();
+    }
+    return ops.join("\n");
+  }
+
+  function assembler(contenus) {
+    const objs = [];
+    objs[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+    objs[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+    objs[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+    const kids = [];
+    contenus.forEach((c, i) => {
+      const pid = 5 + i * 2, cid = pid + 1;
+      kids.push(pid + " 0 R");
+      objs[pid] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${LARG} ${HAUT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${cid} 0 R >>`;
+      objs[cid] = `<< /Length ${c.length} >>\nstream\n${c}\nendstream`;
+    });
+    objs[2] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${kids.length} >>`;
+    let out = "%PDF-1.4\n%âãÏÓ\n";
+    const decal = [];
+    for (let i = 1; i < objs.length; i++) { decal[i] = out.length; out += i + " 0 obj\n" + objs[i] + "\nendobj\n"; }
+    const xref = out.length;
+    out += "xref\n0 " + objs.length + "\n0000000000 65535 f \n";
+    for (let i = 1; i < objs.length; i++) out += String(decal[i]).padStart(10, "0") + " 00000 n \n";
+    out += "trailer\n<< /Size " + objs.length + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n";
+    const octets = new Uint8Array(out.length);
+    for (let i = 0; i < out.length; i++) octets[i] = out.charCodeAt(i) & 255;
+    return new Blob([octets], { type: "application/pdf" });
+  }
+
+  // Document (déjà affiché) de l'aperçu → Blob PDF
+  function creer(doc) {
+    const win = doc.defaultView;
+    let pages = Array.prototype.slice.call(doc.querySelectorAll("#pages .page"));
+    if (!pages.length) pages = [doc.getElementById("source") || doc.body];
+    const contenus = pages.map(p => dessinerPage(p, win)).filter(c => c !== null && c.length);
+    if (!contenus.length) throw new Error("la feuille est vide ou pas encore affichée");
+    return assembler(contenus);
+  }
+  function nomFichier(doc) {
+    const brut = String((doc && doc.title) || "");
+    if (/^\s*Pourboires\b/i.test(brut)) {
+      const sl = brut.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      return (sl || "pourboires") + ".pdf";
+    }
+    const titre = brut.replace(/^\s*Feuille de route\s*[—-]\s*/i, "");
+    const slug = titre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return "feuille-de-route" + (slug ? "-" + slug : "") + ".pdf";
+  }
+  return { creer, nomFichier };
+})();
+
+// Boutons de l'aperçu dans la page : « 🖨️ Imprimer » (PDF → partage iOS) + « Imprimer (navigateur) »
+async function imprimerPdfDepuisApercu(ifr, zoneStatut) {
+  const statut = (texte, type, html) => {
+    zoneStatut.style.display = "block";
+    zoneStatut.dataset.etat = type;
+    zoneStatut.style.background = type === "erreur" ? "#fdecec" : type === "ok" ? "#e7f5ec" : "#eef4fb";
+    zoneStatut.style.color = type === "erreur" ? "#8a1f1f" : type === "ok" ? "#1f6b3f" : "#1d4f86";
+    zoneStatut.textContent = texte;
+    if (html) zoneStatut.appendChild(html);
+  };
+  statut("⏳ Création du PDF de la feuille de route…", "attente");
+  try {
+    let doc = ifr.contentDocument;
+    if (!doc || doc.readyState !== "complete" || !doc.body) {
+      await new Promise(r => { ifr.addEventListener("load", r, { once: true }); setTimeout(r, 4000); });
+      doc = ifr.contentDocument;
+    }
+    if (!doc || !doc.body) throw new Error("l'aperçu de la feuille n'est pas chargé");
+    await new Promise(r => setTimeout(r, 30)); // laisse l'écran afficher le message
+    const blob = PDF_FEUILLE.creer(doc);
+    if (!blob || !blob.size) throw new Error("PDF vide");
+    const nom = PDF_FEUILLE.nomFichier(doc);
+    window.__dernierPdfFeuille = { blob, nom };
+    let fichier = null;
+    try { fichier = new File([blob], nom, { type: "application/pdf" }); } catch (e) { fichier = null; }
+    const peutPartager = !!(fichier && navigator.canShare && navigator.share && (() => { try { return navigator.canShare({ files: [fichier] }); } catch (e) { return false; } })());
+    const ouvrirOuTelecharger = () => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = nom; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "📄 Ouvrir le PDF";
+      a.style.cssText = "display:inline-block; margin-left:8px; padding:6px 10px; border-radius:8px; background:#1f8a4c; color:#fff; font-weight:700; text-decoration:none;";
+      const dl = a.cloneNode(true); dl.style.display = "none"; document.body.appendChild(dl);
+      try { dl.click(); } catch (e) {}
+      setTimeout(() => dl.remove(), 1000);
+      statut("✅ PDF prêt (" + nom + ").", "ok", a);
+    };
+    if (peutPartager) {
+      const partager = async () => {
+        try {
+          await navigator.share({ files: [fichier], title: nom.replace(/\.pdf$/, "") });
+          statut("✅ PDF envoyé — choisis « Imprimer » ou « Enregistrer dans Fichiers ».", "ok");
+        } catch (e) {
+          if (e && e.name === "AbortError") {
+            const b = document.createElement("button");
+            b.type = "button"; b.textContent = "📤 Partager / imprimer le PDF";
+            b.style.cssText = "margin-left:8px; padding:6px 10px; border-radius:8px; border:none; background:#1d4f86; color:#fff; font-weight:700;";
+            b.addEventListener("click", partager);
+            statut("Partage annulé. ", "ok", b);
+          } else if (e && e.name === "NotAllowedError") {
+            // Le téléphone demande un nouveau toucher (le PDF a pris trop de temps) : un bouton de plus
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "btn-partager-pdf"; b.textContent = "📤 Partager / imprimer le PDF";
+            b.style.cssText = "margin-left:8px; padding:6px 10px; border-radius:8px; border:none; background:#1d4f86; color:#fff; font-weight:700;";
+            b.addEventListener("click", partager);
+            statut("✅ PDF prêt. Touche le bouton : ", "ok", b);
+          } else {
+            ouvrirOuTelecharger();
+          }
+        }
+      };
+      await partager();
+    } else {
+      ouvrirOuTelecharger();
+    }
+  } catch (e) {
+    console.error("PDF feuille de route :", e);
+    statut("⚠️ Impossible de créer le PDF : " + ((e && e.message) || e) + ". Essaie « Imprimer (navigateur) ».", "erreur");
+  }
+}
+
 function afficherImpressionDansPage(html) {
   const ancien = document.getElementById("overlay-impression");
   if (ancien) ancien.remove();
@@ -7717,7 +8578,16 @@ function afficherImpressionDansPage(html) {
   const bImprimer = document.createElement("button");
   bImprimer.type = "button"; bImprimer.textContent = "🖨️ Imprimer";
   bImprimer.style.cssText = "flex:2; padding:12px; border-radius:10px; border:none; background:#c81e2c; color:#fff; font-size:1rem; font-weight:800;";
-  barre.appendChild(bFermer); barre.appendChild(bImprimer);
+  bImprimer.className = "btn-imprimer-pdf";
+  const bNavigateur = document.createElement("button");
+  bNavigateur.type = "button"; bNavigateur.className = "btn-imprimer-navigateur"; bNavigateur.textContent = "Imprimer (navigateur)";
+  bNavigateur.style.cssText = "flex:1.4; padding:12px 6px; border-radius:10px; border:1px solid #bbb; background:#fff; color:#222; font-size:.85rem; font-weight:700;";
+  barre.appendChild(bFermer); barre.appendChild(bImprimer); barre.appendChild(bNavigateur);
+  // Message pendant la création du PDF / erreur (dans la page, jamais d'alerte système)
+  const zoneStatut = document.createElement("div");
+  zoneStatut.className = "statut-pdf-impression";
+  zoneStatut.setAttribute("role", "status");
+  zoneStatut.style.cssText = "display:none; padding:9px 12px; font:600 14px/1.35 -apple-system,Arial,sans-serif; border-bottom:1px solid #ccc; flex-shrink:0;";
   const zone = document.createElement("div");
   zone.style.cssText = "flex:1; overflow:auto; -webkit-overflow-scrolling:touch;";
   const ifr = document.createElement("iframe");
@@ -7732,10 +8602,18 @@ function afficherImpressionDansPage(html) {
   });
   ifr.srcdoc = html;
   zone.appendChild(ifr);
-  ov.appendChild(barre); ov.appendChild(zone);
+  ov.appendChild(barre); ov.appendChild(zoneStatut); ov.appendChild(zone);
   document.body.appendChild(ov);
   bFermer.addEventListener("click", () => ov.remove());
-  bImprimer.addEventListener("click", () => {
+  let pdfEnCours = false;
+  bImprimer.addEventListener("click", async () => {
+    if (pdfEnCours) return;
+    pdfEnCours = true; bImprimer.disabled = true; bImprimer.style.opacity = ".6";
+    try { await imprimerPdfDepuisApercu(ifr, zoneStatut); }
+    finally { pdfEnCours = false; bImprimer.disabled = false; bImprimer.style.opacity = "1"; }
+  });
+  // Impression classique (ordinateur) : boîte d'impression du navigateur
+  bNavigateur.addEventListener("click", () => {
     try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) { window.print(); }
   });
 }
@@ -7782,8 +8660,10 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
           return esc(l.prix_taximetre) + typeLibre;
       })()}</td>
       <td>${celluleSommesImpression(l, fmtNombre)}</td>
+      <td class="pb">${Number(l.pourboire) > 0 ? esc(eurosFr(l.pourboire).replace(" €", "")) : ""}</td>
     </tr>`;
   }).join("");
+  const totauxImpression = totauxLignesFA(lignes);
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
   <title>Feuille de route — ${esc(chauffeur.nom) || ""} — ${esc(dateLisible)}</title>
@@ -7805,7 +8685,10 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     .courses-table td:nth-child(5), .courses-table td:nth-child(8) { width: 5%; }
     .courses-table td:nth-child(9) { width: 7%; }
     .courses-table td:nth-child(10) { width: 11%; }
-    .courses-table td.lieu { width: 25%; text-align: left; }
+    .courses-table td:nth-child(11) { width: 6%; }
+    .courses-table td.lieu { width: 22%; text-align: left; }
+    .totaux-pourboires td { font-size: 8pt; text-align: right; padding: 2px 6px; }
+    .totaux-pourboires td:first-child { width: 50%; }
     .courses-table td b { white-space: nowrap; letter-spacing: 0 !important; }
     .lieu-l { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; word-break: break-word; }
     .signature { margin-top: 10px; }
@@ -7867,13 +8750,17 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
       <tr>
         <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
         <th colspan="3">Embarquement</th><th colspan="3">Débarquement</th>
-        <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th>
+        <th rowspan="2">Prix taximètre</th><th rowspan="2">Sommes perçues</th><th rowspan="2">Pour&shy;boire</th>
       </tr>
       <tr><th>Index</th><th>Lieu</th><th>Heure</th><th>Index</th><th>Lieu</th><th>Heure</th></tr>
       </thead>
       <tbody>
       ${lignesHtml}
       </tbody>
+    </table>
+    <table class="totaux-pourboires">
+      <tr><td>Recette (somme des sommes perçues) : <b>${esc(eurosFr(totauxImpression.recette))}</b></td>
+          <td>Total pourboires (hors recette) : <b>${esc(eurosFr(totauxImpression.pourboires))}</b></td></tr>
     </table>
 
     </div>
