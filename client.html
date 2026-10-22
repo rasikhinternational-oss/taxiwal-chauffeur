@@ -367,6 +367,8 @@ fr: {
   "note.titre": "Comment s'est passée votre course ?",
   "note.ph": "Un commentaire ? (optionnel)",
   "note.envoyer": "Envoyer ma note",
+  "note.merci": "Merci pour votre note !",
+  "note.erreur": "Impossible d'enregistrer la note. Réessayez.",
   "annuler.demande": "Annuler la demande",
   "annuler.confirm": "Annuler cette demande de course ?",
   "notif.prix_envoye": "Un prix t'a été proposé pour ta course 💶",
@@ -766,6 +768,8 @@ nl: {
   "note.titre": "Hoe verliep uw rit?",
   "note.ph": "Een opmerking? (optioneel)",
   "note.envoyer": "Mijn beoordeling versturen",
+  "note.merci": "Bedankt voor uw beoordeling!",
+  "note.erreur": "Beoordeling kon niet worden opgeslagen. Probeer opnieuw.",
   "annuler.demande": "Aanvraag annuleren",
   "annuler.confirm": "Deze ritaanvraag annuleren?",
   "notif.prix_envoye": "Er werd u een prijs voorgesteld voor uw rit 💶",
@@ -1193,6 +1197,8 @@ en: {
   "note.titre": "How was your ride?",
   "note.ph": "Any comments? (optional)",
   "note.envoyer": "Submit my rating",
+  "note.merci": "Thank you for your rating!",
+  "note.erreur": "Could not save your rating. Please try again.",
   "annuler.demande": "Cancel the request",
   "annuler.confirm": "Cancel this ride request?",
   "notif.prix_envoye": "A price has been offered for your ride 💶",
@@ -3333,10 +3339,14 @@ async function construireCarteCourseClient(course) {
     });
     btnEnvoyer.addEventListener("click", async () => {
       const commentaire = blocNote.querySelector(".commentaire-notation").value.trim();
-      await supabase.from("courses").update({
-        note_client: noteChoisie,
-        commentaire_client: commentaire || null
-      }).eq("id", course.id);
+      btnEnvoyer.disabled = true;
+      const { error } = await supabase.rpc("client_noter_course", {
+        p_course: course.id,
+        p_note: noteChoisie,
+        p_commentaire: commentaire || null
+      });
+      if (error) { btnEnvoyer.disabled = false; await twAlert(t("note.erreur")); return; }
+      await twAlert(t("note.merci"));
       chargerMesCourses();
     });
     div.appendChild(blocNote);

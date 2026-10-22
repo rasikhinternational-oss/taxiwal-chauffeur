@@ -555,6 +555,22 @@ window.onerror = function(msg, url, line, col, err) {
   #feuilles-sous-onglets button{ width:auto; padding:9px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
   #feuilles-sous-onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   #feuilles-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  #vj-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+  #vj-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
+  #vj-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; font-size:.85rem; }
+  .vj-intro{ font-size:.85rem; color:var(--gris); margin:0 0 12px; line-height:1.4; }
+  .vj-carte{ background:#fff; border:1px solid #e0e0dd; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .vj-carte.sans{ border-color:#e9c27a; background:#fffaf0; }
+  .vj-nom{ font-weight:800; font-size:1rem; display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:8px; }
+  .vj-badge{ display:inline-block; font-size:.72rem; font-weight:700; padding:3px 8px; border-radius:999px; background:#eef4fb; color:#1d4f86; }
+  .vj-badge.chauffeur{ background:#fff1d6; color:#8a5a00; }
+  .vj-ligne{ display:flex; gap:8px; align-items:center; }
+  .vj-ligne select{ flex:1; min-width:0; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; color:#111; font-size:.95rem; margin:0; }
+  .vj-ligne button{ width:auto; flex:none; padding:10px 12px; border-radius:8px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700; font-size:.85rem; cursor:pointer; }
+  .vj-libres{ margin-top:14px; padding:12px; border-radius:12px; background:#f2f8f4; border:1px solid #cfe6d7; font-size:.9rem; }
+  .vj-libres b{ display:block; margin-bottom:6px; }
+  .vj-puce{ display:inline-block; margin:3px 4px 0 0; padding:5px 10px; border-radius:999px; background:#fff; border:1px solid #cfe6d7; font-size:.85rem; }
+  #btn-vehicules-du-jour-fa{ width:100%; margin:0 0 12px; padding:12px; border-radius:10px; border:2px solid var(--vert); background:#eef8f1; color:var(--vert); font-weight:800; font-size:.95rem; cursor:pointer; }
   #feuilles-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
   #feuilles-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; font-size:.85rem; }
   #vue-historique-fa{ display:none; }
@@ -775,6 +791,28 @@ window.onerror = function(msg, url, line, col, err) {
   #modale-actions button{ flex:1; padding:13px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
   #btn-annuler-modale{ background:#dcdcda; color:var(--blanc); }
   #btn-creer-course{ background:var(--rouge); color:#fff; }
+  /* Nouvelle course depuis un message */
+  #btn-nouvelle-course-message{ width:100%; padding:14px; border-radius:10px; border:2px solid var(--vert); background:#fff; color:#1c1c1c; font-weight:700; margin:-6px 0 16px; cursor:pointer; font-size:1rem; }
+  #bloc-depuis-message{ margin:0 0 14px; }
+  #btn-toggle-depuis-message{ width:100%; padding:12px; border-radius:10px; border:2px solid var(--vert); background:#fff; color:#1c1c1c; font-weight:700; cursor:pointer; font-size:.95rem; }
+  #panneau-depuis-message{ margin-top:10px; padding:12px; border:1px solid #cfcfcd; border-radius:12px; background:#f6f8f5; }
+  #panneau-depuis-message[hidden]{ display:none; }
+  #modale-contenu #input-message-course{ height:150px; min-height:150px; }
+  #input-message-course{ width:100%; box-sizing:border-box; min-height:150px; font-size:1rem; padding:10px; border-radius:10px; border:1px solid #b9b9b5; }
+  #panneau-depuis-message .astuce-message{ font-size:.8rem; color:#555; margin:6px 0 10px; line-height:1.35; }
+  #panneau-depuis-message .actions-message{ display:flex; gap:8px; flex-wrap:wrap; }
+  #panneau-depuis-message .actions-message button{ flex:1 1 140px; padding:12px; border-radius:10px; font-weight:700; font-size:1rem; cursor:pointer; }
+  #btn-analyser-message{ background:var(--vert); color:#fff; border:none; }
+  #btn-coller-message, #btn-effacer-message{ background:#fff; color:#1c1c1c; border:1px solid #b9b9b5; }
+  #resultat-analyse-message{ margin-top:10px; font-size:.88rem; line-height:1.4; }
+  #resultat-analyse-message .ram-ok{ background:#fff7e6; border:1px solid #f59e0b; color:#7a4a00; border-radius:10px; padding:10px; }
+  #resultat-analyse-message .ram-vide{ background:#fdecec; border:1px solid #e0b4b4; color:#8a1c1c; border-radius:10px; padding:10px; }
+  #modale-contenu .champ-a-verifier{ border:2px solid #f59e0b !important; background:#fff7e6 !important; }
+  .suggestions-geo-message{ display:flex; flex-wrap:wrap; gap:6px; margin:-4px 0 10px; font-size:.8rem; }
+  .suggestions-geo-message .sgm-titre{ width:100%; color:#555; }
+  .suggestions-geo-message button{ width:auto; padding:6px 10px; border-radius:999px; border:1px solid #3b82c4; background:#eef4fb; color:#1d4f86; font-size:.8rem; cursor:pointer; text-align:left; }
+  #ligne-accueil-panneau{ display:flex; align-items:center; gap:8px; margin:8px 0; }
+  #ligne-accueil-panneau input{ width:auto; margin:0; }
   #erreur-modale{ color:var(--rouge); font-size:.85rem; margin-top:8px; min-height:1em; }
 
   /* Écran de connexion admin */
@@ -885,6 +923,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="factures">🧾 Factures</button>
     <button data-onglet="messages">💬 Messages</button>
     <button data-onglet="feuilles">Feuilles de route</button>
+    <button data-onglet="vehicules-jour">🚗 Véhicules du jour</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
     <button data-onglet="partenaires">🤝 Sous-traitants</button>
@@ -900,6 +939,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <section id="section-courses" class="visible">
   <button id="btn-nouvelle-course">+ Nouvelle course</button>
+  <button type="button" id="btn-nouvelle-course-message">📋 Nouvelle course depuis un message</button>
   <button id="btn-toggle-historique" style="width:100%; padding:12px; border-radius:10px; background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
   <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse, N° TW-…)">
   <div id="barre-assignation-groupee" style="display:none;">
@@ -957,6 +997,7 @@ window.onerror = function(msg, url, line, col, err) {
 </section>
 
 <section id="section-feuilles">
+  <button type="button" id="btn-vehicules-du-jour-fa">🚗 Véhicules du jour — quelle voiture pour quel chauffeur</button>
   <div id="demandes-chauffeurs-fa"></div>
   <div id="feuilles-sous-onglets">
     <button class="actif" id="btn-vue-jour-fa">📅 Vue du jour</button>
@@ -1140,6 +1181,17 @@ window.onerror = function(msg, url, line, col, err) {
   </div>
 </div>
 
+<section id="section-vehicules-jour">
+  <p class="vj-intro">Chaque jour, donne une voiture à chaque chauffeur. Le chauffeur est prévenu et sa feuille de route s'ouvre directement avec cette voiture. Sans voiture attribuée, il peut choisir lui-même une voiture <b>libre</b> le matin.</p>
+  <div id="vj-date-nav">
+    <button type="button" id="vj-prev" aria-label="Jour précédent">‹</button>
+    <input type="date" id="vj-date">
+    <button type="button" id="vj-next" aria-label="Jour suivant">›</button>
+    <button type="button" id="vj-aujourdhui">Aujourd'hui</button>
+  </div>
+  <div id="vj-liste"></div>
+</section>
+
 <section id="section-vehicules">
   <button id="btn-ajouter-vehicule">+ Ajouter un véhicule</button>
   <div id="liste-vehicules-admin"></div>
@@ -1216,6 +1268,21 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="modale-contenu">
     <h2>Nouvelle course</h2>
 
+    <div id="bloc-depuis-message">
+      <button type="button" id="btn-toggle-depuis-message" aria-expanded="false" aria-controls="panneau-depuis-message">📋 Remplir depuis un message</button>
+      <div id="panneau-depuis-message" hidden>
+        <label for="input-message-course">Collez le message WhatsApp ou dictez (🎤 micro du clavier)</label>
+        <textarea id="input-message-course" placeholder="Ex. : Bonjour, c'est Marie. Demain 6h de la rue de la Station 12 à Boussu vers l'aéroport de Charleroi, 3 personnes, 2 valises. 0475 12 34 56"></textarea>
+        <p class="astuce-message">Astuce iPhone : sur une capture d'écran, appuyez longuement sur le texte (Texte en direct) → Copier, puis collez ici. Ou dictez avec le 🎤 du clavier.</p>
+        <div class="actions-message">
+          <button type="button" id="btn-analyser-message">✨ Analyser</button>
+          <button type="button" id="btn-coller-message">📋 Coller</button>
+          <button type="button" id="btn-effacer-message">Effacer</button>
+        </div>
+        <div id="resultat-analyse-message" aria-live="polite"></div>
+      </div>
+    </div>
+
     <div class="bloc-recherche-carnet-modale">
       <label for="input-recherche-carnet-modale">📇 Client déjà enregistré ? Cherche-le ici</label>
       <input type="text" id="input-recherche-carnet-modale" placeholder="Nom, téléphone ou adresse" autocomplete="off">
@@ -1243,6 +1310,21 @@ window.onerror = function(msg, url, line, col, err) {
 
     <label>Passagers</label>
     <input type="number" id="input-passagers" value="1" min="1">
+
+    <label for="input-bagages">Bagages</label>
+    <input type="number" id="input-bagages" value="0" min="0">
+
+    <label for="input-numero-vol">N° de vol (optionnel)</label>
+    <input type="text" id="input-numero-vol" placeholder="ex: SN3712" autocomplete="off">
+
+    <div id="ligne-accueil-panneau">
+      <input type="checkbox" id="input-accueil-panneau">
+      <label for="input-accueil-panneau">🪧 Accueil avec panneau (nom du client)</label>
+    </div>
+    <div id="bloc-nom-panneau" style="display:none;">
+      <label for="input-nom-panneau">Nom sur le panneau</label>
+      <input type="text" id="input-nom-panneau">
+    </div>
 
     <div class="bloc-vehicules-modale">
       <h3>🚗 Véhicules et chauffeurs</h3>
@@ -1336,6 +1418,465 @@ window.onerror = function(msg, url, line, col, err) {
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script>
+/* ===== Lecture d'un message (WhatsApp, dictée, annonce de plateforme) → champs d'une course =====
+   100 % local, sans IA ni clé : règles FR / NL / EN. Rien n'est créé : on pré-remplit, le patron valide. */
+(function () {
+  "use strict";
+  const TZ = "Europe/Brussels";
+
+  // minuscules sans accents, MÊME longueur que l'original (positions alignées)
+  function plat(s) {
+    let r = "";
+    for (const ch of s) {
+      const b = ch.normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const c = (b.length === ch.length ? b : ch).toLowerCase();
+      r += c.length === ch.length ? c : ch;
+    }
+    return r.replace(/[’‘`´]/g, "'");
+  }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function aujourdhuiBruxelles(maintenant) {
+    const p = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(maintenant).reduce((o, x) => (o[x.type] = x.value, o), {});
+    return { a: +p.year, m: +p.month, j: +p.day, h: +p.hour, mi: +p.minute };
+  }
+  function dateUTC(a, m, j) { return new Date(Date.UTC(a, m - 1, j)); }
+  function ymd(d) { return d.getUTCFullYear() + "-" + pad(d.getUTCMonth() + 1) + "-" + pad(d.getUTCDate()); }
+  function ajouterJours(d, n) { const x = new Date(d.getTime()); x.setUTCDate(x.getUTCDate() + n); return x; }
+
+  const NOMBRES = { un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10,
+    een: 1, twee: 2, drie: 3, vier: 4, vijf: 5, zes: 6, zeven: 7, acht: 8, negen: 9, tien: 10,
+    one: 1, two: 2, three: 3, four: 4, five: 5, six_: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  const NB = "(\\d{1,2}|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|een|twee|drie|vier|vijf|zes|zeven|acht|negen|tien|one|two|three|four|five|seven|eight|nine|ten)";
+  function nombre(x) { if (/^\d+$/.test(x)) return parseInt(x, 10); return NOMBRES[x] || null; }
+
+  const MOIS = { jan: 1, fev: 2, feb: 2, mar: 3, maa: 3, avr: 4, apr: 4, mai: 5, mei: 5, may: 5, juin: 6, jun: 6, juil: 7, jul: 7,
+    aou: 8, aug: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12 };
+  function moisDe(mot) {
+    const m4 = mot.slice(0, 4);
+    if (m4 === "juin" || m4 === "juni" || m4 === "june") return 6;
+    if (m4 === "juil" || m4 === "juli" || m4 === "july") return 7;
+    return MOIS[mot.slice(0, 3)] || null;
+  }
+  const RX_MOIS = "(janv(?:ier)?|januari|january|jan|fevr(?:ier)?|februari|february|feb|fev|mars|maart|march|mar|avr(?:il)?|april|apr|mai|mei|may|juin|juni|june|jun|juil(?:let)?|juli|july|jul|aout|augustus|august|aug|sept(?:embre|ember)?|sep|oct(?:obre|ober)?|okt(?:ober)?|nov(?:embre|ember)?|dec(?:embre|ember)?)\\.?";
+  const JOURS = [
+    ["dimanche", "zondag", "sunday", "dim", "zo", "sun"], ["lundi", "maandag", "monday", "lun", "ma", "mon"],
+    ["mardi", "dinsdag", "tuesday", "mar", "di", "tue"], ["mercredi", "woensdag", "wednesday", "mer", "wo", "wed"],
+    ["jeudi", "donderdag", "thursday", "jeu", "do", "thu"], ["vendredi", "vrijdag", "friday", "ven", "vr", "fri"],
+    ["samedi", "zaterdag", "saturday", "sam", "za", "sat"]];
+
+  const PAYS = "(?:belgique|belgie|belgium|belgien|france|frankrijk|frankreich|nederland|pays-bas|netherlands|deutschland|allemagne|duitsland|germany|luxembourg|luxemburg)";
+  const VILLES = ["mons", "bergen", "boussu", "saint-ghislain", "st-ghislain", "quaregnon", "frameries", "colfontaine", "dour", "hornu", "jemappes", "hensies",
+    "quievrain", "honnelles", "bernissart", "peruwelz", "tournai", "doornik", "ath", "aat", "la louviere", "binche", "charleroi", "bruxelles", "brussel", "brussels",
+    "namur", "namen", "liege", "luik", "lille", "rijsel", "paris", "parijs", "valenciennes", "maubeuge", "soignies", "zinnik", "braine-le-comte", "enghien", "edingen",
+    "leuze", "leuze-en-hainaut", "beloeil", "jurbise", "erquelinnes", "waterloo", "nivelles", "wavre", "gand", "gent", "anvers", "antwerpen", "bruges", "brugge",
+    "louvain", "leuven", "ostende", "oostende", "elouges", "wasmes", "paturages", "cuesmes", "ghlin", "nimy", "havre", "obourg", "saint-symphorien", "baudour",
+    "tertre", "hautrage", "villerot", "sirault", "thulin", "hainin", "montroeul", "blaugies", "erbisoeul", "flenu", "wasmuel", "quevy", "estinnes", "chievres",
+    "lessines", "silly", "manage", "seneffe", "le roeulx", "morlanwelz", "anderlecht", "ixelles", "uccle", "schaerbeek", "zaventem", "gosselies", "orly", "roissy",
+    "eindhoven", "maastricht", "lens", "douai", "cambrai", "arras", "roubaix", "tourcoing", "mouscron", "moeskroen", "courtrai", "kortrijk", "luxembourg"];
+  const RX_VILLES = VILLES.slice().sort((a, b) => b.length - a.length).map(v => v.replace(/-/g, "[- ]")).join("|");
+
+  const AEROPORTS = [
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d'|du\s+)?(?:bruxelles(?:[- ]national)?|brussels|zaventem)|bruxelles[- ]national|brussels\s+airport|brussel\s+airport|luchthaven\s+(?:van\s+)?(?:zaventem|brussel)|airport\s+(?:of\s+)?(?:brussels|zaventem)|zaventem(?:\s+airport)?|\bbru\b)/, nom: "Brussels Airport, 1930 Zaventem" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d'|du\s+)?(?:charleroi|gosselies|bruxelles[- ]sud)|charleroi[- ]?(?:airport|aeroport)|brussels\s+south(?:\s+charleroi)?(?:\s+airport)?|luchthaven\s+(?:van\s+)?charleroi|airport\s+(?:of\s+)?charleroi|bsca|\bcrl\b)/, nom: "Aéroport de Charleroi (BSCA), 6041 Gosselies" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?(?:lille|lesquin)|lille[- ]?(?:lesquin|airport|aeroport))/, nom: "Aéroport de Lille-Lesquin, 59810 Lesquin, France" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?(?:liege|bierset)|liege\s+airport|luchthaven\s+luik)/, nom: "Liège Airport, 4460 Grâce-Hollogne" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?(?:ostende|oostende)|ostend\s+airport|luchthaven\s+oostende)/, nom: "Ostend-Bruges Airport, 8400 Oostende" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?(?:paris[- ])?(?:orly)|orly(?:\s+airport)?)\b/, nom: "Aéroport de Paris-Orly, 94390 Orly, France" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?(?:paris[- ])?(?:charles[- ]de[- ]gaulle|cdg|roissy)|(?:paris[- ])?charles[- ]de[- ]gaulle|roissy|\bcdg\b)/, nom: "Aéroport Paris-Charles-de-Gaulle, 95700 Roissy-en-France, France" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?(?:paris[- ])?beauvais|beauvais(?:[- ]tille)?\s+airport)/, nom: "Aéroport de Beauvais-Tillé, 60000 Tillé, France" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?(?:schiphol|amsterdam)|schiphol)/, nom: "Amsterdam Airport Schiphol, Pays-Bas" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?eindhoven|eindhoven\s+airport)/, nom: "Eindhoven Airport, Pays-Bas" },
+    { rx: /\b(?:(?:l')?a[e]?roport\s+(?:de\s+|d')?luxembourg|luxembourg\s+airport|findel)/, nom: "Aéroport de Luxembourg-Findel" },
+  ];
+  const GARES = [
+    { rx: /\b(?:gare\s+(?:du\s+)?midi|(?:brussels|bruxelles)[- ]midi(?:\s+station)?|brussel[- ]zuid|brussels[- ]south\s+station|station\s+brussel[- ]zuid|gare\s+de\s+bruxelles[- ]midi)\b/, nom: "Gare de Bruxelles-Midi, 1060 Saint-Gilles" },
+    { rx: /\b(?:gare\s+(?:du\s+)?nord|bruxelles[- ]nord|brussel[- ]noord)\b/, nom: "Gare de Bruxelles-Nord, 1210 Saint-Josse" },
+    { rx: /\b(?:gare\s+centrale|bruxelles[- ]central|brussel[- ]centraal)\b/, nom: "Gare de Bruxelles-Central, 1000 Bruxelles" },
+    { rx: /\b(?:gare\s+(?:de\s+)?lille[- ](?:europe|flandres)|lille[- ](?:europe|flandres))\b/, nom: null },
+    { rx: /\b(?:gare\s+(?:de\s+|d'|du\s+)?|station\s+(?:van\s+)?)(?:[a-z][a-z'-]+)(?:[- ][a-z][a-z'-]+)?/, nom: null, villeRequise: true },
+  ];
+  const LIEUX = /\b(?:hopital|clinique|chu|chr|ziekenhuis|hotel|ikea|universite|umons|helora|ambroise pare|jolimont|grand[- ]place|grote markt|les grands pres|shopping|centre commercial)\b[^\n.;!?,]{0,40}/;
+  const RX_RUE = "(?:rue|r\\.|avenue|av\\.?|chaussee|ch\\.|place|pl\\.|boulevard|bd|bld|chemin|allee|impasse|quai|route|rte|square|clos|cite|residence|drève|dreve|sentier|ruelle|venelle|faubourg|rempart|grand[- ]rue|cour)";
+  const RX_NL_RUE = "[a-z][a-z-]{2,}(?:straat|laan|weg|plein|steenweg|dreef|lei|kaai|singel|markt|baan|dijk|hof|pad)";
+
+  const AIRLINES = "SN|FR|TB|HV|W6|U2|EZY|RYR|RK|AF|KL|LH|BA|TK|AT|IB|VY|TO|JAF|BEL|EK|QR|ET|3O|LX|OS|SK|AZ|TP|UX|A3|LO|PC|EW|4U|X3|TU|ME|RO|W4|W9|JU|DL|UA|AA|AC|TS|EY|MS|RJ|HF|BJ|ZB|SU|LS|EN|DY|D8|FI|AY|BT|OU|V7|XQ|8Q|XC|GQ|SS|TX|ZI";
+
+  const MOTS_FIN = new Set(("jusqu'a jusqu'au jusque a au aux vers pour naar to on om at in op le la les de du des et ou svp stp please aub alvast merci bedankt thanks " +
+    "demain apres-demain aujourd'hui ce cette ce-soir morgen overmorgen vandaag tomorrow today tonight vers avec with met " +
+    JOURS.map(j => j.slice(0, 3).join(" ")).join(" ")).split(" "));
+  function couperFin(s) {
+    let x = s.trim(), garde = 0;
+    while (garde++ < 8) {
+      const mm = /[\s,]+([^\s,]+)$/.exec(x);
+      if (!mm || !MOTS_FIN.has(plat(mm[1]).replace(/[.!?]+$/, ""))) break;
+      x = x.slice(0, mm.index);
+    }
+    return x;
+  }
+  function nettoyerAdresse(s) {
+    s = couperFin(s.split(/,\s*\d+\s*(?:pers|personnes?|passagers?|people|personen)\b/i)[0]);
+    return s.replace(/\s+/g, " ").replace(/^[\s,:;\-–—>→]+|[\s,:;\-–—.!?]+$/g, "")
+      .replace(/,\s*(?:belgique|belgie|belgië|belgium|belgien)\s*$/i, "").trim();
+  }
+  function estNom(s) {
+    return /^[A-ZÀ-Ý][\p{L}'’-]+(?:\s+(?:de|van|der|den|le|la|du|el|al|ben|bin|d')?\s*[A-ZÀ-Ý][\p{L}'’-]+){0,3}$/u.test(s.trim())
+      && !/\b(?:Taxi|Wal|Merci|Bonjour|Bonsoir|Salut|Hello|Hallo|Dag|Goedemorgen|Monsieur|Madame|Mons|Charleroi|Zaventem|Bruxelles|Demain|Morgen)\b/.test(s);
+  }
+
+  function analyserMessageCourse(texteBrut, maintenant) {
+    maintenant = maintenant || new Date();
+    const r = { client_nom: "", client_telephone: "", adresse_depart: "", adresse_arrivee: "", arrets: [], date: "", heure: "",
+      passagers: null, bagages: null, aller_retour: false, numero_vol: "", accueil_panneau: false, nom_panneau: "", prix: null,
+      reference: "", notes: [], incertains: [], trouve: [] };
+    let texte = String(texteBrut || "").slice(0, 8000).replace(/\r\n?/g, "\n").replace(/[‎‏‪-‮ ]/g, " ");
+    if (!texte.trim()) return r;
+    const incertain = (k) => { if (!r.incertains.includes(k)) r.incertains.push(k); };
+
+    // 1) En-têtes WhatsApp « [19/10/2026, 14:32] Nom : » → nom de l'expéditeur, puis on les retire (sinon la date d'envoi serait prise pour la date de la course)
+    let nomEntete = "";
+    texte = texte.replace(/^\s*\[?\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:[ap]\.?m\.?)?\]?\s*(?:-\s*)?([^:\n]{1,40}?):\s*/gim, (m, nom) => {
+      if (!nomEntete && !/^[+\d\s()]+$/.test(nom) && !/taxi\s*wal/i.test(nom)) nomEntete = nom.trim().replace(/^~\s*/, "");
+      return "";
+    });
+    // « / » entouré d'espaces = retour à la ligne (copie d'annonces de plateformes)
+    texte = texte.replace(/\s+\/\s+/g, "\n");
+    let t = plat(texte);
+    const masquer = (deb, fin) => { t = t.slice(0, deb) + " ".repeat(fin - deb) + t.slice(fin); };
+    const orig = texte;
+
+    // 2) Téléphone
+    const rxTel = /(?:(?:\+|00)[ \t]?(\d{2,3})[ \t.\/-]?(?:\(0\)[ \t]?)?|\b0)(\d(?:[ \t.\/-]?\d){7,11})\b/g;
+    let m;
+    while ((m = rxTel.exec(t))) {
+      const brut = m[0];
+      if (/^\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}$/.test(brut.trim())) continue;
+      const chiffres = brut.replace(/\D/g, "");
+      const intl = /^(\+|00)/.test(brut);
+      if (!intl && (chiffres.length < 9 || chiffres.length > 10)) continue;
+      if (intl && (chiffres.length < 10 || chiffres.length > 15)) continue;
+      if (!r.client_telephone) {
+        if (intl) {
+          const cc = m[1], reste = m[2].replace(/\D/g, "");
+          r.client_telephone = "+" + cc + " " + (cc === "32" && reste.length === 9 ? reste.replace(/^(\d{3})(\d{2})(\d{2})(\d{2})$/, "$1 $2 $3 $4") : reste);
+        } else {
+          r.client_telephone = chiffres.length === 10 && chiffres.startsWith("04")
+            ? chiffres.replace(/^(\d{4})(\d{2})(\d{2})(\d{2})$/, "$1 $2 $3 $4")
+            : chiffres.replace(/^(\d{2,3})(\d{2})(\d{2})(\d{2})$/, "$1 $2 $3 $4");
+        }
+        r.trouve.push("téléphone");
+      }
+      masquer(m.index, m.index + brut.length);
+    }
+
+    // 3) Référence de plateforme, distance annoncée, prix
+    m = /\b(?:trajet|ride|booking|reservation|commande|order|boeking|rit|ref(?:erence)?|dossier|transfer)\s*(?:n[°o]\.?|nr\.?|no\.?|#|number|nummer|id)?\s*[:#]?\s*([a-z]{0,4}-?\d[\d-]{3,})\b/.exec(t);
+    if (m) {
+      r.reference = orig.substr(m.index, m[0].length).replace(/\s+/g, " ").trim();
+      r.notes.push("Réf. plateforme : " + r.reference); masquer(m.index, m.index + m[0].length);
+    }
+    m = /\b(\d{1,4}(?:[.,]\d)?)\s*km\b(?:\s*[~≈±]?\s*(\d{1,2})\s*h\s*(\d{1,2})?\s*(?:min|m)?\b)?/.exec(t);
+    if (m) { r.notes.push("Distance annoncée : " + m[1] + " km" + (m[2] ? " (~" + m[2] + "h" + (m[3] ? " " + m[3] + "min" : "") + ")" : "")); masquer(m.index, m.index + m[0].length); }
+    let prixLabel = false;
+    m = /\b(?:prix|price|prijs|tarif|total|montant|kostprijs|bedrag)\s*:?\s*(?:€|eur|euros?)?\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|eur(?:os?)?)?/.exec(t);
+    if (m) prixLabel = true;
+    else m = /(?:€\s*(\d{1,4}(?:[.,]\d{1,2})?)|\b(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|eur(?:os?)?\b))/.exec(t);
+    if (m) {
+      const v = parseFloat(String(m[1] || m[2]).replace(",", "."));
+      if (v > 0 && v < 5000) { r.prix = v; r.trouve.push("prix"); if (!prixLabel) incertain("prix"); }
+      masquer(m.index, m.index + m[0].length);
+    }
+
+    // 4) Vol
+    const tt = t;
+    let mv = new RegExp("\\b(?:vol|vlucht|flight|flug)\\s*(?:n[°o]\\.?|nr\\.?|number|nummer)?\\s*:?\\s*([a-z0-9]{2,3})\\s?-?\\s?(\\d{1,4}[a-z]?)\\b").exec(tt)
+          || new RegExp("\\b(" + AIRLINES.toLowerCase() + ")\\s?-?\\s?(\\d{2,4})\\b").exec(tt);
+    if (mv && !/^\d+$/.test(mv[1]) ) {
+      r.numero_vol = (mv[1] + mv[2]).toUpperCase(); r.trouve.push("vol");
+      r.notes.push("✈️ Vol " + r.numero_vol); masquer(mv.index, mv.index + mv[0].length);
+    }
+
+    // 5) Panneau d'accueil
+    if (/\b(?:panneau|pancarte|meet\s*(?:&|and|n)\s*greet|naambord|bordje|met een bord|name\s*sign|sign\s+with|panneau indicateur|accueil (?:avec|personnalise)|welcome sign)/.test(t)) {
+      r.accueil_panneau = true; r.trouve.push("panneau");
+      const mp = /(?:panneau|pancarte|naambord|bord|sign)\s+(?:au nom de|avec (?:le nom|mon nom)|met (?:de )?naam|with (?:the )?name|nom)\s*:?\s*([^\n,.;]{2,40})/.exec(t);
+      if (mp) r.nom_panneau = couperFin(orig.substr(mp.index + mp[0].length - mp[1].length, mp[1].length).trim());
+      r.notes.push("🪧 Accueil avec panneau" + (r.nom_panneau ? " au nom de " + r.nom_panneau : ""));
+    }
+
+    // 6) Passagers et bagages
+    const rxPersX = /\b(adultes?|adults?|volwassenen|passagers?|passengers?|personnes|personen|pax|enfants?|children|kinderen|kids?|bebes?|babies)\s*[×x:]\s*(\d{1,2})\b/g;
+    let somme = 0, vu = false;
+    while ((m = rxPersX.exec(t))) { somme += parseInt(m[2], 10); vu = true; }
+    if (vu) r.passagers = somme;
+    if (r.passagers == null) {
+      m = new RegExp("\\b" + NB + "[ \\t]*(?:personnes?|pers\\.?|passagers?|pax|adultes?|people|persons?|passengers?|adults?|personen|volwassenen|reizigers|passagiers)\\b").exec(t)
+       || new RegExp("\\b(?:nous sommes|on est|on sera|nous serons|(?:wij|we) zijn(?: met)?|we are|we're|there are|we'll be)\\s+" + NB + "\\b").exec(t)
+       || new RegExp("\\b(?:pour|voor|for)\\s+" + NB + "\\b(?!\\s*(?:h\\b|u\\b|heures?|uur|:|€|eur|km|min|valises?|bagages?|koffers?|bags?|luggage|jours?|nuits?|dagen|days?|o'?clock|am|pm))").exec(t);
+      if (m) { r.passagers = nombre(m[1]); if (/^(?:pour|voor|for)/.test(m[0])) incertain("passagers"); }
+    }
+    if (r.passagers == null) { m = /^\s*[×x]\s*(\d{1,2})\s*$/m.exec(t); if (m) r.passagers = parseInt(m[1], 10); }
+    if (r.passagers != null) r.trouve.push("passagers");
+    m = new RegExp("\\b" + NB + "[ \\t]*(?:grosses?\\s+|petites?\\s+|grote\\s+|kleine\\s+|big\\s+|large\\s+|small\\s+)?(?:valises?|bagages?|luggage|bags?|suitcases?|koffers?|stuks? bagage|sacs?|trolleys?)\\b").exec(t)
+      || /\b(?:bagages?|luggage|valises?|koffers?|bags?|suitcases?)[ \t]*[×x:][ \t]*(\d{1,2})\b/.exec(t);
+    if (m) { r.bagages = nombre(m[1]); r.trouve.push("bagages"); }
+    else if (/\b(?:bagages?|valises?|luggage|koffers?|suitcases?)\b/.test(t)) { incertain("bagages"); r.notes.push("🧳 Bagages mentionnés (nombre à vérifier)"); }
+    if (/\b(?:siege|rehausseur|maxi[- ]?cosi|kinderzitje|autostoel|child seat|car seat|booster)\b/.test(t)) r.notes.push("👶 Siège enfant demandé");
+    if (/\b(?:fauteuil roulant|chaise roulante|rolstoel|wheelchair|pmr)\b/.test(t)) r.notes.push("♿ Fauteuil roulant");
+    if (/\b(?:chien|chat|animal|hond|kat|dog|cat|pet)\b/.test(t)) r.notes.push("🐾 Animal");
+
+    // 7) Aller-retour
+    if (/\b(?:aller[- ]+retour|a\/r|heen[- ]en[- ]terug|heen-?\s*en terugrit|round[- ]?trip|return trip|and back|et retour|et le retour|en terug|aller et retour)\b/.test(t)) { r.aller_retour = true; r.trouve.push("aller-retour"); }
+
+    // 8) Date
+    const auj = aujourdhuiBruxelles(maintenant);
+    const base = dateUTC(auj.a, auj.m, auj.j);
+    let dateTrouvee = null, dateSure = true;
+    const essais = [];
+    const rxNum = /\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b|\b(\d{1,2})\.(\d{1,2})\.(\d{2,4})\b/g;
+    while ((m = rxNum.exec(t))) {
+      const j = +(m[1] || m[4]), mo = +(m[2] || m[5]); let a = m[3] || m[6];
+      if (j < 1 || j > 31 || mo < 1 || mo > 12) continue;
+      if (/^\s*(?:h|u|:)/.test(t.slice(m.index + m[0].length))) continue;
+      essais.push({ pos: m.index, len: m[0].length, j, mo, a: a ? (a.length === 2 ? 2000 + +a : +a) : null });
+    }
+    const rxTxt = new RegExp("\\b(\\d{1,2})(?:er|e|eme|ste|de|st|nd|rd|th)?\\s+" + RX_MOIS + "(?:\\s+(\\d{4}))?(?![a-z])", "g");
+    while ((m = rxTxt.exec(t))) essais.push({ pos: m.index, len: m[0].length, j: +m[1], mo: moisDe(m[2]), a: m[3] ? +m[3] : null });
+    const rxTxt2 = new RegExp("\\b" + RX_MOIS + "\\s+(\\d{1,2})(?:st|nd|rd|th)?(?![\\d:])(?!\\s*(?:h|u)\\b)(?!\\s*:\\d)(?:,?\\s+(\\d{4}))?", "g");
+    while ((m = rxTxt2.exec(t))) {
+      const deb = m.index, fin = m.index + m[0].length;
+      if (essais.some(e => e.pos < fin && e.pos + e.len > deb)) continue;  // « mar. 20 oct. » = mardi 20 octobre, pas le 20 mars
+      essais.push({ pos: deb, len: m[0].length, j: +m[2], mo: moisDe(m[1]), a: m[3] ? +m[3] : null });
+    }
+    const cands = [];
+    for (const e of essais) {
+      if (!e.mo || e.j < 1 || e.j > 31) continue;
+      const a = e.a || auj.a;
+      let d = dateUTC(a, e.mo, e.j);
+      if (d.getUTCDate() !== e.j) continue;
+      // jour de semaine écrit juste avant (« lun. 19 oct. », « zaterdag 31 oktober ») : il fixe l'année
+      const avantJ = t.slice(Math.max(0, e.pos - 14), e.pos);
+      const mj = /\b(lun|mar|mer|jeu|ven|sam|dim|maa|din|woe|don|vri|zat|zon|ma|di|wo|do|vr|za|zo|mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s*$/.exec(avantJ);
+      let jourEcrit = -1;
+      if (mj) JOURS.forEach((noms, i) => { if (noms.some(n => n.startsWith(mj[1]) || mj[1].startsWith(n))) { if (jourEcrit < 0) jourEcrit = i; } });
+      if (!e.a && jourEcrit >= 0) {
+        const essaiAn = [a, a + 1, a - 1].map(y => dateUTC(y, e.mo, e.j)).find(x => x.getUTCDay() === jourEcrit && x.getUTCDate() === e.j);
+        if (essaiAn) d = essaiAn;
+        else if (d < ajouterJours(base, -1)) d = dateUTC(a + 1, e.mo, e.j);
+      } else if (!e.a && d < ajouterJours(base, -1)) d = dateUTC(a + 1, e.mo, e.j);
+      cands.push({ pos: e.pos, len: e.len, d, explicite: true });
+    }
+    const relatifs = [
+      [/\b(?:apres[- ]demain|overmorgen|day after tomorrow)\b/g, 2],
+      [/\b(?:demain|morgen(?:ochtend|avond|middag|vroeg)?|tomorrow)\b/g, 1],
+      [/\b(?:aujourd'?hui|ce soir|ce matin|cet apres[- ]midi|cette nuit|tantot|vandaag|vanavond|vanochtend|vanmorgen|vanmiddag|vannacht|today|tonight|this (?:morning|afternoon|evening)|maintenant|tout de suite|asap|nu meteen|right now)\b/g, 0]];
+    for (const [rx, n] of relatifs) {
+      while ((m = rx.exec(t))) {
+        if (n === 1 && /apres[- ]$/.test(t.slice(Math.max(0, m.index - 6), m.index))) continue;
+        if (n === 1 && /^tomorrow/.test(m[0]) && /after\s+$/.test(t.slice(Math.max(0, m.index - 12), m.index))) continue;
+        cands.push({ pos: m.index, len: m[0].length, d: ajouterJours(base, n) });
+      }
+    }
+    for (let i = 0; i < 7; i++) {
+      for (const nom of JOURS[i].slice(0, 3)) {
+        const rx = new RegExp("\\b(?:(?:next|volgende|ce|cette|this|deze)\\s+)?" + nom + "(?:\\s+(?:prochain|qui vient|volgende|next))?\\b", "g");
+        while ((m = rx.exec(t))) {
+          const prochain = /prochain|qui vient|volgende|next/.test(m[0]);
+          let diff = (i - base.getUTCDay() + 7) % 7;
+          if (diff === 0 && prochain) diff = 7;
+          cands.push({ pos: m.index, len: m[0].length, d: ajouterJours(base, diff), jour: true, douteux: diff === 0 && !/^(?:ce|cette|this|deze)\s/.test(m[0]) });
+        }
+      }
+    }
+    cands.sort((x, y) => x.pos - y.pos);
+    let choixD = cands.find(c => !/\b(?:retour|terug|return|back)\b[^.\n]{0,15}$/.test(t.slice(Math.max(0, c.pos - 25), c.pos))) || cands[0];
+    if (choixD && choixD.jour) {
+      const proche = cands.find(c => c.explicite && c.pos > choixD.pos && c.pos - (choixD.pos + choixD.len) < 20);
+      if (proche) choixD = proche;
+    }
+    if (choixD) { dateTrouvee = choixD.d; if (choixD.douteux) dateSure = false; cands.forEach(c => { if (c.explicite) masquer(c.pos, c.pos + c.len); }); }
+    if (dateTrouvee) { r.date = ymd(dateTrouvee); r.trouve.push("date"); if (!dateSure) incertain("date"); }
+
+    // 9) Heure
+    const candidats = [];
+    const rxH = /(\b(?:a|vers|om|at|pour|rond|tegen|around|about|for|des|from|de|van|ophalen|depart|vertrek)\s+)?\b([01]?\d|2[0-3])\s*(?:h|u|:|heures?|uur|hr)\s*([0-5]\d)?(?:\s*(?:min))?\b/g;
+    while ((m = rxH.exec(t))) {
+      const avant = t.slice(Math.max(0, m.index - 8), m.index), apres = t.slice(m.index + m[0].length, m.index + m[0].length + 12);
+      if (/[~≈]\s*$/.test(avant) || /\b(?:dans|pendant|duree|environ|in|binnen|within)\s*$/.test(avant) || /^\s*\d{1,2}\s*min/.test(apres) || /^\s*[ap]\.?m\b/.test(apres)) continue;
+      if (/^\s*(?:de route|de trajet|rijden|drive|drive)/.test(apres)) continue;
+      candidats.push({ pos: m.index, h: +m[2], mi: m[3] ? +m[3] : 0, pref: !!m[1], vers: /^(?:vers|rond|tegen|around|about)/.test(m[1] || ""), suite: t.slice(m.index + m[0].length, m.index + m[0].length + 30), avant: t.slice(Math.max(0, m.index - 30), m.index) });
+    }
+    const rxAmPm = /\b(\d{1,2})(?::([0-5]\d))?\s*([ap])\.?m\.?\b/g;
+    while ((m = rxAmPm.exec(t))) { let h = +m[1] % 12; if (m[3] === "p") h += 12; candidats.push({ pos: m.index, h, mi: m[2] ? +m[2] : 0, pref: true, vers: false, suite: "", avant: "", ampm: true }); }
+    m = /\bhalf\s+(\d{1,2})\b/.exec(t);
+    if (m) candidats.push({ pos: m.index, h: (+m[1] + 23) % 24, mi: 30, pref: true, vers: false, suite: t.slice(m.index + m[0].length, m.index + m[0].length + 30), avant: "" });
+    if (/\bminuit\b|\bmidnight\b|\bmiddernacht\b/.test(t)) candidats.push({ pos: t.search(/\bminuit\b|\bmidnight\b|\bmiddernacht\b/), h: 0, mi: 0, pref: true, ampm: true, suite: "", avant: "" });
+    if (/\bmidi\b(?!-)|\bnoon\b/.test(t) && !/gare du midi|bruxelles[- ]midi/.test(t)) candidats.push({ pos: t.search(/\bmidi\b|\bnoon\b/), h: 12, mi: 0, pref: true, ampm: true, suite: "", avant: "" });
+    candidats.sort((x, y) => x.pos - y.pos);
+    const choisi = candidats.find(c => !/\b(?:retour|terug|return|back)\b[^.\n]{0,15}$/.test(c.avant)) || candidats[0];
+    if (choisi) {
+      let h = choisi.h;
+      const contexte = choisi.avant + " " + choisi.suite + " " + (candidats.length === 1 ? t : "");
+      const soir = /\b(?:du soir|ce soir|de l'apres[- ]midi|cet apres[- ]midi|'s avonds|'s middags|vanavond|vanmiddag|tonight|in the (?:evening|afternoon)|this (?:evening|afternoon)|morgenavond|demain soir)\b/.test(contexte);
+      if (!choisi.ampm && soir && h >= 1 && h < 12) h += 12;
+      r.heure = pad(h) + ":" + pad(choisi.mi); r.trouve.push("heure");
+      if (choisi.vers) incertain("date");
+      const autres = candidats.filter(c => c !== choisi && c.pos > choisi.pos);
+      if (r.aller_retour && autres.length) r.notes.push("🔄 Retour vers " + pad(autres[0].h) + ":" + pad(autres[0].mi) + " ?");
+      // masquer les heures pour ne pas gêner les adresses
+      candidats.forEach(c => { const mm = /^[^\n]{0,24}?\d{1,2}\s*(?:h|u|:|heures?|uur|hr|[ap]\.?m\.?)\s*(?:[0-5]\d)?/.exec(t.slice(c.pos)); if (mm) masquer(c.pos, c.pos + mm[0].length); });
+    }
+    if (r.date && !r.heure) incertain("date");
+    if (!r.date && r.heure) {
+      const avantMaintenant = (+r.heure.slice(0, 2)) * 60 + (+r.heure.slice(3)) <= auj.h * 60 + auj.mi;
+      r.date = ymd(ajouterJours(base, avantMaintenant ? 1 : 0)); incertain("date");
+    }
+
+    // 10) Nom
+    const lignesOrig = orig.split("\n");
+    const tLignes = plat(orig).split("\n");
+    const rxLabelNom = /^\s*(?:nom|name|naam|client|klant|passager|passenger|passagier|contact|lead passenger|nom du passager|naam passagier)\s*:\s*(.{2,50})$/;
+    for (let i = 0; i < tLignes.length && !r.client_nom; i++) {
+      const mm = rxLabelNom.exec(tLignes[i]);
+      if (mm) r.client_nom = lignesOrig[i].slice(lignesOrig[i].length - mm[1].length).trim().replace(/[,.;]+$/, "");
+    }
+    if (!r.client_nom) {
+      const rxIntro = /(?:^|[\s,.!])(?:je suis|c'est|moi c'est|ici|mon nom est|je m'appelle|de la part de|ik ben|mijn naam is|met|hier is|this is|my name is|i am|i'm|it's)\s+/g;
+      const tOrig = plat(orig);
+      while ((m = rxIntro.exec(tOrig)) && !r.client_nom) {
+        const suite = orig.slice(m.index + m[0].length);
+        const mn = /^((?:M\.|Mme|Mr\.?|Mrs\.?|Mevr\.?|Dhr\.?)\s+)?([A-ZÀ-Ý][\p{L}'’-]+(?:\s+(?:de |van |van der |van den |le |la |el |ben )?[A-ZÀ-Ý][\p{L}'’-]+){0,2})/u.exec(suite);
+        if (mn && estNom(mn[2]) && !new RegExp("^(?:" + RX_VILLES + ")$", "i").test(plat(mn[2]))) { r.client_nom = ((mn[1] || "") + mn[2]).trim(); incertain("client_nom"); }
+      }
+    }
+    if (!r.client_nom) {
+      const rxSig = /^\s*(?:merci(?: beaucoup)?|cordialement|bien a vous|bonne (?:journee|soiree)|a bientot|groeten|groetjes|vriendelijke groeten|met vriendelijke groet(?:en)?|mvg|dank u|dank je|bedankt|thanks|thank you|regards|best regards|kind regards|cheers|bisous)\s*[,!.]*\s*(.*)$/;
+      for (let i = 0; i < tLignes.length && !r.client_nom; i++) {
+        const segs = [...tLignes[i].matchAll(/[^.!?]+[.!?]*/g)];
+        for (const sg of segs) {
+          const mm = rxSig.exec(sg[0]);
+          if (!mm) continue;
+          const debut = sg.index + sg[0].length - mm[1].length;
+          const cand = (mm[1].trim() ? lignesOrig[i].substr(debut, mm[1].length) : (sg === segs[segs.length - 1] ? (lignesOrig[i + 1] || "") : "")).trim().replace(/[,.!;]+$/, "");
+          if (cand && estNom(cand)) { r.client_nom = cand; incertain("client_nom"); break; }
+        }
+      }
+    }
+    if (!r.client_nom && nomEntete && estNom(nomEntete.replace(/[^\p{L}\s'’-]/gu, "").trim())) { r.client_nom = nomEntete.replace(/[^\p{L}\s'’-]/gu, "").trim(); }
+    if (r.client_nom) r.trouve.push("nom");
+
+    // 11) Adresses
+    const lieux = [];
+    function ajouterLieu(deb, fin, texteLieu, sur, role, type) {
+      texteLieu = nettoyerAdresse(texteLieu);
+      if (texteLieu.length < 3) return;
+      if (lieux.some(l => deb < l.fin && fin > l.deb)) return;
+      lieux.push({ deb, fin, texte: texteLieu, sur, role: role || null, type: type || "" });
+      masquer(deb, fin);
+    }
+    // a) lignes étiquetées
+    const rxDep = /^\s*(?:depart|adresse de depart|from|van|vertrek|ophalen|ophaaladres|pick[- ]?up(?: address| location)?|prise en charge|lieu de prise en charge|adresse de prise en charge|ramassage)\s*:\s*(.+)$/;
+    const rxArr = /^\s*(?:arrivee|adresse d'arrivee|destination|to|naar|bestemming|aankomst|drop[- ]?off(?: address| location)?|depose|lieu de depose|adresse de destination)\s*:\s*(.+)$/;
+    { let pos = 0;
+      for (let i = 0; i < tLignes.length; i++) {
+        const ligneT = t.slice(pos, pos + tLignes[i].length);
+        let mm = rxDep.exec(ligneT), role = "depart";
+        if (!mm) { mm = rxArr.exec(ligneT); role = "arrivee"; }
+        if (!mm) { mm = /^\s*(?:arret|stop|tussenstop|via)\s*:\s*(.+)$/.exec(ligneT); role = "arret"; }
+        if (mm) { const d = pos + ligneT.length - mm[1].length; ajouterLieu(d, pos + ligneT.length, orig.slice(d, pos + ligneT.length), true, role, "ligne"); }
+        pos += tLignes[i].length + 1;
+      }
+    }
+    // b) lignes « adresse complète » (annonces de plateformes : « Orly Airport (ORY), Orly, Frankrijk »)
+    { let pos = 0;
+      for (let i = 0; i < tLignes.length; i++) {
+        const ligneT = t.slice(pos, pos + tLignes[i].length), lt = ligneT.trim();
+        if (lt.length >= 5 && lt.length <= 140 && !/\b(?:je|j'|nous|vous|tu|il|elle|ik|we|wij|i|you|merci|bonjour|hello)\b/.test(lt)
+            && (new RegExp(",\\s*" + PAYS + "\\s*$").test(lt) || /^[a-z][^,]{2,70},\s*(?:\d{4,5}\s+)?[a-z][a-z' -]{1,40}(?:,\s*[a-z][a-z' -]{1,30})?$/.test(lt) && /\b\d{4,5}\b|airport|aeroport|luchthaven|gare|station|\b\d{1,4}[a-z]?\b/.test(lt))) {
+          const d = pos + ligneT.indexOf(lt);
+          ajouterLieu(d, d + lt.length, orig.slice(d, d + lt.length), true, null, "ligne");
+        }
+        pos += tLignes[i].length + 1;
+      }
+    }
+    // c) aéroports et gares connus
+    for (const a of AEROPORTS.concat(GARES)) {
+      const rx = new RegExp(a.rx.source, "g");
+      while ((m = rx.exec(t))) {
+        if (a.villeRequise) {
+          const nomG = m[0].replace(/^(?:gare|station)\s+(?:du|de|d'|van)?\s*/, "");
+          if (!new RegExp("^(?:" + RX_VILLES + ")\\b").test(nomG) && !/^[a-z]{3,}/.test(nomG)) continue;
+          if (/^(?:de|du|la|le|les|et|ou|a|pour|et|centrale)$/.test(nomG)) continue;
+        }
+        const brut = orig.substr(m.index, m[0].length);
+        ajouterLieu(m.index, m.index + m[0].length, a.nom && brut.length < 40 ? a.nom : brut.replace(/^(?:l'|l’)/i, "").replace(/^./, c => c.toUpperCase()), true, null, "connu");
+      }
+    }
+    // d) rues FR / NL avec numéro, code postal et commune
+    const queue = "(?:\\s*,?\\s*n?°?\\s*\\d{1,4}\\s?[a-z]?(?:\\s*(?:bte|bus|boite)\\s*\\d+)?)?(?:\\s*,?\\s*(?:\\d{4}\\s+)?(?:la |le )?[a-z][a-z'-]+(?:-[a-z][a-z'-]+){0,3})?";
+    const rxRue = new RegExp("(?:\\b\\d{1,4}\\s?[a-z]?,?\\s+)?\\b" + RX_RUE + "\\s+(?:(?:de la|de l'|du|des|de|d'|aux|au|la|le|les)\\s*)?[a-z][a-z'-]+(?:\\s+(?:de la|de l'|du|des|de|d'|aux|au|la|le|les|et|sur|sous|en|l')?\\s*[a-z][a-z'-]+){0,4}?(?=\\s*(?:,|\\d|$|\\n|\\.|;|!|\\?|\\s(?:a|au|vers|pour|jusqu|et|svp|stp|merci|demain|ce|cette|le|la|om|naar|to|at|for|with|avec|on|we|nous|je|il|en)\\b))" + queue, "g");
+    while ((m = rxRue.exec(t))) {
+      let fin = m.index + m[0].length;
+      const s = orig.slice(m.index, fin);
+      // couper la commune si ce n'est pas une ville (ex : « …, merci »)
+      ajouterLieu(m.index, fin, s.replace(/,?\s*(?:merci|svp|stp|demain|ce soir|please|bedankt|alvast)\b.*$/i, ""), /\d/.test(s), null, "rue");
+    }
+    const rxRueNL = new RegExp("\\b" + RX_NL_RUE + "\\b" + queue, "g");
+    while ((m = rxRueNL.exec(t))) ajouterLieu(m.index, m.index + m[0].length, orig.substr(m.index, m[0].length), /\d/.test(m[0]), null, "rue");
+    // e) code postal + commune isolés
+    const rxCP = /\b([1-9]\d{3})\s+([a-z][a-z'-]+(?:[- ][a-z][a-z'-]+)?)/g;
+    while ((m = rxCP.exec(t))) { if (+m[1] >= 2020 && +m[1] <= 2035 && /\b(?:jan|fev|feb|mar|avr|apr|mai|mei|jun|jui|jul|aou|aug|sep|oct|okt|nov|dec)/.test(t.slice(Math.max(0, m.index - 15), m.index))) continue; ajouterLieu(m.index, m.index + m[0].length, orig.substr(m.index, m[0].length), false, null, "cp"); }
+    // f) autres lieux (hôpital, hôtel…)
+    { const rx = new RegExp(LIEUX.source, "g");
+      while ((m = rx.exec(t))) { const s = orig.substr(m.index, m[0].length).split(/\s+(?:a|à|au|vers|pour|demain|ce|le|om|naar|to|at|on|in|op|for|avec|with|met|svp|stp)\s+/i)[0]; ajouterLieu(m.index, m.index + s.length, s, false, null, "lieu"); } }
+    // g) communes seules
+    { const rx = new RegExp("\\b(" + RX_VILLES + ")\\b", "g");
+      while ((m = rx.exec(t))) ajouterLieu(m.index, m.index + m[0].length, orig.substr(m.index, m[0].length).replace(/^./, c => c.toUpperCase()), false, null, "ville"); }
+
+    lieux.sort((a, b) => a.deb - b.deb);
+    // « Quaregnon, rue Paul Pastur 45 » / « rue X 5 – Dour » → une seule adresse
+    for (let k = 0; k < lieux.length - 1; k++) {
+      const a = lieux[k], b = lieux[k + 1];
+      if (!/^[\s,–-]*$/.test(t.slice(a.fin, b.deb))) continue;
+      const villeA = a.type === "ville" || a.type === "cp", villeB = b.type === "ville" || b.type === "cp";
+      if (villeA && b.type === "rue") { b.texte = b.texte + ", " + a.texte; b.deb = a.deb; b.role = b.role || a.role; b.sur = true; lieux.splice(k, 1); k--; }
+      else if (a.type === "rue" && villeB) { a.texte = a.texte + ", " + b.texte; a.fin = b.fin; a.role = a.role || b.role; a.sur = true; lieux.splice(k + 1, 1); k--; }
+    }
+    // rôle d'après les mots juste avant
+    const tPlat = plat(orig).replace(/\s+\/\s+/g, "\n");
+    for (const l of lieux) {
+      if (l.role) continue;
+      let avant = tPlat.slice(Math.max(0, l.deb - 40), l.deb).split(/[\n.;!?]/).pop();
+      avant = avant.replace(/(?:\s|^)(?:la|le|l'|les|the|de|het|un|une|mon|ma|notre|my|our|mijn|onze)\s*$/, " ").replace(/(?:\s|^)(?:la|le|l'|les|the|het)\s*$/, " ");
+      if (/(?:suis|sommes|serai|serons|ben|zijn|am|are|i'm|we're|habite|woon|live)\s+(?:a|au|aux|en|in|op|at|bij)?\s*$/.test(avant)
+          || /(?:chercher|prendre|ophalen|halen|pick (?:me |us )?up|recuperer|rendez[- ]vous|rdv|rendezvous|depart|vertrek|depuis|from|vanaf|van|venir|komen|kom)\s+(?:moi\s+|nous\s+|me\s+|us\s+|mij\s+|ons\s+)?(?:a|au|aux|at|in|op|bij|from|de|du|des|d')?\s*$/.test(avant)) l.role = "depart";
+      else if (/(?:\b(?:a|au|aux|vers|jusqu'?a|jusqu'au|jusque|pour|to|naar|richting|destination|direction|bestemming|arrivee|deposer|aller|towards|into)\s*)$/.test(avant)) l.role = "arrivee";
+      else if (/(?:\b(?:de|du|des|d'|from|van|uit)\s*)$/.test(avant)) l.role = "depart";
+      else l.roleDevine = true;
+    }
+    const deps = lieux.filter(l => l.role === "depart"), arrs = lieux.filter(l => l.role === "arrivee");
+    let dep = deps[0] || null, arr = arrs[arrs.length - 1] || null;
+    const restants = lieux.filter(l => l !== dep && l !== arr);
+    if (!dep) { const c = restants.find(l => l.role !== "arret" && (!arr || l.deb < arr.deb)) || restants.find(l => l.role !== "arret"); if (c) { dep = c; incertain("adresse_depart"); } }
+    if (!arr) { const c = lieux.filter(l => l !== dep && l.role !== "arret" && (!dep || l.deb > dep.deb)).pop() || lieux.filter(l => l !== dep && l.role !== "arret").pop(); if (c) { arr = c; incertain("adresse_arrivee"); } }
+    // si une seule adresse et une destination aéroport/gare implicite : le départ est probablement le domicile du client (inconnu)
+    if (dep) { r.adresse_depart = dep.texte; if (!dep.sur || dep.roleDevine) incertain("adresse_depart"); }
+    if (arr) { r.adresse_arrivee = arr.texte; if (!arr.sur || arr.roleDevine) incertain("adresse_arrivee"); }
+    r.arrets = lieux.filter(l => l !== dep && l !== arr && (l.role === "arret" || l.sur || (dep && arr && l.deb > dep.deb && l.deb < arr.deb))).map(l => l.texte);
+    if (r.adresse_depart) r.trouve.push("départ");
+    if (r.adresse_arrivee) r.trouve.push("arrivée");
+
+    // Champs vides = à vérifier
+    ["client_nom", "client_telephone", "adresse_depart", "adresse_arrivee"].forEach(k => { if (!r[k]) incertain(k); });
+    if (!r.date || !r.heure) incertain("date");
+    if (r.passagers == null) incertain("passagers");
+    return r;
+  }
+
+  window.analyserMessageCourse = analyserMessageCourse;
+})();
+</script>
 <script>
 const SUPABASE_URL = "https://dgtsgylgqucyzujvfkgo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
@@ -1840,6 +2381,7 @@ function activerTempsReelAdmin() {
     .channel("admin-feuilles")
     .on("postgres_changes", { event: "*", schema: "public", table: "feuilles_route" }, planifierRafraichissementFeuilles)
     .on("postgres_changes", { event: "*", schema: "public", table: "lignes_feuille_route" }, planifierRafraichissementFeuilles)
+    .on("postgres_changes", { event: "*", schema: "public", table: "attributions_vehicules" }, attributionsChangeesAdmin)
     .subscribe();
 }
 function planifierRafraichissementFeuilles() {
@@ -1943,6 +2485,7 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "factures") chargerFacturesAdmin();
     if (btn.dataset.onglet === "messages") { chargerConversationsAdmin(); chargerConversationsChauffeursAdmin(); if (chatClientOuvert) chatMarquerLuAdmin(); if (chchOuvert) chchMarquerLu(); }
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
+    if (btn.dataset.onglet === "vehicules-jour") chargerVehiculesDuJour();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
     if (btn.dataset.onglet === "carnet") chargerCarnet();
@@ -2175,6 +2718,133 @@ document.getElementById("hor-copier").addEventListener("click", async () => {
 let chauffeursCache = [];
 let partenairesCache = [];
 let vehiculesCache = [];
+
+// ================== 🚗 VÉHICULES DU JOUR ==================
+// Plus de voiture attitrée : la centrale attribue chaque jour une voiture à chaque chauffeur
+// (table attributions_vehicules, RPC admin_attribuer_vehicule / admin_retirer_attribution).
+let attributionsCache = [];   // attributions actives (hier → futur), pour proposer la voiture du jour partout
+function dateBruxellesISO(d) {
+  try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels", year: "numeric", month: "2-digit", day: "2-digit" }).format(d || new Date()); }
+  catch (e) { return dateLocaleISO(d || new Date()); }
+}
+async function chargerAttributionsCache() {
+  const depuis = dateBruxellesISO(new Date(Date.now() - 864e5));
+  try {
+    const { data, error } = await supabase.from("attributions_vehicules").select("*").eq("actif", true).gte("date_service", depuis);
+    if (!error && Array.isArray(data)) attributionsCache = data;
+  } catch (e) {}
+  return attributionsCache;
+}
+// Voiture du jour d'un chauffeur pour une date (YYYY-MM-DD ou date/heure), sinon celle d'aujourd'hui
+function vehiculeDuJourAdmin(chauffeurId, quand) {
+  if (!chauffeurId) return null;
+  let date = null;
+  if (quand) {
+    const s = String(quand);
+    date = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : (isNaN(new Date(s).getTime()) ? null : dateBruxellesISO(new Date(s)));
+  }
+  const auj = dateBruxellesISO();
+  const a = attributionsCache.find(x => x.chauffeur_id === chauffeurId && x.date_service === (date || auj))
+    || (date && date !== auj ? attributionsCache.find(x => x.chauffeur_id === chauffeurId && x.date_service === auj) : null);
+  return a ? (vehiculesCache.find(v => v.id === a.vehicule_id) || null) : null;
+}
+// Chauffeur à qui une voiture est attribuée ce jour-là
+function chauffeurDuVehiculeAdmin(vehiculeId, quand) {
+  const v = vehiculeId && attributionsCache.length ? attributionsCache : [];
+  const date = quand ? (/^\d{4}-\d{2}-\d{2}$/.test(String(quand)) ? String(quand) : dateBruxellesISO(new Date(quand))) : dateBruxellesISO();
+  const a = v.find(x => x.vehicule_id === vehiculeId && x.date_service === date);
+  return a ? a.chauffeur_id : null;
+}
+function libVehAdmin(v) { return v ? (v.nom || "Véhicule") + (v.plaque ? " · " + v.plaque : "") : "—"; }
+
+let vjDate = null;
+async function chargerVehiculesDuJour() {
+  const zone = document.getElementById("vj-liste");
+  const inp = document.getElementById("vj-date");
+  if (!vjDate) vjDate = dateBruxellesISO();
+  inp.value = vjDate;
+  zone.innerHTML = '<p style="color:var(--gris);">Chargement…</p>';
+  const [{ data: attribs, error }, { data: vehs }, { data: chs }] = await Promise.all([
+    supabase.from("attributions_vehicules").select("*").eq("date_service", vjDate).eq("actif", true),
+    supabase.from("vehicules").select("id, nom, plaque, places, actif").eq("actif", true).order("nom"),
+    supabase.from("profils").select("id, nom, telephone").eq("role", "chauffeur").eq("actif", true).order("nom")
+  ]);
+  if (error) { zone.innerHTML = '<p style="color:var(--rouge);">Erreur : ' + esc(error.message) + '</p>'; return; }
+  const vehicules = vehs || [], chauffeurs = chs || [], liste = attribs || [];
+  zone.innerHTML = "";
+  if (!chauffeurs.length) { zone.innerHTML = '<p style="color:var(--gris);">Aucun chauffeur actif.</p>'; return; }
+  const parChauffeur = {}; liste.forEach(a => { parChauffeur[a.chauffeur_id] = a; });
+  const prises = new Set(liste.map(a => a.vehicule_id));
+  chauffeurs.forEach(ch => {
+    const a = parChauffeur[ch.id] || null;
+    const carte = document.createElement("div");
+    carte.className = "vj-carte" + (a ? "" : " sans");
+    carte.dataset.chauffeurId = ch.id;
+    const badge = a ? (a.choisi_par === "chauffeur"
+      ? '<span class="vj-badge chauffeur">🙋 choisi par le chauffeur</span>'
+      : '<span class="vj-badge">🏢 attribué par la centrale</span>') : '<span class="vj-badge chauffeur">Aucune voiture</span>';
+    carte.innerHTML = `<div class="vj-nom">👤 ${esc(ch.nom || ch.telephone || "Chauffeur")} ${badge}</div>`;
+    const ligne = document.createElement("div"); ligne.className = "vj-ligne";
+    const sel = document.createElement("select"); sel.className = "vj-select";
+    sel.setAttribute("aria-label", "Véhicule de " + (ch.nom || "ce chauffeur"));
+    const libres = vehicules.filter(v => !prises.has(v.id) || (a && a.vehicule_id === v.id));
+    sel.innerHTML = `<option value="">— Choisir une voiture —</option>` +
+      libres.map(v => `<option value="${v.id}" ${a && a.vehicule_id === v.id ? "selected" : ""}>${esc(libVehAdmin(v))}</option>`).join("");
+    sel.addEventListener("change", async () => {
+      if (!sel.value) return;
+      sel.disabled = true;
+      const { error: e } = await supabase.rpc("admin_attribuer_vehicule", { p_chauffeur: ch.id, p_vehicule: sel.value, p_date: vjDate });
+      if (e) toastAdmin("Erreur : " + e.message, "#b3141b");
+      else toastAdmin("✅ " + libVehAdmin(vehicules.find(v => v.id === sel.value)) + " → " + (ch.nom || "chauffeur") + " (prévenu)");
+      await chargerAttributionsCache();
+      chargerVehiculesDuJour();
+    });
+    ligne.appendChild(sel);
+    if (a) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "vj-retirer"; b.textContent = "Retirer";
+      b.addEventListener("click", async () => {
+        if (b.dataset.confirme !== "1") { b.dataset.confirme = "1"; b.textContent = "Confirmer ?"; setTimeout(() => { if (b.isConnected) { b.dataset.confirme = ""; b.textContent = "Retirer"; } }, 4000); return; }
+        b.disabled = true;
+        const { error: e } = await supabase.rpc("admin_retirer_attribution", { p_id: a.id });
+        if (e) toastAdmin("Erreur : " + e.message, "#b3141b"); else toastAdmin("Voiture retirée à " + (ch.nom || "chauffeur"));
+        await chargerAttributionsCache();
+        chargerVehiculesDuJour();
+      });
+      ligne.appendChild(b);
+    }
+    carte.appendChild(ligne);
+    zone.appendChild(carte);
+  });
+  const nonAttribues = vehicules.filter(v => !prises.has(v.id));
+  const bloc = document.createElement("div"); bloc.className = "vj-libres"; bloc.id = "vj-non-attribues";
+  bloc.innerHTML = `<b>🅿️ Voitures non attribuées (${nonAttribues.length})</b>` +
+    (nonAttribues.length ? nonAttribues.map(v => `<span class="vj-puce">${esc(libVehAdmin(v))}</span>`).join("") : '<span style="color:var(--gris);">Toutes les voitures sont attribuées.</span>');
+  zone.appendChild(bloc);
+}
+function vjDecaler(jours) {
+  const d = new Date((vjDate || dateBruxellesISO()) + "T12:00:00");
+  d.setDate(d.getDate() + jours);
+  vjDate = dateLocaleISO(d);
+  chargerVehiculesDuJour();
+}
+document.getElementById("vj-prev").addEventListener("click", () => vjDecaler(-1));
+document.getElementById("vj-next").addEventListener("click", () => vjDecaler(1));
+document.getElementById("vj-aujourdhui").addEventListener("click", () => { vjDate = dateBruxellesISO(); chargerVehiculesDuJour(); });
+document.getElementById("vj-date").addEventListener("change", (e) => { if (e.target.value) { vjDate = e.target.value; chargerVehiculesDuJour(); } });
+document.getElementById("btn-vehicules-du-jour-fa").addEventListener("click", () => {
+  const d = document.getElementById("fa-date") && document.getElementById("fa-date").value;
+  if (d) vjDate = d;
+  document.querySelector('nav button[data-onglet="vehicules-jour"]').click();
+});
+function ouvrirVehiculesDuJourDepuisVehicules() { vjDate = dateBruxellesISO(); document.querySelector('nav button[data-onglet="vehicules-jour"]').click(); }
+// Temps réel : un chauffeur qui choisit sa voiture le matin apparaît tout de suite
+function attributionsChangeesAdmin() {
+  clearTimeout(window.__vjMaj);
+  window.__vjMaj = setTimeout(async () => {
+    await chargerAttributionsCache();
+    if (document.getElementById("section-vehicules-jour").classList.contains("visible")) chargerVehiculesDuJour();
+  }, 400);
+}
 let dernieresCoursesAdmin = [];
 const coursesOuvertes = new Set();
 
@@ -2269,6 +2939,7 @@ async function chargerChauffeurs() {
     .eq("actif", true)
     .order("places", { ascending: true });
   vehiculesCache = vehicules || [];
+  await chargerAttributionsCache();
 
   rendreLignesVehiculesModale();
 
@@ -2485,7 +3156,7 @@ function editerPlein(p) {
       } else ({ error } = await supabase.from("pleins_carburant").update(donnees).eq("id", p.id));
     } else {
       const veh = vehiculesCache.find(v => v.id === vid);
-      ({ error } = await supabase.from("pleins_carburant").insert({ ...donnees, vehicule_id: vid, chauffeur_id: veh?.chauffeur_id || null, plein_complet: true }));
+      ({ error } = await supabase.from("pleins_carburant").insert({ ...donnees, vehicule_id: vid, chauffeur_id: chauffeurDuVehiculeAdmin(vid) || null, plein_complet: true }));
     }
     if (error) { alert("Erreur : " + error.message); return; }
     chargerCarburant();
@@ -4165,16 +4836,16 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
       } else if (ancien) {
         const montantPaiement = c.paiement_choisi === "total" ? ((Number(c.prix) || 0) + (Number(c.surprime) || 0)).toFixed(2) + " € (totalité)" : Number(c.acompte_montant || 0).toFixed(2) + " € (acompte)";
         if (!ancien.declare && c.acompte_declare_client && !c.acompte_paye) {
-          alerteImportanteAdmin("💶 Paiement déclaré par le client", `${c.client_nom || "Le client"} dit avoir payé ${montantPaiement}.<br>Vérifie ton compte bancaire puis confirme le paiement sur la course.`, c, "#8a5a00", "#fff7e0");
+          alerteImportanteAdmin("💶 Paiement déclaré par le client", `${esc(c.client_nom || "Le client")} dit avoir payé ${esc(montantPaiement)}.<br>Vérifie ton compte bancaire puis confirme le paiement sur la course.`, c, "#8a5a00", "#fff7e0");
         }
         if (!ancien.paye && c.acompte_paye) {
-          alerteImportanteAdmin("✅ PAIEMENT REÇU", `${c.client_nom || "Le client"} a payé ${montantPaiement}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.`, c, "#1f6b3f", "#e7f5ec");
+          alerteImportanteAdmin("✅ PAIEMENT REÇU", `${esc(c.client_nom || "Le client")} a payé ${esc(montantPaiement)}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.`, c, "#1f6b3f", "#e7f5ec");
           if (document.getElementById("section-paiements")?.classList.contains("visible")) setTimeout(chargerPaiements, 1500);
         }
         if (c.demande_cash_at && ancien.cash !== c.demande_cash_at && demandeCashEnAttente(c)) {
           alerteImportanteAdmin("💵 Client demande à payer CASH", `${esc(c.client_nom || "Le client")} souhaite payer en cash dans la voiture (${esc(Number((Number(c.prix) || 0) + (Number(c.surprime) || 0)).toFixed(2))} €).<br>Ouvre la course et réponds : ✅ Cash accepté · 💳 Acompte 30 % · 🔒 Totalité à l'avance.`, c, "#14532d", "#e9f7ef");
         } else if (!ancien.msg && c.message_client_paiement) {
-          alerteImportanteAdmin("🙋 Message du client sur le paiement", `${c.client_nom || "Le client"} : « ${esc(c.message_client_paiement)} »`, c, "#1d4f86", "#eef4fb");
+          alerteImportanteAdmin("🙋 Message du client sur le paiement", `${esc(c.client_nom || "Le client")} : « ${esc(c.message_client_paiement)} »`, c, "#1d4f86", "#eef4fb");
         }
         if (!ancien.accepte && c.accepte_chauffeur) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: "✅ Course acceptée par le chauffeur", adresse_arrivee: c.adresse_arrivee });
@@ -4830,7 +5501,7 @@ function construireCarteAdmin(course) {
       selectAvecEnregistrer(selR, async (valeur) => {
         const id = valeur || null;
         const maj = { chauffeur_id: id, statut: id ? "assignee" : (retour.statut === "assignee" ? "confirmee" : retour.statut), accepte_chauffeur: false };
-        const veh = id ? vehiculesCache.find(v => v.chauffeur_id === id) : null;
+        const veh = id ? vehiculeDuJourAdmin(id, retour.date_heure) : null;
         if (veh) maj.vehicule_id = veh.id; else if (!id) maj.vehicule_id = null;
         if (id && retour.origine === "client" && !retour.acompte_paye && !retour.sans_acompte_autorise && !course.acompte_paye) {
           if (!confirm("⚠️ Le client n'a pas encore payé l'acompte. Attribuer le retour quand même ?")) { return false; }
@@ -5206,12 +5877,12 @@ function construireCarteAdmin(course) {
     const statutSansChauffeur = (course.origine === "client" && (course.acompte_paye || course.sans_acompte_autorise)) ? "confirmee" : "en_attente";
     const maj = { chauffeur_id: nouveauChauffeurId, statut: nouveauChauffeurId ? "assignee" : statutSansChauffeur, accepte_chauffeur: false, accepte_a: null };
     if (ancienChauffeurId && nouveauChauffeurId && course.vehicule_id) {
-      // le véhicule suit le nouveau chauffeur s'il en a un attitré
-      const vehNouveau = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
+      // le véhicule suit le nouveau chauffeur s'il a une voiture ce jour-là (véhicule du jour)
+      const vehNouveau = vehiculeDuJourAdmin(nouveauChauffeurId, course.date_heure);
       if (vehNouveau) maj.vehicule_id = vehNouveau.id;
     }
     if (!course.vehicule_id) {
-      const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === nouveauChauffeurId);
+      const vehAttitre = vehiculeDuJourAdmin(nouveauChauffeurId, course.date_heure);
       if (vehAttitre) maj.vehicule_id = vehAttitre.id;
     }
     // RÈGLE : demande d'un client → pas de chauffeur tant que l'acompte n'est pas payé
@@ -5562,11 +6233,12 @@ function rendreLignesVehiculesModale(valeursForcees) {
       const veh = vehiculesCache.find(x => x.id === selVeh.value);
       if (!veh) return;
       if (!selType.value) selType.value = (veh.places || 0) >= 7 ? "van" : "berline";
-      if (!selCh.value && veh.chauffeur_id) selCh.value = veh.chauffeur_id;
+      const chDuJour = chauffeurDuVehiculeAdmin(veh.id, (document.getElementById("input-date").value || "").slice(0, 10) || null);
+      if (!selCh.value && chDuJour && [...selCh.options].some(o => o.value === chDuJour)) selCh.value = chDuJour;
     });
     selCh.addEventListener("change", () => {
       if (selVeh.value) return;
-      const vehAttitre = vehiculesCache.find(x => x.chauffeur_id === selCh.value);
+      const vehAttitre = vehiculeDuJourAdmin(selCh.value, (document.getElementById("input-date").value || "").slice(0, 10) || null);
       if (vehAttitre) {
         selVeh.value = vehAttitre.id;
         if (!selType.value) selType.value = (vehAttitre.places || 0) >= 7 ? "van" : "berline";
@@ -5592,6 +6264,12 @@ function reinitialiserModaleCourse() {
     .forEach(id => { document.getElementById(id).value = ""; });
   document.getElementById("resultats-carnet-modale").innerHTML = "";
   document.getElementById("input-passagers").value = "1";
+  document.getElementById("input-bagages").value = "0";
+  document.getElementById("input-numero-vol").value = "";
+  document.getElementById("input-accueil-panneau").checked = false;
+  document.getElementById("input-nom-panneau").value = "";
+  document.getElementById("bloc-nom-panneau").style.display = "none";
+  reinitialiserDepuisMessage();
   document.getElementById("input-mode-tarification").value = "forfait";
   document.getElementById("input-aller-retour").checked = false;
   document.getElementById("bloc-type-retour").style.display = "none";
@@ -5631,7 +6309,7 @@ function preparerChoixMultiChauffeurs() {
     if (choisis.length > 5) alert("5 véhicules maximum par réservation : seuls les 5 premiers sont gardés.");
     document.getElementById("input-nb-vehicules").value = String(nb);
     rendreLignesVehiculesModale(choisis.slice(0, 5).map(id => {
-      const veh = vehiculesCache.find(v => v.chauffeur_id === id);
+      const veh = vehiculeDuJourAdmin(id, (document.getElementById("input-date").value || "").slice(0, 10) || null);
       return { chauffeur: id, vehicule: veh?.id || "", type: veh ? ((veh.places || 0) >= 7 ? "van" : "berline") : "" };
     }));
   }));
@@ -5650,7 +6328,7 @@ function ouvrirModaleCourse({ chauffeurId = null, date = null, client = null } =
   preparerChoixMultiChauffeurs();
   if (date) document.getElementById("input-date").value = date;
   if (chauffeurId) {
-    const vehAttitre = vehiculesCache.find(v => v.chauffeur_id === chauffeurId);
+    const vehAttitre = vehiculeDuJourAdmin(chauffeurId, date ? String(date).slice(0, 10) : null);
     rendreLignesVehiculesModale([{
       chauffeur: chauffeurId,
       vehicule: vehAttitre?.id || "",
@@ -5783,6 +6461,10 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
     adresse_arrivee: arrivee,
     arrets: editeurArretsModale ? editeurArretsModale.lireArrets() : [],
     passagers: parseInt(document.getElementById("input-passagers").value) || 1,
+    bagages: Math.max(0, parseInt(document.getElementById("input-bagages").value) || 0),
+    numero_vol: document.getElementById("input-numero-vol").value.trim().toUpperCase() || null,
+    accueil_panneau: document.getElementById("input-accueil-panneau").checked,
+    nom_panneau: document.getElementById("input-accueil-panneau").checked ? (document.getElementById("input-nom-panneau").value.trim() || clientNom || null) : null,
     prix: parseFloat(String(document.getElementById("input-prix").value).replace(",", ".")) || null,
     mode_tarification: document.getElementById("input-mode-tarification").value,
     notes: document.getElementById("input-notes").value.trim(),
@@ -5853,6 +6535,174 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
   reinitialiserModaleCourse();
   chargerCoursesAdmin();
   if (document.getElementById("section-feuilles").classList.contains("visible")) chargerFeuillesAdmin();
+});
+
+/* ===== 📋 Nouvelle course depuis un message : pré-remplit le formulaire ci-dessus (rien n'est créé ni envoyé tout seul) ===== */
+var CHAMPS_MESSAGE = { client_nom: "input-client-nom", client_telephone: "input-client-tel", adresse_depart: "input-depart",
+  adresse_arrivee: "input-arrivee", date: "input-date", passagers: "input-passagers", bagages: "input-bagages", prix: "input-prix" };
+var idAnalyseMessage = 0;
+
+function retirerMarquesMessage() {
+  document.querySelectorAll("#modale-contenu .champ-a-verifier").forEach(el => el.classList.remove("champ-a-verifier"));
+  document.querySelectorAll("#modale-contenu .suggestions-geo-message").forEach(el => el.remove());
+}
+function reinitialiserDepuisMessage() {
+  idAnalyseMessage++;
+  const panneau = document.getElementById("panneau-depuis-message");
+  if (!panneau) return;
+  panneau.hidden = true;
+  document.getElementById("btn-toggle-depuis-message").setAttribute("aria-expanded", "false");
+  document.getElementById("input-message-course").value = "";
+  document.getElementById("resultat-analyse-message").innerHTML = "";
+  retirerMarquesMessage();
+}
+function ouvrirPanneauMessage() {
+  const panneau = document.getElementById("panneau-depuis-message");
+  panneau.hidden = false;
+  document.getElementById("btn-toggle-depuis-message").setAttribute("aria-expanded", "true");
+  setTimeout(() => { try { document.getElementById("input-message-course").focus(); } catch (e) {} }, 50);
+}
+function marquerAVerifier(el) {
+  if (!el) return;
+  el.classList.add("champ-a-verifier");
+  const enlever = () => { el.classList.remove("champ-a-verifier"); el.removeEventListener("input", enlever); el.removeEventListener("change", enlever); };
+  el.addEventListener("input", enlever); el.addEventListener("change", enlever);
+}
+function formaterDateFr(ymdTexte) {
+  const [a, m, j] = ymdTexte.split("-").map(Number);
+  return new Date(Date.UTC(a, m - 1, j, 12)).toLocaleDateString("fr-BE", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+}
+
+async function proposerAdressesCarte(idChamp, analyse) {
+  const input = document.getElementById(idChamp);
+  const texte = input.value.trim();
+  if (texte.length < 3) return;
+  const resultats = await suggestionsAdressesReelles(texte);
+  if (analyse !== idAnalyseMessage || input.value.trim() !== texte) return;
+  const propositions = resultats.filter(x => x && x.toLowerCase() !== texte.toLowerCase()).slice(0, 3);
+  const zone = document.createElement("div");
+  zone.className = "suggestions-geo-message";
+  zone.dataset.pour = idChamp;
+  zone.innerHTML = propositions.length
+    ? `<span class="sgm-titre">📍 La carte propose (touchez pour remplacer) :</span>` + propositions.map((p, i) => `<button type="button" data-i="${i}">${esc(p)}</button>`).join("")
+    : `<span class="sgm-titre">📍 Adresse non trouvée sur la carte : vérifiez-la.</span>`;
+  zone.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    input.value = propositions[+b.dataset.i];
+    input.classList.remove("champ-a-verifier");
+    zone.remove();
+  }));
+  if (!propositions.length) marquerAVerifier(input);
+  const ancre = (input.nextElementSibling && input.nextElementSibling.classList.contains("liste-suggestions-adresse")) ? input.nextElementSibling : input;
+  document.querySelectorAll(`#modale-contenu .suggestions-geo-message[data-pour="${idChamp}"]`).forEach(el => el.remove());
+  ancre.insertAdjacentElement("afterend", zone);
+}
+
+function appliquerAnalyseMessage(r) {
+  const analyse = ++idAnalyseMessage;
+  retirerMarquesMessage();
+  const val = (id) => document.getElementById(id);
+  if (r.client_nom) val("input-client-nom").value = r.client_nom;
+  if (r.client_telephone) val("input-client-tel").value = r.client_telephone;
+  if (r.adresse_depart) val("input-depart").value = r.adresse_depart;
+  if (r.adresse_arrivee) val("input-arrivee").value = r.adresse_arrivee;
+  if (r.date && r.heure) val("input-date").value = r.date + "T" + r.heure;
+  if (r.passagers) val("input-passagers").value = String(r.passagers);
+  if (r.bagages != null) val("input-bagages").value = String(r.bagages);
+  if (r.prix != null) val("input-prix").value = String(r.prix).replace(".", ",");
+  if (r.numero_vol) val("input-numero-vol").value = r.numero_vol;
+  if (r.accueil_panneau) {
+    val("input-accueil-panneau").checked = true;
+    val("bloc-nom-panneau").style.display = "block";
+    if (r.nom_panneau) val("input-nom-panneau").value = r.nom_panneau;
+  }
+  if (r.aller_retour && !val("input-aller-retour").checked) {
+    val("input-aller-retour").checked = true;
+    val("input-aller-retour").dispatchEvent(new Event("change"));
+  }
+  if (r.arrets && r.arrets.length && editeurArretsModale && editeurArretsModale.remplacer) {
+    editeurArretsModale.remplacer(editeurArretsModale.lireArrets().concat(r.arrets.map(a => ({ type: "depose", adresse: a }))));
+  }
+  if (r.notes && r.notes.length) {
+    const notes = val("input-notes");
+    const ajout = r.notes.filter(n => !notes.value.includes(n)).join("\n");
+    if (ajout) notes.value = (notes.value.trim() ? notes.value.trim() + "\n" : "") + ajout;
+  }
+  // Client déjà dans le carnet ? (même téléphone)
+  let connu = null;
+  try {
+    const chiffres = typeof chiffresTelephone === "function" ? chiffresTelephone(r.client_telephone || "") : "";
+    if (chiffres.length >= 8) {
+      const fin = chiffres.slice(-8);
+      const trouves = (carnetCache || []).filter(c => chiffresTelephone(c.telephone || "").endsWith(fin));
+      if (trouves.length === 1) {
+        connu = trouves[0];
+        if (!r.client_nom && connu.nom) { val("input-client-nom").value = connu.nom; r.incertains = r.incertains.filter(k => k !== "client_nom"); }
+        if (connu.email && !val("input-client-email").value) val("input-client-email").value = connu.email;
+      }
+    }
+  } catch (e) {}
+
+  (r.incertains || []).forEach(k => marquerAVerifier(val(CHAMPS_MESSAGE[k])));
+  if (r.date && !r.heure) marquerAVerifier(val("input-date"));
+  mettreAJourApercuRecurrence();
+
+  const zone = document.getElementById("resultat-analyse-message");
+  const nbTrouves = (r.trouve || []).length;
+  if (!nbTrouves) {
+    zone.innerHTML = `<div class="ram-vide">Je n'ai rien reconnu dans ce message. Remplissez le formulaire à la main, ou ajoutez l'adresse, la date et l'heure dans le texte puis appuyez à nouveau sur ✨ Analyser.</div>`;
+    return;
+  }
+  const lignes = [];
+  if (r.date) lignes.push("📅 " + formaterDateFr(r.date) + (r.heure ? " à " + r.heure.replace(":", "h") : " — <b>heure à compléter</b>"));
+  if (connu) lignes.push("📇 Client connu du carnet : " + esc(connu.nom || ""));
+  zone.innerHTML = `<div class="ram-ok"><b>✅ Formulaire pré-rempli (${nbTrouves} élément${nbTrouves > 1 ? "s" : ""} reconnu${nbTrouves > 1 ? "s" : ""} : ${esc(r.trouve.join(", "))}).</b><br>`
+    + lignes.map(l => l + "<br>").join("")
+    + `Les cases <b>en orange</b> sont incertaines ou vides.<br><b>Vérifiez puis appuyez sur Créer la course.</b> Rien n'est envoyé tant que vous n'avez pas appuyé.</div>`;
+  // Suggestions de la carte (Photon, gratuit) pour confirmer les adresses — jamais remplacées sans votre accord
+  if (r.adresse_depart) proposerAdressesCarte("input-depart", analyse);
+  if (r.adresse_arrivee) proposerAdressesCarte("input-arrivee", analyse);
+}
+
+function lancerAnalyseMessage() {
+  const texte = document.getElementById("input-message-course").value;
+  const zone = document.getElementById("resultat-analyse-message");
+  if (!texte.trim()) { zone.innerHTML = `<div class="ram-vide">Collez ou dictez d'abord le message dans la grande case.</div>`; return; }
+  let r;
+  try { r = analyserMessageCourse(texte, new Date()); }
+  catch (e) { console.error("Analyse du message impossible :", e); zone.innerHTML = `<div class="ram-vide">Je n'ai pas réussi à lire ce message. Remplissez le formulaire à la main.</div>`; return; }
+  appliquerAnalyseMessage(r);
+}
+
+document.getElementById("btn-toggle-depuis-message").addEventListener("click", () => {
+  const panneau = document.getElementById("panneau-depuis-message");
+  if (panneau.hidden) ouvrirPanneauMessage();
+  else { panneau.hidden = true; document.getElementById("btn-toggle-depuis-message").setAttribute("aria-expanded", "false"); }
+});
+document.getElementById("btn-analyser-message").addEventListener("click", lancerAnalyseMessage);
+document.getElementById("btn-effacer-message").addEventListener("click", () => {
+  document.getElementById("input-message-course").value = "";
+  document.getElementById("resultat-analyse-message").innerHTML = "";
+  document.getElementById("input-message-course").focus();
+});
+document.getElementById("btn-coller-message").addEventListener("click", async () => {
+  const zone = document.getElementById("resultat-analyse-message");
+  try {
+    const texte = await navigator.clipboard.readText();
+    if (!texte) throw new Error("vide");
+    document.getElementById("input-message-course").value = texte;
+    lancerAnalyseMessage();
+  } catch (e) {
+    zone.innerHTML = `<div class="ram-vide">Impossible de lire le presse-papiers ici : appuyez longuement dans la grande case puis « Coller ».</div>`;
+  }
+});
+// Coller dans la case = analyse automatique (le formulaire est seulement pré-rempli)
+document.getElementById("input-message-course").addEventListener("paste", () => setTimeout(lancerAnalyseMessage, 60));
+document.getElementById("input-accueil-panneau").addEventListener("change", (e) => {
+  document.getElementById("bloc-nom-panneau").style.display = e.target.checked ? "block" : "none";
+});
+document.getElementById("btn-nouvelle-course-message").addEventListener("click", () => {
+  ouvrirModaleCourse();
+  ouvrirPanneauMessage();
 });
 
 const cacheAdressesRecentes = { chargees: false, liste: [] };
@@ -7079,7 +7929,8 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
       b.textContent = "➕ Créer sa feuille";
       b.style.cssText = "width:auto; padding:7px 10px; font-size:.8rem; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc);";
       b.addEventListener("click", async () => {
-        const { data: vehicule } = await supabase.from("vehicules").select("id").eq("chauffeur_id", ch.id).eq("actif", true).limit(1).maybeSingle();
+        await chargerAttributionsCache();
+        const vehicule = vehiculeDuJourAdmin(ch.id, dateChoisie);
         const { error } = await supabase.from("feuilles_route").insert({ chauffeur_id: ch.id, date_service: dateChoisie, vehicule_id: vehicule?.id || null });
         if (error) { alert(error.code === "23505" ? "⛔ " + MSG_FEUILLE_DOUBLON_FA + "." : "Erreur : " + error.message); return; }
         chargerFeuillesAdmin(true);
@@ -7106,7 +7957,7 @@ function ajouterBoutonNouvelleFeuilleFA(carte, chauffeur, dateVue, feuille) {
   b.className = "btn-ajouter-feuille-fa";
   b.textContent = "➕ Ajouter une feuille";
   b.style.cssText = "display:block; width:auto; margin-top:8px; padding:7px 12px; font-size:.82rem; font-weight:700; border-radius:8px; background:#eef4fb; color:#1d4f86; border:1px solid #9cbbe0;";
-  b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirAjoutFeuilleFA(chauffeur, dateVue, feuille && feuille.vehicule_id); });
+  b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirAjoutFeuilleFA(chauffeur, dateVue, (feuille && feuille.vehicule_id) || (vehiculeDuJourAdmin(chauffeur && chauffeur.id, dateVue) || {}).id); });
   const ref = entete.querySelector(".btn-ouvrir-grand-fa");
   if (ref) ref.insertAdjacentElement("afterend", b); else entete.appendChild(b);
   return carte;
@@ -8923,17 +9774,19 @@ function construireVehiculeAdmin(vehicule) {
   });
   div.appendChild(grille);
 
+  // « Chauffeur attitré » : obsolète — les voitures sont attribuées chaque jour (🚗 Véhicules du jour)
   const wrapChauffeur = document.createElement("div");
-  const labChauffeur = document.createElement("label"); labChauffeur.textContent = "Chauffeur attitré";
-  const selectChauffeur = document.createElement("select");
-  selectChauffeur.innerHTML = `<option value="">— Aucun —</option>` +
-    chauffeursCache.map(c => `<option value="${c.id}" ${c.id === vehicule.chauffeur_id ? "selected" : ""}>${esc(c.nom || c.telephone)}</option>`).join("");
-  selectChauffeur.addEventListener("change", async (e) => {
-    await supabase.from("vehicules").update({ chauffeur_id: e.target.value || null }).eq("id", vehicule.id);
-    await chargerChauffeurs();
-    chargerVehiculesAdmin();
-  });
-  wrapChauffeur.appendChild(labChauffeur); wrapChauffeur.appendChild(selectChauffeur);
+  wrapChauffeur.className = "veh-attitre-obsolete";
+  wrapChauffeur.style.cssText = "margin-top:10px; padding:10px; border-radius:8px; background:#f4f4f2; color:var(--gris); font-size:.85rem;";
+  const auj = attributionsCache.find(a => a.vehicule_id === vehicule.id && a.date_service === dateBruxellesISO());
+  const chAuj = auj ? (chauffeursCache.find(c => c.id === auj.chauffeur_id) || {}).nom : null;
+  wrapChauffeur.innerHTML = `<b>Chauffeur attitré : plus utilisé.</b> Les voitures sont maintenant données chaque jour dans « 🚗 Véhicules du jour ».`
+    + `<br>Aujourd'hui : <b>${chAuj ? esc(chAuj) : "pas attribuée"}</b>`;
+  const lienVj = document.createElement("button");
+  lienVj.type = "button"; lienVj.textContent = "🚗 Ouvrir Véhicules du jour";
+  lienVj.style.cssText = "display:block; width:auto; margin-top:8px; padding:8px 12px; border-radius:8px; border:1px solid var(--vert); background:#eef8f1; color:var(--vert); font-weight:700; font-size:.85rem;";
+  lienVj.addEventListener("click", ouvrirVehiculesDuJourDepuisVehicules);
+  wrapChauffeur.appendChild(lienVj);
   div.appendChild(wrapChauffeur);
 
   const actions = document.createElement("div");

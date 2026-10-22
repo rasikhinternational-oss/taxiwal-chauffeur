@@ -409,6 +409,9 @@ window.onerror = function(msg, url, line, col, err) {
   .pl-info{ font-size:.85rem; margin-top:6px; color:#1d4f86; font-weight:600; }
   .pl-ligne{ background:#fff; border:1px solid #e3e3e0; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:.88rem; }
   .pl-ligne b{ font-size:.95rem; }
+  #vehicule-du-jour-chauffeur{ margin:10px 20px 0; border-radius:12px; padding:11px 14px; font-size:.95rem; font-weight:600; }
+  #vehicule-du-jour-chauffeur.avec{ background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; }
+  #vehicule-du-jour-chauffeur.sans{ background:#fff4e0; border:1px solid #e9c27a; color:#6b4200; }
 </style>
 </head>
 <body>
@@ -447,6 +450,7 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <div id="ecran-principal" style="display:none;">
+  <div id="vehicule-du-jour-chauffeur" style="display:none;"></div>
   <div id="bandeau-notifs" style="display:none; margin:10px 20px 0; background:#fdecee; border:2px solid #c81e2c; color:#8a1520; border-radius:12px; padding:12px 14px; font-size:.9rem; font-weight:600;">
     <div id="bandeau-notifs-texte">⚠️ Tes notifications ne fonctionnent pas : tu ne seras pas prévenu des nouvelles courses.</div>
     <button type="button" id="btn-reactiver-notifs" style="margin-top:10px; width:100%; background:#c81e2c; color:#fff; border:none; border-radius:10px; padding:13px; font-weight:700; font-size:1rem;">🔔 Réactiver les notifications</button>
@@ -1626,8 +1630,64 @@ if ("serviceWorker" in navigator) {
     if (event.data && event.data.type === "nouvelle-course") {
       chargerCourses();
     }
+    // toute notification (ex. « 🚗 Véhicule du jour » envoyée par la centrale) : on rafraîchit la voiture du jour
+    if (event.data && document.getElementById("ecran-principal").style.display !== "none") chargerVehiculeDuJourChauffeur();
   });
 }
+// ================== 🚗 VÉHICULE DU JOUR ==================
+// La centrale attribue chaque jour une voiture au chauffeur (ou il en choisit une libre dans sa feuille de route).
+// Même copie sur le téléphone que la feuille de route (taxiwal_vehicule_du_jour) : affichage hors ligne.
+let vehiculeDuJourChauffeur = null;
+function afficherVehiculeDuJourChauffeur(v, inconnu) {
+  const el = document.getElementById("vehicule-du-jour-chauffeur");
+  if (!el) return;
+  el.style.display = "block";
+  if (v && v.vehicule_id) {
+    el.className = "avec";
+    el.innerHTML = `🚗 Ton véhicule aujourd'hui : <b>${esc(v.nom || "Véhicule")}${v.plaque ? " " + esc(v.plaque) : ""}</b>`;
+  } else if (inconnu) {
+    el.className = "sans";
+    el.innerHTML = "🚗 Véhicule du jour : pas de réseau pour le vérifier.";
+  } else {
+    el.className = "sans";
+    el.innerHTML = `🚗 Aucun véhicule — <a href="feuille-de-route.html" style="color:inherit; text-decoration:underline;">choisis-en un dans ta feuille de route</a>`;
+  }
+}
+async function chargerVehiculeDuJourChauffeur() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const auj = dateLocaleISO();
+    const horsLigne = window.TWHL && window.TWHL.horsLigne && window.TWHL.horsLigne();
+    if (!horsLigne) {
+      const { data, error } = await supabase.rpc("mon_vehicule_du_jour", { p_date: auj });
+      if (!error && Array.isArray(data)) {
+        const v = data[0] && data[0].vehicule_id ? data[0] : null;
+        vehiculeDuJourChauffeur = v;
+        try {
+          localStorage.setItem("taxiwal_vehicule_du_jour", JSON.stringify({ uid: user.id, date: auj, v }));
+          if (v) localStorage.setItem("taxiwal_dernier_vehicule", JSON.stringify({ uid: user.id, v, quand: Date.now() }));
+        } catch (e) {}
+        afficherVehiculeDuJourChauffeur(v);
+        return;
+      }
+    }
+    let c;
+    try { const x = JSON.parse(localStorage.getItem("taxiwal_vehicule_du_jour") || "null"); if (x && x.uid === user.id && x.date === auj) c = x; } catch (e) {}
+    vehiculeDuJourChauffeur = c ? c.v : null;
+    afficherVehiculeDuJourChauffeur(vehiculeDuJourChauffeur, !c);
+  } catch (e) { console.warn("véhicule du jour :", e); }
+}
+let canalVehiculeDuJourChauffeur = null;
+async function activerTempsReelVehiculeDuJour() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || canalVehiculeDuJourChauffeur) return;
+  canalVehiculeDuJourChauffeur = supabase.channel("vehicule-du-jour-ch-" + user.id)
+    .on("postgres_changes", { event: "*", schema: "public", table: "attributions_vehicules", filter: `chauffeur_id=eq.${user.id}` },
+      () => setTimeout(chargerVehiculeDuJourChauffeur, 300))
+    .subscribe();
+}
+
 
 // CORRECTIF délai Android/iOS : l'app en arrière-plan met en pause le rafraîchissement toutes les
 // 30s et la connexion temps réel, d'où le délai jusqu'à 10 minutes signalé. En forçant un
@@ -1636,6 +1696,7 @@ if ("serviceWorker" in navigator) {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && document.getElementById("ecran-principal").style.display !== "none") {
     chargerCourses();
+    chargerVehiculeDuJourChauffeur();
   }
 });
 window.addEventListener("focus", () => {
@@ -1654,6 +1715,9 @@ async function demarrerEspaceChauffeur() {
   setTimeout(verifierEtatNotifications, 1500);
   setTimeout(gererEcranAllume, 2000);
   chargerHoraireDuJour();
+  chargerVehiculeDuJourChauffeur();
+  activerTempsReelVehiculeDuJour();
+  setInterval(() => { if (document.visibilityState === "visible") chargerVehiculeDuJourChauffeur(); }, 120000);
 
   // (plus de feuille créée automatiquement à l'ouverture de l'app : elle est créée quand le
   //  chauffeur ouvre sa feuille de route, donc seulement les jours où il travaille vraiment)
@@ -1726,11 +1790,11 @@ async function creerFeuilleDuJourSiAbsente() {
     //  renvoyait une erreur et une feuille vide en trop était créée)
     if (feuilleExistante && feuilleExistante.length) return;
 
-    const { data: vehicule } = await supabase
-      .from("vehicules").select("id").eq("chauffeur_id", user.id).eq("actif", true).maybeSingle();
+    let vehiculeId = null;
+    try { const { data } = await supabase.rpc("mon_vehicule_du_jour", { p_date: aujourdHui }); vehiculeId = (Array.isArray(data) && data[0] && data[0].vehicule_id) || null; } catch (e) {}
 
     await supabase.from("feuilles_route").insert({
-      chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehicule?.id || null
+      chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehiculeId
     });
   } catch (e) { console.error("Création feuille du jour :", e); }
 }
@@ -3191,8 +3255,8 @@ async function preparerPlein() {
   if (!sel.options.length) {
     const { data: vehs } = await supabase.from("vehicules").select("id, nom, plaque, chauffeur_id").eq("actif", true).order("nom");
     (vehs || []).forEach(v => sel.add(new Option(v.nom + (v.plaque ? " · " + v.plaque : ""), v.id)));
-    const attitre = (vehs || []).find(v => v.chauffeur_id === user.id);
-    if (attitre) sel.value = attitre.id;
+    const duJour = vehiculeDuJourChauffeur && (vehs || []).find(v => v.id === vehiculeDuJourChauffeur.vehicule_id);
+    if (duJour) sel.value = duJour.id;
     sel.addEventListener("change", majDernierPlein);
     document.getElementById("pl-km").addEventListener("input", majCalculPlein);
     document.getElementById("pl-litres").addEventListener("input", majCalculPlein);

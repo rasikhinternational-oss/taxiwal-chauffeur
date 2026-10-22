@@ -718,6 +718,29 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-course input[type=time]{ -webkit-appearance:none; appearance:none; width:100%; }
   .ligne-course .champ-wrap, .ligne-course > div > div{ min-width:0; }
   html, body{ max-width:100%; overflow-x:hidden; }
+  /* Pauses / interruptions */
+  #bloc-pauses{ margin:12px 20px 0; background:#fff; border:1px solid #dcdcd8; border-radius:12px; padding:12px; }
+  #btn-pause{ width:100%; padding:16px 12px; border:none; border-radius:12px; background:#1d4f86; color:#fff; font-weight:800; font-size:1.1rem; line-height:1.3; }
+  #btn-pause.en-pause{ background:#e8a200; color:#1d1400; box-shadow:0 0 0 3px #ffe08a; animation:pausePulse 2s ease-in-out infinite; }
+  @keyframes pausePulse{ 50%{ box-shadow:0 0 0 6px #ffe08a; } }
+  #bloc-pauses label{ display:block; font-size:.8rem; font-weight:700; color:#555; margin-bottom:3px; }
+  #bloc-pauses input{ box-sizing:border-box; width:100%; min-width:0; max-width:100%; font-size:20px; font-weight:700; padding:10px 8px; text-align:center; border:1px solid #bbb; border-radius:10px; margin:0; }
+  #bloc-pauses input:disabled{ background:#f1f1ef; color:#444; }
+  #bloc-pauses input.champ-heure-invalide{ border-color:#b3141b; background:#fdecee; }
+  .horaires-vis{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+  .horaires-vis > div{ min-width:0; }
+  .horaires-vis .rangee-heure{ display:grid; grid-template-columns:1fr 1.6fr 1fr; gap:4px; margin-top:6px; }
+  .horaires-vis .rangee-heure button{ min-width:0; width:100%; padding:9px 2px; font-size:.78rem; margin:0; }
+  #liste-pauses{ margin-top:10px; }
+  #liste-pauses .pause-ligne{ display:grid; grid-template-columns:auto 1fr auto 1fr auto; align-items:center; gap:6px; padding:5px 0; }
+  #liste-pauses .pause-ligne .pl-txt{ font-size:.85rem; font-weight:700; color:#555; white-space:nowrap; }
+  #liste-pauses .pause-ligne .pl-duree{ grid-column:1 / -1; font-size:.8rem; color:#555; margin-top:-2px; }
+  #liste-pauses .pause-ligne button{ border:1px solid #ccc; background:#f6f6f4; border-radius:8px; padding:9px 8px; font-size:1rem; }
+  #liste-pauses .pause-brut{ grid-column:1 / 5; color:#6b6b66; font-style:italic; font-size:.9rem; }
+  #total-pauses{ margin-top:8px; font-weight:800; font-size:.95rem; }
+  #total-pauses:empty{ display:none; }
+  #btn-pause{ margin-top:10px; }
+  #btn-pause-manuelle{ width:100%; margin-top:10px; padding:11px; border-radius:10px; border:1px dashed #1d4f86; background:#f2f6fb; color:#1d4f86; font-weight:700; font-size:.95rem; }
   .btn-y-aller{ width:100%; padding:11px; margin:-4px 0 10px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:800; font-size:.95rem; }
 </style>
 </head>
@@ -732,6 +755,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <div id="bandeau-feuille-oubliee" style="display:none; margin:16px 20px 0; background:#fdecee; border:1px solid #f0c4c4; border-radius:10px; padding:12px; font-size:.88rem; color:#8a2020;"></div>
 <div id="bandeau-service-nuit" style="display:none; margin:16px 20px 0; background:#e8f1fb; border:1px solid #bcd4ee; border-radius:10px; padding:12px; font-size:.88rem; color:#1d4f7a;"></div>
+<div id="bandeau-vehicule-du-jour" style="display:none; margin:16px 20px 0; background:#fff4e0; border:2px solid #e0a040; border-radius:12px; padding:12px; font-size:.92rem; color:#6b4200;"></div>
 
 <div id="sections-passees"></div>
 
@@ -746,11 +770,24 @@ window.onerror = function(msg, url, line, col, err) {
   <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
 </div>
 
+<div id="bloc-pauses">
+  <h2 style="margin:0 0 8px; font-size:1rem;">🕐 Horaires &amp; interruptions</h2>
+  <div class="horaires-vis">
+    <div><label for="horaire-debut-vis">Heure de début</label><input type="text" id="horaire-debut-vis" class="heure-vis" inputmode="numeric" autocomplete="off" placeholder="ex : 0630"></div>
+    <div><label for="horaire-fin-vis">Heure de fin</label><input type="text" id="horaire-fin-vis" class="heure-vis" inputmode="numeric" autocomplete="off" placeholder="ex : 1830"></div>
+  </div>
+  <div id="liste-pauses"></div>
+  <button type="button" id="btn-pause-manuelle">➕ Ajouter une autre interruption</button>
+  <div id="total-pauses"></div>
+  <button type="button" id="btn-pause">⏸️ Commencer une pause</button>
+</div>
+
 <div class="bloc" id="resume-signee">
   <h2>Feuille signée <span id="statut-feuille-resume" style="display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#f9d6d6; color:#b83232;">Verrouillée</span></h2>
   <div class="ligne-resume"><span>Horaires</span><b id="resume-horaires">—</b></div>
   <div class="ligne-resume"><span>Recettes</span><b id="resume-recettes">—</b></div>
   <div class="ligne-resume"><span>Pourboires (non compris dans la recette)</span><b id="resume-pourboires">—</b></div>
+  <div class="ligne-resume"><span>Pauses / interruptions</span><b id="resume-pauses">—</b></div>
   <div class="ligne-resume"><span>Nombre de courses</span><b id="resume-nb-courses">—</b></div>
   <button id="btn-voir-details">▾ Voir le détail de la feuille</button>
 </div>
@@ -768,7 +805,7 @@ window.onerror = function(msg, url, line, col, err) {
       <div class="grille3">
         <div><label>Début</label><input type="text" id="heure-debut" inputmode="numeric" placeholder="ex : 0630"></div>
         <div><label>Fin</label><input type="text" id="heure-fin" inputmode="numeric" placeholder="ex : 1830"></div>
-        <div><label>Interruptions</label><input type="text" id="interruptions" placeholder="ex: 12h30-13h00"></div>
+        <div><label>Interruptions / pauses</label><input type="text" id="interruptions" placeholder="ex: 12:30-13:00"></div>
       </div>
 
       <div class="sous-titre-mini">INDEX KM — TABLEAU DE BORD</div>
@@ -1652,6 +1689,8 @@ function mettreAJourResumeServiceReplie() {
   const morceaux = [];
   if (debut || fin) morceaux.push(`${debut || "—"} → ${fin || "en cours"}`);
   if (recettes) morceaux.push(recettes + " € de recettes");
+  const totPauses = feuilleActuelle ? analyserInterruptions(feuilleActuelle.interruptions).total : 0;
+  if (totPauses > 0) morceaux.push("pauses " + formatDureePause(totPauses));
   document.getElementById("resume-service-replie").textContent = morceaux.length
     ? morceaux.join(" · ") + " · touche pour voir/modifier"
     : "Touche pour remplir (index km, taximètre, horaires…)";
@@ -1660,6 +1699,173 @@ document.getElementById("entete-service-repliable").addEventListener("click", ()
 
 let toutesLesFeuillesDuJour = [];
 let vehiculesActifsCache = [];
+
+// ================== VÉHICULE DU JOUR ==================
+// Plus de voiture attitrée : chaque jour la centrale attribue une voiture au chauffeur (ou il en choisit
+// une LIBRE le matin). Une fois la voiture du jour connue, la feuille s'ouvre directement avec elle.
+// Copie gardée sur le téléphone : sans réseau, on réutilise la dernière voiture connue.
+const CLE_VEHICULE_DU_JOUR = "taxiwal_vehicule_du_jour";
+const CLE_DERNIER_VEHICULE = "taxiwal_dernier_vehicule";
+let uidFeuille = null;
+let vehiculeDuJour = null;   // { vehicule_id, nom, plaque, choisi_par, date_service } ou null
+function lireCacheVehiculeDuJour(uid, date) {
+  try {
+    const x = JSON.parse(localStorage.getItem(CLE_VEHICULE_DU_JOUR) || "null");
+    return (x && x.uid === uid && x.date === date) ? x.v : undefined;
+  } catch (e) { return undefined; }
+}
+function ecrireCacheVehiculeDuJour(uid, date, v) {
+  try {
+    localStorage.setItem(CLE_VEHICULE_DU_JOUR, JSON.stringify({ uid, date, v: v || null }));
+    if (v && v.vehicule_id) localStorage.setItem(CLE_DERNIER_VEHICULE, JSON.stringify({ uid, v, quand: Date.now() }));
+  } catch (e) {}
+}
+function lireDernierVehicule(uid) {
+  try {
+    const x = JSON.parse(localStorage.getItem(CLE_DERNIER_VEHICULE) || "null");
+    return (x && x.uid === uid && x.v && x.v.vehicule_id) ? x.v : null;
+  } catch (e) { return null; }
+}
+function libelleVehicule(v) {
+  if (!v) return "Véhicule";
+  return (v.nom || "Véhicule") + (v.plaque ? " · " + v.plaque : "");
+}
+// Attribution active du chauffeur (aujourd'hui par défaut). Hors ligne : copie du téléphone.
+async function chargerVehiculeDuJour(uid, date) {
+  date = date || dateLocaleISO();
+  if (!uid) return null;
+  if (!TWHL.horsLigne()) {
+    try {
+      const { data, error } = await supabase.rpc("mon_vehicule_du_jour", { p_date: date });
+      if (!error && Array.isArray(data)) {
+        const row = data[0] && data[0].vehicule_id ? data[0] : null;
+        ecrireCacheVehiculeDuJour(uid, date, row);
+        if (date === dateLocaleISO()) vehiculeDuJour = row;
+        return row;
+      }
+    } catch (e) {}
+  }
+  const c = lireCacheVehiculeDuJour(uid, date);
+  const v = c === undefined ? null : c;
+  if (date === dateLocaleISO()) vehiculeDuJour = v;
+  return v;
+}
+// Voitures LIBRES aujourd'hui (+ la sienne). null = pas de réseau / liste indisponible.
+async function chargerVehiculesDisponibles() {
+  if (TWHL.horsLigne()) return null;
+  try {
+    const { data, error } = await supabase.rpc("chauffeur_vehicules_disponibles", { p_date: dateLocaleISO() });
+    if (!error && Array.isArray(data)) return data;
+  } catch (e) {}
+  return null;
+}
+// Enregistre auprès de la centrale la voiture choisie par le chauffeur pour aujourd'hui.
+// Renvoie { ok:true } ou { ok:false, pris:true|false, message }.
+async function enregistrerChoixVehicule(v) {
+  if (!v || !v.id || TWHL.horsLigne()) return { ok: false, reseau: true, message: "Pas de réseau" };
+  if (vehiculeDuJour && vehiculeDuJour.vehicule_id === v.id) return { ok: true };
+  try {
+    const { data, error } = await supabase.rpc("chauffeur_choisir_vehicule", { p_vehicule: v.id, p_date: dateLocaleISO() });
+    if (error) {
+      const pris = error.hint === "vehicule_pris" || /déjà pris/i.test(error.message || "");
+      return { ok: false, pris, admin: error.hint === "attribue_par_admin", message: error.message || "Erreur" };
+    }
+    const row = { vehicule_id: v.id, nom: v.nom, plaque: v.plaque, numero_identification: v.numero_identification,
+      identite_exploitant: v.identite_exploitant, choisi_par: "chauffeur", date_service: dateLocaleISO(), id: data && data.id };
+    vehiculeDuJour = row;
+    if (uidFeuille) ecrireCacheVehiculeDuJour(uidFeuille, dateLocaleISO(), row);
+    return { ok: true };
+  } catch (e) { return { ok: false, reseau: true, message: String(e && e.message || e) }; }
+}
+// Le matin, sans voiture attribuée : le chauffeur choisit une voiture LIBRE (réseau obligatoire).
+// Renvoie l'objet véhicule choisi, ou null (« Plus tard » / pas de réseau).
+async function choisirVehiculeDuJourLibre() {
+  for (let essai = 0; essai < 5; essai++) {
+    const libres = await chargerVehiculesDisponibles();
+    if (!libres) {
+      afficherToast("📴 Pas de réseau : choisir une voiture demande du réseau. Réessaie dès que le réseau revient.");
+      return null;
+    }
+    const v = await choisirVehicule("🚗 Aucune voiture ne t'a été attribuée aujourd'hui — choisis une voiture libre", {
+      liste: libres, libelleAnnuler: "Plus tard", note: libres.length ? "" : "Aucune voiture libre pour le moment — appelle la centrale."
+    });
+    if (!v) return null;
+    const r = await enregistrerChoixVehicule(v);
+    if (r.ok) { afficherToast("✅ Voiture du jour : " + libelleVehicule(v)); return v; }
+    if (r.reseau) { afficherToast("📴 Pas de réseau : choisir une voiture demande du réseau."); return null; }
+    alert("⛔ " + r.message + (r.pris ? "\n\nChoisis une autre voiture." : ""));
+    if (!r.pris) return null;
+  }
+  return null;
+}
+// Véhicule de la nouvelle feuille du jour : attribution du jour, sinon choix d'une voiture libre.
+// Hors ligne : attribution gardée sur le téléphone, sinon la dernière voiture utilisée.
+async function vehiculePourFeuilleDuJour(uid) {
+  const hors = TWHL.horsLigne();
+  const vdj = await chargerVehiculeDuJour(uid);
+  if (vdj) return { id: vdj.vehicule_id, nom: vdj.nom, plaque: vdj.plaque };
+  if (hors || TWHL.horsLigne()) {
+    const der = lireDernierVehicule(uid);
+    if (der) { afficherToast("📴 Hors ligne : feuille ouverte avec ta dernière voiture (" + libelleVehicule(der) + ")."); return { id: der.vehicule_id, nom: der.nom, plaque: der.plaque }; }
+    afficherToast("📴 Pas de réseau : choisis ta voiture dès que le réseau revient.");
+    return null;
+  }
+  return await choisirVehiculeDuJourLibre();
+}
+// Feuille actuelle utilisable pour la journée (aujourd'hui, ou service de nuit en cours)
+function feuilleDuServiceEnCours(f) {
+  return !!f && !f.verifiee_admin && (f.date_service === dateLocaleISO() || estServiceEnCours(f, true));
+}
+// Bandeau « 🚗 La centrale t'a attribué … » quand la voiture du jour diffère de celle de la feuille ouverte
+let verifVehiculeEnCours = false, derniereVerifVehicule = 0;
+async function verifierVehiculeDuJour(force) {
+  if (!feuilleActuelle || !uidFeuille || verifVehiculeEnCours) return;
+  if (!force && Date.now() - derniereVerifVehicule < 45000) return;
+  verifVehiculeEnCours = true; derniereVerifVehicule = Date.now();
+  try {
+    let bandeau = document.getElementById("bandeau-vehicule-du-jour");
+    if (!bandeau) return;
+    const cacher = () => { bandeau.style.display = "none"; bandeau.innerHTML = ""; };
+    const vdj = await chargerVehiculeDuJour(uidFeuille);
+    if (!feuilleActuelle) return cacher();
+    if (!vdj || !feuilleDuServiceEnCours(feuilleActuelle)) return cacher();
+    if (feuilleActuelle.vehicule_id === vdj.vehicule_id) return cacher();
+    // Feuille ouverte sans voiture : on y met directement la voiture du jour
+    if (!feuilleActuelle.vehicule_id && !feuilleActuelle.verrouillee) {
+      const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { vehicule_id: vdj.vehicule_id }, label: "Véhicule du jour" });
+      if (!error) { feuilleActuelle.vehicule_id = vdj.vehicule_id; try { await remplirIdentite({ id: uidFeuille }); } catch (e) {} sauverInstantaneFeuille(); }
+      return cacher();
+    }
+    if (vdj.choisi_par !== "admin") return cacher();
+    // Une autre feuille ouverte du service a déjà cette voiture : proposer d'y aller
+    const autre = toutesLesFeuillesDuJour.find(f => f.id !== feuilleActuelle.id && !f.verrouillee && f.vehicule_id === vdj.vehicule_id && feuilleDuServiceEnCours(f));
+    bandeau.innerHTML = `<div style="font-weight:800; margin-bottom:8px;">🚗 La centrale t'a attribué <span class="vdj-nom">${esc(libelleVehicule(vdj))}</span></div>`;
+    const b = document.createElement("button");
+    b.type = "button"; b.id = "btn-vehicule-du-jour";
+    b.style.cssText = "width:100%; padding:13px; font-size:.95rem; border-radius:12px; border:none; background:#b86e00; color:#fff; font-weight:800;";
+    if (autre) {
+      b.textContent = "📂 Ouvrir la feuille de ce véhicule";
+      b.addEventListener("click", () => basculerVersFeuille(autre.id));
+    } else {
+      b.textContent = "🚗 Ouvrir une nouvelle feuille pour ce véhicule";
+      b.addEventListener("click", () => ouvrirChangementVehicule({ id: vdj.vehicule_id, nom: vdj.nom, plaque: vdj.plaque, numero_identification: vdj.numero_identification, identite_exploitant: vdj.identite_exploitant }));
+    }
+    bandeau.appendChild(b);
+    bandeau.style.display = "block";
+  } finally { verifVehiculeEnCours = false; }
+}
+let canalVehiculeDuJour = null;
+function activerTempsReelVehiculeDuJour(uid) {
+  if (canalVehiculeDuJour || !uid) return;
+  try {
+    canalVehiculeDuJour = supabase.channel("vehicule-du-jour-" + uid)
+      .on("postgres_changes", { event: "*", schema: "public", table: "attributions_vehicules", filter: `chauffeur_id=eq.${uid}` }, () => setTimeout(() => verifierVehiculeDuJour(true), 300))
+      .subscribe();
+  } catch (e) {}
+}
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && feuilleActuelle) verifierVehiculeDuJour(true); });
+}
 
 // ================== SERVICE DE NUIT ==================
 // Un chauffeur qui commence le 17 à 18:00 et finit le 18 à 04:00 garde UNE seule feuille
@@ -1793,6 +1999,7 @@ function mettreAJourAffichageDate() {
 (async () => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { document.getElementById("erreur").textContent = "Connecte-toi d'abord depuis l'app chauffeur."; return; }
+  uidFeuille = user.id;
 
   const aujourdHui = dateLocaleISO();
   const idDepuisUrl = new URLSearchParams(location.search).get("feuille");
@@ -1938,7 +2145,12 @@ function mettreAJourAffichageDate() {
     // Feuilles encore ouvertes : nuit en cours (hier) + feuilles du jour non clôturées
     const ouvertes = [...nuitRows.filter(f => idsNuit.has(f.id) && !f.verrouillee), ...feuilles.filter(f => !f.verrouillee)];
     if (!ouvertes.length && feuilles.length === 0) {
+      // Voiture du jour : attribuée par la centrale → directement ; sinon choix d'une voiture libre
+      const { data: vehsInit } = await supabase.from("vehicules").select("*").eq("actif", true);
+      vehiculesActifsCache = vehsInit || vehiculesActifsCache;
+      const vehInit = await vehiculePourFeuilleDuJour(user.id);
       const champsF = { id: TWHL.uuid(), chauffeur_id: user.id, date_service: aujourdHui };
+      if (vehInit && vehInit.id) champsF.vehicule_id = vehInit.id;
       const localeF = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champsF);
       const { data: nouvelle, error } = await TWHL.ecrire({ table: "feuilles_route", op: "upsert", payload: champsF,
         select: "*", optimiste: localeF, local: localeF, label: "Nouvelle feuille du jour" });
@@ -2031,15 +2243,17 @@ function afficherSelecteurFeuilles() {
   barre.appendChild(btnNouvelle);
 }
 
-function choisirVehicule(titre) {
+function choisirVehicule(titre, opts) {
+  opts = opts || {};
   return new Promise((resolve) => {
     const fond = document.createElement("div");
     fond.style.cssText = "position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center;";
     const boite = document.createElement("div");
     boite.style.cssText = "background:#fff; color:#111; width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px); max-height:85vh; overflow:auto;";
     boite.className = "modale-choix-vehicule";
-    boite.innerHTML = '<div style="font-weight:800; font-size:1.05rem; margin-bottom:10px;">' + esc(titre || "🚗 Avec quelle voiture continues-tu ?") + '</div>';
-    vehiculesActifsCache.forEach(v => {
+    boite.innerHTML = '<div style="font-weight:800; font-size:1.05rem; margin-bottom:10px;">' + esc(titre || "🚗 Avec quelle voiture continues-tu ?") + '</div>'
+      + (opts.note ? '<div class="note-choix-vehicule" style="font-size:.88rem; color:#8a5a00; margin-bottom:10px;">' + esc(opts.note) + '</div>' : "");
+    (opts.liste || vehiculesActifsCache).forEach(v => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "btn-choix-vehicule";
@@ -2051,7 +2265,7 @@ function choisirVehicule(titre) {
       boite.appendChild(b);
     });
     const annuler = document.createElement("button");
-    annuler.type = "button"; annuler.textContent = "Annuler";
+    annuler.type = "button"; annuler.textContent = opts.libelleAnnuler || "Annuler"; annuler.className = "btn-annuler-choix-vehicule";
     annuler.style.cssText = "display:block; width:100%; padding:12px; border-radius:12px; border:1px solid #ccc; background:#fff;";
     annuler.onclick = () => { fond.remove(); resolve(null); };
     boite.appendChild(annuler);
@@ -2061,8 +2275,15 @@ function choisirVehicule(titre) {
   });
 }
 
-async function ouvrirChangementVehicule() {
-  if (vehiculesActifsCache.length === 0) { alert("Aucun véhicule actif enregistré."); return; }
+// Liste proposée au chauffeur : voitures libres aujourd'hui (+ la sienne) ; hors ligne : toutes
+async function listeVehiculesPourChoix() {
+  const libres = await chargerVehiculesDisponibles();
+  if (!libres) return { liste: vehiculesActifsCache, enLigne: false };
+  return { liste: libres, enLigne: true };
+}
+async function ouvrirChangementVehicule(vehiculeImpose) {
+  if (vehiculeImpose && vehiculeImpose.type === "click") vehiculeImpose = null;  // appelé depuis le bouton
+  if (!vehiculeImpose && vehiculesActifsCache.length === 0) { alert("Aucun véhicule actif enregistré."); return; }
   const { data: { user } } = await supabase.auth.getUser();
   const aujourdHui = dateLocaleISO();
   const heureMaintenant = new Date().toTimeString().slice(0, 5);
@@ -2086,8 +2307,16 @@ async function ouvrirChangementVehicule() {
       return;
     }
   }
-  const vehiculeChoisi = await choisirVehicule();
-  if (!vehiculeChoisi) return;
+  let vehiculeChoisi = vehiculeImpose || null;
+  if (!vehiculeChoisi) {
+    const { liste, enLigne } = await listeVehiculesPourChoix();
+    vehiculeChoisi = await choisirVehicule(null, { liste, note: enLigne ? "" : "📴 Hors ligne : toutes les voitures sont affichées." });
+    if (!vehiculeChoisi) return;
+    if (enLigne) {
+      const r = await enregistrerChoixVehicule(vehiculeChoisi);
+      if (!r.ok && r.pris) { alert("⛔ " + r.message + "\n\nChoisis une autre voiture."); return; }
+    }
+  }
   if (!(await confirmerDansPage((actuelleOuverte ? "La feuille de la voiture actuelle va être clôturée (signée).\n\n" : "") +
       `Ouvrir une nouvelle feuille avec « ${vehiculeChoisi.nom}${vehiculeChoisi.plaque ? " · " + vehiculeChoisi.plaque : ""} » à partir de ${heureMaintenant} ?`, "🚗 Oui, nouvelle feuille", "Annuler"))) return;
 
@@ -2110,7 +2339,7 @@ async function ouvrirChangementVehicule() {
   memoriserFeuilleChoisie(nouvelleFeuille);
   reinitialiserBandeauFeuille();
   await chargerFeuilleActive(user);
-  alert("✅ Nouvelle feuille ouverte pour « " + vehiculeChoisi.nom + " ». Remplis les compteurs de DÉBUT de cette voiture.");
+  alert("✅ Nouvelle feuille ouverte pour « " + (vehiculeChoisi.nom || "véhicule") + " ». Remplis les compteurs de DÉBUT de cette voiture.");
 }
 
 // ---- ➕ Nouvelle feuille de route (sans obligation de clôturer la feuille actuelle) ----
@@ -2210,8 +2439,13 @@ async function ouvrirNouvelleFeuille() {
   if (vehiculesActifsCache.length === 0) { alert("Aucun véhicule actif enregistré."); return; }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { alert("Connecte-toi d'abord depuis l'app chauffeur."); return; }
-  const vehicule = await choisirVehicule("➕ Nouvelle feuille de route — avec quelle voiture ?");
+  const { liste: listeNf, enLigne: enLigneNf } = await listeVehiculesPourChoix();
+  const vehicule = await choisirVehicule("➕ Nouvelle feuille de route — avec quelle voiture ?", { liste: listeNf, note: enLigneNf ? "" : "📴 Hors ligne : toutes les voitures sont affichées." });
   if (!vehicule) return;
+  if (enLigneNf) {
+    const r = await enregistrerChoixVehicule(vehicule);
+    if (!r.ok && r.pris) { alert("⛔ " + r.message + "\n\nChoisis une autre voiture."); return; }
+  }
   const choix = await choisirOptionsNouvelleFeuille(vehicule);
   if (!choix) return;
   creationFeuilleEnCours = true;
@@ -2276,6 +2510,8 @@ async function chargerFeuilleActive(user) {
   mettreAJourAffichageDate();
   activerMiseAJourEnDirect(user.id);
   sauverInstantaneFeuille();
+  activerTempsReelVehiculeDuJour(user.id);
+  verifierVehiculeDuJour(true);
 }
 
 // Affiche, en lecture seule et tout en haut de la même page, chaque véhicule déjà utilisé
@@ -2369,6 +2605,7 @@ async function rechargerSilencieusement() {
   // de la date devient « 17/10 → 18/10 » (aucun basculement vers une nouvelle feuille du jour).
   mettreAJourAffichageDate();
   sauverInstantaneFeuille();
+  verifierVehiculeDuJour(false);
   if (idPleinEcran) {
     ligneEnPleinEcran = null;
     document.body.classList.remove("mode-plein-ecran");
@@ -2419,14 +2656,19 @@ async function remplirIdentite(user) {
   if (vehiculeId) {
     ({ data: vehicule } = await supabase.from("vehicules").select("*").eq("id", vehiculeId).maybeSingle());
   } else {
-    ({ data: vehicule } = await supabase.from("vehicules").select("*").eq("chauffeur_id", user.id).eq("actif", true).maybeSingle());
+    // (plus de voiture attitrée) : voiture du jour attribuée par la centrale / choisie le matin
+    const vdj = feuilleDuServiceEnCours(feuilleActuelle) ? await chargerVehiculeDuJour(user.id) : null;
+    if (vdj) {
+      ({ data: vehicule } = await supabase.from("vehicules").select("*").eq("id", vdj.vehicule_id).maybeSingle());
+      if (!vehicule) vehicule = { id: vdj.vehicule_id, nom: vdj.nom, plaque: vdj.plaque, numero_identification: vdj.numero_identification, identite_exploitant: vdj.identite_exploitant };
+    }
     if (vehicule) {
       await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { vehicule_id: vehicule.id }, label: "Véhicule" });
       feuilleActuelle.vehicule_id = vehicule.id;
     }
   }
 
-  // Menu déroulant véhicule : pré-rempli automatiquement (véhicule attitré) comme avant, mais
+  // Menu déroulant véhicule : pré-rempli automatiquement (véhicule du jour), mais
   // reste modifiable à tout moment si le mauvais véhicule a été retenu.
   const selectVehicule = document.getElementById("identite-vehicule-select");
   const { data: tousLesVehicules } = await supabase.from("vehicules").select("*").eq("actif", true).order("nom");
@@ -2457,6 +2699,7 @@ function remplirEntete() {
   badge.textContent = feuilleActuelle.verrouillee ? "Signée · verrouillée" : "En cours";
   badge.classList.toggle("verrouillee", feuilleActuelle.verrouillee);
   mettreAJourResumeServiceReplie();
+  afficherPauses();
 }
 
 ["heure-debut", "heure-fin"].forEach(id => {
@@ -2475,6 +2718,7 @@ Object.keys(champsEntete).forEach(idHtml => {
     if (error) { erreurEl.textContent = "⚠️ Non enregistré : " + error.message; erreurEl.style.color = "var(--rouge)"; return; }
     feuilleActuelle[champBdd] = valeur;
     sauverInstantaneFeuille();
+    if (champBdd === "interruptions") afficherPauses();
     const okTexte = enAttente ? TEXTE_EN_ATTENTE : "✓ Enregistré";
     erreurEl.style.color = enAttente ? "#b86e00" : "var(--vert)";
     erreurEl.textContent = okTexte;
@@ -2482,6 +2726,234 @@ Object.keys(champsEntete).forEach(idHtml => {
     calculerTotaux();
   });
 });
+
+// ================== PAUSES / INTERRUPTIONS ==================
+// Stockées dans feuilles_route.interruptions (texte) : « 12:30-13:00, 16:10-16:25 ».
+// Le texte libre déjà saisi à la main est gardé tel quel s'il n'est pas reconnu.
+// Pause en cours : début gardé sur le téléphone (par feuille), survit à la fermeture de l'app.
+function analyserInterruptions(texte) {
+  const elements = [];
+  String(texte || "").split(/[,;\n]+/).map(t => t.trim()).filter(Boolean).forEach(brut => {
+    const m = brut.match(/^(\d{1,2}(?:[:hH.]\d{0,2})?)\s*(?:-|–|—|à|>|→)+\s*(\d{1,2}(?:[:hH.]\d{0,2})?)$/);
+    const d = m && normaliserHeure(m[1]), f = m && normaliserHeure(m[2]);
+    if (d && f) elements.push({ debut: d, fin: f, duree: dureePauseMinutes(d, f) });
+    else elements.push({ brut });
+  });
+  const total = elements.reduce((s, e) => s + (e.duree || 0), 0);
+  return { elements, pauses: elements.filter(e => !e.brut), total };
+}
+// Durée en minutes, passage de minuit compris (23:50-00:20 = 30 min)
+function dureePauseMinutes(debut, fin) {
+  const d = frMinutes(debut), f = frMinutes(fin);
+  if (d === null || f === null) return 0;
+  return (f - d + 1440) % 1440;
+}
+function formatDureePause(min) {
+  min = Math.max(0, Math.round(min));
+  if (min < 60) return min + " min";
+  return Math.floor(min / 60) + "h" + String(min % 60).padStart(2, "0");
+}
+function serialiserInterruptions(elements) {
+  return elements.map(e => e.brut ? e.brut : e.debut + "-" + e.fin).join(", ");
+}
+// « 12:30-13:00, 16:10-16:25 (total 45 min) » — pour le résumé et l'impression
+function texteInterruptionsResume(texte) {
+  const a = analyserInterruptions(texte);
+  if (!a.elements.length) return "";
+  const liste = serialiserInterruptions(a.elements);
+  return a.pauses.length ? liste + " (total " + formatDureePause(a.total) + ")" : liste;
+}
+function clePauseEnCours(idFeuille) { return "taxiwal_pause_en_cours_" + idFeuille; }
+function lirePauseEnCours() {
+  if (!feuilleActuelle) return null;
+  try {
+    const x = JSON.parse(localStorage.getItem(clePauseEnCours(feuilleActuelle.id)) || "null");
+    return x && x.debut ? x : null;
+  } catch (e) { return null; }
+}
+function ecrirePauseEnCours(x) {
+  if (!feuilleActuelle) return;
+  try {
+    if (x) localStorage.setItem(clePauseEnCours(feuilleActuelle.id), JSON.stringify(x));
+    else localStorage.removeItem(clePauseEnCours(feuilleActuelle.id));
+  } catch (e) {}
+}
+let pauseEnregistrementEnCours = false;
+// Lignes « de … à … » pas encore complètes (pas encore enregistrées), par feuille
+const brouillonsPauses = {};
+function brouillonsFeuille() { const k = feuilleActuelle ? feuilleActuelle.id : "_"; return brouillonsPauses[k] || (brouillonsPauses[k] = []); }
+async function enregistrerInterruptions(elements, label, sansRedessiner) {
+  const valeur = serialiserInterruptions(elements) || null;
+  const erreurEl = document.getElementById("erreur");
+  const { error, enAttente } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
+    payload: { interruptions: valeur }, label: label || "Interruptions" });
+  if (error) { erreurEl.textContent = "⚠️ Interruption non enregistrée : " + error.message; erreurEl.style.color = "var(--rouge)"; return false; }
+  feuilleActuelle.interruptions = valeur;
+  document.getElementById("interruptions").value = valeur || "";
+  sauverInstantaneFeuille();
+  if (sansRedessiner) majTotalPauses(); else afficherPauses();
+  mettreAJourResumeServiceReplie();
+  if (feuilleActuelle.verrouillee) remplirResumeSignee();
+  afficherToast(enAttente ? "⏳ Interruption gardée sur le téléphone — envoi au retour du réseau" : "✓ Interruption enregistrée");
+  return true;
+}
+function majTotalPauses() {
+  const a = analyserInterruptions(feuilleActuelle && feuilleActuelle.interruptions);
+  document.getElementById("total-pauses").textContent = a.pauses.length
+    ? "Total interruptions : " + formatDureePause(a.total) + " (" + a.pauses.length + (a.pauses.length > 1 ? " pauses)" : " pause)") : "";
+  document.querySelectorAll("#liste-pauses .pause-ligne[data-type=pause]").forEach(r => {
+    const d = normaliserHeure(r.querySelector(".pause-de").value), f = normaliserHeure(r.querySelector(".pause-a").value);
+    const z = r.querySelector(".pl-duree");
+    z.textContent = d && f && d !== f ? "= " + formatDureePause(dureePauseMinutes(d, f)) + (frMinutes(f) < frMinutes(d) ? " (après minuit)" : "") : "";
+  });
+}
+// Lit les lignes affichées → { elements complets (enregistrés), brouillons }
+function lireLignesPauses() {
+  const elements = [], brouillons = [];
+  let invalide = false;
+  document.querySelectorAll("#liste-pauses .pause-ligne").forEach(r => {
+    if (r.dataset.type === "brut") { elements.push({ brut: r.dataset.brut }); return; }
+    const iD = r.querySelector(".pause-de"), iA = r.querySelector(".pause-a");
+    const d = normaliserHeure(iD.value), f = normaliserHeure(iA.value);
+    iD.classList.toggle("champ-heure-invalide", d === null); iA.classList.toggle("champ-heure-invalide", f === null);
+    if (d === null || f === null) invalide = true;
+    if (d) iD.value = d; if (f) iA.value = f;
+    if (d && f && d !== f) elements.push({ debut: d, fin: f });
+    else brouillons.push({ debut: d || "", fin: f || "" });
+  });
+  return { elements, brouillons, invalide };
+}
+async function enregistrerLignesPauses() {
+  const r = lireLignesPauses();
+  const k = feuilleActuelle.id;
+  brouillonsPauses[k] = r.brouillons;
+  if (r.invalide) { afficherToast("Heure non reconnue : tape par exemple 1230 pour 12h30"); majTotalPauses(); return; }
+  const nouveau = serialiserInterruptions(r.elements) || null;
+  if (nouveau === (feuilleActuelle.interruptions || null)) { majTotalPauses(); return; }
+  await enregistrerInterruptions(r.elements, "Interruptions", true);
+}
+let minuteriePause = null;
+let listePausesARedessiner = false;
+document.getElementById("liste-pauses").addEventListener("focusout", () => setTimeout(() => {
+  if (listePausesARedessiner && !document.getElementById("liste-pauses").contains(document.activeElement)) {
+    brouillonsPauses[feuilleActuelle.id] = lireLignesPauses().brouillons;
+    afficherPauses();
+  }
+}, 50));
+function afficherPauses() {
+  const bloc = document.getElementById("bloc-pauses");
+  if (!bloc || !feuilleActuelle) return;
+  const verrou = !!feuilleActuelle.verrouillee;
+  // Feuille signée : lecture seule (le résumé de la feuille signée montre horaires et pauses)
+  bloc.style.display = verrou ? "none" : "block";
+  ["horaire-debut-vis", "horaire-fin-vis"].forEach((id, i) => {
+    const vis = document.getElementById(id), vrai = document.getElementById(i ? "heure-fin" : "heure-debut");
+    if (document.activeElement !== vis) vis.value = vrai.value;
+    vis.disabled = verrou;
+  });
+  const a = analyserInterruptions(feuilleActuelle.interruptions);
+  const enCours = verrou ? null : lirePauseEnCours();
+  const btn = document.getElementById("btn-pause");
+  btn.style.display = verrou ? "none" : "block";
+  document.getElementById("btn-pause-manuelle").style.display = verrou ? "none" : "block";
+  clearInterval(minuteriePause); minuteriePause = null;
+  if (enCours) {
+    const maj = () => {
+      const min = Math.max(0, Math.floor((Date.now() - Number(enCours.t || Date.now())) / 60000));
+      btn.textContent = "▶️ Fin de pause (en pause depuis " + enCours.debut + " · " + formatDureePause(min) + ")";
+    };
+    btn.classList.add("en-pause"); maj();
+    minuteriePause = setInterval(maj, 15000);
+  } else {
+    btn.classList.remove("en-pause");
+    btn.textContent = "⏸️ Commencer une pause";
+  }
+  // Le chauffeur est en train de taper dans une case « de … à … » : on ne redessine pas la liste
+  // (un rechargement en arrière-plan effacerait sa saisie) — ce sera fait quand il quitte la case.
+  const zoneListe = document.getElementById("liste-pauses");
+  if (zoneListe.contains(document.activeElement)) { listePausesARedessiner = true; majTotalPauses(); return; }
+  listePausesARedessiner = false;
+  let brouillons = brouillonsFeuille();
+  if (!verrou && !a.elements.length && !brouillons.length) brouillons = brouillonsPauses[feuilleActuelle.id] = [{ debut: "", fin: "" }];
+  const lignes = a.elements.concat(verrou ? [] : brouillons);
+  const champ = (cls, v, ph) => `<input type="text" inputmode="numeric" autocomplete="off" class="${cls}" value="${esc(v || "")}" placeholder="${ph}"${verrou ? " disabled" : ""}>`;
+  document.getElementById("liste-pauses").innerHTML = lignes.map(e => e.brut
+    ? `<div class="pause-ligne" data-type="brut" data-brut="${esc(e.brut)}"><span class="pause-brut">⏸️ ${esc(e.brut)}</span>${verrou ? "" : `<button type="button" class="btn-pause-supprimer" aria-label="Supprimer">🗑️</button>`}</div>`
+    : `<div class="pause-ligne" data-type="pause"><span class="pl-txt">⏸️ de</span>${champ("pause-de", e.debut, "HH:MM")}<span class="pl-txt">à</span>${champ("pause-a", e.fin, "HH:MM")}${verrou ? "<span></span>" : `<button type="button" class="btn-pause-supprimer" aria-label="Supprimer">🗑️</button>`}<span class="pl-duree"></span></div>`).join("");
+  document.querySelectorAll("#liste-pauses .pause-ligne").forEach(r => {
+    r.querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("input", () => {
+        // 4 chiffres tapés (1230) : heure mise en forme, on passe à la case suivante
+        if (/^\d{4}$/.test(inp.value.trim()) && normaliserHeure(inp.value)) {
+          inp.value = normaliserHeure(inp.value);
+          const suivant = inp.classList.contains("pause-de") ? r.querySelector(".pause-a") : null;
+          if (suivant && !suivant.value) suivant.focus(); else inp.blur();
+        }
+        majTotalPauses();
+      });
+      inp.addEventListener("change", enregistrerLignesPauses);
+    });
+    const del = r.querySelector(".btn-pause-supprimer");
+    if (del) del.addEventListener("click", () => supprimerLignePause(r));
+  });
+  majTotalPauses();
+}
+async function supprimerLignePause(r) {
+  const tous = [...document.querySelectorAll("#liste-pauses .pause-ligne")];
+  const d = r.dataset.type === "brut" ? null : [r.querySelector(".pause-de").value, r.querySelector(".pause-a").value];
+  const vide = d && !d[0] && !d[1];
+  if (!vide && !(await confirmerDansPage("Supprimer l'interruption " + (d ? (d[0] || "?") + "-" + (d[1] || "?") : "« " + r.dataset.brut + " »") + " ?", "🗑️ Supprimer", "Annuler"))) return;
+  if (!r.isConnected || !tous.includes(r)) return;
+  r.remove();
+  await enregistrerLignesPauses();
+  afficherPauses();
+}
+// Heures du service visibles sans ouvrir le bloc « Service & compteurs » : recopiées dans les vrais champs
+[["horaire-debut-vis", "heure-debut"], ["horaire-fin-vis", "heure-fin"]].forEach(([idVis, idVrai]) => {
+  const vis = document.getElementById(idVis), vrai = document.getElementById(idVrai);
+  attacherNormalisationHeure(vis);
+  vis.addEventListener("change", () => {
+    if (vis.value === vrai.value) return;
+    vrai.value = vis.value;
+    vrai.dispatchEvent(new Event("change"));
+  });
+  vis.insertAdjacentElement("afterend", creerBoutonMaintenant(vis));
+  vrai.addEventListener("change", () => setTimeout(() => { if (document.activeElement !== vis) vis.value = vrai.value; }, 0));
+});
+document.getElementById("btn-pause").addEventListener("click", async () => {
+  if (!feuilleActuelle || feuilleActuelle.verrouillee || pauseEnregistrementEnCours) return;
+  const enCours = lirePauseEnCours();
+  if (!enCours) {
+    ecrirePauseEnCours({ debut: heureMaintenantTexte(), t: Date.now() });
+    afficherPauses();
+    afficherToast("⏸️ Pause commencée à " + heureMaintenantTexte());
+    return;
+  }
+  const fin = heureMaintenantTexte();
+  if (enCours.debut === fin) {
+    ecrirePauseEnCours(null); afficherPauses();
+    afficherToast("Pause annulée (moins d'une minute)");
+    return;
+  }
+  pauseEnregistrementEnCours = true;
+  try {
+    const a = analyserInterruptions(feuilleActuelle.interruptions);
+    a.elements.push({ debut: enCours.debut, fin });
+    // la ligne vide « de … à … » proposée par défaut est remplacée par la pause
+    brouillonsPauses[feuilleActuelle.id] = brouillonsFeuille().filter(x => x.debut || x.fin);
+    if (await enregistrerInterruptions(a.elements, "Fin de pause")) { ecrirePauseEnCours(null); afficherPauses(); }
+  } finally { pauseEnregistrementEnCours = false; }
+});
+document.getElementById("btn-pause-manuelle").addEventListener("click", () => {
+  if (!feuilleActuelle || feuilleActuelle.verrouillee) return;
+  const r = lireLignesPauses();
+  brouillonsPauses[feuilleActuelle.id] = r.brouillons.concat([{ debut: "", fin: "" }]);
+  afficherPauses();
+  const champs = document.querySelectorAll("#liste-pauses .pause-de");
+  if (champs.length) champs[champs.length - 1].focus();
+});
+// Retour sur l'app (iPhone) : le compteur de la pause en cours se remet à l'heure
+document.addEventListener("visibilitychange", () => { if (!document.hidden) afficherPauses(); });
 
 async function chargerLignes() {
   const { data, error } = await supabase
@@ -3572,6 +4044,7 @@ function remplirResumeSignee() {
     (!isNaN(rd) && !isNaN(rf)) ? (rf - rd).toFixed(2) + " €" : "—";
   document.getElementById("resume-pourboires").textContent = formatEuro(totauxLignesLocales(lignesActuelles).pourboires);
   document.getElementById("resume-nb-courses").textContent = lignesActuelles.length;
+  document.getElementById("resume-pauses").textContent = texteInterruptionsResume(feuilleActuelle.interruptions) || "—";
 }
 
 let detailsOuvertsMalgreSignature = false;
@@ -3613,6 +4086,7 @@ function appliquerVerrouillage() {
   document.getElementById("btn-voir-details").textContent = "▾ Voir le détail de la feuille";
   detailsOuvertsMalgreSignature = false;
   if (verrou) remplirResumeSignee();
+  afficherPauses();
 }
 
 function fmtVal(v) { return (v === null || v === undefined || v === "") ? "" : esc(v); }
@@ -4054,7 +4528,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       <h2>Service ${feuillesMemeDate().length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
       <table>
         <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
-        <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${fmtVal(f.interruptions)}</td>
+        <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${esc(texteInterruptionsResume(f.interruptions))}</td>
             <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.taximetre_fin)}</td></tr>
         <tr><td>Fin</td><td>${fmtVal(f.heure_fin ? String(f.heure_fin).slice(0, 5) : "")}</td><td></td>
             <td>Début</td><td>${fmtVal(f.index_km_debut)}</td><td>${fmtVal(f.taximetre_debut)}</td></tr>
