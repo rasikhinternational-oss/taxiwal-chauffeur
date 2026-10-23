@@ -225,16 +225,43 @@ function trierLignesChrono(lignes, feuille) {
 function ecartIndex(a, b) {
   const x = frNum(a), y = frNum(b);
   if (x === null || y === null) return null;
-  if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
-    const d = ((y - x) % 1000 + 1000) % 1000;
+  if (x >= 0 && y >= 0 && (x < 1000 || y < 1000)) {
+    const d = (((y % 1000) - (x % 1000)) % 1000 + 1000) % 1000;
     return d >= 500 ? d - 1000 : d;
   }
   return y - x;
 }
 // Course annulée / no-show / sans déplacement : débarquement = embarquement autorisé
 function ligneSansDeplacement(l) {
-  return l.mode_paiement === "annulee" || (l.courses && l.courses.statut === "annulee")
+  return l.type_course === "relais" || l.type_course === "relais_fin" || l.mode_paiement === "annulee" || (l.courses && l.courses.statut === "annulee")
     || /annul|no[\s-]?show|sans d[ée]placement|absent/i.test(String(l.sommes_texte || "") + " " + String(l.motif_sans_prix || "") + " " + String(l.mode_paiement || ""));
+}
+// ================== 🔁 RELAIS DU GÉRANT ==================
+// Ligne notée par la centrale quand le gérant reprend la voiture (type_course 'relais' / 'relais_fin') :
+// ce n'est pas une course (aucun montant, hors recette et pourboires), juste l'heure et l'index ;
+// les courses faites pendant le relais portent « conduit par le gérant » (colonne conducteur).
+function estLigneRelais(l) { return !!l && (l.type_course === "relais" || l.type_course === "relais_fin"); }
+function libConducteur(nom) { return /^g[ée]rant$/i.test(String(nom || "").trim()) ? "le gérant" : String(nom || ""); }
+function indexRelaisTexte(v) {
+  const n = frNum(v);
+  if (n === null) return "";
+  if (n >= 1000) return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return Number.isInteger(n) ? String(n).padStart(3, "0") : String(n);
+}
+function texteRelais(l) {
+  const h = (l.embarquement_heure || l.debarquement_heure) ? frHHMM(l.embarquement_heure || l.debarquement_heure) : "--:--";
+  const idx = indexRelaisTexte(l.embarquement_index ?? l.debarquement_index ?? l.index_depart);
+  const qui = libConducteur(l.conducteur || "Gérant");
+  const base = l.type_course === "relais_fin"
+    ? `↩️ Fin du relais : véhicule rendu par ${qui} à ${h}`
+    : `🔁 Relais : véhicule repris par ${qui} à ${h}`;
+  return base + (idx ? ` · index ${idx}` : "") + (l.note_chauffeur ? ` — ${l.note_chauffeur}` : "");
+}
+// « Course n° » : les lignes de relais ne sont pas des courses
+function numerosCourses(lignes) {
+  const m = new Map(); let n = 0;
+  (lignes || []).forEach(l => { if (l && !estLigneRelais(l)) m.set(l.id, ++n); });
+  return m;
 }
 // Index de début de la feuille = 3 derniers chiffres de l'« Index km — Début »
 function indexDebutFeuille(feuille) {
@@ -385,7 +412,7 @@ function resumeLigneFermee(l, numero) {
   else if (mode) argent = mode;
   else argent = "—";
   return {
-    ligne1: `N° ${numero} · ${frHHMM(l.embarquement_heure)} → ${frHHMM(l.debarquement_heure)} · ${argent}${Number(l.pourboire) > 0 ? " · +" + formatEuro(Number(l.pourboire)) + " pourboire" : ""}`,
+    ligne1: `N° ${numero} · ${frHHMM(l.embarquement_heure)} → ${frHHMM(l.debarquement_heure)} · ${argent}${Number(l.pourboire) > 0 ? " · +" + formatEuro(Number(l.pourboire)) + " pourboire" : ""}${l.conducteur ? " · 🔁 conduit par " + libConducteur(l.conducteur) : ""}`,
     ligne2: `${lieuCourt(l.embarquement_lieu)} → ${lieuCourt(l.debarquement_lieu)}`
   };
 }
@@ -612,6 +639,11 @@ window.onerror = function(msg, url, line, col, err) {
   #btn-imprimer-fr{ width:100%; padding:12px; border-radius:10px; border:none; background:#3b82c4; color:#fff; font-weight:600; font-size:.95rem; margin-bottom:14px; }
   .ligne-course{ background:#f0f1ee; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #dcdcda; }
   .ligne-course.ligne-anomalie{ border:2px solid #c81e2c; background:#fdecee; }
+  .ligne-course.ligne-relais{ border:2px dashed #8cc79f; background:#f2faf3; padding:10px 12px; }
+  .ligne-course.ligne-relais.fin{ border-color:#e0b062; background:#fff8ec; }
+  .ligne-relais .texte-relais{ font-weight:800; color:#1f4f2c; font-size:.92rem; }
+  .ligne-relais.fin .texte-relais{ color:#7a4a00; }
+  .ligne-relais .sous-relais{ font-size:.78rem; color:#55605a; margin-top:3px; }
   .anomalie-ligne{ color:#8a1520; font-size:.82rem; font-weight:700; margin:6px 0 4px; line-height:1.35; }
   .ligne-course .num{ color:var(--blanc); font-size:.82rem; margin-bottom:6px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .ligne-course .num .chevron-ligne{ color:var(--gris); font-size:.75rem; flex-shrink:0; }
@@ -740,6 +772,20 @@ window.onerror = function(msg, url, line, col, err) {
   #total-pauses{ margin-top:8px; font-weight:800; font-size:.95rem; }
   #total-pauses:empty{ display:none; }
   #btn-pause{ margin-top:10px; }
+  /* Bloc repliable « Horaires & interruptions » : fermé par défaut, résumé sur une ligne */
+  #bloc-pauses{ padding:0; }
+  #entete-pauses{ display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; min-height:44px; }
+  #entete-pauses .ep-txt{ flex:1; min-width:0; }
+  #entete-pauses .ep-titre{ font-size:.72rem; font-weight:700; color:#6b6b66; text-transform:uppercase; letter-spacing:.03em; }
+  #resume-entete-pauses{ font-size:.86rem; font-weight:800; color:#222; line-height:1.3; overflow-wrap:anywhere; }
+  #resume-entete-pauses.en-pause{ color:#b86e00; }
+  #entete-pauses .ep-chevron{ color:#6b6b66; font-size:.9rem; flex-shrink:0; transition:transform .15s; }
+  #bloc-pauses.ouvert #entete-pauses .ep-chevron{ transform:rotate(180deg); }
+  #btn-pause-rapide{ flex-shrink:0; width:auto; margin:0; padding:9px 12px; border:none; border-radius:10px; background:#1d4f86; color:#fff; font-weight:800; font-size:.9rem; white-space:nowrap; }
+  #btn-pause-rapide.en-pause{ background:#e8a200; color:#1d1400; }
+  #bloc-pauses.ouvert #btn-pause-rapide{ display:none !important; }
+  #contenu-pauses{ display:none; padding:0 12px 12px; }
+  #bloc-pauses.ouvert #contenu-pauses{ display:block; }
   #btn-pause-manuelle{ width:100%; margin-top:10px; padding:11px; border-radius:10px; border:1px dashed #1d4f86; background:#f2f6fb; color:#1d4f86; font-weight:700; font-size:.95rem; }
   .btn-y-aller{ width:100%; padding:11px; margin:-4px 0 10px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:800; font-size:.95rem; }
 </style>
@@ -771,7 +817,15 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <div id="bloc-pauses">
-  <h2 style="margin:0 0 8px; font-size:1rem;">🕐 Horaires &amp; interruptions</h2>
+  <div id="entete-pauses" role="button" tabindex="0" aria-expanded="false" aria-controls="contenu-pauses" aria-label="Horaires et interruptions — ouvrir ou fermer">
+    <div class="ep-txt">
+      <div class="ep-titre">Horaires &amp; interruptions</div>
+      <div id="resume-entete-pauses">🕐 —</div>
+    </div>
+    <button type="button" id="btn-pause-rapide">⏸️ Pause</button>
+    <span class="ep-chevron" aria-hidden="true">▾</span>
+  </div>
+  <div id="contenu-pauses">
   <div class="horaires-vis">
     <div><label for="horaire-debut-vis">Heure de début</label><input type="text" id="horaire-debut-vis" class="heure-vis" inputmode="numeric" autocomplete="off" placeholder="ex : 0630"></div>
     <div><label for="horaire-fin-vis">Heure de fin</label><input type="text" id="horaire-fin-vis" class="heure-vis" inputmode="numeric" autocomplete="off" placeholder="ex : 1830"></div>
@@ -780,6 +834,7 @@ window.onerror = function(msg, url, line, col, err) {
   <button type="button" id="btn-pause-manuelle">➕ Ajouter une autre interruption</button>
   <div id="total-pauses"></div>
   <button type="button" id="btn-pause">⏸️ Commencer une pause</button>
+  </div>
 </div>
 
 <div class="bloc" id="resume-signee">
@@ -900,6 +955,7 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <p id="erreur"></p>
+<div style="margin:18px 20px 110px;"><button type="button" id="btn-deconnexion-fr" style="width:100%; padding:13px; border-radius:12px; border:1px solid #e3b4b8; background:#fff; color:var(--rouge); font-weight:700; font-size:.95rem;">🔒 Se déconnecter</button></div>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script>
@@ -966,13 +1022,28 @@ window.onerror = function(msg, url, line, col, err) {
     } catch (e) { return null; }
   }
   function utilisateurLocal() { var s = sessionLocale(); return s ? s.user : null; }
+  // Tout ce qui est gardé sur le téléphone est rangé par utilisateur : un autre chauffeur qui se
+  // connecte sur le même téléphone ne voit jamais les feuilles / modifications du précédent.
+  function uidLocal() { var u = utilisateurLocal(); return u && u.id ? String(u.id) : ""; }
+  function cleUtil(base) { var u = uidLocal(); return u ? base + ":" + u : base; }
 
   // ---- file d'attente des écritures ----
-  function cleFile() { return etat.app === "feuille" ? CLES_FILES[1] : CLES_FILES[0]; }
+  function cleFile() { return cleUtil(etat.app === "feuille" ? CLES_FILES[1] : CLES_FILES[0]); }
   function lireFileCle(k) { try { var f = JSON.parse(lsGet(k) || "[]"); return Array.isArray(f) ? f : []; } catch (e) { return []; } }
-  function lireFile() { return lireFileCle(cleFile()); }
-  function ecrireFile(f) { if (f.length) lsSet(cleFile(), JSON.stringify(f)); else lsDel(cleFile()); }
-  function toutesLesOps() { var t = []; CLES_FILES.forEach(function (k) { t = t.concat(lireFileCle(k)); }); return t; }
+  function lireFile(k) { return lireFileCle(k || cleFile()); }
+  function ecrireFile(f, k) { k = k || cleFile(); if (f.length) lsSet(k, JSON.stringify(f)); else lsDel(k); }
+  function clesFilesUtil() { return CLES_FILES.map(cleUtil); }
+  function toutesLesOps() { var t = []; clesFilesUtil().forEach(function (k) { t = t.concat(lireFileCle(k)); }); return t; }
+  // Ancienne file (avant le rangement par utilisateur) : rattachée à l'utilisateur connecté
+  function migrerAnciennesFiles() {
+    var u = uidLocal(); if (!u) return;
+    CLES_FILES.forEach(function (base) {
+      var vieille = lireFileCle(base); if (!vieille.length) return;
+      var k = base + ":" + u;
+      lsSet(k, JSON.stringify(lireFileCle(k).concat(vieille)));
+      lsDel(base);
+    });
+  }
   function ajouterALaFile(item) {
     var f = lireFile();
     var der = f[f.length - 1];
@@ -988,11 +1059,11 @@ window.onerror = function(msg, url, line, col, err) {
     }
     ecrireFile(f);
   }
-  function retirer(id) { ecrireFile(lireFile().filter(function (x) { return x.id !== id; })); }
-  function marquerErreur(id, msg) {
-    var f = lireFile();
+  function retirer(id, k) { ecrireFile(lireFile(k).filter(function (x) { return x.id !== id; }), k); }
+  function marquerErreur(id, msg, k) {
+    var f = lireFile(k);
     f.forEach(function (x) { if (x.id === id) x.erreur = msg; });
-    ecrireFile(f);
+    ecrireFile(f, k);
   }
   function enAttentePour(table, id) {
     return toutesLesOps().some(function (o) {
@@ -1057,7 +1128,7 @@ window.onerror = function(msg, url, line, col, err) {
 
   // ---- copie locale des lectures ----
   function lireEntete(h, nom) { if (!h) return ""; try { return (typeof h.get === "function" ? h.get(nom) : (h[nom] || h[nom.toLowerCase()])) || ""; } catch (e) { return ""; } }
-  function cleCache(url, init) { return url + (url.indexOf("?") >= 0 ? "&" : "?") + "__accept=" + encodeURIComponent(lireEntete(init && init.headers, "Accept")); }
+  function cleCache(url, init) { return url + (url.indexOf("?") >= 0 ? "&" : "?") + "__accept=" + encodeURIComponent(lireEntete(init && init.headers, "Accept")) + "&__u=" + encodeURIComponent(uidLocal()); }
   function ouvrirCache() {
     try { return window.caches ? caches.open(CACHE_DONNEES).catch(function () { return null; }) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); }
   }
@@ -1090,6 +1161,43 @@ window.onerror = function(msg, url, line, col, err) {
   function viderCacheDonnees() {
     try { if (window.caches) caches.delete(CACHE_DONNEES).catch(function () {}); } catch (e) {}
     try { Object.keys(window.localStorage).forEach(function (k) { if (k.indexOf("twc:") === 0) window.localStorage.removeItem(k); }); } catch (e) {}
+    Object.keys(memoire).forEach(function (k) { if (k.indexOf("twc:") === 0) delete memoire[k]; });
+  }
+  // Déconnexion : tout ce que l'app a gardé sur le téléphone pour cet utilisateur est effacé
+  // (copies des lectures, file d'attente, dernière feuille ouverte, véhicule du jour, pauses…).
+  function viderDonneesUtilisateur() {
+    viderCacheDonnees();
+    var prefixes = ["taxiwal_outbox_", "taxiwal_feuille_instantane", "taxiwal_feuille_choisie", "taxiwal_vehicule_du_jour",
+                    "taxiwal_dernier_vehicule", "taxiwal_pause_en_cours_", "taxiwal_verrou_"];
+    var aRetirer = function (k) { return prefixes.some(function (p) { return k.indexOf(p) === 0; }); };
+    try { Object.keys(window.localStorage).forEach(function (k) { if (aRetirer(k)) window.localStorage.removeItem(k); }); } catch (e) {}
+    Object.keys(memoire).forEach(function (k) { if (aRetirer(k)) { delete memoire[k]; delete echecs[k]; } });
+    try { window.sessionStorage.clear(); } catch (e) {}
+  }
+  // Avant la déconnexion : on essaie d'envoyer ce qui attend (s'il y a du réseau).
+  // Renvoie { restant, horsLigne } : restant > 0 = des modifications seraient perdues.
+  async function preparerDeconnexion() {
+    var cles = clesFilesUtil();
+    for (var w = 0; w < 100 && etat.enCours; w++) await new Promise(function (r) { setTimeout(r, 100); });
+    if (navigator.onLine !== false && etat.client) {
+      for (var i = 0; i < cles.length; i++) {
+        if (lireFileCle(cles[i]).length) { try { await rejouer(true, cles[i]); } catch (e) {} }
+      }
+    }
+    var restant = cles.reduce(function (s, k) { return s + lireFileCle(k).length; }, 0);
+    return { restant: restant, horsLigne: horsLigne() };
+  }
+  // Déconnexion complète (après confirmation de l'app) : données locales effacées puis session fermée,
+  // même sans réseau (session locale supprimée).
+  async function deconnecter() {
+    viderDonneesUtilisateur();
+    var c = etat.client, r = null;
+    if (c) {
+      try { r = await c.auth.signOut(); } catch (e) { r = { error: e }; }
+      if (r && r.error) { try { await c.auth.signOut({ scope: "local" }); } catch (e) {} }
+    }
+    try { window.localStorage.removeItem(CLE_SESSION); } catch (e) {}
+    viderDonneesUtilisateur();
   }
 
   function signalerReseau(ko) {
@@ -1185,27 +1293,29 @@ window.onerror = function(msg, url, line, col, err) {
   }
 
   // ---- renvoi automatique de la file ----
-  function prendreVerrou() {
-    var k = "taxiwal_verrou_" + etat.app, v = Number(lsGet(k) || 0);
+  function nomVerrou(kf) { return "taxiwal_verrou_" + (kf && kf.indexOf(CLES_FILES[1]) === 0 ? "feuille" : kf ? "chauffeur" : etat.app); }
+  function prendreVerrou(kf) {
+    var k = nomVerrou(kf), v = Number(lsGet(k) || 0);
     if (v && Date.now() - v < 60000) return false;
     lsSet(k, String(Date.now()));
     return true;
   }
-  function libererVerrou() { lsDel("taxiwal_verrou_" + etat.app); }
+  function libererVerrou(kf) { lsDel(nomVerrou(kf)); }
   var minuteriePlan = null;
   function planifier(ms) { clearTimeout(minuteriePlan); minuteriePlan = setTimeout(function () { rejouer(false); }, ms || 0); }
 
-  async function rejouer(manuel) {
+  async function rejouer(manuel, kf) {
     if (etat.enCours || !etat.client) return;
-    if (!lireFile().length) { majBandeau(); return; }
+    kf = kf || cleFile();
+    if (!lireFile(kf).length) { majBandeau(); return; }
     if (navigator.onLine === false) { majBandeau(); return; }
-    if (!prendreVerrou()) return;
+    if (!prendreVerrou(kf)) return;
     etat.enCours = true;
     majBandeau();
     var faits = 0, jwtEssais = 0;
     try {
       while (true) {
-        var item = lireFile()[0];
+        var item = lireFile(kf)[0];
         if (!item) break;
         if (item.erreur && !manuel) break;
         manuel = false;
@@ -1214,14 +1324,14 @@ window.onerror = function(msg, url, line, col, err) {
         etat.enVol = null;
         if (!r.error && item.verifier && Array.isArray(r.data) && !r.data.length)
           r = { error: { message: "La course n'est plus à toi (retirée ou modifiée par la centrale)." }, reseau: false };
-        if (!r.error) { retirer(item.id); faits++; lsSet("taxiwal_verrou_" + etat.app, String(Date.now())); continue; }
+        if (!r.error) { retirer(item.id, kf); faits++; lsSet(nomVerrou(kf), String(Date.now())); continue; }
         if (r.reseau) break;
         if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
-        marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error));
+        marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error), kf);
         break;
       }
     } finally {
-      etat.enCours = false; etat.enVol = null; libererVerrou();
+      etat.enCours = false; etat.enVol = null; libererVerrou(kf);
     }
     if (faits) {
       if (!lireFile().length) etat.flashJusqua = Date.now() + 3000;
@@ -1295,6 +1405,7 @@ window.onerror = function(msg, url, line, col, err) {
     etat.client = client;
     etat.app = (cfg && cfg.app) || "chauffeur";
     etat.apresSync = (cfg && cfg.apresSync) || null;
+    migrerAnciennesFiles();
     var auth = client.auth;
     var getSessionOrig = auth.getSession.bind(auth), getUserOrig = auth.getUser.bind(auth);
     // Sans réseau : la session enregistrée sur le téléphone suffit (pas de renvoi vers la connexion)
@@ -1323,7 +1434,8 @@ window.onerror = function(msg, url, line, col, err) {
   window.TWHL = {
     fetch: fetchHL, installer: installer, ecrire: ecrire, rejouer: rejouer, enAttentePour: enAttentePour,
     estErreurReseau: estErreurReseau, horsLigne: horsLigne, utilisateurLocal: utilisateurLocal,
-    viderCacheDonnees: viderCacheDonnees, uuid: uuid, nbEnAttente: function () { return lireFile().length; },
+    viderCacheDonnees: viderCacheDonnees, viderDonneesUtilisateur: viderDonneesUtilisateur, preparerDeconnexion: preparerDeconnexion,
+    deconnecter: deconnecter, uuid: uuid, nbEnAttente: function () { return lireFile().length; },
     file: lireFile, majBandeau: majBandeau, MSG_FEUILLE_DOUBLON: MSG_FEUILLE_DOUBLON
   };
 })();
@@ -1334,6 +1446,19 @@ const SUPABASE_KEY = "sb_publishable_-UQH_c6pHVqDVqU1SySBUw_5LYDbfYp";
 // Hors ligne : délai maximum + dernières données gardées sur le téléphone + file d'attente (voir TWHL)
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: TWHL.fetch } });
 TWHL.installer(supabase, { app: "feuille", apresSync: () => { try { rechargerSilencieusement(); } catch (e) {} } });
+// Déconnexion : on envoie d'abord ce qui attend ; sans réseau, avertissement avant de tout effacer du téléphone
+document.getElementById("btn-deconnexion-fr").addEventListener("click", async () => {
+  if (!(await confirmerDansPage("Se déconnecter de l'application Taxi Wal ?", "Se déconnecter", "Annuler"))) return;
+  const etatDeco = await TWHL.preparerDeconnexion();
+  if (etatDeco.restant > 0) {
+    const msgDeco = etatDeco.horsLigne
+      ? `⚠️ Pas de réseau : ${etatDeco.restant} modification(s) de ta feuille ne sont pas encore envoyées à la centrale.\n\nSi tu te déconnectes maintenant, elles seront PERDUES. Attends d'avoir du réseau (le bandeau en bas devient vert), puis déconnecte-toi.`
+      : `⚠️ ${etatDeco.restant} modification(s) n'ont pas pu être envoyées à la centrale (voir le bandeau rouge en bas).\n\nSi tu te déconnectes maintenant, elles seront PERDUES.`;
+    if (!(await confirmerDansPage(msgDeco, "Me déconnecter quand même", "Rester connecté"))) return;
+  }
+  await TWHL.deconnecter();
+  location.href = "chauffeur.html";
+});
 // Dernière feuille ouverte, gardée sur le téléphone : permet de rouvrir l'app sans réseau
 // (y compris après minuit pendant un service de nuit).
 function sauverInstantaneFeuille() {
@@ -1763,10 +1888,12 @@ async function chargerVehiculesDisponibles() {
 // Renvoie { ok:true } ou { ok:false, pris:true|false, message }.
 async function enregistrerChoixVehicule(v) {
   if (!v || !v.id || TWHL.horsLigne()) return { ok: false, reseau: true, message: "Pas de réseau" };
-  if (vehiculeDuJour && vehiculeDuJour.vehicule_id === v.id) return { ok: true };
+  // (pas de raccourci sur la copie locale : l'attribution a pu être libérée à la signature d'une feuille —
+  //  le serveur renvoie simplement l'attribution existante si c'est déjà la bonne voiture)
   try {
     const { data, error } = await supabase.rpc("chauffeur_choisir_vehicule", { p_vehicule: v.id, p_date: dateLocaleISO() });
     if (error) {
+      if (!error.code && /fetch|network|réseau/i.test(error.message || "")) return { ok: false, reseau: true, message: "Pas de réseau" };
       const pris = error.hint === "vehicule_pris" || /déjà pris/i.test(error.message || "");
       return { ok: false, pris, admin: error.hint === "attribue_par_admin", message: error.message || "Erreur" };
     }
@@ -1776,6 +1903,56 @@ async function enregistrerChoixVehicule(v) {
     if (uidFeuille) ecrireCacheVehiculeDuJour(uidFeuille, dateLocaleISO(), row);
     return { ok: true };
   } catch (e) { return { ok: false, reseau: true, message: String(e && e.message || e) }; }
+}
+// Hors ligne : la voiture choisie devient la voiture du jour sur le téléphone (le serveur suivra la
+// feuille à la synchronisation : l'attribution du jour suit la voiture de la feuille ouverte).
+function memoriserVehiculeDuJourLocal(v) {
+  if (!v || !v.id) return;
+  const row = { vehicule_id: v.id, nom: v.nom, plaque: v.plaque, numero_identification: v.numero_identification,
+    identite_exploitant: v.identite_exploitant, choisi_par: "chauffeur", date_service: dateLocaleISO() };
+  vehiculeDuJour = row;
+  if (uidFeuille) ecrireCacheVehiculeDuJour(uidFeuille, dateLocaleISO(), row);
+}
+// « 🚗 Changer la voiture de cette feuille » : même feuille, autre voiture (jamais bloqué par les compteurs).
+// En ligne : voitures libres + la sienne, et la voiture du jour suit. Hors ligne : liste gardée sur le téléphone.
+// Renvoie true si la voiture de la feuille a été changée.
+let changementVoitureFeuilleEnCours = false;
+async function changerVoitureDeLaFeuille(vImpose) {
+  if (vImpose && vImpose.type === "click") vImpose = null;
+  if (!feuilleActuelle || feuilleActuelle.verrouillee || changementVoitureFeuilleEnCours) return false;
+  changementVoitureFeuilleEnCours = true;
+  try {
+    let v = vImpose || null;
+    if (!v) {
+      const { liste, enLigne } = await listeVehiculesPourChoix();
+      v = await choisirVehicule("🚗 Changer la voiture de cette feuille", { liste,
+        note: enLigne ? "La feuille reste la même — vérifie ensuite les compteurs de DÉBUT." : "📴 Hors ligne : voitures gardées sur le téléphone." });
+      if (!v) return false;
+    }
+    if (v.id === feuilleActuelle.vehicule_id) return false;
+    const ancienne = feuilleActuelle.vehicule_id || null;
+    // La voiture du jour suit seulement si c'est la feuille du service en cours (pas une vieille feuille corrigée)
+    const suitVoitureDuJour = feuilleDuServiceEnCours(feuilleActuelle)
+      && (!vehiculeDuJour || !vehiculeDuJour.vehicule_id || vehiculeDuJour.vehicule_id === ancienne);
+    if (suitVoitureDuJour) {
+      if (!TWHL.horsLigne()) {
+        const r = await enregistrerChoixVehicule(v);
+        if (!r.ok && !r.reseau) { alert("⛔ " + r.message + (r.pris ? "\n\nChoisis une autre voiture." : "")); return false; }
+        if (!r.ok) memoriserVehiculeDuJourLocal(v);
+      } else memoriserVehiculeDuJourLocal(v);
+    }
+    const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
+      payload: { vehicule_id: v.id }, local: { vehicule_id: v.id }, label: "Changement de voiture de la feuille" });
+    if (error) { alert("Erreur : " + error.message); return false; }
+    feuilleActuelle.vehicule_id = v.id;
+    toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
+    try { await remplirIdentite({ id: uidFeuille }); } catch (e) {}
+    sauverInstantaneFeuille();
+    afficherSelecteurFeuilles();
+    try { verifierVehiculeDuJour(true); } catch (e) {}
+    afficherToast("🚗 Voiture de la feuille : " + libelleVehicule(v) + " — vérifie les compteurs de DÉBUT.");
+    return true;
+  } finally { changementVoitureFeuilleEnCours = false; }
 }
 // Le matin, sans voiture attribuée : le chauffeur choisit une voiture LIBRE (réseau obligatoire).
 // Renvoie l'objet véhicule choisi, ou null (« Plus tard » / pas de réseau).
@@ -2222,9 +2399,16 @@ function afficherSelecteurFeuilles() {
       barre.appendChild(b);
     });
   }
-  // 2) Changement de voiture (clôture la feuille actuelle) — seulement si elle est encore ouverte
+  // 2) Changement de voiture — seulement si la feuille est encore ouverte (elle reste ouverte, jamais bloquant)
   const signee = feuilleActuelle && feuilleActuelle.verrouillee;
   if (!signee) {
+    const btnVoitureFeuille = document.createElement("button");
+    btnVoitureFeuille.type = "button";
+    btnVoitureFeuille.id = "btn-changer-voiture-feuille";
+    btnVoitureFeuille.textContent = "🚗 Changer la voiture de cette feuille";
+    btnVoitureFeuille.style.cssText = "width:100%; margin-bottom:8px; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid #8a5a00; background:#fff8ec; color:#8a5a00; font-weight:800;";
+    btnVoitureFeuille.addEventListener("click", changerVoitureDeLaFeuille);
+    barre.appendChild(btnVoitureFeuille);
     const btnChanger = document.createElement("button");
     btnChanger.type = "button";
     btnChanger.id = "btn-changer-vehicule";
@@ -2292,40 +2476,23 @@ async function ouvrirChangementVehicule(vehiculeImpose) {
   const dateNouvelleFeuille = (actuelleOuverte && feuilleActuelle.date_service < aujourdHui && estServiceEnCours(feuilleActuelle))
     ? feuilleActuelle.date_service : aujourdHui;
 
-  // 1) La feuille de la voiture actuelle doit être complète, puis elle est clôturée (signée)
-  if (actuelleOuverte) {
-    if (!feuilleActuelle.heure_fin) {
-      const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { heure_fin: heureMaintenant }, label: "Heure de fin" });
-      if (!error) feuilleActuelle.heure_fin = heureMaintenant;
-    }
-    const manques = manquesSignature();
-    if (manques.length) {
-      alert("🚗 Avant de changer de voiture, termine la feuille de la voiture actuelle.\n\nIl manque :\n• " + manques.join("\n• ") + "\n\n(Remplis les compteurs de FIN de la voiture que tu quittes, puis réessaie.)");
-      try { ouvrirFermerService(true); } catch (_) {}
-      const bloc = document.getElementById("bloc-service-repliable") || document.getElementById("bloc-identite");
-      if (bloc) bloc.scrollIntoView({ block: "start", behavior: "smooth" });
-      return;
-    }
-  }
+  // La feuille de la voiture qu'on quitte n'est PAS bloquante : elle reste ouverte (non signée)
+  // pour être complétée et signée plus tard (liste « Mes feuilles de route »).
   let vehiculeChoisi = vehiculeImpose || null;
   if (!vehiculeChoisi) {
     const { liste, enLigne } = await listeVehiculesPourChoix();
     vehiculeChoisi = await choisirVehicule(null, { liste, note: enLigne ? "" : "📴 Hors ligne : toutes les voitures sont affichées." });
     if (!vehiculeChoisi) return;
-    if (enLigne) {
-      const r = await enregistrerChoixVehicule(vehiculeChoisi);
-      if (!r.ok && r.pris) { alert("⛔ " + r.message + "\n\nChoisis une autre voiture."); return; }
-    }
   }
-  if (!(await confirmerDansPage((actuelleOuverte ? "La feuille de la voiture actuelle va être clôturée (signée).\n\n" : "") +
+  if (!(await confirmerDansPage((actuelleOuverte ? "La feuille de la voiture actuelle reste ouverte : tu pourras la compléter et la signer plus tard.\n\n" : "") +
       `Ouvrir une nouvelle feuille avec « ${vehiculeChoisi.nom}${vehiculeChoisi.plaque ? " · " + vehiculeChoisi.plaque : ""} » à partir de ${heureMaintenant} ?`, "🚗 Oui, nouvelle feuille", "Annuler"))) return;
-
-  if (actuelleOuverte) {
-    const { error: errSigne } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
-      payload: { signee: true }, local: { signee: true, verrouillee: true }, label: "Clôture de la feuille (changement de voiture)" });
-    if (errSigne) { alert("Erreur à la clôture de la feuille actuelle : " + errSigne.message); return; }
-    feuilleActuelle.verrouillee = true; feuilleActuelle.signee = true;
+  // La voiture choisie devient la voiture du jour (l'ancienne est libérée pour les autres chauffeurs)
+  const dejaVoitureDuJour = !!(vehiculeImpose && vehiculeDuJour && vehiculeDuJour.vehicule_id === vehiculeChoisi.id);
+  if (!dejaVoitureDuJour && !TWHL.horsLigne()) {
+    const r = await enregistrerChoixVehicule(vehiculeChoisi);
+    if (!r.ok && !r.reseau) { alert("⛔ " + r.message + (r.pris ? "\n\nChoisis une autre voiture." : "")); return; }
   }
+  if (!dejaVoitureDuJour && TWHL.horsLigne()) memoriserVehiculeDuJourLocal(vehiculeChoisi);
 
   // Identifiant créé sur le téléphone : la nouvelle feuille peut être ouverte même sans réseau
   const champsNouvelle = { id: TWHL.uuid(), chauffeur_id: user.id, date_service: dateNouvelleFeuille, vehicule_id: vehiculeChoisi.id, heure_debut: heureMaintenant };
@@ -2443,9 +2610,11 @@ async function ouvrirNouvelleFeuille() {
   const vehicule = await choisirVehicule("➕ Nouvelle feuille de route — avec quelle voiture ?", { liste: listeNf, note: enLigneNf ? "" : "📴 Hors ligne : toutes les voitures sont affichées." });
   if (!vehicule) return;
   if (enLigneNf) {
+    // La voiture choisie remplace la voiture du jour (même si la feuille actuelle reste ouverte)
     const r = await enregistrerChoixVehicule(vehicule);
-    if (!r.ok && r.pris) { alert("⛔ " + r.message + "\n\nChoisis une autre voiture."); return; }
-  }
+    if (!r.ok && !r.reseau) { alert("⛔ " + r.message + (r.pris ? "\n\nChoisis une autre voiture." : "")); return; }
+    if (!r.ok) memoriserVehiculeDuJourLocal(vehicule);
+  } else memoriserVehiculeDuJourLocal(vehicule);
   const choix = await choisirOptionsNouvelleFeuille(vehicule);
   if (!choix) return;
   creationFeuilleEnCours = true;
@@ -2672,9 +2841,17 @@ async function remplirIdentite(user) {
   // reste modifiable à tout moment si le mauvais véhicule a été retenu.
   const selectVehicule = document.getElementById("identite-vehicule-select");
   const { data: tousLesVehicules } = await supabase.from("vehicules").select("*").eq("actif", true).order("nom");
+  const listeSelectVehicules = (tousLesVehicules && tousLesVehicules.length) ? tousLesVehicules : (vehiculesActifsCache || []);
   selectVehicule.innerHTML = `<option value="">— Aucun —</option>` +
-    (tousLesVehicules || []).map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("");
+    listeSelectVehicules.map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("");
   selectVehicule.onchange = async () => {
+    // Choix d'une voiture : même chemin que « 🚗 Changer la voiture de cette feuille » (voiture du jour mise à jour)
+    if (selectVehicule.value) {
+      const vSel = listeSelectVehicules.find(x => x.id === selectVehicule.value) || { id: selectVehicule.value };
+      const fait = await changerVoitureDeLaFeuille(vSel);
+      if (!fait) selectVehicule.value = feuilleActuelle.vehicule_id || "";
+      return;
+    }
     const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id }, payload: { vehicule_id: selectVehicule.value || null }, label: "Véhicule" });
     if (error) { alert("Erreur : " + error.message); return; }
     feuilleActuelle.vehicule_id = selectVehicule.value || null;
@@ -2797,7 +2974,54 @@ async function enregistrerInterruptions(elements, label, sansRedessiner) {
   afficherToast(enAttente ? "⏳ Interruption gardée sur le téléphone — envoi au retour du réseau" : "✓ Interruption enregistrée");
   return true;
 }
+// ---- Bloc « Horaires & interruptions » repliable (fermé par défaut, état gardé sur le téléphone) ----
+const CLE_BLOC_PAUSES_OUVERT = "taxiwal_bloc_pauses_ouvert";
+function blocPausesOuvert() { try { return localStorage.getItem(CLE_BLOC_PAUSES_OUVERT) === "1"; } catch (e) { return false; } }
+function appliquerEtatBlocPauses() {
+  const bloc = document.getElementById("bloc-pauses"), ouvert = blocPausesOuvert();
+  if (!bloc) return;
+  bloc.classList.toggle("ouvert", ouvert);
+  document.getElementById("entete-pauses").setAttribute("aria-expanded", ouvert ? "true" : "false");
+}
+function ouvrirFermerBlocPauses(forcer) {
+  const ouvert = typeof forcer === "boolean" ? forcer : !blocPausesOuvert();
+  try { localStorage.setItem(CLE_BLOC_PAUSES_OUVERT, ouvert ? "1" : "0"); } catch (e) {}
+  appliquerEtatBlocPauses();
+}
+// Résumé d'une ligne : « 🕐 06:30 → 17:10 · ⏸️ 2 pauses (45 min) » ou « ⏸️ En pause depuis 12:30 · 7 min »
+function majEntetePauses() {
+  const z = document.getElementById("resume-entete-pauses");
+  if (!z || !feuilleActuelle) return;
+  const enCours = feuilleActuelle.verrouillee ? null : lirePauseEnCours();
+  if (enCours) {
+    const min = Math.max(0, Math.floor((Date.now() - Number(enCours.t || Date.now())) / 60000));
+    z.textContent = "⏸️ En pause depuis " + enCours.debut + " · " + formatDureePause(min);
+    z.classList.add("en-pause");
+    return;
+  }
+  z.classList.remove("en-pause");
+  const hd = normaliserHeure(document.getElementById("heure-debut").value) || "";
+  const hf = normaliserHeure(document.getElementById("heure-fin").value) || "";
+  const a = analyserInterruptions(feuilleActuelle.interruptions);
+  const n = a.pauses.length;
+  z.textContent = "🕐 " + (hd || "…") + " → " + (hf || "…") + " · "
+    + (n ? "⏸️ " + n + (n > 1 ? " pauses" : " pause") + " (" + formatDureePause(a.total) + ")" : (a.elements.length ? "⏸️ " + a.elements.length + " interruption(s)" : "aucune pause"));
+}
+document.getElementById("entete-pauses").addEventListener("click", (e) => {
+  if (e.target.closest("#btn-pause-rapide")) return;
+  ouvrirFermerBlocPauses();
+});
+document.getElementById("entete-pauses").addEventListener("keydown", (e) => {
+  if (e.target.closest("#btn-pause-rapide")) return;
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ouvrirFermerBlocPauses(); }
+});
+document.getElementById("btn-pause-rapide").addEventListener("click", (e) => {
+  e.stopPropagation();
+  basculerPause();
+});
+appliquerEtatBlocPauses();
 function majTotalPauses() {
+  majEntetePauses();
   const a = analyserInterruptions(feuilleActuelle && feuilleActuelle.interruptions);
   document.getElementById("total-pauses").textContent = a.pauses.length
     ? "Total interruptions : " + formatDureePause(a.total) + " (" + a.pauses.length + (a.pauses.length > 1 ? " pauses)" : " pause)") : "";
@@ -2854,20 +3078,26 @@ function afficherPauses() {
   const a = analyserInterruptions(feuilleActuelle.interruptions);
   const enCours = verrou ? null : lirePauseEnCours();
   const btn = document.getElementById("btn-pause");
+  const rapide = document.getElementById("btn-pause-rapide");
   btn.style.display = verrou ? "none" : "block";
+  rapide.style.display = verrou ? "none" : "";
   document.getElementById("btn-pause-manuelle").style.display = verrou ? "none" : "block";
+  appliquerEtatBlocPauses();
   clearInterval(minuteriePause); minuteriePause = null;
   if (enCours) {
     const maj = () => {
       const min = Math.max(0, Math.floor((Date.now() - Number(enCours.t || Date.now())) / 60000));
       btn.textContent = "▶️ Fin de pause (en pause depuis " + enCours.debut + " · " + formatDureePause(min) + ")";
+      majEntetePauses();
     };
-    btn.classList.add("en-pause"); maj();
+    btn.classList.add("en-pause"); rapide.classList.add("en-pause"); rapide.textContent = "▶️ Fin"; rapide.setAttribute("aria-label", "Fin de pause"); maj();
     minuteriePause = setInterval(maj, 15000);
   } else {
-    btn.classList.remove("en-pause");
+    btn.classList.remove("en-pause"); rapide.classList.remove("en-pause");
     btn.textContent = "⏸️ Commencer une pause";
+    rapide.textContent = "⏸️ Pause"; rapide.setAttribute("aria-label", "Commencer une pause");
   }
+  majEntetePauses();
   // Le chauffeur est en train de taper dans une case « de … à … » : on ne redessine pas la liste
   // (un rechargement en arrière-plan effacerait sa saisie) — ce sera fait quand il quitte la case.
   const zoneListe = document.getElementById("liste-pauses");
@@ -2918,9 +3148,10 @@ async function supprimerLignePause(r) {
     vrai.dispatchEvent(new Event("change"));
   });
   vis.insertAdjacentElement("afterend", creerBoutonMaintenant(vis));
-  vrai.addEventListener("change", () => setTimeout(() => { if (document.activeElement !== vis) vis.value = vrai.value; }, 0));
+  vrai.addEventListener("change", () => setTimeout(() => { if (document.activeElement !== vis) vis.value = vrai.value; majEntetePauses(); }, 0));
 });
-document.getElementById("btn-pause").addEventListener("click", async () => {
+document.getElementById("btn-pause").addEventListener("click", () => basculerPause());
+async function basculerPause() {
   if (!feuilleActuelle || feuilleActuelle.verrouillee || pauseEnregistrementEnCours) return;
   const enCours = lirePauseEnCours();
   if (!enCours) {
@@ -2943,7 +3174,7 @@ document.getElementById("btn-pause").addEventListener("click", async () => {
     brouillonsPauses[feuilleActuelle.id] = brouillonsFeuille().filter(x => x.debut || x.fin);
     if (await enregistrerInterruptions(a.elements, "Fin de pause")) { ecrirePauseEnCours(null); afficherPauses(); }
   } finally { pauseEnregistrementEnCours = false; }
-});
+}
 document.getElementById("btn-pause-manuelle").addEventListener("click", () => {
   if (!feuilleActuelle || feuilleActuelle.verrouillee) return;
   const r = lireLignesPauses();
@@ -2978,7 +3209,7 @@ let minuterieCaisse = null;
 function recetteDesLignes(lignes) {
   return (lignes || []).reduce((s, l) => {
     const somme = nombreOuNull(l.sommes_percues);
-    if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+    if (l.type_course === "uber" || l.type_course === "prive" || estLigneRelais(l) || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
     if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
     return s + (somme !== null ? somme : 0);
   }, 0);
@@ -3079,15 +3310,17 @@ function afficherLignes() {
   const positionPage = window.scrollY;
   const existants = new Map([...conteneur.children].map(el => [el.dataset.id, el]));
   const anomaliesParId = anomaliesFeuille(lignesActuelles, feuilleActuelle).parId;
+  const numsCourses = numerosCourses(lignesActuelles);   // les relais du gérant ne sont pas numérotés
   const nouveaux = lignesActuelles.map((ligne, index) => {
-    const sig = signatureLigne(ligne, index + 1);
+    const numero = numsCourses.get(ligne.id) || index + 1;
+    const sig = signatureLigne(ligne, numero);
     const ancien = existants.get(String(ligne.id));
     const sigAnomalies = (anomaliesParId.get(ligne.id) || []).join("|");
-    if (ancien && ancien._ligne && signatureLigne(ancien._ligne, index + 1) === sig && ancien._anomalies === sigAnomalies) {
+    if (ancien && ancien._ligne && signatureLigne(ancien._ligne, numero) === sig && ancien._anomalies === sigAnomalies) {
       lignesActuelles[index] = ancien._ligne; // garde le même objet que les champs affichés
       return ancien;
     }
-    const el = construireLigneHtml(ligne, index + 1);
+    const el = estLigneRelais(ligne) ? construireLigneRelais(ligne, anomaliesParId.get(ligne.id) || []) : construireLigneHtml(ligne, numero);
     el.dataset.id = ligne.id;
     el._ligne = ligne;
     el._anomalies = sigAnomalies;
@@ -3121,6 +3354,31 @@ const champsLigne = [
   ["numero_dossier", "N° de dossier (assurance)", "text"]
 ];
 
+// Ligne de relais (notée par la centrale) : affichée telle quelle, non modifiable par le chauffeur
+function construireLigneRelais(ligne, anomalies) {
+  const div = document.createElement("div");
+  div.className = "ligne-course ligne-relais" + (ligne.type_course === "relais_fin" ? " fin" : "");
+  div.dataset.ligneId = ligne.id;
+  const t = document.createElement("div");
+  t.className = "texte-relais";
+  t.textContent = texteRelais(ligne);
+  div.appendChild(t);
+  const s = document.createElement("div");
+  s.className = "sous-relais";
+  s.textContent = ligne.type_course === "relais_fin"
+    ? "Noté par la centrale : tu reprends le volant à partir d'ici."
+    : "Noté par la centrale : les courses suivantes sont faites par " + libConducteur(ligne.conducteur || "Gérant") + ".";
+  div.appendChild(s);
+  if (anomalies && anomalies.length) {
+    div.classList.add("ligne-anomalie");
+    const boite = document.createElement("div");
+    boite.className = "anomalie-ligne";
+    boite.innerHTML = anomalies.map(m => "⚠️ " + esc(m)).join("<br>");
+    div.appendChild(boite);
+  }
+  return div;
+}
+
 function construireLigneHtml(ligne, numeroAffiche) {
   const div = document.createElement("div");
   div.className = "ligne-course";
@@ -3152,6 +3410,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   if (anomaliesLigne.length) badge += " · ⚠️ à vérifier";
   if (ligne.signalee_erreur) badge += " · 📨 demande envoyée à la centrale";
   if (ligne.courses?.numero_reservation) badge += " · N° " + String(ligne.courses.numero_reservation).replace(/[^A-Za-z0-9-]/g, "");
+  if (ligne.conducteur) badge += " · 🔁 conduit par " + libConducteur(ligne.conducteur);
 
   const nbArrets = normaliserArrets(ligne.arrets).filter(a => a.adresse).length;
   const resume = ([ligne.embarquement_lieu, ligne.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis") + (nbArrets ? ` (+${nbArrets} adresse${nbArrets > 1 ? "s" : ""})` : "");
@@ -4491,14 +4750,19 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       : await supabase.from("lignes_feuille_route").select("*, courses(statut, date_heure, prix, surprime, paye_en_ligne_montant, reste_a_payer, acompte_paye, acompte_montant, paiement_choisi)").eq("feuille_route_id", f.id).order("n_ordre")
           .then(r => ({ data: trierLignesChrono(r.data || [], f) }));
 
+    const numsImp = numerosCourses(lignesF || []);
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};
+      if (estLigneRelais(l)) {
+        return `<tr class="relais"><td></td><td>${formatIndex(l.index_depart)}</td><td colspan="9" style="text-align:left; font-weight:bold;">${esc(texteRelais(l))}</td></tr>`;
+      }
       const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
+      const mentionConduit = l.conducteur ? `<br><span style="font-size:7.5px; font-weight:bold;">conduit par ${esc(libConducteur(l.conducteur))}</span>` : "";
       return `<tr>
-        <td>${i + 1}</td>
+        <td>${l.id ? (numsImp.get(l.id) || i + 1) : i + 1}</td>
         <td>${formatIndex(l.index_depart)}</td>
         <td>${formatIndex(l.embarquement_index)}</td>
-        <td class="lieu">${lieuImpression(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => lieuImpression(a.adresse, "+ ")).join("")}</td>
+        <td class="lieu">${lieuImpression(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => lieuImpression(a.adresse, "+ ")).join("")}${mentionConduit}</td>
         <td>${fmtVal(l.embarquement_heure ? String(l.embarquement_heure).slice(0, 5) : "")}</td>
         <td>${formatIndex(l.debarquement_index)}</td>
         <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>

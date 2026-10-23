@@ -570,6 +570,8 @@ window.onerror = function(msg, url, line, col, err) {
   .vj-libres{ margin-top:14px; padding:12px; border-radius:12px; background:#f2f8f4; border:1px solid #cfe6d7; font-size:.9rem; }
   .vj-libres b{ display:block; margin-bottom:6px; }
   .vj-puce{ display:inline-block; margin:3px 4px 0 0; padding:5px 10px; border-radius:999px; background:#fff; border:1px solid #cfe6d7; font-size:.85rem; }
+  .vj-liberee{ font-size:.82rem; color:#1f6b3f; background:#f2f8f4; border:1px solid #cfe6d7; border-radius:8px; padding:6px 8px; margin:0 0 8px; }
+  .vj-puce-lib{ color:#1f6b3f; font-size:.78rem; }
   #btn-vehicules-du-jour-fa{ width:100%; margin:0 0 12px; padding:12px; border-radius:10px; border:2px solid var(--vert); background:#eef8f1; color:var(--vert); font-weight:800; font-size:.95rem; cursor:pointer; }
   #feuilles-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
   #feuilles-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; font-size:.85rem; }
@@ -627,6 +629,28 @@ window.onerror = function(msg, url, line, col, err) {
   /* Liste des feuilles : fermées, on touche une feuille pour l'ouvrir EN GRAND */
   .feuille-admin:not(.feuille-en-grand) .entete-fa-actions{ display:none; }
   .feuille-admin:not(.feuille-en-grand) > div:not(:first-child){ display:none !important; }
+  .feuille-admin .rangee-relais-fa{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
+  .btn-relais-fa{ width:auto !important; padding:8px 12px; border-radius:8px; border:1px solid #8cc79f; background:#eef7ee; color:#1f6b3a; font-weight:800; font-size:.85rem; cursor:pointer; }
+  .btn-fin-relais-fa{ width:auto !important; padding:8px 12px; border-radius:8px; border:1px solid #e0b062; background:#fff4e2; color:#8a5200; font-weight:800; font-size:.85rem; cursor:pointer; }
+  .info-relais-fa{ font-size:.8rem; font-weight:700; color:#1f6b3a; }
+  .archive-fa{ display:flex !important; align-items:center; gap:6px; flex-wrap:wrap; font-size:.82rem !important; color:#222 !important; font-weight:700; margin:0 !important; padding:6px 10px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; cursor:pointer; }
+  .archive-fa.cochee{ border-color:#8cc79f; background:#eef7ee; }
+  .archive-fa input{ width:auto !important; margin:0; transform:scale(1.25); }
+  .archive-fa small{ font-weight:400; color:#666; }
+  .ligne-relais-fa{ border:2px dashed #8cc79f !important; background:#f2faf3 !important; padding:10px 12px; border-radius:10px; margin:6px 0; }
+  .ligne-relais-fa.fin{ border-color:#e0b062 !important; background:#fff8ec !important; }
+  .ligne-relais-fa .texte-relais-fa{ font-weight:800; color:#1f4f2c; font-size:.92rem; }
+  .ligne-relais-fa.fin .texte-relais-fa{ color:#7a4a00; }
+  .ligne-relais-fa .actions-relais-fa{ display:flex; gap:8px; margin-top:8px; }
+  .ligne-relais-fa .actions-relais-fa button{ width:auto; padding:6px 10px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-size:.8rem; cursor:pointer; }
+  .ligne-relais-fa .actions-relais-fa button.rouge{ color:var(--rouge); border-color:var(--rouge); }
+  .conduit-par-fa{ color:#1f6b3a; font-weight:800; }
+  #a-imprimer-fa{ margin-bottom:12px; }
+  #a-imprimer-fa details{ background:#fff7e6; border:1px solid #f0d49a; border-radius:10px; padding:8px 10px; color:#5a3d00; }
+  #a-imprimer-fa summary{ cursor:pointer; font-weight:700; }
+  #a-imprimer-fa .ligne-a-imprimer-fa{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 0; border-top:1px solid #f0d49a; }
+  #a-imprimer-fa .lai-txt{ flex:1 1 160px; }
+  #a-imprimer-fa button{ width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--bleu); background:#fff; color:var(--bleu); font-size:.8rem; cursor:pointer; }
   .feuille-admin .btn-ouvrir-grand-fa{ display:block; width:100%; margin-top:10px; padding:12px; border:none; border-radius:10px; background:#3b82c4; color:#fff; font-weight:800; font-size:.95rem; }
   .feuille-admin.feuille-en-grand{ position:fixed; inset:0; z-index:640; margin:0; border-radius:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 90px); }
   .feuille-admin.feuille-en-grand .btn-ouvrir-grand-fa{ position:sticky; top:0; z-index:5; background:var(--rouge); margin:0 0 10px; }
@@ -1015,6 +1039,7 @@ window.onerror = function(msg, url, line, col, err) {
       <button id="fa-next">›</button>
       <button id="fa-aujourdhui">Aujourd'hui</button>
     </div>
+    <div id="a-imprimer-fa" style="display:none;"></div>
     <div id="liste-feuilles-admin"></div>
   </div>
 
@@ -1972,15 +1997,15 @@ function trierLignesChrono(lignes, feuille) {
 function ecartIndex(a, b) {
   const x = frNum(a), y = frNum(b);
   if (x === null || y === null) return null;
-  if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
-    const d = ((y - x) % 1000 + 1000) % 1000;
+  if (x >= 0 && y >= 0 && (x < 1000 || y < 1000)) {
+    const d = (((y % 1000) - (x % 1000)) % 1000 + 1000) % 1000;
     return d >= 500 ? d - 1000 : d;
   }
   return y - x;
 }
 // Course annulée / no-show / sans déplacement : débarquement = embarquement autorisé
 function ligneSansDeplacement(l) {
-  return l.mode_paiement === "annulee" || (l.courses && l.courses.statut === "annulee")
+  return l.type_course === "relais" || l.type_course === "relais_fin" || l.mode_paiement === "annulee" || (l.courses && l.courses.statut === "annulee")
     || /annul|no[\s-]?show|sans d[ée]placement|absent/i.test(String(l.sommes_texte || "") + " " + String(l.motif_sans_prix || "") + " " + String(l.mode_paiement || ""));
 }
 // Index de début de la feuille = 3 derniers chiffres de l'« Index km — Début »
@@ -2382,6 +2407,12 @@ function activerTempsReelAdmin() {
     .on("postgres_changes", { event: "*", schema: "public", table: "feuilles_route" }, planifierRafraichissementFeuilles)
     .on("postgres_changes", { event: "*", schema: "public", table: "lignes_feuille_route" }, planifierRafraichissementFeuilles)
     .on("postgres_changes", { event: "*", schema: "public", table: "attributions_vehicules" }, attributionsChangeesAdmin)
+    // Paiement confirmé (webhook Stripe / admin) ou accord « voiture / cash » : la course passe tout de suite
+    // des « Demandes clients » aux Réservations (sans attendre le rafraîchissement des 20 s)
+    .on("postgres_changes", { event: "*", schema: "public", table: "courses" }, () => {
+      clearTimeout(window.minuterieTempsReelCoursesAdmin);
+      window.minuterieTempsReelCoursesAdmin = setTimeout(() => { try { chargerCoursesAdmin(true); } catch (e) {} }, 1200);
+    })
     .subscribe();
 }
 function planifierRafraichissementFeuilles() {
@@ -2461,8 +2492,11 @@ document.getElementById("btn-paiement-en-ligne-admin").addEventListener("click",
   alert("✅ Clé Stripe enregistrée (" + (r1.data.mode === "actif" ? "paiements réels" : "mode test") + ") et confirmation automatique installée.\nLes clients voient maintenant le bouton « 📱 Payer avec Bancontact ».");
 });
 document.getElementById("btn-deconnexion-admin").addEventListener("click", async () => {
-  if (!confirm("Se déconnecter de l'administration Taxi Wal ?")) return;
-  await supabase.auth.signOut();
+  if (!(await confirmerDansPageFA("Se déconnecter de l'administration Taxi Wal ?", "🔒 Se déconnecter", "Annuler"))) return;
+  try { window.sessionStorage.clear(); } catch (e) {}
+  let r = null;
+  try { r = await supabase.auth.signOut(); } catch (e) { r = { error: e }; }
+  if (r && r.error) { try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {} }
   location.reload();
 });
 
@@ -2758,6 +2792,12 @@ function chauffeurDuVehiculeAdmin(vehiculeId, quand) {
 function libVehAdmin(v) { return v ? (v.nom || "Véhicule") + (v.plaque ? " · " + v.plaque : "") : "—"; }
 
 let vjDate = null;
+const MOTIFS_LIBERATION_VJ = { feuille_signee: "feuille signée", changement_voiture: "changement de voiture", reattribuee: "réattribuée par la centrale", retiree: "retirée par la centrale" };
+function texteLibereeVj(a) {
+  let h = "";
+  try { h = new Date(a.liberee_a).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" }); } catch (e) {}
+  return "libérée à " + h + (MOTIFS_LIBERATION_VJ[a.liberee_motif] ? " (" + MOTIFS_LIBERATION_VJ[a.liberee_motif] + ")" : "");
+}
 async function chargerVehiculesDuJour() {
   const zone = document.getElementById("vj-liste");
   const inp = document.getElementById("vj-date");
@@ -2765,12 +2805,17 @@ async function chargerVehiculesDuJour() {
   inp.value = vjDate;
   zone.innerHTML = '<p style="color:var(--gris);">Chargement…</p>';
   const [{ data: attribs, error }, { data: vehs }, { data: chs }] = await Promise.all([
-    supabase.from("attributions_vehicules").select("*").eq("date_service", vjDate).eq("actif", true),
+    supabase.from("attributions_vehicules").select("*").eq("date_service", vjDate),
     supabase.from("vehicules").select("id, nom, plaque, places, actif").eq("actif", true).order("nom"),
     supabase.from("profils").select("id, nom, telephone").eq("role", "chauffeur").eq("actif", true).order("nom")
   ]);
   if (error) { zone.innerHTML = '<p style="color:var(--rouge);">Erreur : ' + esc(error.message) + '</p>'; return; }
-  const vehicules = vehs || [], chauffeurs = chs || [], liste = attribs || [];
+  const vehicules = vehs || [], chauffeurs = chs || [];
+  const liste = (attribs || []).filter(a => a.actif);
+  // Voitures rendues dans la journée (feuille signée, changement de voiture…) : la plus récente par chauffeur / par voiture
+  const liberees = (attribs || []).filter(a => !a.actif && a.liberee_a).sort((x, y) => String(y.liberee_a).localeCompare(String(x.liberee_a)));
+  const libereeParChauffeur = {}, libereeParVehicule = {};
+  liberees.forEach(a => { if (!libereeParChauffeur[a.chauffeur_id]) libereeParChauffeur[a.chauffeur_id] = a; if (!libereeParVehicule[a.vehicule_id]) libereeParVehicule[a.vehicule_id] = a; });
   zone.innerHTML = "";
   if (!chauffeurs.length) { zone.innerHTML = '<p style="color:var(--gris);">Aucun chauffeur actif.</p>'; return; }
   const parChauffeur = {}; liste.forEach(a => { parChauffeur[a.chauffeur_id] = a; });
@@ -2784,6 +2829,13 @@ async function chargerVehiculesDuJour() {
       ? '<span class="vj-badge chauffeur">🙋 choisi par le chauffeur</span>'
       : '<span class="vj-badge">🏢 attribué par la centrale</span>') : '<span class="vj-badge chauffeur">Aucune voiture</span>';
     carte.innerHTML = `<div class="vj-nom">👤 ${esc(ch.nom || ch.telephone || "Chauffeur")} ${badge}</div>`;
+    const lib = libereeParChauffeur[ch.id];
+    if (lib && !(a && a.vehicule_id === lib.vehicule_id && String(a.created_at) > String(lib.liberee_a))) {
+      const vl = vehicules.find(v => v.id === lib.vehicule_id) || vehiculesCache.find(v => v.id === lib.vehicule_id);
+      const info = document.createElement("div"); info.className = "vj-liberee";
+      info.textContent = "🔓 " + libVehAdmin(vl) + " — " + texteLibereeVj(lib);
+      carte.appendChild(info);
+    }
     const ligne = document.createElement("div"); ligne.className = "vj-ligne";
     const sel = document.createElement("select"); sel.className = "vj-select";
     sel.setAttribute("aria-label", "Véhicule de " + (ch.nom || "ce chauffeur"));
@@ -2818,7 +2870,7 @@ async function chargerVehiculesDuJour() {
   const nonAttribues = vehicules.filter(v => !prises.has(v.id));
   const bloc = document.createElement("div"); bloc.className = "vj-libres"; bloc.id = "vj-non-attribues";
   bloc.innerHTML = `<b>🅿️ Voitures non attribuées (${nonAttribues.length})</b>` +
-    (nonAttribues.length ? nonAttribues.map(v => `<span class="vj-puce">${esc(libVehAdmin(v))}</span>`).join("") : '<span style="color:var(--gris);">Toutes les voitures sont attribuées.</span>');
+    (nonAttribues.length ? nonAttribues.map(v => `<span class="vj-puce">${esc(libVehAdmin(v))}${libereeParVehicule[v.id] ? ` <small class="vj-puce-lib">· ${esc(texteLibereeVj(libereeParVehicule[v.id]))}</small>` : ""}</span>`).join("") : '<span style="color:var(--gris);">Toutes les voitures sont attribuées.</span>');
   zone.appendChild(bloc);
 }
 function vjDecaler(jours) {
@@ -3577,13 +3629,38 @@ function ouvrirEditionEvenement(ev) {
 }
 document.getElementById("ev-ajouter").addEventListener("click", () => ouvrirEditionEvenement(null));
 
+// ================== RÈGLE DES RÉSERVATIONS (courses venues de l'app client) ==================
+// Une course de l'app client n'est une RÉSERVATION (liste « Courses ») que si :
+//  a) la centrale l'a acceptée sans paiement à l'avance (« paiement dans la voiture » / cash accepté :
+//     sans_acompte_autorise = true, mis uniquement par l'admin), ou
+//  b) le paiement demandé a vraiment été reçu et confirmé (acompte_paye = true : webhook Stripe ou
+//     confirmation de l'admin ; ou montant payé en ligne ≥ montant demandé).
+// Sinon (le client a seulement accepté le prix), elle reste dans « 📲 Demandes clients »
+// (⏳ Prix accepté — en attente du paiement) et la base refuse de l'attribuer à un chauffeur
+// (trigger bloquer_attribution_sans_acompte). Les courses créées par la centrale / un chauffeur ne sont pas concernées.
+function montantDemandeAvantCourse(c) {
+  const total = (Number(c.prix) || 0) + (Number(c.surprime) || 0);
+  return (c.paiement_exige === "total" || c.paiement_choisi === "total") ? total : (Number(c.acompte_montant) || 0);
+}
+function reservationClientValidee(c) {
+  if (!c || c.origine !== "client") return true;
+  if (c.sans_acompte_autorise) return true;
+  if (c.acompte_paye) return true;
+  const requis = montantDemandeAvantCourse(c), paye = Number(c.paye_en_ligne_montant) || 0;
+  return requis > 0 && paye > 0 && paye + 0.005 >= requis;
+}
+// Client qui a accepté le prix mais n'a pas encore payé (et pas d'accord « voiture / cash » de la centrale)
+function prixAccepteEnAttentePaiement(c) {
+  return !!c && c.origine === "client" && !reservationClientValidee(c) && ["attente_acompte", "acompte_declare", "confirmee"].includes(c.statut);
+}
+
 // ================== DEMANDES DES CLIENTS (app client) ==================
 const FILTRES_DEMANDES = [
   ["nouvelles", "🆕 Nouvelles", c => c.statut === "en_attente"],
   ["cash", "💵 Demandes cash", c => demandeCashEnAttente(c)],
   ["prix", "💶 Prix envoyé", c => c.statut === "prix_envoye"],
-  ["paiement", "⏳ Paiement en attente", c => ["attente_acompte", "acompte_declare"].includes(c.statut)],
-  ["confirmees", "✅ Confirmées / payées", c => ["confirmee", "assignee", "en_cours"].includes(c.statut) && c.acompte_paye],
+  ["paiement", "⏳ Prix accepté — en attente du paiement", c => prixAccepteEnAttentePaiement(c)],
+  ["confirmees", "✅ Réservations validées", c => ["confirmee", "assignee", "en_cours"].includes(c.statut) && reservationClientValidee(c)],
   ["annulees", "❌ Annulées / refusées", c => ["annulee", "refusee"].includes(c.statut) && new Date(c.date_heure) > new Date(Date.now() - 30 * 864e5)]
 ];
 let dcFiltre = "nouvelles";
@@ -4753,11 +4830,21 @@ function afficherListeCoursesAdmin() {
     info.addEventListener("click", () => document.querySelector('nav button[data-onglet="par-chauffeur"]').click());
     conteneur.appendChild(info);
   }
+  const nbDemandesNonValidees = dernieresCoursesAdmin.filter(c => !["terminee", "annulee", "refusee"].includes(c.statut) && !reservationClientValidee(c)).length;
+  if (nbDemandesNonValidees && !recherche) {
+    const infoD = document.createElement("div");
+    infoD.className = "pc-info-attribuees info-demandes-non-validees";
+    infoD.textContent = `📲 ${nbDemandesNonValidees} demande(s) client pas encore validée(s) (prix à envoyer, ou paiement pas encore reçu) → voir « Demandes clients »`;
+    infoD.addEventListener("click", () => document.querySelector('nav button[data-onglet="demandes-clients"]').click());
+    conteneur.appendChild(infoD);
+  }
   const coursesAffichees = dernieresCoursesAdmin.filter(c => {
     // un numéro de réservation retrouve la course même archivée
     if (recherche && correspondNumeroResa(c.numero_reservation, recherche)) return true;
     if (!recherche && estCourseAttribueeActive(c)) return false;
     const estArchivable = c.statut === "terminee" || c.statut === "annulee";
+    // Demande client pas encore validée (ni accord « voiture / cash », ni paiement reçu) : reste dans « Demandes clients »
+    if (!estArchivable && !reservationClientValidee(c)) return false;
     if (estArchivable && !afficherHistoriqueCourses) return false;
     if (estArchivable && afficherHistoriqueCourses && new Date(c.date_heure).getTime() < ilYA30Jours) return false;
     if (!recherche) return true;
@@ -4827,7 +4914,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   rafraichissementsEnAttente.delete("courses");
 
   if (idsCoursesConnusAdmin === null) {
-    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at }]));
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, valide: reservationClientValidee(c) }]));
   } else {
     (courses || []).forEach(c => {
       const ancien = idsCoursesConnusAdmin.get(c.id);
@@ -4839,8 +4926,11 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           alerteImportanteAdmin("💶 Paiement déclaré par le client", `${esc(c.client_nom || "Le client")} dit avoir payé ${esc(montantPaiement)}.<br>Vérifie ton compte bancaire puis confirme le paiement sur la course.`, c, "#8a5a00", "#fff7e0");
         }
         if (!ancien.paye && c.acompte_paye) {
-          alerteImportanteAdmin("✅ PAIEMENT REÇU", `${esc(c.client_nom || "Le client")} a payé ${esc(montantPaiement)}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.`, c, "#1f6b3f", "#e7f5ec");
+          alerteImportanteAdmin("✅ PAIEMENT REÇU", `${esc(c.client_nom || "Le client")} a payé ${esc(montantPaiement)}${c.paiement_en_ligne_id ? " en ligne (confirmé automatiquement par la banque)" : ""}.${c.origine === "client" && ancien.valide === false ? "<br>➡️ La course passe maintenant dans les <b>Réservations</b> (onglet Courses) : tu peux l'attribuer." : ""}`, c, "#1f6b3f", "#e7f5ec");
           if (document.getElementById("section-paiements")?.classList.contains("visible")) setTimeout(chargerPaiements, 1500);
+        }
+        else if (c.origine === "client" && ancien.valide === false && reservationClientValidee(c) && !c.sans_acompte_autorise) {
+          alerteImportanteAdmin("✅ PAIEMENT REÇU", `${esc(c.client_nom || "Le client")} a payé en ligne ${esc(Number(c.paye_en_ligne_montant || 0).toFixed(2))} €.<br>➡️ La course passe maintenant dans les <b>Réservations</b> (onglet Courses) : tu peux l'attribuer.`, c, "#1f6b3f", "#e7f5ec");
         }
         if (c.demande_cash_at && ancien.cash !== c.demande_cash_at && demandeCashEnAttente(c)) {
           alerteImportanteAdmin("💵 Client demande à payer CASH", `${esc(c.client_nom || "Le client")} souhaite payer en cash dans la voiture (${esc(Number((Number(c.prix) || 0) + (Number(c.surprime) || 0)).toFixed(2))} €).<br>Ouvre la course et réponds : ✅ Cash accepté · 💳 Acompte 30 % · 🔒 Totalité à l'avance.`, c, "#14532d", "#e9f7ef");
@@ -4865,7 +4955,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: `❌ Course annulée — ${motifLisible} (${nomChauffeurPourNotif(c)})`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
-      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at });
+      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, valide: reservationClientValidee(c) });
     });
   }
 
@@ -5389,6 +5479,9 @@ function construireCarteAdmin(course) {
     confirmee: "✅ Acompte reçu — à attribuer", assignee: "Assignée",
     en_cours: "En cours", terminee: "Terminée", annulee: "Annulée"
   }[course.statut] || course.statut;
+  const labelStatutAffiche = prixAccepteEnAttentePaiement(course)
+    ? (course.statut === "acompte_declare" ? "💰 Paiement déclaré — à vérifier (pas encore une réservation)" : "⏳ Prix accepté — en attente du paiement")
+    : (course.origine === "client" && course.statut === "confirmee" && course.sans_acompte_autorise && !course.acompte_paye ? "✅ Acceptée sans paiement à l'avance — à attribuer" : labelStatut);
 
   const estUber = course.mode_paiement === "uber";
   const prixAffiche = estUber ? "🚕 payé sur Uber" : (course.prix
@@ -5413,6 +5506,13 @@ function construireCarteAdmin(course) {
   const badgeSousTraitant = course.profils?.role === "partenaire" ? `<span class="badge-ar">🤝 Sous-traitant${course.montant_commission ? ` (${Number(course.montant_commission).toFixed(2)} € commission)` : ""}</span>` : "";
   const badgeMarcheOuvert = course.ouverte_marche ? `<span class="badge-ar">📢 Ouverte aux chauffeurs</span>` : "";
   const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour auto (aller-retour)</span>` : "";
+  // Service choisi par le client (tuiles de l'app client) + acompte remboursable ou non à l'annulation (calculé par la base)
+  const SV_LIB = { chauffeur_prive: "🚘 Chauffeur privé", taxi_immediat: "🚕 Taxi immédiat", navette_aeroport: "✈️ Navette aéroport", groupes: "👥 Groupes & sorties" };
+  const SV_SOUS = { trajet_groupe: "trajet en groupe", sortie: "sortie", visite_ville: "visite de ville", parc_attractions: "parc d'attractions", visite_guidee: "visite guidée" };
+  const [svT, svS] = String(course.type_service || "").split(":");
+  const badgeService = SV_LIB[svT] ? `<span class="badge-ar" style="background:#eef4fb; color:#1d4f86;">${SV_LIB[svT]}${SV_SOUS[svS] ? " · " + SV_SOUS[svS] : ""}${course.numero_vol ? " · vol " + esc(course.numero_vol) : ""}</span>` : "";
+  const blocAcompteRemb = course.statut === "annulee" && course.acompte_remboursable != null
+    ? `<div style="margin:6px 0; padding:6px 10px; border-radius:8px; font-size:.85rem; font-weight:700; background:${course.acompte_remboursable ? "#e9f7ef" : "#fdecee"}; color:${course.acompte_remboursable ? "#1f6b3f" : "#8a1520"};">Acompte : ${course.acompte_remboursable ? "remboursable" : "non remboursable"}${course.annulee_at && course.date_heure ? ` (annulation à ${(() => { const m = Math.max(0, Math.round((new Date(course.date_heure) - new Date(course.annulee_at)) / 60000)); return Math.floor(m / 60) + "h" + (m % 60 ? String(m % 60).padStart(2, "0") : ""); })()} de la course)` : ""}</div>` : "";
   // ❌ Refus / ⚠️ avertissement envoyés par le chauffeur depuis son app
   const hhmmMsg = (d) => d ? new Date(d).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
   const aReattribuer = course.refus_chauffeur_at && !course.chauffeur_id && !["annulee", "terminee", "refusee"].includes(course.statut);
@@ -5432,8 +5532,8 @@ function construireCarteAdmin(course) {
   entete.style.cssText = "cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;";
   entete.innerHTML = `
     <div style="flex:1;">
-      ${badgeNumeroResa(course.numero_reservation)}<span class="statut-label">${labelStatut}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}${aReattribuer ? `<span class="badge-ar" style="background:#b3141b; color:#fff;">❌ Refusée — à réattribuer</span>` : ""}${blocAvertChauffeur ? `<span class="badge-ar" style="background:#b86e00; color:#fff;">⚠️ Message chauffeur</span>` : ""}
-      ${blocRefusChauffeur}${blocAvertChauffeur}
+      ${badgeNumeroResa(course.numero_reservation)}<span class="statut-label">${labelStatutAffiche}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}${badgeService}${aReattribuer ? `<span class="badge-ar" style="background:#b3141b; color:#fff;">❌ Refusée — à réattribuer</span>` : ""}${blocAvertChauffeur ? `<span class="badge-ar" style="background:#b86e00; color:#fff;">⚠️ Message chauffeur</span>` : ""}
+      ${blocRefusChauffeur}${blocAvertChauffeur}${blocAcompteRemb}
       ${demandeCashEnAttente(course) ? `<div class="badge-cash-admin" style="display:inline-block; margin:6px 0; padding:6px 12px; border-radius:999px; background:#1f8a4c; color:#fff; font-weight:900; font-size:.9rem;">💵 Client demande à payer CASH</div>` : ""}
       <h3>${esc(course.client_nom) || "Client"} — ${prixAffiche.startsWith("🚕") ? prixAffiche : esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
@@ -5603,6 +5703,14 @@ function construireCarteAdmin(course) {
         ? `💸 <b>À rembourser au client : ${esc(eurosFr(-Number(course.reste_a_payer)))}</b> (total ${esc(eurosFr(totalA))})`
         : `💶 Total ${esc(eurosFr(totalA))} — déjà payé ${esc(eurosFr(totalA - Number(course.reste_a_payer)))} — <b>reste à payer ${esc(eurosFr(course.reste_a_payer))}</b>`) : "");
     corps.appendChild(infoPrix);
+  }
+  // Prix interne corrigé : le client, lui, garde le prix qu'il a accepté (prix_client)
+  if (course.prix_client != null && course.prix != null && Math.abs(Number(course.prix_client) - Number(course.prix)) > 0.004) {
+    const infoPc = document.createElement("div");
+    infoPc.className = "info-prix-client-admin";
+    infoPc.style.cssText = "background:#eef4fb; border:1px solid #9cbbe0; border-radius:10px; padding:8px 10px; margin:8px 0; font-size:.86rem; color:#1d4f86;";
+    infoPc.innerHTML = `👤 Le client voit toujours <b>${esc(eurosFr(course.prix_client))}</b> (prix accepté) — montant interne : <b>${esc(eurosFr(course.prix))}</b>`;
+    corps.appendChild(infoPc);
   }
 
   // Outil km & prix : distance entre les 2 adresses + km d'approche depuis la gare choisie
@@ -5821,6 +5929,8 @@ function construireCarteAdmin(course) {
         maj.acompte_montant = Math.round(r.np * 0.3 * 100) / 100;
         maj.reste_a_payer = null;
       }
+      // Client prévenu = nouveau prix communiqué au client ; sinon correction interne (le client garde son prix)
+      if (blocP.querySelector(".mp-client").checked && course.client_id) maj.prix_client = r.np;
       const { error } = await supabase.from("courses").update(maj).eq("id", course.id);
       if (error) { alert("Erreur : " + error.message); btn.disabled = false; btn.textContent = "💾 Enregistrer le nouveau prix"; return; }
       const num = course.numero_reservation || "";
@@ -7512,7 +7622,7 @@ async function chargerHistoriqueFeuillesChauffeur() {
   const chauffeur = chauffeursCache.find(c => c.id === chauffeurId) || partenairesCache.find(p => p.id === chauffeurId);
   // Contrôle des index / heures de chaque feuille (badge « À vérifier »)
   const { data: lignesHisto } = await supabase.from("lignes_feuille_route")
-    .select("id, feuille_route_id, n_ordre, created_at, index_depart, embarquement_index, debarquement_index, embarquement_heure, debarquement_heure, mode_paiement, sommes_texte, motif_sans_prix, cloturee, courses(statut, date_heure)")
+    .select("id, feuille_route_id, n_ordre, created_at, index_depart, embarquement_index, debarquement_index, embarquement_heure, debarquement_heure, mode_paiement, sommes_texte, motif_sans_prix, cloturee, type_course, conducteur, note_chauffeur, courses(statut, date_heure)")
     .in("feuille_route_id", feuilles.map(f => f.id));
   conteneur.innerHTML = "";
   feuilles.forEach(feuille => {
@@ -7545,6 +7655,10 @@ async function chargerHistoriqueFeuillesChauffeur() {
       e.stopPropagation();
       ouvrirApercuHistoriqueFeuille(feuille, chauffeur);
     });
+    const rangeeH = rangeeRelaisArchiveFA(feuille, (lignesHisto || []).filter(l => l.feuille_route_id === feuille.id), () => chargerHistoriqueFeuillesChauffeur());
+    rangeeH.style.flex = "1 1 100%";
+    div.style.flexWrap = "wrap";
+    div.appendChild(rangeeH);
     conteneur.appendChild(div);
   });
 }
@@ -7819,6 +7933,7 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
   const conteneur = document.getElementById("liste-feuilles-admin");
   const dateChoisie = document.getElementById("fa-date").value;
   if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
+  chargerAImprimerFA();
 
   const { data: chauffeurs, error: erreurChauffeurs } = await supabase
     .from("profils")
@@ -8242,7 +8357,7 @@ function recetteLignesFA(listeLignes) {
     if (!l) return s;
     const somme = l.sommes_percues == null || l.sommes_percues === "" ? null : parseFloat(l.sommes_percues);
     // Uber / Uber cash / privé : jamais (TVA déclarée par Uber) ; annulée : seulement si une somme est notée
-    if (l.type_course === "uber" || l.type_course === "prive" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+    if (l.type_course === "uber" || l.type_course === "prive" || l.type_course === "relais" || l.type_course === "relais_fin" || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
     if (l.mode_paiement === "annulee" && !(somme > 0)) return s;
     // Uniquement les sommes perçues : sans somme notée, la ligne compte 0 € (pas de repli taximètre)
     return s + ((somme !== null && !isNaN(somme)) ? somme : 0);
@@ -8263,6 +8378,291 @@ function texteRecetteEnteteFA(feuille, lignes) {
     : recetteLignesFA(lignes);
   const pb = feuille.total_pourboires != null && feuille.total_pourboires !== "" ? Number(feuille.total_pourboires) : pourboiresLignesFA(lignes);
   return ` · Recette : <b>${esc(eurosFr(recette))}</b> · <span style="color:#8a5a00;">💶 Pourboires : <b>${esc(eurosFr(pb))}</b> (hors recette)</span>`;
+}
+
+// ================== 🔁 RELAIS DU GÉRANT (« Je prends le relais ») ==================
+// Le gérant saute dans la voiture d'un chauffeur entre deux rendez-vous, sans fermer / ouvrir de feuille :
+// une ligne « relais » (type_course = 'relais', conducteur = 'Gérant') est ajoutée sur CETTE feuille, avec
+// l'heure et l'index ; les courses faites ensuite sont notées « conduit par le gérant » ; « ↩️ Fin du relais »
+// rend la voiture. Un relais n'a jamais de montant (hors recette / pourboires) ; son index sert à la
+// continuité des index. Fonctionne aussi après coup (n'importe quelle date / heure).
+const TYPES_RELAIS = ["relais", "relais_fin"];
+function estLigneRelais(l) { return !!l && TYPES_RELAIS.includes(l.type_course); }
+function libConducteur(nom) { return /^g[ée]rant$/i.test(String(nom || "").trim()) ? "le gérant" : String(nom || ""); }
+function indexRelaisTexte(v) {
+  const n = frNum(v);
+  if (n === null) return "";
+  return n >= 1000 ? String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") : formatIndex(n);
+}
+function texteRelais(l) {
+  const h = (l.embarquement_heure || l.debarquement_heure) ? frHHMM(l.embarquement_heure || l.debarquement_heure) : "--:--";
+  const idx = indexRelaisTexte(l.embarquement_index ?? l.debarquement_index ?? l.index_depart);
+  const qui = libConducteur(l.conducteur || "Gérant");
+  const base = l.type_course === "relais_fin"
+    ? `↩️ Fin du relais : véhicule rendu par ${qui} à ${h}`
+    : `🔁 Relais : véhicule repris par ${qui} à ${h}`;
+  return base + (idx ? ` · index ${idx}` : "") + (l.note_chauffeur ? ` — ${l.note_chauffeur}` : "");
+}
+// Relais en cours sur la feuille (dernier « relais » sans « fin ») → nom du conducteur, sinon null
+function relaisEnCours(lignes, feuille) {
+  let qui = null;
+  trierLignesChrono(lignes || [], feuille).forEach(l => {
+    if (l.type_course === "relais") qui = l.conducteur || "Gérant";
+    else if (l.type_course === "relais_fin") qui = null;
+  });
+  return qui;
+}
+// « Course n° » : les lignes de relais ne sont pas des courses
+function numerosCoursesFA(lignes) {
+  const m = new Map(); let n = 0;
+  (lignes || []).forEach(l => { if (l && !estLigneRelais(l)) m.set(l.id, ++n); });
+  return m;
+}
+function heureMaintenantFA() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+function nomChauffeurFeuilleFA(feuille, chauffeur) { return (feuille && (feuille.nom_chauffeur_affiche || feuille.profils?.nom)) || chauffeur?.nom || "le chauffeur"; }
+function optionsConducteurFA(feuille, valeur, avecChauffeur) {
+  const nomCh = nomChauffeurFeuilleFA(feuille);
+  const autres = (chauffeursCache || []).filter(c => c.nom && c.id !== feuille?.chauffeur_id).map(c => c.nom);
+  const liste = [];
+  if (avecChauffeur !== false) liste.push(["", "👤 " + nomCh + " (chauffeur de la feuille)"]);
+  liste.push(["Gérant", "🔁 Gérant"]);
+  autres.forEach(n => { if (!liste.some(x => x[0] === n)) liste.push([n, "👥 " + n]); });
+  if (valeur && !liste.some(x => x[0] === valeur)) liste.push([valeur, "👥 " + valeur]);
+  return liste.map(([v, t]) => `<option value="${esc(v)}" ${v === (valeur || "") ? "selected" : ""}>${esc(t)}</option>`).join("");
+}
+// Confirmation dans la page (pas de fenêtre native)
+function confirmerDansPageFA(message, okLabel, annulerLabel, couleurOk) {
+  return new Promise(resolve => {
+    const fond = document.createElement("div");
+    fond.className = "modale-confirmer-fa";
+    fond.style.cssText = "position:fixed; inset:0; z-index:100001; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; padding:16px;";
+    fond.innerHTML = `<div style="background:#fff; color:#111; border-radius:14px; padding:18px; width:100%; max-width:440px; max-height:85vh; overflow:auto; font-size:.95rem;">
+      <div class="cf-texte" style="white-space:pre-wrap; word-break:break-word;"></div>
+      <div style="display:flex; gap:8px; margin-top:16px;">
+        <button type="button" class="cf-non" style="flex:1; padding:12px; border-radius:10px; border:none; background:#e3e3e0; color:#111; font-weight:700;"></button>
+        <button type="button" class="cf-oui" style="flex:2; padding:12px; border-radius:10px; border:none; background:${couleurOk || "var(--vert)"}; color:#fff; font-weight:800;"></button>
+      </div></div>`;
+    fond.querySelector(".cf-texte").textContent = message;
+    fond.querySelector(".cf-oui").textContent = okLabel || "OK";
+    fond.querySelector(".cf-non").textContent = annulerLabel || "Annuler";
+    let fini = false;
+    const fermer = v => { if (fini) return; fini = true; fond.remove(); resolve(v); };
+    fond.querySelector(".cf-oui").addEventListener("click", e => { e.stopPropagation(); fermer(true); });
+    fond.querySelector(".cf-non").addEventListener("click", e => { e.stopPropagation(); fermer(false); });
+    fond.addEventListener("click", e => { if (e.target === fond) fermer(false); });
+    document.body.appendChild(fond);
+  });
+}
+// Formulaire « 🔁 Je prends le relais » / « ↩️ Fin du relais » (création ou modification d'une ligne de relais)
+async function ouvrirFormRelaisFA(feuille, lignes, type, ligneExistante, apres) {
+  if (!lignes) {
+    const { data } = await supabase.from("lignes_feuille_route").select("*, courses(statut, mode_paiement, date_heure)").eq("feuille_route_id", feuille.id);
+    lignes = data || [];
+  }
+  const estFin = type === "relais_fin";
+  const triees = trierLignesChrono(lignes, feuille);
+  let dernierIdx = null;
+  for (let i = triees.length - 1; i >= 0; i--) {
+    if (ligneExistante && triees[i].id === ligneExistante.id) continue;
+    if (frNum(triees[i].debarquement_index) !== null) { dernierIdx = frNum(triees[i].debarquement_index); break; }
+  }
+  if (dernierIdx === null) dernierIdx = indexDebutFeuille(feuille);
+  const quiDefaut = ligneExistante ? (ligneExistante.conducteur || "Gérant") : (estFin ? (relaisEnCours(lignes, feuille) || "Gérant") : "Gérant");
+  const dateTxt = feuille.date_service ? new Date(feuille.date_service + "T12:00:00").toLocaleDateString("fr-BE") : "";
+  const st = "width:100%; box-sizing:border-box; padding:11px; border-radius:8px; border:1px solid #cfcfcd; font-size:1rem; background:#fff; color:#111;";
+  const lab = t => `<label style="display:block; font-size:.8rem; color:#555; margin:10px 0 4px;">${t}</label>`;
+  const fond = document.createElement("div");
+  fond.className = "modale-relais-fa";
+  fond.style.cssText = "position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:14px;";
+  fond.innerHTML = `<div style="background:#fff; color:#111; border-radius:14px; padding:18px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto;">
+    <div style="font-weight:800; font-size:1.05rem;">${estFin ? "↩️ Fin du relais" : "🔁 Je prends le relais"}${ligneExistante ? " — modifier" : ""}</div>
+    <div style="font-size:.85rem; color:#555; margin-top:2px;">Feuille de <b>${esc(nomChauffeurFeuilleFA(feuille))}</b>${dateTxt ? " du " + esc(dateTxt) : ""}. La feuille reste ouverte : rien à fermer ni à rouvrir.</div>
+    ${lab(estFin ? "Qui rend le véhicule ?" : "Qui prend le volant ?")}<select class="rl-qui" style="${st}">${optionsConducteurFA(feuille, quiDefaut, false)}</select>
+    ${lab("Heure du relais")}<input type="time" class="rl-heure" style="${st}" value="${esc(ligneExistante ? frHHMM(ligneExistante.embarquement_heure || ligneExistante.debarquement_heure).replace("--:--", "") : heureMaintenantFA())}">
+    ${lab("Index km au moment du relais")}<input type="text" inputmode="decimal" class="rl-index" style="${st}" placeholder="${dernierIdx !== null ? "dernier index : " + esc(formatIndex(dernierIdx)) : "ex : 634"}" value="${esc(ligneExistante ? (ligneExistante.embarquement_index ?? ligneExistante.debarquement_index ?? "") : "")}">
+    ${lab("Note (facultatif)")}<input type="text" class="rl-note" style="${st}" placeholder="ex : entre deux rendez-vous" value="${esc(ligneExistante?.note_chauffeur || "")}">
+    <div class="rl-erreur" style="display:none; margin-top:12px; padding:10px; border-radius:8px; background:#fdecec; color:#8a1f1f; font-weight:600; white-space:pre-wrap;"></div>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button type="button" class="rl-annuler" style="flex:1; padding:13px; border-radius:10px; border:none; background:#e3e3e0; color:#111; font-weight:700;">Annuler</button>
+      <button type="button" class="rl-ok" style="flex:2; padding:13px; border-radius:10px; border:none; background:${estFin ? "#b86e00" : "var(--vert)"}; color:#fff; font-weight:800;">${ligneExistante ? "💾 Enregistrer" : (estFin ? "↩️ Noter la fin du relais" : "🔁 Noter le relais")}</button>
+    </div></div>`;
+  document.body.appendChild(fond);
+  const fermer = () => fond.remove();
+  fond.querySelector(".rl-annuler").addEventListener("click", fermer);
+  fond.addEventListener("click", e => { if (e.target === fond) fermer(); });
+  const zoneErr = fond.querySelector(".rl-erreur");
+  const erreur = t => { zoneErr.textContent = t; zoneErr.style.display = "block"; };
+  let forcer = false;
+  fond.querySelector(".rl-ok").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const heure = fond.querySelector(".rl-heure").value || null;
+    const brut = String(fond.querySelector(".rl-index").value || "").trim().replace(/\s/g, "").replace(",", ".");
+    const idx = brut === "" ? null : Number(brut);
+    if (!heure) { erreur("Indique l'heure du relais."); return; }
+    if (brut !== "" && (!isFinite(idx) || idx < 0)) { erreur("Index km invalide (chiffres uniquement)."); return; }
+    if (!forcer && idx !== null && dernierIdx !== null && ecartIndex(dernierIdx, idx) < 0) {
+      forcer = true;
+      btn.textContent = "Enregistrer quand même";
+      erreur(`⚠️ L'index ${formatIndex(idx)} est plus petit que le dernier index de la feuille (${formatIndex(dernierIdx)}). Vérifie, ou touche « Enregistrer quand même ».`);
+      return;
+    }
+    const qui = fond.querySelector(".rl-qui").value || "Gérant";
+    const note = fond.querySelector(".rl-note").value.trim() || null;
+    const champs = {
+      type_course: type, conducteur: qui, embarquement_heure: heure, debarquement_heure: heure,
+      embarquement_index: idx, debarquement_index: idx, index_depart: idx, note_chauffeur: note
+    };
+    btn.disabled = true; btn.textContent = "Enregistrement…";
+    let res;
+    if (ligneExistante) {
+      res = await supabase.from("lignes_feuille_route").update(champs).eq("id", ligneExistante.id).select("id");
+    } else {
+      const prochain = (lignes || []).reduce((m, l) => Math.max(m, l.n_ordre || 0), 0) + 1;
+      res = await supabase.from("lignes_feuille_route").insert(Object.assign({ feuille_route_id: feuille.id, n_ordre: prochain }, champs)).select("id");
+    }
+    if (res.error || !(res.data && res.data.length)) {
+      btn.disabled = false; btn.textContent = "Réessayer";
+      erreur("Erreur : " + (res.error ? res.error.message : "ligne non enregistrée"));
+      return;
+    }
+    fermer();
+    toastAdmin(estFin ? "↩️ Fin du relais notée" : "🔁 Relais noté sur la feuille");
+    feuillesDepliees.add(feuille.id);
+    if (apres) apres(); else chargerFeuillesAdmin();
+  });
+  setTimeout(() => { try { fond.querySelector(".rl-index").focus(); } catch (_) {} }, 50);
+}
+// Ligne de relais dans la feuille (admin)
+function construireLigneRelaisAdmin(ligne, ctx) {
+  const div = document.createElement("div");
+  div.className = "ligne-admin ligne-relais-fa" + (ligne.type_course === "relais_fin" ? " fin" : "");
+  div.dataset.ligneId = ligne.id;
+  const txt = document.createElement("div");
+  txt.className = "texte-relais-fa";
+  txt.textContent = texteRelais(ligne);
+  div.appendChild(txt);
+  if (ctx && ctx.anomalies && ctx.anomalies.length) {
+    div.classList.add("ligne-anomalie-fa");
+    const boite = document.createElement("div");
+    boite.className = "anomalie-ligne-fa";
+    boite.innerHTML = ctx.anomalies.map(m => "⚠️ " + esc(m)).join("<br>");
+    div.appendChild(boite);
+  }
+  const actions = document.createElement("div");
+  actions.className = "actions-relais-fa";
+  const bMod = document.createElement("button");
+  bMod.type = "button"; bMod.textContent = "✏️ Modifier";
+  bMod.addEventListener("click", e => { e.stopPropagation(); ouvrirFormRelaisFA(ctx.feuille, ctx.lignes, ligne.type_course, ligne); });
+  const bSup = document.createElement("button");
+  bSup.type = "button"; bSup.textContent = "Supprimer"; bSup.className = "rouge";
+  bSup.addEventListener("click", async e => {
+    e.stopPropagation();
+    if (!(await confirmerDansPageFA("Supprimer cette ligne de relais ?\n\n" + texteRelais(ligne), "🗑️ Supprimer", "Annuler", "var(--rouge)"))) return;
+    const { error } = await supabase.from("lignes_feuille_route").delete().eq("id", ligne.id);
+    if (error) { toastAdmin("Erreur : " + error.message, "#b3141b"); return; }
+    feuillesDepliees.add(ctx.feuille.id);
+    chargerFeuillesAdmin();
+  });
+  actions.appendChild(bMod); actions.appendChild(bSup);
+  div.appendChild(actions);
+  return div;
+}
+// Boutons « 🔁 Je prends le relais » / « ↩️ Fin du relais » + case « ✅ Imprimée et classée » pour une feuille
+function rangeeRelaisArchiveFA(feuille, lignes, apres) {
+  const rangee = document.createElement("div");
+  rangee.className = "rangee-relais-fa";
+  rangee.addEventListener("click", e => e.stopPropagation());
+  const enCours = relaisEnCours(lignes, feuille);
+  const bRelais = document.createElement("button");
+  bRelais.type = "button"; bRelais.className = "btn-relais-fa";
+  bRelais.textContent = "🔁 Je prends le relais";
+  bRelais.addEventListener("click", e => { e.stopPropagation(); ouvrirFormRelaisFA(feuille, lignes, "relais", null, apres); });
+  rangee.appendChild(bRelais);
+  if (enCours) {
+    const bFin = document.createElement("button");
+    bFin.type = "button"; bFin.className = "btn-fin-relais-fa";
+    bFin.textContent = "↩️ Fin du relais";
+    bFin.addEventListener("click", e => { e.stopPropagation(); ouvrirFormRelaisFA(feuille, lignes, "relais_fin", null, apres); });
+    rangee.appendChild(bFin);
+    const info = document.createElement("span");
+    info.className = "info-relais-fa";
+    info.textContent = "🔁 Relais en cours : " + libConducteur(enCours) + " conduit";
+    rangee.appendChild(info);
+  }
+  rangee.appendChild(caseArchiveFA(feuille));
+  return rangee;
+}
+function texteSuppressionArchiveFA(iso) {
+  const d = new Date(new Date(iso).getTime() + 7 * 86400000);
+  return "suppression automatique après le " + d.toLocaleDateString("fr-BE");
+}
+function caseArchiveFA(feuille, onChange) {
+  const lab = document.createElement("label");
+  lab.className = "archive-fa" + (feuille.archivee_papier_at ? " cochee" : "");
+  lab.addEventListener("click", e => e.stopPropagation());
+  const chk = document.createElement("input");
+  chk.type = "checkbox"; chk.className = "chk-archive-fa";
+  chk.checked = !!feuille.archivee_papier_at;
+  chk.disabled = !feuille.verrouillee && !feuille.archivee_papier_at;
+  const t = document.createElement("span");
+  const sous = document.createElement("small");
+  const rendre = () => {
+    t.textContent = "✅ Imprimée et classée dans la farde";
+    sous.textContent = feuille.archivee_papier_at ? " (" + texteSuppressionArchiveFA(feuille.archivee_papier_at) + ")"
+      : (!feuille.verrouillee ? " (signe d'abord la feuille)" : "");
+    lab.classList.toggle("cochee", !!feuille.archivee_papier_at);
+  };
+  rendre();
+  chk.addEventListener("change", async () => {
+    const coche = chk.checked;
+    chk.disabled = true;
+    const valeur = coche ? new Date().toISOString() : null;
+    const { data, error } = await supabase.from("feuilles_route").update({ archivee_papier_at: valeur }).eq("id", feuille.id).select("archivee_papier_at").maybeSingle();
+    chk.disabled = false;
+    if (error || !data) {
+      chk.checked = !coche;
+      toastAdmin("Erreur : " + (error ? error.message : "feuille introuvable"), "#b3141b");
+      return;
+    }
+    feuille.archivee_papier_at = data.archivee_papier_at;
+    rendre();
+    toastAdmin(coche ? "✅ Feuille classée — " + texteSuppressionArchiveFA(feuille.archivee_papier_at) : "Feuille remise « à imprimer »");
+    chargerAImprimerFA();
+    if (onChange) onChange();
+  });
+  lab.appendChild(chk); lab.appendChild(t); lab.appendChild(sous);
+  return lab;
+}
+// Petite liste « ⚠️ À imprimer » : feuilles signées pas encore cochées « imprimée et classée »
+let chargementAImprimerFA = 0;
+async function chargerAImprimerFA() {
+  const zone = document.getElementById("a-imprimer-fa");
+  if (!zone) return;
+  const seq = ++chargementAImprimerFA;
+  const { data, error } = await supabase.from("feuilles_route")
+    .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
+    .eq("verrouillee", true).is("archivee_papier_at", null)
+    .order("date_service", { ascending: false }).limit(60);
+  if (seq !== chargementAImprimerFA) return;
+  if (error) { zone.innerHTML = ""; return; }
+  const liste = data || [];
+  if (!liste.length) { zone.innerHTML = ""; zone.style.display = "none"; return; }
+  zone.style.display = "";
+  const ouvert = zone.querySelector("details")?.open || false;
+  zone.innerHTML = `<details ${ouvert ? "open" : ""}><summary>⚠️ À imprimer : <b>${liste.length}${liste.length >= 60 ? "+" : ""}</b> feuille${liste.length > 1 ? "s" : ""} signée${liste.length > 1 ? "s" : ""} pas encore classée${liste.length > 1 ? "s" : ""} dans la farde</summary><div class="liste-a-imprimer-fa"></div></details>`;
+  const cont = zone.querySelector(".liste-a-imprimer-fa");
+  liste.forEach(f => {
+    const row = document.createElement("div");
+    row.className = "ligne-a-imprimer-fa";
+    const nom = f.nom_chauffeur_affiche || f.profils?.nom || "Chauffeur";
+    row.innerHTML = `<span class="lai-txt">${esc(new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }))} · <b>${esc(nom)}</b></span>`;
+    const bImp = document.createElement("button");
+    bImp.type = "button"; bImp.textContent = "🖨️ Imprimer / PDF";
+    bImp.addEventListener("click", () => ouvrirApercuHistoriqueFeuille(f, { nom }));
+    row.appendChild(bImp);
+    row.appendChild(caseArchiveFA(f, () => { if (document.getElementById("liste-feuilles-admin")) rafraichirFeuillesSiPossible(); }));
+    cont.appendChild(row);
+  });
 }
 
 function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroFeuille, totalFeuillesChauffeur) {
@@ -8382,6 +8782,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   entete.querySelector(".entete-fa-info").addEventListener("click", () => { if (!div.classList.contains("feuille-en-grand")) basculerGrand(true); });
   entete.insertBefore(btnOuvrirGrand, entete.firstChild);
   btnOuvrirGrand.textContent = "📂 Ouvrir la feuille en grand";
+  btnOuvrirGrand.insertAdjacentElement("afterend", rangeeRelaisArchiveFA(feuille, lignes));
   if (feuillesEnGrand.has(feuille.id)) setTimeout(() => basculerGrand(true), 0);
 
   const blocHeures = document.createElement("div");
@@ -8492,7 +8893,8 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   }
 
   const conteneurLignes = document.createElement("div");
-  lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1, { lignes, feuille, anomalies: anomaliesFA.parId.get(ligne.id) || [], onModif: majTotauxFA })));
+  const numsFA = numerosCoursesFA(lignes);
+  lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, numsFA.get(ligne.id) || index + 1, { lignes, feuille, anomalies: anomaliesFA.parId.get(ligne.id) || [], onModif: majTotauxFA })));
 
   // ===== Ordre des courses : chronologique automatique, ou manuel (choisi par la direction) =====
   const zoneOrdre = document.createElement("div");
@@ -8501,7 +8903,8 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   function rendreLignesNormales() {
     conteneurLignes.innerHTML = "";
     const an = anomaliesFeuille(lignes, feuille);
-    lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, index + 1, { lignes, feuille, anomalies: an.parId.get(ligne.id) || [], onModif: majTotauxFA })));
+    const nums = numerosCoursesFA(lignes);
+    lignes.forEach((ligne, index) => conteneurLignes.appendChild(construireLigneAdmin(ligne, nums.get(ligne.id) || index + 1, { lignes, feuille, anomalies: an.parId.get(ligne.id) || [], onModif: majTotauxFA })));
   }
   function rendreZoneOrdre() {
     const an = anomaliesFeuille(lignes, feuille);
@@ -8568,7 +8971,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       const row = document.createElement("div");
       row.className = "ligne-reorg-fa" + (pbs.length ? " ko" : "");
       row.dataset.reorgId = l.id;
-      const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).map(esc).join(" → ") || "<i>(lieux non remplis)</i>";
+      const trajet = estLigneRelais(l) ? "<b>" + esc(texteRelais(l)) + "</b>" : ([l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).map(esc).join(" → ") || "<i>(lieux non remplis)</i>") + (l.conducteur ? ` · <span class="conduit-par-fa">conduit par ${esc(libConducteur(l.conducteur))}</span>` : "");
       row.innerHTML = `
         <div class="reorg-haut">
           <span class="poignee-reorg-fa" title="Glisser pour déplacer">☰</span>
@@ -8649,7 +9052,10 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       }
     }
     if (indexDepartAuto === null) indexDepartAuto = indexDebutFeuille(feuille);
-    await supabase.from("lignes_feuille_route").insert({ feuille_route_id: feuille.id, n_ordre: prochainNumero, index_depart: indexDepartAuto });
+    const conducteurRelais = relaisEnCours(lignes, feuille);
+    const { error: errAjout } = await supabase.from("lignes_feuille_route").insert({ feuille_route_id: feuille.id, n_ordre: prochainNumero, index_depart: indexDepartAuto, conducteur: conducteurRelais || null });
+    if (errAjout) { toastAdmin("Erreur : " + errAjout.message, "#b3141b"); return; }
+    if (conducteurRelais) toastAdmin("➕ Ligne ajoutée — conduit par " + libConducteur(conducteurRelais));
     feuillesDepliees.add(feuille.id);
     chargerFeuillesAdmin();
   });
@@ -8700,6 +9106,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     });
     entetePlein.appendChild(btnFermer);
     overlay.appendChild(entetePlein);
+    overlay.appendChild(rangeeRelaisArchiveFA(feuille, lignes, () => { feuillesDepliees.add(feuille.id); chargerFeuillesAdmin(); }));
     overlay.appendChild(totalPercuDiv);
     overlay.appendChild(zoneOrdre);
     overlay.appendChild(conteneurLignes);
@@ -8715,6 +9122,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
 
 function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   ctx = ctx || { lignes: [ligne], feuille: {}, anomalies: [] };
+  if (estLigneRelais(ligne)) return construireLigneRelaisAdmin(ligne, ctx);
   const div = document.createElement("div");
   div.className = "ligne-admin";
   div.dataset.ligneId = ligne.id;
@@ -8740,7 +9148,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
 
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${ligne.signalee_erreur ? " · <b style='color:var(--rouge)'>📨 DEMANDE DU CHAUFFEUR</b>" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")}<span class="pb-entete-ligne-fa" style="color:#8a5a00; font-weight:700;">${Number(ligne.pourboire) > 0 ? " · 💶 pourboire " + esc(eurosFr(ligne.pourboire)) : ""}</span> <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
+  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}<span class="conduit-entete-fa conduit-par-fa">${ligne.conducteur ? " · 🔁 conduit par " + esc(libConducteur(ligne.conducteur)) : ""}</span>${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${ligne.signalee_erreur ? " · <b style='color:var(--rouge)'>📨 DEMANDE DU CHAUFFEUR</b>" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")}<span class="pb-entete-ligne-fa" style="color:#8a5a00; font-weight:700;">${Number(ligne.pourboire) > 0 ? " · 💶 pourboire " + esc(eurosFr(ligne.pourboire)) : ""}</span> <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
 
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
@@ -8963,6 +9371,24 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     }
     grille.appendChild(wrap);
   });
+
+  // « Conduit par » : chauffeur de la feuille / Gérant (relais) / autre chauffeur
+  const wrapConducteur = document.createElement("div");
+  wrapConducteur.className = "wrap-conducteur-fa";
+  wrapConducteur.style.gridColumn = "1 / -1";
+  wrapConducteur.innerHTML = `<label>Conducteur (conduit par)</label><select class="select-conducteur-fa">${optionsConducteurFA(ctx.feuille, ligne.conducteur || "")}</select>`;
+  const selConducteur = wrapConducteur.querySelector("select");
+  selConducteur.addEventListener("click", e => e.stopPropagation());
+  selConducteur.addEventListener("change", async () => {
+    const val = selConducteur.value || null;
+    const { data: lg, error } = await supabase.from("lignes_feuille_route").update({ conducteur: val }).eq("id", ligne.id).select("conducteur").maybeSingle();
+    if (error || !lg) { toastAdmin("Erreur : " + (error ? error.message : "ligne introuvable"), "#b3141b"); selConducteur.value = ligne.conducteur || ""; return; }
+    ligne.conducteur = lg.conducteur;
+    const sp = entete.querySelector(".conduit-entete-fa");
+    if (sp) sp.textContent = ligne.conducteur ? " · 🔁 conduit par " + libConducteur(ligne.conducteur) : "";
+    toastAdmin(ligne.conducteur ? "Conduit par " + libConducteur(ligne.conducteur) : "Conduit par le chauffeur de la feuille");
+  });
+  grille.insertBefore(wrapConducteur, grille.firstChild);
 
   // Plusieurs adresses (autres clients à prendre / à déposer)
   const editeurArretsAdmin = creerEditeurArrets(ligne.arrets, {
@@ -9487,15 +9913,20 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
   const vehicule = feuille.vehicules;
   const identiteFeuille = feuille.identite_exploitant || vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
 
+  const numsImp = numerosCoursesFA(lignes);
   const lignesHtml = (lignes.length ? lignes : new Array(8).fill(null)).map((l, i) => {
     l = l || {};
+    if (estLigneRelais(l)) {
+      return `<tr class="relais"><td></td><td>${formatIndex(l.index_depart)}</td><td colspan="9" style="text-align:left; font-weight:bold;">${esc(texteRelais(l))}</td></tr>`;
+    }
+    const mentionConduit = l.conducteur ? `<br><span style="font-size:7.5px; font-weight:bold;">conduit par ${esc(libConducteur(l.conducteur))}</span>` : "";
     const mentionAR = l.aller_retour ? ' <span style="color:#8a4a00; font-weight:bold;">(A/R)</span>' : "";
     const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
     return `<tr>
-      <td>${i + 1}</td>
+      <td>${l.id ? (numsImp.get(l.id) || i + 1) : i + 1}</td>
       <td>${formatIndex(l.index_depart)}</td>
       <td>${formatIndex(l.embarquement_index)}</td>
-      <td class="lieu">${lieuImpression(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => lieuImpression(a.adresse, "+ ")).join("")}${mentionAR}</td>
+      <td class="lieu">${lieuImpression(l.embarquement_lieu)}${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "prise").map(a => lieuImpression(a.adresse, "+ ")).join("")}${mentionAR}${mentionConduit}</td>
       <td>${fmtNombre(l.embarquement_heure ? String(l.embarquement_heure).slice(0, 5) : "")}</td>
       <td>${formatIndex(l.debarquement_index)}</td>
       <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
@@ -9617,7 +10048,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     </div>
     <template id="tpl-pied">
       <div class="signature">Signature du chauffeur : ______________________________</div>
-      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle. (A/R) = course aller-retour.</div>
+      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle. (A/R) = course aller-retour.${lignes.some(l => estLigneRelais(l) || (l && l.conducteur)) ? " 🔁 Relais : le véhicule a été conduit par une autre personne (gérant) pendant la période indiquée." : ""}</div>
       <div class="num-page"></div>
     </template>
     <script>
