@@ -14,6 +14,36 @@ window.addEventListener("error", function (e) {
 });
 </script>
 <script>
+// Messages d'information dans la page (remplace window.alert, qui peut rester invisible sur iPhone en mode écran d'accueil).
+// Les messages s'affichent l'un après l'autre ; confirm/prompt restent ceux du navigateur.
+(function () {
+  var file = [], ouvert = false;
+  function suivant() {
+    if (ouvert || !file.length) return;
+    if (!document.body) { document.addEventListener("DOMContentLoaded", suivant, { once: true }); return; }
+    ouvert = true;
+    var msg = file.shift();
+    var fond = document.createElement("div");
+    fond.className = "modale-alerte-dans-page";
+    fond.style.cssText = "position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;";
+    var boite = document.createElement("div");
+    boite.style.cssText = "background:#fff;color:#111;max-width:440px;width:100%;border-radius:16px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.3);font:16px/1.4 -apple-system,Arial,sans-serif;max-height:80vh;overflow:auto;";
+    var texte = document.createElement("div");
+    texte.style.cssText = "white-space:pre-wrap;word-break:break-word;";
+    texte.textContent = String(msg == null ? "" : msg);
+    var ok = document.createElement("button");
+    ok.type = "button"; ok.textContent = "OK";
+    ok.style.cssText = "margin-top:14px;width:100%;padding:13px;border:none;border-radius:12px;background:#c81e2c;color:#fff;font-weight:800;font-size:1rem;";
+    ok.onclick = function (e) { e.stopPropagation(); fond.remove(); ouvert = false; suivant(); };
+    boite.addEventListener("click", function (e) { e.stopPropagation(); });
+    boite.appendChild(texte); boite.appendChild(ok); fond.appendChild(boite);
+    document.body.appendChild(fond);
+    try { ok.focus(); } catch (e) {}
+  }
+  window.alert = function (msg) { file.push(msg); suivant(); };
+})();
+</script>
+<script>
 // Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
 function dateLocaleISO(d) {
   const x = d ? new Date(d) : new Date();
@@ -39,10 +69,11 @@ function ajouterTexteLibre(select, valeurActuelle) {
 }
 // Index de compteur (3 chiffres) : 8 s'affiche « 008 », 22 « 022 »
 const CHAMPS_INDEX = ["index_depart", "embarquement_index", "debarquement_index"];
+// Un index tapé en entier (ex. 54078) s'affiche comme les autres sur 3 chiffres (« 078 ») — donnée inchangée
 function formatIndex(v) {
   if (v === null || v === undefined || v === "") return "";
-  const n = Number(v);
-  if (Number.isInteger(n) && n >= 0 && n < 1000) return String(n).padStart(3, "0");
+  const n = Number(String(v).replace(",", "."));
+  if (Number.isInteger(n) && n >= 0) return String(n % 1000).padStart(3, "0");
   return String(v);
 }
 
@@ -330,8 +361,8 @@ window.onerror = function(msg, url, line, col, err) {
   /* Caisse */
   .caisse-chauffeur{ background:var(--noir-2); border-radius:12px; padding:16px; margin-bottom:12px; }
   .caisse-chauffeur h3{ margin:0 0 10px; font-size:1rem; }
-  .caisse-ligne{ display:flex; justify-content:space-between; font-size:.9rem; margin-bottom:6px; color:var(--gris); }
-  .caisse-ligne b{ color:var(--blanc); }
+  .caisse-ligne{ display:flex; justify-content:space-between; gap:10px; font-size:.9rem; margin-bottom:6px; color:var(--gris); }
+  .caisse-ligne b{ color:var(--blanc); white-space:nowrap; }
   .caisse-total{ font-size:1.1rem; font-weight:700; margin-top:10px; padding-top:10px; border-top:1px solid #dcdcda; display:flex; justify-content:space-between; }
   .caisse-fond{ display:flex; gap:8px; margin-top:12px; align-items:center; }
   .caisse-fond input{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
@@ -555,6 +586,22 @@ window.onerror = function(msg, url, line, col, err) {
   #feuilles-sous-onglets button{ width:auto; padding:9px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); font-size:.85rem; cursor:pointer; }
   #feuilles-sous-onglets button.actif{ background:var(--rouge); color:#fff; border-color:var(--rouge); }
   #feuilles-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  /* Chauffeur → jour → onglets par véhicule (une voiture = une feuille) */
+  #puces-chauffeurs-fa{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  #puces-chauffeurs-fa button{ width:auto; padding:9px 12px; border-radius:999px; border:1px solid #cfcfcd; background:#fff; color:#1a1a1a; font-weight:700; font-size:.92rem; cursor:pointer; }
+  #puces-chauffeurs-fa button.actif{ background:#1d4f86; color:#fff; border-color:#0e2f55; }
+  #puces-chauffeurs-fa button.tous{ border-style:dashed; }
+  .titre-chauffeur-jour-fa{ font-size:1.15rem; font-weight:800; margin:4px 0 8px; color:var(--blanc); }
+  #onglets-feuilles-fa{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  #onglets-feuilles-fa .onglet-feuille-fa{ flex:1 1 160px; min-height:64px; text-align:left; padding:10px 12px; border-radius:14px; cursor:pointer; color:#1a1a1a; font-size:.95rem; }
+  #onglets-feuilles-fa .onglet-feuille-fa.signee{ background:#f1f6f2; border:2px solid #9fd0b0; }
+  #onglets-feuilles-fa .onglet-feuille-fa.a-completer{ background:#fff1d6; border:3px solid #e08a00; }
+  #onglets-feuilles-fa .onglet-feuille-fa.actuelle{ background:#1d4f86; color:#fff; border:3px solid #0e2f55; box-shadow:0 3px 10px rgba(29,79,134,.35); }
+  #onglets-feuilles-fa .onglet-feuille-fa .of-nom{ display:block; font-weight:800; font-size:1.02rem; }
+  #onglets-feuilles-fa .onglet-feuille-fa .of-plaque{ display:block; font-weight:800; letter-spacing:.03em; }
+  #onglets-feuilles-fa .onglet-feuille-fa .of-statut{ display:block; margin-top:2px; font-weight:800; font-size:.86rem; }
+  .entete-vehicule-fa{ margin:0 0 10px; padding:10px 12px; border-radius:12px; background:#0e2f55; color:#fff; font-size:1.1rem; font-weight:800; }
+  .entete-vehicule-fa .badge-fa{ display:inline-block; margin-left:6px; padding:2px 10px; border-radius:999px; font-size:.88rem; }
   #vj-date-nav{ display:flex; gap:8px; align-items:center; margin-bottom:12px; }
   #vj-date-nav input[type="date"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); }
   #vj-date-nav button{ width:auto; padding:10px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#f7f7f5; color:var(--blanc); cursor:pointer; font-size:.85rem; }
@@ -627,8 +674,8 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin .entete-fa-actions button{ max-width:100%; }
   html, body{ max-width:100%; overflow-x:hidden; }
   /* Liste des feuilles : fermées, on touche une feuille pour l'ouvrir EN GRAND */
-  .feuille-admin:not(.feuille-en-grand) .entete-fa-actions{ display:none; }
-  .feuille-admin:not(.feuille-en-grand) > div:not(:first-child){ display:none !important; }
+  .feuille-admin:not(.feuille-en-grand):not(.feuille-onglet-fa) .entete-fa-actions{ display:none; }
+  .feuille-admin:not(.feuille-en-grand):not(.feuille-onglet-fa) > div:not(:first-child){ display:none !important; }
   .feuille-admin .rangee-relais-fa{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
   .btn-relais-fa{ width:auto !important; padding:8px 12px; border-radius:8px; border:1px solid #8cc79f; background:#eef7ee; color:#1f6b3a; font-weight:800; font-size:.85rem; cursor:pointer; }
   .btn-fin-relais-fa{ width:auto !important; padding:8px 12px; border-radius:8px; border:1px solid #e0b062; background:#fff4e2; color:#8a5200; font-weight:800; font-size:.85rem; cursor:pointer; }
@@ -1030,6 +1077,7 @@ window.onerror = function(msg, url, line, col, err) {
   </div>
 
   <div id="vue-jour-fa">
+    <div id="puces-chauffeurs-fa" role="group" aria-label="Chauffeur"></div>
     <select id="filtre-chauffeur-fa" style="width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; margin-bottom:12px; font-size:.95rem;">
       <option value="">👥 Tous les chauffeurs</option>
     </select>
@@ -3005,6 +3053,7 @@ async function chargerChauffeurs() {
     filtreFa.innerHTML = `<option value="">👥 Tous les chauffeurs</option>` +
       chauffeursCache.map(c => `<option value="${c.id}">${esc(c.nom || c.telephone || c.id)}</option>`).join("");
     filtreFa.value = valeurAvant; // garde le chauffeur choisi même après un rechargement de la liste
+    rendrePucesChauffeursFA();
   }
 }
 
@@ -3069,8 +3118,12 @@ function alerteImportanteAdmin(titre, texte, course, couleur, fond) {
   a.innerHTML = `<div style="font-weight:900; font-size:1.1rem;">${titre}</div>
     <div style="margin-top:6px; color:#222; font-size:.95rem;">${texte}</div>
     ${course ? `<div style="margin-top:4px; color:#555; font-size:.82rem;">Course ${course.numero_reservation ? esc(course.numero_reservation) + " · " : ""}${esc(quand)} · ${esc(course.adresse_depart || "")} → ${esc(course.adresse_arrivee || "")}</div>` : ""}
-    <button type="button" style="margin-top:10px; width:100%; padding:12px; border:none; border-radius:10px; background:${couleur}; color:#fff; font-weight:800;">👍 Vu</button>`;
-  a.querySelector("button").addEventListener("click", () => a.remove());
+    ${course && String(titre).startsWith("❌") ? `<button type="button" class="btn-alerte-ouvrir" style="margin-top:10px; width:100%; padding:12px; border:2px solid ${couleur}; border-radius:10px; background:#fff; color:${couleur}; font-weight:800;">🚖 Ouvrir la course ›</button>` : ""}
+    <button type="button" class="btn-alerte-vu" style="margin-top:10px; width:100%; padding:12px; border:none; border-radius:10px; background:${couleur}; color:#fff; font-weight:800;">👍 Vu</button>`;
+  if (course && String(titre).startsWith("❌")) a.classList.add("alerte-annulation");
+  a.querySelector(".btn-alerte-vu").addEventListener("click", () => a.remove());
+  const bo = a.querySelector(".btn-alerte-ouvrir");
+  if (bo) bo.addEventListener("click", () => { a.remove(); chatOuvrirCourse(course.id); });
   pile.appendChild(a);
 }
 
@@ -3657,11 +3710,13 @@ function prixAccepteEnAttentePaiement(c) {
 // ================== DEMANDES DES CLIENTS (app client) ==================
 const FILTRES_DEMANDES = [
   ["nouvelles", "🆕 Nouvelles", c => c.statut === "en_attente"],
+  ["annulation", "❌ Demandes d'annulation", c => annulationEnAttente(c)],
   ["cash", "💵 Demandes cash", c => demandeCashEnAttente(c)],
   ["prix", "💶 Prix envoyé", c => c.statut === "prix_envoye"],
   ["paiement", "⏳ Prix accepté — en attente du paiement", c => prixAccepteEnAttentePaiement(c)],
   ["confirmees", "✅ Réservations validées", c => ["confirmee", "assignee", "en_cours"].includes(c.statut) && reservationClientValidee(c)],
-  ["annulees", "❌ Annulées / refusées", c => ["annulee", "refusee"].includes(c.statut) && new Date(c.date_heure) > new Date(Date.now() - 30 * 864e5)]
+  ["annulees", "❌ Annulées / refusées", c => ["annulee", "refusee"].includes(c.statut) && new Date(c.date_heure) > new Date(Date.now() - 30 * 864e5)],
+  ["rembourser", "💶 À rembourser", c => aRembourserAdmin(c)]
 ];
 let dcFiltre = "nouvelles";
 function afficherDemandesClients() {
@@ -3681,7 +3736,7 @@ function afficherDemandesClients() {
   const sectionVisible = document.getElementById("section-demandes-clients").classList.contains("visible");
   const enEdition = document.activeElement && document.activeElement.closest && document.activeElement.closest("#section-demandes-clients") && document.activeElement.tagName !== "BODY";
   if (sectionVisible && !enEdition && !document.querySelector("#section-demandes-clients .carte-en-grand")) {
-  const liste = clients.filter(filtre[2]).sort((a, b) => dcFiltre === "annulees" ? new Date(b.date_heure) - new Date(a.date_heure) : new Date(a.date_heure) - new Date(b.date_heure));
+  const liste = clients.filter(filtre[2]).sort((a, b) => (dcFiltre === "annulees" || dcFiltre === "rembourser") ? new Date(b.date_heure) - new Date(a.date_heure) : new Date(a.date_heure) - new Date(b.date_heure));
   zone.innerHTML = liste.length ? "" : `<p style="color:var(--gris); text-align:center; padding:20px 0;">Rien dans « ${filtre[1]} ».</p>`;
   liste.forEach(c => {
     const carte = construireCarteAdmin(c);
@@ -3704,7 +3759,7 @@ function afficherDemandesClients() {
   });
   }
   // pastille sur le bouton du menu : demandes à traiter (nouvelles + paiements déclarés + messages)
-  const aTraiter = clients.filter(c => c.statut === "en_attente" || c.statut === "acompte_declare" || (c.message_client_paiement && c.statut === "attente_acompte" && (!c.demande_cash_at || demandeCashEnAttente(c))) || demandeCashEnAttente(c)).length;
+  const aTraiter = clients.filter(c => annulationEnAttente(c) || c.statut === "en_attente" || c.statut === "acompte_declare" || (c.message_client_paiement && c.statut === "attente_acompte" && (!c.demande_cash_at || demandeCashEnAttente(c))) || demandeCashEnAttente(c)).length;
   const btnNav = document.querySelector('nav button[data-onglet="demandes-clients"]');
   if (btnNav) {
     let p = btnNav.querySelector(".badge-demandes");
@@ -3835,7 +3890,7 @@ function afficherListeConversationsAdmin() {
         <div class="cc-nom">👤 ${esc(c.nom || "Client")}${chatEtatsOuverts.get(c.client_id) === false ? ` <span title="Chat fermé côté client (aucune course en cours)">🔒</span>` : ""}</div>
         ${c.telephone ? `<div class="cc-tel">📞 ${esc(c.telephone)}</div>` : ""}
         ${actives.length ? `<div class="cc-tel">🚖 ${esc(actives.map(x => x.numero_reservation).filter(Boolean).join(", "))}</div>` : ""}
-        <div class="cc-apercu">${c.dernier_auteur === "admin" ? "Toi : " : ""}${esc(c.dernier_texte || "")}</div>
+        <div class="cc-apercu"${c.dernier_auteur !== "admin" && /^\s*❌/.test(c.dernier_texte || "") ? ` style="color:#b3141b; font-weight:800;"` : ""}>${c.dernier_auteur === "admin" ? "Toi : " : ""}${esc(c.dernier_texte || "")}</div>
       </div>
       <div class="cc-droite">${c.dernier_at ? esc(chatFmtQuand(c.dernier_at)) : ""}${c.non_lus ? `<br><span class="cc-nb">${c.non_lus}</span>` : ""}</div>`;
     el.addEventListener("click", () => ouvrirConversationAdmin(c.client_id));
@@ -3979,7 +4034,9 @@ function afficherFilChatAdmin(forcerBas) {
     const c = m.course_id ? chatInfosCourses.get(m.course_id) : null;
     const tag = m.course_id ? `<div><span class="tag-course" data-course="${esc(m.course_id)}">🚖 ${c && c.numero_reservation ? esc(chatLibelleResa(c)) : "Course" + (c ? " du " + esc(chatFmtCourse(c)) : "")} ›</span></div>` : "";
     const vu = dernierAdmin && m.id === dernierAdmin.id && m.lu_par_client_at ? " · ✓ Vu par le client" : "";
-    html += `<div class="bulle ${m.auteur === "admin" ? "admin" : "client"}">${tag}${esc(m.texte)}<div class="meta">${chatFmtHeure(m.created_at)}${vu}</div></div>`;
+    const estAnnul = /^\s*❌/.test(m.texte || "");
+    const tagAnnul = estAnnul && m.course_id ? `<div><span class="tag-course tag-annulation" data-course="${esc(m.course_id)}" style="display:inline-block; margin-top:6px; padding:4px 10px; border-radius:999px; background:#b3141b; color:#fff; font-weight:800; cursor:pointer;">❌ Ouvrir la course pour traiter ›</span></div>` : "";
+    html += `<div class="bulle ${m.auteur === "admin" ? "admin" : "client"}${estAnnul ? " bulle-annulation" : ""}"${estAnnul ? ` style="border:2px solid #b3141b; background:#fdecee; color:#7a0f14; font-weight:700;"` : ""}>${tag}${esc(m.texte)}${tagAnnul}<div class="meta">${chatFmtHeure(m.created_at)}${vu}</div></div>`;
   });
   fil.innerHTML = html;
   fil.querySelectorAll(".tag-course").forEach(t => t.addEventListener("click", () => chatOuvrirCourse(t.dataset.course)));
@@ -4914,7 +4971,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   rafraichissementsEnAttente.delete("courses");
 
   if (idsCoursesConnusAdmin === null) {
-    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, valide: reservationClientValidee(c) }]));
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, annul: c.annulation_demandee_at, valide: reservationClientValidee(c) }]));
   } else {
     (courses || []).forEach(c => {
       const ancien = idsCoursesConnusAdmin.get(c.id);
@@ -4937,6 +4994,13 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
         } else if (!ancien.msg && c.message_client_paiement) {
           alerteImportanteAdmin("🙋 Message du client sur le paiement", `${esc(c.client_nom || "Le client")} : « ${esc(c.message_client_paiement)} »`, c, "#1d4f86", "#eef4fb");
         }
+        if (c.annulation_demandee_at && ancien.annul !== c.annulation_demandee_at && annulationEnAttente(c)) {
+          const du = Number(c.remboursement_du) || 0;
+          alerteImportanteAdmin("❌ Demande d'annulation — à traiter", `${esc(c.client_nom || "Le client")} demande l'ANNULATION (reçue ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant, ${c.annulation_dans_les_delais === false ? "HORS délai, moins de 8 h" : "dans les délais"}).<br>Selon la règle : ${du > 0 ? "💶 à rembourser " + esc(eurosFr(du)) : "⛔ NON remboursable"}${c.annulation_motif ? "<br>Motif : " + esc(c.annulation_motif) : ""}`, c, "#b3141b", "#fdecee");
+        } else if (c.origine === "client" && ancien.statut !== "annulee" && c.statut === "annulee" && c.annulation_demandee_at && c.annulation_demandee_at === c.annulation_traitee_at && ancien.annul !== c.annulation_demandee_at) {
+          const s = situationRemboursement(c);
+          alerteImportanteAdmin("❌ Annulée par le client", `${esc(c.client_nom || "Le client")} a annulé ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant la course.<br>${s && s.etat === "a_rembourser" ? "💶 À REMBOURSER : " + esc(eurosFr(s.montant)) : "Rien à rembourser."}`, c, "#b3141b", "#fdecee");
+        }
         if (!ancien.accepte && c.accepte_chauffeur) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: "✅ Course acceptée par le chauffeur", adresse_arrivee: c.adresse_arrivee });
         }
@@ -4955,7 +5019,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: `❌ Course annulée — ${motifLisible} (${nomChauffeurPourNotif(c)})`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
-      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, valide: reservationClientValidee(c) });
+      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, annul: c.annulation_demandee_at, valide: reservationClientValidee(c) });
     });
   }
 
@@ -5453,6 +5517,152 @@ function blocDemandeCashAdmin(course) {
   return bloc;
 }
 
+// ================== ❌ ANNULATIONS CLIENT (règle des 8 h) + 💶 REMBOURSEMENTS ==================
+// Demande d'annulation reçue (moins de 8 h avant) et pas encore traitée
+const annulationEnAttente = c => !!c && !!c.annulation_demandee_at && !c.annulation_traitee_at && c.statut !== "annulee";
+// Montant payé par le client (même calcul que course_montant_paye en base)
+function montantPayeClientAdmin(c) {
+  if (!c) return 0;
+  if (Number(c.paye_en_ligne_montant) > 0) return Math.round(Number(c.paye_en_ligne_montant) * 100) / 100;
+  if (c.acompte_paye || c.acompte_declare_client) {
+    const total = (Number(c.prix_client ?? c.prix) || 0) + (Number(c.surprime) || 0);
+    if (c.paiement_choisi === "total") return Math.round(total * 100) / 100;
+    return Number(c.acompte_montant) > 0 ? Number(c.acompte_montant) : Math.round(total * 0.3 * 100) / 100;
+  }
+  return 0;
+}
+const annulHeuresTxt = h => h == null || h === "" ? "?" : String(Math.round(Number(h) * 10) / 10).replace(".", ",");
+function annulHeuresAvant(c) {
+  if (c.annulation_heures_avant != null) return c.annulation_heures_avant;
+  const quand = c.annulee_at || c.annulation_demandee_at;
+  if (!quand || !c.date_heure) return null;
+  return Math.max(0, (new Date(c.date_heure) - new Date(quand)) / 3600000);
+}
+const annulFmtDate = d => d ? new Date(d).toLocaleString("fr-BE", { timeZone: "Europe/Brussels", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+// Situation du remboursement d'une course client annulée (ou dont l'annulation est demandée)
+// → { etat: "a_rembourser" | "rembourse" | "non_remboursable", montant } ou null
+function situationRemboursement(c) {
+  if (!c || c.origine !== "client") return null;
+  const enAttente = annulationEnAttente(c);
+  if (c.statut !== "annulee" && !enAttente) return null;
+  const paye = montantPayeClientAdmin(c);
+  let du = 0;
+  if (enAttente) du = Number(c.remboursement_du) || 0;
+  else if (c.annulation_decision) du = Number(c.annulation_montant_rembourse) || 0;
+  else if (c.acompte_remboursable === true) du = paye; // anciennes annulations : on se fie à acompte_remboursable
+  if (c.rembourse_at) return { etat: "rembourse", montant: du || paye };
+  if (du > 0) return { etat: "a_rembourser", montant: du };
+  if (paye > 0) return { etat: "non_remboursable", montant: 0 };
+  return null;
+}
+// Liste « 💶 À rembourser » : annulations décidées avec un remboursement dû et pas encore fait
+const aRembourserAdmin = c => c && c.statut === "annulee" && situationRemboursement(c)?.etat === "a_rembourser";
+
+const ANNUL_DECISIONS = {
+  annuler_rembourser: { titre: "✅ Annuler et rembourser", couleur: "#1f6b3f" },
+  annuler_sans_remboursement: { titre: "⛔ Annuler sans remboursement", couleur: "#8a1520" },
+  refuser: { titre: "↩️ Refuser l'annulation (la course reste confirmée)", couleur: "#555" }
+};
+// Fenêtre dans la page : message au client modifiable, puis envoi de la décision
+async function ouvrirDecisionAnnulation(course, decision) {
+  const d = ANNUL_DECISIONS[decision];
+  const fond = document.createElement("div");
+  fond.className = "modale-annulation-admin";
+  fond.style.cssText = "position:fixed; inset:0; z-index:100001; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:14px;";
+  fond.innerHTML = `<div style="background:#fff; color:#111; border-radius:14px; padding:18px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; box-sizing:border-box;">
+    <div style="font-weight:900; font-size:1.05rem; color:${d.couleur};">${esc(d.titre)}</div>
+    <div style="font-size:.85rem; color:#555; margin-top:4px;">${badgeNumeroResa(course.numero_reservation)}${esc(course.client_nom || "Client")} · ${esc(annulFmtDate(course.date_heure))}</div>
+    <label style="display:block; font-size:.8rem; color:#555; margin:12px 0 4px;">Message envoyé au client (chat + e-mail) — tu peux le modifier</label>
+    <textarea class="an-msg" rows="9" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #cfcfcd; font-size:.95rem; font-family:inherit; background:#fff; color:#111;" placeholder="Chargement du message…" disabled></textarea>
+    <div class="an-erreur" style="display:none; margin-top:10px; padding:10px; border-radius:8px; background:#fdecec; color:#8a1f1f; font-weight:600; white-space:pre-wrap;"></div>
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <button type="button" class="an-annuler" style="flex:1; padding:13px; border-radius:10px; border:none; background:#e3e3e0; color:#111; font-weight:700;">Retour</button>
+      <button type="button" class="an-ok" style="flex:2; padding:13px; border-radius:10px; border:none; background:${d.couleur}; color:#fff; font-weight:800;" disabled>📨 Envoyer la décision</button>
+    </div></div>`;
+  document.body.appendChild(fond);
+  const zone = fond.querySelector(".an-msg"), ok = fond.querySelector(".an-ok"), err = fond.querySelector(".an-erreur");
+  const montrerErreur = t => { err.textContent = t; err.style.display = "block"; };
+  let fini = false;
+  const fermer = () => { if (!fini) { fini = true; fond.remove(); } };
+  fond.querySelector(".an-annuler").addEventListener("click", e => { e.stopPropagation(); fermer(); });
+  fond.addEventListener("click", e => { e.stopPropagation(); if (e.target === fond && !ok.dataset.envoi) fermer(); });
+  const { data: msg, error: eMsg } = await supabase.rpc("admin_message_annulation_defaut", { p_course: course.id, p_decision: decision });
+  zone.disabled = false; ok.disabled = false;
+  if (eMsg) montrerErreur("Message par défaut indisponible : " + eMsg.message + "\nÉcris le message toi-même.");
+  zone.value = typeof msg === "string" ? msg : "";
+  zone.placeholder = "Écris le message au client…";
+  ok.addEventListener("click", async e => {
+    e.stopPropagation();
+    err.style.display = "none";
+    ok.disabled = true; ok.dataset.envoi = "1"; ok.textContent = "Envoi…";
+    const { data: r, error } = await supabase.rpc("admin_traiter_annulation", { p_course: course.id, p_decision: decision, p_message: zone.value.trim() || null });
+    if (error) { ok.disabled = false; delete ok.dataset.envoi; ok.textContent = "📨 Envoyer la décision"; montrerErreur("Erreur : " + error.message); return; }
+    fermer();
+    const res = r || {};
+    const m = Number(res.montant_rembourse) || 0;
+    alert((res.decision === "refusee" ? "↩️ Demande d'annulation refusée : la course reste confirmée." : "❌ Course annulée.")
+      + (res.decision === "refusee" ? "" : "\n💶 Montant à rembourser : " + eurosFr(m) + (m > 0 ? "\n(appuie sur « ✅ Remboursement fait » une fois le remboursement effectué)" : ""))
+      + "\n\n" + (res.email_envoye ? "📧 E-mail envoyé au client." : "⚠️ Pas d'e-mail envoyé (adresse du client ou envoi d'e-mails non configuré).")
+      + "\n💬 Le message est aussi dans le chat du client.");
+    chargerCoursesAdmin();
+  });
+  setTimeout(() => { try { zone.focus(); } catch (_) {} }, 50);
+}
+async function marquerRembourseAdmin(course, fait) {
+  if (fait) {
+    const s = situationRemboursement(course);
+    if (!(await confirmerDansPageFA(`Confirmer que ${course.client_nom || "le client"} a bien été remboursé de ${eurosFr(s ? s.montant : 0)} ?`, "✅ Remboursement fait", "Annuler"))) return;
+  } else if (!(await confirmerDansPageFA("Annuler « Remboursement fait » ? La course revient dans la liste 💶 À rembourser.", "Oui, annuler", "Non", "#8a1520"))) return;
+  const { error } = await supabase.rpc("admin_marquer_rembourse", { p_course: course.id, p_fait: !!fait });
+  if (error) { alert("Erreur : " + error.message); return; }
+  chargerCoursesAdmin();
+}
+// Bandeau + pastille remboursement à placer en haut de la carte d'une course
+function blocAnnulationAdmin(course) {
+  if (!course || course.origine !== "client") return null;
+  const enAttente = annulationEnAttente(course);
+  const refusee = course.annulation_decision === "refusee" && course.statut !== "annulee";
+  const s = situationRemboursement(course);
+  if (!enAttente && !refusee && !s) return null;
+  const bloc = document.createElement("div");
+  bloc.className = "bloc-annulation-admin";
+  bloc.addEventListener("click", e => e.stopPropagation());
+  let html = "";
+  if (enAttente) {
+    const du = Number(course.remboursement_du) || 0;
+    html += `<div class="bandeau-demande-annulation" style="margin:6px 0; padding:10px 12px; border-radius:10px; background:#fdecee; border:2px solid #b3141b; color:#7a0f14; font-size:.92rem;">
+      <div style="font-weight:900; font-size:1rem;">❌ Demande d'annulation — reçue ${esc(annulHeuresTxt(course.annulation_heures_avant))} h avant (${esc(annulFmtDate(course.annulation_demandee_at))})</div>
+      <div style="margin-top:4px; font-weight:800;">${course.annulation_dans_les_delais === false ? "⚠️ HORS délai (&lt; 8 h)" : "✅ Dans les délais"}</div>
+      ${course.annulation_motif ? `<div style="margin-top:4px;"><b>Motif :</b> ${esc(course.annulation_motif)}</div>` : ""}
+      <div style="margin-top:4px; font-weight:800;">Selon la règle : ${du > 0 ? `💶 À rembourser ${esc(eurosFr(du))}` : "⛔ NON remboursable"}</div>
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">
+        <button type="button" class="an-dec" data-dec="annuler_rembourser" style="width:100%; padding:11px; border-radius:9px; border:none; background:#1f6b3f; color:#fff; font-weight:800;">✅ Annuler + rembourser ${esc(eurosFr(du > 0 ? du : montantPayeClientAdmin(course)))}</button>
+        <button type="button" class="an-dec" data-dec="annuler_sans_remboursement" style="width:100%; padding:11px; border-radius:9px; border:none; background:#8a1520; color:#fff; font-weight:800;">⛔ Annuler sans remboursement</button>
+        <button type="button" class="an-dec" data-dec="refuser" style="width:100%; padding:11px; border-radius:9px; border:1px solid #999; background:#fff; color:#333; font-weight:700;">↩️ Refuser l'annulation</button>
+      </div></div>`;
+  }
+  if (refusee) {
+    html += `<div class="ligne-annulation-refusee" style="margin:6px 0; padding:6px 10px; border-radius:8px; background:#f4f4f2; color:#555; font-size:.82rem;">Demande d'annulation refusée le ${esc(annulFmtDate(course.annulation_traitee_at))}</div>`;
+  }
+  if (s && s.etat === "a_rembourser") {
+    html += `<div class="badge-remboursement a-rembourser" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0; padding:8px 10px; border-radius:10px; background:#e9f7ef; border:2px solid #1f8a4c; color:#14532d;">
+      <span style="font-weight:900;">💶 À rembourser : ${esc(eurosFr(s.montant))}</span>
+      <button type="button" class="btn-rembourse-fait" style="width:auto; padding:8px 12px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:800;">✅ Remboursement fait</button></div>`;
+  } else if (s && s.etat === "rembourse") {
+    html += `<div class="badge-remboursement rembourse" style="margin:6px 0; padding:6px 10px; border-radius:8px; background:#e9f7ef; color:#1f6b3f; font-size:.88rem; font-weight:800;">✅ Remboursé le ${esc(annulFmtDate(course.rembourse_at))}${s.montant ? " (" + esc(eurosFr(s.montant)) + ")" : ""}
+      <a href="#" class="lien-annuler-rembourse" style="margin-left:6px; font-size:.75rem; font-weight:400; color:#555;">annuler</a></div>`;
+  } else if (s && s.etat === "non_remboursable") {
+    html += `<div class="badge-remboursement non-remboursable" style="margin:6px 0; padding:6px 10px; border-radius:8px; background:#fdecee; color:#8a1520; font-size:.88rem; font-weight:800;">⛔ Non remboursable (annulée ${esc(annulHeuresTxt(annulHeuresAvant(course)))} h avant)</div>`;
+  }
+  bloc.innerHTML = html;
+  bloc.querySelectorAll(".an-dec").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); ouvrirDecisionAnnulation(course, b.dataset.dec); }));
+  const bf = bloc.querySelector(".btn-rembourse-fait");
+  if (bf) bf.addEventListener("click", e => { e.stopPropagation(); marquerRembourseAdmin(course, true); });
+  const la = bloc.querySelector(".lien-annuler-rembourse");
+  if (la) la.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); marquerRembourseAdmin(course, false); });
+  return bloc;
+}
+
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -5511,8 +5721,6 @@ function construireCarteAdmin(course) {
   const SV_SOUS = { trajet_groupe: "trajet en groupe", sortie: "sortie", visite_ville: "visite de ville", parc_attractions: "parc d'attractions", visite_guidee: "visite guidée" };
   const [svT, svS] = String(course.type_service || "").split(":");
   const badgeService = SV_LIB[svT] ? `<span class="badge-ar" style="background:#eef4fb; color:#1d4f86;">${SV_LIB[svT]}${SV_SOUS[svS] ? " · " + SV_SOUS[svS] : ""}${course.numero_vol ? " · vol " + esc(course.numero_vol) : ""}</span>` : "";
-  const blocAcompteRemb = course.statut === "annulee" && course.acompte_remboursable != null
-    ? `<div style="margin:6px 0; padding:6px 10px; border-radius:8px; font-size:.85rem; font-weight:700; background:${course.acompte_remboursable ? "#e9f7ef" : "#fdecee"}; color:${course.acompte_remboursable ? "#1f6b3f" : "#8a1520"};">Acompte : ${course.acompte_remboursable ? "remboursable" : "non remboursable"}${course.annulee_at && course.date_heure ? ` (annulation à ${(() => { const m = Math.max(0, Math.round((new Date(course.date_heure) - new Date(course.annulee_at)) / 60000)); return Math.floor(m / 60) + "h" + (m % 60 ? String(m % 60).padStart(2, "0") : ""); })()} de la course)` : ""}</div>` : "";
   // ❌ Refus / ⚠️ avertissement envoyés par le chauffeur depuis son app
   const hhmmMsg = (d) => d ? new Date(d).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
   const aReattribuer = course.refus_chauffeur_at && !course.chauffeur_id && !["annulee", "terminee", "refusee"].includes(course.statut);
@@ -5533,7 +5741,7 @@ function construireCarteAdmin(course) {
   entete.innerHTML = `
     <div style="flex:1;">
       ${badgeNumeroResa(course.numero_reservation)}<span class="statut-label">${labelStatutAffiche}${course.motif_annulation ? " · " + esc(course.motif_annulation.split(" — ")[0].replace(/_/g, " ")) : ""}${course.verrouillee ? " · verrouillée" : ""}${course.origine === "chauffeur" ? " · feuille de route" : ""}${course.origine === "client" ? " · 📱 demande client" : ""}${course.chauffeur_id && (course.statut === "assignee" || course.statut === "en_cours") ? (course.accepte_chauffeur ? " · ✅ acceptée par le chauffeur" : " · ⏳ en attente d'acceptation") : ""}</span>${badgeVehicule}${badgeAllerRetour}${badgeTaximetre}${badgeChauffeurPrefere}${badgeNoteClient}${badgeSousTraitant}${badgeMarcheOuvert}${badgeRetourAuto}${badgeService}${aReattribuer ? `<span class="badge-ar" style="background:#b3141b; color:#fff;">❌ Refusée — à réattribuer</span>` : ""}${blocAvertChauffeur ? `<span class="badge-ar" style="background:#b86e00; color:#fff;">⚠️ Message chauffeur</span>` : ""}
-      ${blocRefusChauffeur}${blocAvertChauffeur}${blocAcompteRemb}
+      ${blocRefusChauffeur}${blocAvertChauffeur}
       ${demandeCashEnAttente(course) ? `<div class="badge-cash-admin" style="display:inline-block; margin:6px 0; padding:6px 12px; border-radius:999px; background:#1f8a4c; color:#fff; font-weight:900; font-size:.9rem;">💵 Client demande à payer CASH</div>` : ""}
       <h3>${esc(course.client_nom) || "Client"} — ${prixAffiche.startsWith("🚕") ? prixAffiche : esc(prixAffiche)}</h3>
       <div class="heure">${esc(heure)} · Chauffeur : ${esc(nomChauffeur)} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</div>
@@ -5548,6 +5756,7 @@ function construireCarteAdmin(course) {
   entete.appendChild(btnSupprimerRapide);
   div.appendChild(entete);
   { const bp = blocPayeEnLigneAdmin(course, false); if (bp) entete.firstElementChild.appendChild(bp); }
+  { const ba = blocAnnulationAdmin(course); if (ba) { const h = entete.firstElementChild.querySelector("h3"); entete.firstElementChild.insertBefore(ba, h || null); } }
 
   const corps = document.createElement("div");
   corps.className = "corps-course-admin";
@@ -7417,8 +7626,13 @@ async function chargerCaisse() {
   // Feuilles de route de cette date, pour afficher la recette au taximètre (index de départ)
   // à côté de la caisse (encaissements par course) — les deux doivent normalement concorder.
   const { data: feuillesJour } = await supabase
-    .from("feuilles_route").select("chauffeur_id, recettes_debut, recettes_fin, total_pourboires, verrouillee")
+    .from("feuilles_route").select("id, chauffeur_id, vehicule_id, plaque, heure_debut, heure_fin, created_at, recettes_debut, recettes_fin, total_pourboires, verrouillee, signee, vehicules:vehicule_id(nom, plaque)")
     .eq("date_service", dateChoisie);
+  // Lignes de ces feuilles : détail de la caisse PAR FEUILLE (une voiture = une feuille)
+  const idsFeuillesJour = (feuillesJour || []).map(f => f.id).filter(Boolean);
+  const { data: lignesCaisseJour } = idsFeuillesJour.length
+    ? await supabase.from("lignes_feuille_route").select("feuille_route_id, sommes_percues, prix_taximetre, mode_paiement, type_course, pourboire").in("feuille_route_id", idsFeuillesJour)
+    : { data: [] };
   const feuillesParChauffeur = {};
   (feuillesJour || []).forEach(f => {
     if (!feuillesParChauffeur[f.chauffeur_id]) feuillesParChauffeur[f.chauffeur_id] = [];
@@ -7474,10 +7688,32 @@ async function chargerCaisse() {
       ? feuillesChauffeur.reduce((s, f) => s + (Number(f.total_pourboires) > 0 ? Number(f.total_pourboires) : 0), 0)
       : coursesChauffeur.reduce((s, c) => s + (Number(c.pourboire) > 0 ? Number(c.pourboire) : 0), 0);
 
+    // Détail par feuille (par voiture) : chaque feuille a sa propre caisse ; le total chauffeur en dessous
+    const detailFeuilles = feuillesChauffeur.slice().sort((a, b) => String(a.heure_debut || a.created_at || "").localeCompare(String(b.heure_debut || b.created_at || ""))).map(f => {
+      const lf = (lignesCaisseJour || []).filter(l => l.feuille_route_id === f.id);
+      const recette = recetteLignesFA(lf);
+      const especes = Math.round(lf.filter(l => !estLigneRelais(l) && (l.mode_paiement === "cash" || l.mode_paiement === "uber_cash"))
+        .reduce((s, l) => s + (parseFloat(l.sommes_percues) > 0 ? parseFloat(l.sommes_percues) : 0), 0) * 100) / 100;
+      const pb = pourboiresLignesFA(lf);
+      const nomV = (f.vehicules && f.vehicules.nom) || "Sans véhicule";
+      const plaque = f.plaque || (f.vehicules && f.vehicules.plaque) || "";
+      return { f, recette, especes, pb, nb: lf.filter(l => !estLigneRelais(l)).length,
+        libelle: `${/trafic|vito|transit|vivaro|space|van|sprinter/i.test(nomV) ? "🚐" : "🚗"} ${nomV}${plaque ? " " + plaque : ""}`,
+        heures: `${f.heure_debut ? String(f.heure_debut).slice(0, 5) : "--:--"} → ${f.heure_fin ? String(f.heure_fin).slice(0, 5) : "en cours"}` };
+    });
+    const totD = detailFeuilles.reduce((t, d) => ({ recette: t.recette + d.recette, especes: t.especes + d.especes, pb: t.pb + d.pb, nb: t.nb + d.nb }), { recette: 0, especes: 0, pb: 0, nb: 0 });
+    const blocParFeuille = detailFeuilles.length ? `
+      <div class="caisse-par-feuille" style="margin:6px 0 10px; border:1px solid #dcdcda; border-radius:10px; padding:8px 10px; background:#fafaf8;">
+        <div style="font-weight:800; font-size:.85rem; margin-bottom:4px;">🧾 Par feuille de route (une voiture = une feuille)</div>
+        ${detailFeuilles.map(d => `<div class="caisse-ligne caisse-feuille-vehicule" data-feuille-id="${esc(d.f.id)}"><span style="flex:1; min-width:0;"><b>${esc(d.libelle)}</b> · ${esc(d.heures)} · ${d.f.verrouillee || d.f.signee ? "✅ signée" : "📝 à compléter"}<br><small>${d.nb} course(s) · espèces ${d.especes.toFixed(2)} € · 💶 pourboires ${d.pb.toFixed(2)} €</small></span><b style="white-space:nowrap; margin-left:8px;">${d.recette.toFixed(2)} €</b></div>`).join("")}
+        ${detailFeuilles.length > 1 ? `<div class="caisse-ligne caisse-total-chauffeur" style="border-top:2px solid #cfcfcd; font-weight:800;"><span style="flex:1; min-width:0;">Total ${esc(ch.nom || "chauffeur")} (${detailFeuilles.length} feuilles)<br><small>espèces ${totD.especes.toFixed(2)} € · 💶 pourboires ${totD.pb.toFixed(2)} €</small></span><b style="white-space:nowrap; margin-left:8px;">${totD.recette.toFixed(2)} €</b></div>` : ""}
+      </div>` : "";
+
     const div = document.createElement("div");
     div.className = "caisse-chauffeur";
     div.innerHTML = `
       <h3>${esc(ch.nom || "Chauffeur")}</h3>
+      ${blocParFeuille}
       <div class="caisse-ligne"><span>Fond de caisse du matin</span><b>${montantFond.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>💵 Cash — ${coursesCash.length} course(s)</span><b>${totalCash.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>💳 Carte — ${coursesCarte.length} course(s)</span><b>${somme(coursesCarte).toFixed(2)} €</b></div>
@@ -7989,6 +8225,76 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
   }
   const sansFeuille = [];
   const enCoursNuit = dateChoisie === dateLocaleISO();
+  if (chauffeurFiltre && chauffeursAffiches.length === 1) {
+    const chauffeur = chauffeursAffiches[0];
+    const entrees = [
+      ...feuillesNuit.filter(f => f.chauffeur_id === chauffeur.id).map(f => ({ f, nuit: true, lignes: trierLignesChrono(lignesNuit.filter(l => l.feuille_route_id === f.id), f) })),
+      ...(feuilles || []).filter(f => f.chauffeur_id === chauffeur.id).map(f => ({ f, nuit: false, lignes: trierLignesChrono((toutesLignes || []).filter(l => l.feuille_route_id === f.id), f) }))
+    ];
+    const titre = document.createElement("div");
+    titre.className = "titre-chauffeur-jour-fa";
+    titre.textContent = "👤 " + (chauffeur.nom || "Chauffeur") + " — " + new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+    conteneur.appendChild(titre);
+    if (entrees.length) {
+      const cleOnglet = chauffeur.id + "|" + dateChoisie;
+      let actif = ongletActifFA.get(cleOnglet);
+      if (!entrees.some(e => e.f.id === actif)) {
+        const ouverte = entrees.find(e => !e.f.verrouillee);
+        actif = (ouverte || entrees[entrees.length - 1]).f.id;
+      }
+      const rangee = document.createElement("div");
+      rangee.id = "onglets-feuilles-fa";
+      rangee.setAttribute("role", "tablist");
+      const zoneCarte = document.createElement("div");
+      zoneCarte.id = "feuille-onglet-fa";
+      const rendre = () => {
+        rangee.innerHTML = "";
+        entrees.forEach(e => {
+          const f = e.f, v = f.vehicules || {};
+          const nomV = v.nom || (f.vehicule_id ? "Véhicule" : "Sans véhicule");
+          const plaque = f.plaque || v.plaque || "";
+          const signee = !!(f.verrouillee || f.signee);
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "onglet-feuille-fa " + (signee ? "signee" : "a-completer") + (f.id === actif ? " actuelle" : "");
+          b.dataset.feuilleId = f.id;
+          if (f.id === actif) b.setAttribute("aria-current", "page");
+          b.innerHTML = `<span class="of-nom">${/trafic|vito|transit|vivaro|space|van|sprinter/i.test(nomV) ? "🚐" : "🚗"} ${esc(nomV)}</span>`
+            + (plaque ? `<span class="of-plaque">${esc(plaque)}</span>` : "")
+            + `<span class="of-statut" style="color:${f.id === actif ? "#fff" : signee ? "#1f6b3f" : "#8a4a00"};">${signee ? "✅ signée" : "📝 à compléter"}${e.nuit ? " · 🌙 nuit du " + esc(jjmmFA(f.date_service)) : ""} · ${f.heure_debut ? esc(String(f.heure_debut).slice(0, 5)) : "--:--"} → ${f.heure_fin ? esc(String(f.heure_fin).slice(0, 5)) : "…"}</span>`;
+          b.addEventListener("click", () => { if (actif === f.id) return; actif = f.id; ongletActifFA.set(cleOnglet, actif); rendre(); });
+          rangee.appendChild(b);
+        });
+        const e = entrees.find(x => x.f.id === actif);
+        const f = e.f, v = f.vehicules || {};
+        const signee = !!(f.verrouillee || f.signee);
+        feuillesDepliees.add(f.id);   // onglet : la feuille s'affiche en entier (une seule à l'écran)
+        const carte = construireFeuilleAdmin(f, e.lignes, e.nuit ? f.date_service : dateChoisie, chauffeur, null, 1);
+        carte.classList.add("feuille-onglet-fa");
+        const ent = document.createElement("div");
+        ent.className = "entete-vehicule-fa";
+        ent.innerHTML = `${esc(((v.nom || "Sans véhicule") + " " + (f.plaque || v.plaque || "")).trim())} — ${esc(jjmmFA(f.date_service))} — ${esc(chauffeur.nom || "")}`
+          + `<span class="badge-fa" style="background:${signee ? "#d8f0e0" : "#ffe1a8"}; color:${signee ? "#1f6b3f" : "#7a4a00"};">${signee ? "✅ signée" : "📝 à compléter"}</span>`
+          + `<div style="font-size:.8rem; font-weight:600; opacity:.85; margin-top:4px;">Tout ce qui suit (heures, km, courses, caisse, impression) concerne uniquement cette voiture.</div>`;
+        if (e.nuit) {
+          const bandeau = document.createElement("div");
+          bandeau.className = "bandeau-nuit-fa";
+          bandeau.textContent = (enCoursNuit ? "🌙 Service de nuit en cours — " : "🌙 Service de nuit (non signé) — ")
+            + jjmmFA(f.date_service) + " → " + jjmmFA(dateChoisie) + " · feuille datée du " + new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE");
+          carte.firstElementChild.insertBefore(bandeau, carte.firstElementChild.firstChild);
+          carte.classList.add("feuille-nuit-fa");
+        }
+        ajouterBoutonNouvelleFeuilleFA(carte, chauffeur, dateChoisie, f);
+        zoneCarte.innerHTML = "";
+        zoneCarte.appendChild(ent);
+        zoneCarte.appendChild(carte);
+      };
+      conteneur.appendChild(rangee);
+      conteneur.appendChild(zoneCarte);
+      rendre();
+      return;
+    }
+  }
   // 1) D'abord les services de nuit (feuille de la veille), bien visibles
   chauffeursAffiches.forEach(chauffeur => {
     const nuitChauffeur = feuillesNuit.filter(f => f.chauffeur_id === chauffeur.id);
@@ -8057,7 +8363,30 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
   }
   if (!conteneur.querySelector(".feuille-admin") && !sansFeuille.length) conteneur.innerHTML = '<p id="feuilles-vide">Aucune feuille ce jour-là.</p>';
 }
-document.getElementById("filtre-chauffeur-fa").addEventListener("change", () => chargerFeuillesAdmin());
+document.getElementById("filtre-chauffeur-fa").addEventListener("change", () => { rendrePucesChauffeursFA(); chargerFeuillesAdmin(); });
+// Puces « chauffeur » (chemin principal : chauffeur → jour → onglet par véhicule) ; « 👥 Tous » = vue d'ensemble du jour
+function rendrePucesChauffeursFA() {
+  const zone = document.getElementById("puces-chauffeurs-fa");
+  const sel = document.getElementById("filtre-chauffeur-fa");
+  if (!zone || !sel) return;
+  const opts = [...sel.options];
+  const cle = opts.map(o => o.value + ":" + o.textContent).join("|") + "#" + sel.value;
+  if (zone.dataset.cle === cle) return;
+  zone.dataset.cle = cle;
+  zone.innerHTML = "";
+  sel.style.display = opts.length > 1 ? "none" : "";   // les puces remplacent le menu déroulant
+  opts.forEach(o => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.chauffeurId = o.value;
+    b.className = (o.value === sel.value ? "actif" : "") + (o.value ? "" : " tous");
+    b.textContent = o.value ? "👤 " + o.textContent : "👥 Tous (vue d'ensemble)";
+    b.addEventListener("click", () => { if (sel.value === o.value) return; sel.value = o.value; sel.dispatchEvent(new Event("change")); });
+    zone.appendChild(b);
+  });
+}
+// Onglet (feuille) choisi par chauffeur + jour
+const ongletActifFA = new Map();
 
 // ================== PLUSIEURS FEUILLES PAR CHAUFFEUR ET PAR JOUR ==================
 // Un chauffeur (ex. le gérant qui roule 18–24 h d'affilée) peut avoir plusieurs feuilles le même jour :
@@ -8655,7 +8984,8 @@ async function chargerAImprimerFA() {
     const row = document.createElement("div");
     row.className = "ligne-a-imprimer-fa";
     const nom = f.nom_chauffeur_affiche || f.profils?.nom || "Chauffeur";
-    row.innerHTML = `<span class="lai-txt">${esc(new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }))} · <b>${esc(nom)}</b></span>`;
+    const vehA = ((f.vehicules?.nom || "") + " " + (f.plaque || f.vehicules?.plaque || "")).trim();
+    row.innerHTML = `<span class="lai-txt">${esc(new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }))} · <b>${esc(nom)}</b>${vehA ? " · 🚗 " + esc(vehA) : ""}</span>`;
     const bImp = document.createElement("button");
     bImp.type = "button"; bImp.textContent = "🖨️ Imprimer / PDF";
     bImp.addEventListener("click", () => ouvrirApercuHistoriqueFeuille(f, { nom }));
@@ -8671,7 +9001,9 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
 
   const entete = document.createElement("div");
   const identiteFeuille = feuille.identite_exploitant || feuille.vehicules?.identite_exploitant || IDENTITE_EXPLOITANT;
-  const labelFeuille = numeroFeuille ? ` — Feuille ${numeroFeuille}/${totalFeuillesChauffeur}` : "";
+  // Plusieurs feuilles le même jour = plusieurs voitures : chaque carte est nommée par SA voiture (jamais « Feuille 1/2 »)
+  const vehLabelFA = ((feuille.vehicules?.nom || "Sans véhicule") + " " + (feuille.plaque || feuille.vehicules?.plaque || "")).trim();
+  const labelFeuille = numeroFeuille ? ` — 🚗 ${vehLabelFA}` : "";
   lignes = trierLignesChrono(lignes, feuille);
   const anomaliesFA = anomaliesFeuille(lignes, feuille);
   if (anomaliesFA.total) div.classList.add("feuille-anomalie-fa");
@@ -8706,12 +9038,12 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     const btn = e.currentTarget;
     const nom = feuille.profils?.nom || "ce chauffeur";
     if (feuille.verrouillee) {
-      if (!confirm(`Rouvrir la feuille de ${nom} ?\n\nElle redevient modifiable et réapparaît normalement dans son application.`)) return;
+      if (!(await confirmerDansPageFA(`Rouvrir la feuille de ${nom} ?\n\nElle redevient modifiable et réapparaît normalement dans son application.`, "🔓 Rouvrir", "Annuler", "#b86e00"))) return;
       btn.disabled = true; btn.textContent = "Réouverture…";
       const { error } = await supabase.rpc("admin_deverrouiller_feuille", { p_feuille_id: feuille.id });
       if (error) { alert("Erreur : " + error.message); btn.disabled = false; return; }
     } else {
-      if (!confirm(`Signer et clôturer la feuille de ${nom} ?\n\nLe chauffeur ne pourra plus la modifier (tu pourras toujours la rouvrir).`)) return;
+      if (!(await confirmerDansPageFA(`Signer et clôturer la feuille de ${nom} ?\n\nLe chauffeur ne pourra plus la modifier (tu pourras toujours la rouvrir).`, "✍️ Signer et clôturer", "Annuler"))) return;
       btn.disabled = true; btn.textContent = "Clôture…";
       const { error } = await supabase.from("feuilles_route").update({ verrouillee: true, signee: true }).eq("id", feuille.id);
       if (error) { alert("Erreur : " + error.message); btn.disabled = false; return; }
@@ -9879,6 +10211,25 @@ function afficherImpressionDansPage(html) {
   });
   ifr.srcdoc = html;
   zone.appendChild(ifr);
+  // Téléphone : la page A4 garde sa vraie largeur dans l'aperçu (toutes les colonnes, comme le PDF),
+  // l'aperçu entier est réduit à la largeur de l'écran — rien n'est coupé à gauche/droite.
+  const LARGEUR_APERCU_A4 = 830;
+  const ajusterApercu = () => {
+    if (!ifr.isConnected) { window.removeEventListener("resize", ajusterApercu); return; }
+    const w = zone.clientWidth, h = zone.clientHeight;
+    if (!w || !h) return;
+    const k = Math.min(1, w / LARGEUR_APERCU_A4);
+    if (k < 1) {
+      zone.style.overflow = "hidden";
+      ifr.style.width = LARGEUR_APERCU_A4 + "px"; ifr.style.height = Math.ceil(h / k) + "px";
+      ifr.style.transformOrigin = "0 0"; ifr.style.transform = "scale(" + k + ")";
+    } else {
+      zone.style.overflow = "auto"; ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.transform = "";
+    }
+    ifr.dataset.echelle = String(k);
+  };
+  requestAnimationFrame(ajusterApercu);
+  window.addEventListener("resize", ajusterApercu);
   ov.appendChild(barre); ov.appendChild(zoneStatut); ov.appendChild(zone);
   document.body.appendChild(ov);
   bFermer.addEventListener("click", () => ov.remove());
@@ -9948,7 +10299,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
   const totauxImpression = totauxLignesFA(lignes);
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <title>Feuille de route — ${esc(chauffeur.nom) || ""} — ${esc(dateLisible)}</title>
+  <title>Feuille de route — ${esc(chauffeur.nom) || ""} — ${esc(dateLisible)} — ${esc(((vehicule?.nom || "") + " " + (feuille.plaque || vehicule?.plaque || "")).trim())}</title>
   <style>
     @page { size: A4; margin: 8mm; }
     * { box-sizing: border-box; }

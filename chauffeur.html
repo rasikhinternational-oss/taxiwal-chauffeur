@@ -393,8 +393,10 @@ window.onerror = function(msg, url, line, col, err) {
   .ttw-chip.actif{ border-color:#1d4f86; background:#e8f0fa; color:#1d4f86; }
   .ttw-boite textarea{ width:100%; box-sizing:border-box; min-height:80px; padding:12px; border-radius:10px; border:1px solid #cfcfcd; font-size:1rem; font-family:inherit; }
   .ttw-erreur{ color:#b3141b; font-weight:700; font-size:.9rem; min-height:1em; margin-top:6px; }
-  .course-actions{ display:flex; gap:8px; }
-  .course-actions button{ font-size:.9rem; padding:10px; }
+  .course-actions{ display:flex; flex-wrap:wrap; gap:8px; }
+  .course-actions button{ font-size:.9rem; padding:10px; flex:1 1 0; min-width:0; }
+  /* 4 boutons (Accepter + GPS + Absent + Démarrer) : « Démarrer » passe sur sa propre ligne pour ne pas déborder de la carte */
+  .course-actions:has(> button:nth-child(4)) .btn-demarrer-course{ flex-basis:100%; }
   #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
   .course.carte-en-grand{ position:fixed; inset:0; z-index:650; margin:0 !important; border-radius:0 !important; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(env(safe-area-inset-bottom,0px) + 90px) !important; font-size:1.06rem; }
   .course.carte-en-grand button, .course.carte-en-grand select, .course.carte-en-grand input{ font-size:1rem; }
@@ -2465,8 +2467,8 @@ function construireCarteCourse(course) {
 ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse).map(a => `<b>${a.type === "prise" ? "📍 Prise en charge" : "🏁 Dépose"} :</b> ${esc(a.adresse)}<br>`).join("")}
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
       ${ligneVehicule}${ligneGroupe}
-      ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
-      ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
+      ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}<br>` : ""}
+      ${course.notes ? `<b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
     ${blocEncaisser}
     ${course.code_verification && (course.statut === "assignee" || course.statut === "en_cours") ? `
@@ -2824,8 +2826,8 @@ function construireCarteDemandeOuverte(course, maProposition) {
       <b>Départ :</b> ${esc(course.adresse_depart)}<br>
 ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse).map(a => `<b>${a.type === "prise" ? "📍 Prise en charge" : "🏁 Dépose"} :</b> ${esc(a.adresse)}<br>`).join("")}
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
-      ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}` : ""}
-      ${course.notes ? `<br><b>Note :</b> ${esc(course.notes)}` : ""}
+      ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}<br>` : ""}
+      ${course.notes ? `<b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
     <div class="form-proposition">
       <label>Ton prix proposé (€)</label>

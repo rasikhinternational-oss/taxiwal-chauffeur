@@ -172,10 +172,12 @@ document.addEventListener("focusin", (e) => {
 });
 // Index de compteur (3 chiffres) : 8 s'affiche « 008 », 22 « 022 »
 const CHAMPS_INDEX = ["index_depart", "embarquement_index", "debarquement_index"];
+// Un index tapé en entier (ex. 54078) s'affiche comme les autres, sur 3 chiffres (« 078 ») ;
+// la valeur enregistrée n'est pas modifiée et le contrôle (ecartIndex) compare modulo 1000.
 function formatIndex(v) {
   if (v === null || v === undefined || v === "") return "";
-  const n = Number(v);
-  if (Number.isInteger(n) && n >= 0 && n < 1000) return String(n).padStart(3, "0");
+  const n = Number(String(v).replace(",", "."));
+  if (Number.isInteger(n) && n >= 0) return String(n % 1000).padStart(3, "0");
   return String(v);
 }
 
@@ -614,13 +616,13 @@ window.onerror = function(msg, url, line, col, err) {
   :root{ color-scheme:light; --noir:#f7f7f5; --noir-2:#ffffff; --rouge:#c81e2c; --vert:#1f8a4c; --gris:#6b6b6b; --blanc:#1c1c1c; }
   *{box-sizing:border-box;}
   body{ margin:0; background:var(--noir); color:var(--blanc); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:60px; }
-  header{ padding:calc(20px + env(safe-area-inset-top)) 20px 20px; border-bottom:1px solid #dcdcda; position:relative; top:0; background:var(--noir); z-index:5; display:flex; flex-direction:column; }
+  header{ padding:calc(12px + env(safe-area-inset-top)) 20px 12px; border-bottom:1px solid #dcdcda; position:relative; top:0; background:var(--noir); z-index:5; display:flex; flex-direction:column; }
   header h1{ margin:0; font-size:1.05rem; }
   header p{ margin:4px 0 0; color:var(--gris); font-size:.8rem; }
   button{ font-family:inherit; cursor:pointer; }
-  .bloc{ margin:16px 20px; background:var(--noir-2); border-radius:12px; padding:16px; }
+  .bloc{ margin:12px 20px; background:var(--noir-2); border-radius:12px; padding:16px; }
   .bloc h2{ margin:0 0 12px; font-size:.9rem; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
-  .bloc-repliable{ margin:16px 20px; background:var(--noir-2); border-radius:12px; overflow:hidden; }
+  .bloc-repliable{ margin:12px 20px; background:var(--noir-2); border-radius:12px; overflow:hidden; }
   .bloc-repliable .entete-repliable{ display:flex; justify-content:space-between; align-items:center; padding:16px; cursor:pointer; }
   .bloc-repliable .entete-repliable h2{ margin:0; font-size:.9rem; color:var(--gris); text-transform:uppercase; letter-spacing:.03em; }
   .bloc-repliable .entete-repliable .chevron-repli{ color:var(--gris); font-size:.9rem; flex-shrink:0; margin-left:10px; }
@@ -636,7 +638,7 @@ window.onerror = function(msg, url, line, col, err) {
   .identite{ font-size:.85rem; margin:2px 0; }
   .identite b{ color:var(--blanc); }
   .identite span{ color:var(--gris); }
-  #btn-imprimer-fr{ width:100%; padding:12px; border-radius:10px; border:none; background:#3b82c4; color:#fff; font-weight:600; font-size:.95rem; margin-bottom:14px; }
+  #btn-imprimer-fr{ width:100%; padding:12px; border-radius:10px; border:none; background:#3b82c4; color:#fff; font-weight:600; font-size:.95rem; margin-bottom:10px; }
   .ligne-course{ background:#f0f1ee; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #dcdcda; }
   .ligne-course.ligne-anomalie{ border:2px solid #c81e2c; background:#fdecee; }
   .ligne-course.ligne-relais{ border:2px dashed #8cc79f; background:#f2faf3; padding:10px 12px; }
@@ -717,7 +719,7 @@ window.onerror = function(msg, url, line, col, err) {
   #statut-feuille{ display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px; background:#dcdcda; color:var(--gris); }
   #statut-feuille.verrouillee{ background:#f9d6d6; color:#b83232; }
   #erreur{ color:var(--rouge); font-size:.85rem; margin:10px 20px; }
-  #btn-retour{ display:flex; align-items:center; justify-content:center; gap:6px; color:#fff; text-decoration:none; font-size:1.05rem; font-weight:700; background:var(--rouge); padding:14px 20px; border-radius:12px; margin-bottom:14px; width:100%; }
+  #btn-retour{ display:flex; align-items:center; justify-content:center; gap:6px; color:#fff; text-decoration:none; font-size:1.05rem; font-weight:700; background:var(--rouge); padding:12px 20px; border-radius:12px; margin-bottom:8px; width:100%; }
   .etat-sauvegarde{ font-size:.72rem; min-height:1.1em; margin-bottom:6px; }
   .etat-sauvegarde.en-cours{ color:var(--gris); }
   .etat-sauvegarde.ok{ color:var(--vert); font-weight:600; }
@@ -726,12 +728,6 @@ window.onerror = function(msg, url, line, col, err) {
   #resume-signee .ligne-resume{ display:flex; justify-content:space-between; font-size:.88rem; margin-bottom:6px; color:var(--gris); }
   #resume-signee .ligne-resume b{ color:var(--blanc); }
   #btn-voir-details{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.88rem; font-weight:600; margin-top:10px; }
-  .section-passee{ margin:16px 20px; background:#eef0ee; border-radius:12px; padding:14px; border-left:4px solid var(--vert); }
-  .section-passee .sp-titre{ font-weight:700; font-size:.92rem; margin-bottom:2px; }
-  .section-passee .sp-sous{ color:var(--gris); font-size:.8rem; margin-bottom:8px; }
-  .section-passee .sp-ligne{ display:flex; justify-content:space-between; font-size:.85rem; padding:3px 0; }
-  .section-passee .sp-course{ font-size:.82rem; color:var(--gris); padding:4px 0; border-top:1px dashed #cfcfcd; margin-top:4px; }
-  #vehicule-actuel-titre{ font-weight:700; color:var(--vert); font-size:.85rem; margin-bottom:6px; }
   .ligne-course.plein-ecran{ position:fixed; inset:0; z-index:900; margin:0; border-radius:0; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#f0f1ee; padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 90px); }
   body.mode-plein-ecran{ overflow:hidden; }
   .btn-plein-ecran{ width:100%; background:#2f6fb5; color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; font-size:1rem; margin-bottom:10px; }
@@ -794,7 +790,7 @@ window.onerror = function(msg, url, line, col, err) {
 
 <header>
   <a href="chauffeur.html" id="btn-retour">← Retour</a>
-  <button id="btn-imprimer-fr">🖨️ Imprimer / PDF (contrôle)</button>
+  <button id="btn-imprimer-fr">🖨️ Imprimer / PDF de cette feuille (contrôle)</button>
   <h1>Feuille de route</h1>
   <p id="sous-titre">Chargement…</p>
 </header>
@@ -805,7 +801,6 @@ window.onerror = function(msg, url, line, col, err) {
 
 <div id="sections-passees"></div>
 
-<p id="vehicule-actuel-titre" style="margin:16px 20px 0;">🚗 Véhicule actuel</p>
 <div class="bloc" id="bloc-identite">
   <h2>Identité</h2>
   <p class="identite"><span>Identité de l'exploitant :</span> <b id="identite-societe">—</b></p>
@@ -936,11 +931,10 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <div class="bloc" id="bloc-caisse">
-  <h2>💰 Caisse du jour</h2>
+  <h2 id="titre-caisse">💰 Caisse de cette feuille</h2>
   <div id="contenu-caisse">Chargement…</div>
 </div>
 
-<div style="height:90px"></div>
 <div class="bloc" id="bloc-signature">
   <h2>🌙 Fin de journée</h2>
   <p id="avertissement">À faire <b>seulement quand ta journée est terminée</b>. Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
@@ -955,7 +949,7 @@ window.onerror = function(msg, url, line, col, err) {
 </div>
 
 <p id="erreur"></p>
-<div style="margin:18px 20px 110px;"><button type="button" id="btn-deconnexion-fr" style="width:100%; padding:13px; border-radius:12px; border:1px solid #e3b4b8; background:#fff; color:var(--rouge); font-weight:700; font-size:.95rem;">🔒 Se déconnecter</button></div>
+<div style="margin:14px 20px 16px;"><button type="button" id="btn-deconnexion-fr" style="width:100%; padding:13px; border-radius:12px; border:1px solid #e3b4b8; background:#fff; color:var(--rouge); font-weight:700; font-size:.95rem;">🔒 Se déconnecter</button></div>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script>
@@ -1920,13 +1914,18 @@ let changementVoitureFeuilleEnCours = false;
 async function changerVoitureDeLaFeuille(vImpose) {
   if (vImpose && vImpose.type === "click") vImpose = null;
   if (!feuilleActuelle || feuilleActuelle.verrouillee || changementVoitureFeuilleEnCours) return false;
+  if (feuilleADesLignes()) {
+    alert("🚗 Cette feuille a déjà des courses : sa voiture ne peut plus être changée.\n\nUne voiture = une feuille. Utilise « 🚗 Je change de voiture → nouvelle feuille » : cette feuille-ci reste ouverte pour être complétée et signée.");
+    try { majControleVoitureFeuille(); } catch (e) {}
+    return false;
+  }
   changementVoitureFeuilleEnCours = true;
   try {
     let v = vImpose || null;
     if (!v) {
       const { liste, enLigne } = await listeVehiculesPourChoix();
       v = await choisirVehicule("🚗 Changer la voiture de cette feuille", { liste,
-        note: enLigne ? "La feuille reste la même — vérifie ensuite les compteurs de DÉBUT." : "📴 Hors ligne : voitures gardées sur le téléphone." });
+        note: (enLigne ? "Seulement pour corriger un mauvais choix (feuille sans course) — vérifie ensuite les compteurs de DÉBUT." : "📴 Hors ligne : voitures gardées sur le téléphone.") });
       if (!v) return false;
     }
     if (v.id === feuilleActuelle.vehicule_id) return false;
@@ -2118,7 +2117,48 @@ function lireFeuilleChoisie(uid) {
     return x && x.uid === uid && (Date.now() - x.quand) < DUREE_MAX_SERVICE_MS ? x.id : null;
   } catch (e) { return null; }
 }
-// Feuilles de la même date que la feuille actuelle (impression, caisse du jour, véhicules précédents)
+// UNE FEUILLE PAR VÉHICULE : impression, caisse, totaux = la feuille actuelle seulement.
+// « Toyota Corolla break TXAQ203 » : voiture de la feuille (pour les titres)
+function libelleVehiculeFeuille(f) {
+  f = f || feuilleActuelle;
+  if (!f) return "";
+  const v = (vehiculesActifsCache || []).find(x => x.id === f.vehicule_id);
+  const nom = (v && v.nom) || "";
+  const plaque = f.plaque || (v && v.plaque) || "";
+  return [nom, plaque].filter(Boolean).join(" ") || (f.vehicule_id ? "véhicule" : "sans véhicule");
+}
+// Feuille actuelle avec au moins une ligne de course : sa voiture ne se change plus (→ nouvelle feuille)
+function feuilleADesLignes() { return (lignesActuelles || []).length > 0; }
+function majEnteteFeuilleVehicule() {
+  const ent = document.getElementById("entete-feuille-vehicule");
+  if (!ent || !feuilleActuelle) return;
+  const f = feuilleActuelle;
+  const v = (vehiculesActifsCache || []).find(x => x.id === f.vehicule_id);
+  const nomV = libelleVehiculeFeuille(f);
+  const chauf = ((document.getElementById("identite-chauffeur") || {}).textContent || "").trim();
+  const signee = !!(f.verrouillee || f.signee);
+  const txt = `${emojiVehicule(v && v.nom)} ${nomV} — ${jjmm(f.date_service)}${chauf && chauf !== "—" ? " — " + chauf : ""}`;
+  const badge = signee ? "✅ signée" : "📝 à compléter";
+  if (ent.dataset.txt === txt + badge) return;
+  ent.dataset.txt = txt + badge;
+  ent.innerHTML = `<div style="font-size:1.12rem; font-weight:800; line-height:1.25;">${esc(txt)}</div>`
+    + `<span id="badge-statut-feuille-vehicule" style="display:inline-block; margin-top:6px; padding:3px 10px; border-radius:999px; font-weight:800; font-size:.9rem; background:${signee ? "#d8f0e0" : "#ffe1a8"}; color:${signee ? "#1f6b3f" : "#7a4a00"};">${badge}</span>`
+    + `<span style="font-size:.8rem; opacity:.85; margin-left:8px;">Tout ce qui est affiché ici concerne uniquement cette voiture.</span>`;
+}
+function majControleVoitureFeuille() {
+  try { majEnteteFeuilleVehicule(); } catch (e) {}
+  const avecLignes = feuilleADesLignes();
+  const b = document.getElementById("btn-changer-voiture-feuille");
+  if (b) b.style.display = avecLignes ? "none" : "";
+  const sel = document.getElementById("identite-vehicule-select");
+  if (sel && feuilleActuelle) {
+    sel.disabled = !!feuilleActuelle.verrouillee || avecLignes;
+    sel.title = avecLignes ? "Cette feuille a déjà des courses : pour une autre voiture, « Je change de voiture → nouvelle feuille »." : "";
+  }
+  const t = document.getElementById("titre-caisse");
+  if (t && feuilleActuelle) t.textContent = "💰 Caisse de cette feuille (" + libelleVehiculeFeuille() + ")";
+}
+// (gardée pour compatibilité : n'est plus utilisée pour l'impression ni la caisse)
 function feuillesMemeDate() {
   if (!feuilleActuelle) return toutesLesFeuillesDuJour.slice();
   const l = toutesLesFeuillesDuJour.filter(f => f.date_service === feuilleActuelle.date_service).map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
@@ -2154,8 +2194,7 @@ function mettreAJourAffichageDate() {
     document.getElementById("identite-date").textContent = plage;
     if (!feuilleActuelle.verrouillee && !feuilleActuelle.signee) {
       // Début du service = feuille la plus ancienne de la nuit (avant un éventuel changement de voiture)
-      const debuts = [feuilleActuelle, ...toutesLesFeuillesDuJour.filter(f => f.date_service === ds)]
-        .map(debutServiceFeuille).filter(t => t !== null);
+      const debuts = [feuilleActuelle].map(debutServiceFeuille).filter(t => t !== null);
       const debut = debuts.length ? new Date(Math.min(...debuts)) : null;
       const quand = debut
         ? "le " + jjmm(dateLocaleISO(debut)) + " à " + String(debut.getHours()).padStart(2, "0") + ":" + String(debut.getMinutes()).padStart(2, "0")
@@ -2365,64 +2404,138 @@ function mettreAJourAffichageDate() {
 // Affiche uniquement le bouton de changement de véhicule — les véhicules déjà utilisés
 // aujourd'hui restent visibles en lecture seule en haut de la même page (afficherSectionsPassees),
 // plus besoin de cliquer sur un onglet pour les consulter.
+// ================== ONGLETS : UNE FEUILLE PAR VÉHICULE ==================
+// En haut : ‹ date › puis un onglet par voiture utilisée ce jour-là ([🚐 Renault TXAW084 ✅ signée]
+// [🚗 Toyota TXAQ203 📝 à compléter] [➕ Autre voiture]). Un onglet = une feuille, rien n'est mélangé.
+let jourOnglets = null;                 // date affichée dans les onglets (null = date de la feuille ouverte)
+const cacheOngletsJour = new Map();     // date → feuilles de ce jour (autres jours, lecture légère)
+function emojiVehicule(nom) { return /trafic|vito|transit|vivaro|space|van|sprinter|caddy|tourneo|minibus/i.test(String(nom || "")) ? "🚐" : "🚗"; }
+function decalerJourISO(iso, n) {
+  const [y, m, d] = String(iso).split("-").map(Number);
+  return dateLocaleISO(new Date(y, m - 1, d + n, 12));
+}
+function libelleJourCourt(iso) {
+  try { return new Date(iso + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit" }); }
+  catch (e) { return jjmm(iso); }
+}
+function ongletFeuille(f, actuelle, surClic) {
+  const v = (vehiculesActifsCache || []).find(x => x.id === f.vehicule_id);
+  const nom = (v && v.nom) || (f.vehicule_id ? "Véhicule" : "Sans véhicule");
+  const plaque = f.plaque || (v && v.plaque) || "";
+  const signee = !!(f.verrouillee || f.signee);
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn-choix-feuille onglet-feuille" + (actuelle ? " actuelle" : "") + (signee ? " signee" : " a-completer");
+  b.dataset.feuilleId = f.id;
+  const coul = signee ? "#1f6b3f" : "#b86e00";
+  b.innerHTML = `<span style="display:block; font-weight:800; font-size:1.02rem; white-space:nowrap;">${emojiVehicule(nom)} ${esc(nom.split(" ").slice(0, 2).join(" "))}</span>`
+    + (plaque ? `<span style="display:block; font-weight:800; font-size:.95rem; letter-spacing:.03em; white-space:nowrap;">${esc(plaque)}</span>` : "")
+    + `<span style="display:block; margin-top:2px; font-size:.86rem; font-weight:800; color:${actuelle ? "#fff" : coul};">${signee ? "✅ signée" : "📝 à compléter"}${f.heure_debut ? " · dès " + esc(frHHMM(f.heure_debut)) : ""}</span>`;
+  b.style.cssText = "flex:1 1 150px; min-width:0; text-align:left; padding:10px 12px; border-radius:14px; min-height:64px; "
+    + (actuelle ? "background:#1d4f86; color:#fff; border:3px solid #0e2f55; box-shadow:0 3px 10px rgba(29,79,134,.35);"
+                : signee ? "background:#f1f6f2; color:#1a1a1a; border:2px solid #9fd0b0;" : "background:#fff1d6; color:#1a1a1a; border:3px solid #e08a00;");
+  if (!actuelle && surClic) b.addEventListener("click", surClic);
+  if (actuelle) b.setAttribute("aria-current", "page");
+  return b;
+}
+async function feuillesDuJourOnglets(jour) {
+  if (cacheOngletsJour.has(jour)) return cacheOngletsJour.get(jour);
+  let liste = [];
+  try {
+    const { data } = await supabase.from("feuilles_route").select("id, date_service, vehicule_id, plaque, heure_debut, signee, verrouillee, verifiee_admin, created_at")
+      .eq("chauffeur_id", uidFeuille).eq("date_service", jour).order("created_at", { ascending: true });
+    liste = data || [];
+  } catch (e) { liste = []; }
+  cacheOngletsJour.set(jour, liste);
+  return liste;
+}
 function afficherSelecteurFeuilles() {
   let barre = document.getElementById("barre-selecteur-feuilles");
   if (!barre) {
     barre = document.createElement("div");
     barre.id = "barre-selecteur-feuilles";
-    barre.style.cssText = "margin:14px 20px 0;";
+    barre.style.cssText = "margin:10px 16px 0;";
     document.getElementById("bloc-identite").insertAdjacentElement("beforebegin", barre);
   }
   barre.innerHTML = "";
-  // 1) Plusieurs feuilles (même jour / nuit d'hier + aujourd'hui) : liste pour passer de l'une à l'autre
-  const liste = trierFeuillesParDebut(toutesLesFeuillesDuJour.map(f => (feuilleActuelle && f.id === feuilleActuelle.id) ? feuilleActuelle : f));
-  if (liste.length > 1) {
-    const titre = document.createElement("div");
-    titre.style.cssText = "font-weight:800; font-size:.9rem; margin-bottom:6px; color:#333;";
-    titre.textContent = "📋 Mes feuilles de route (" + liste.length + ")";
-    barre.appendChild(titre);
-    const aujourdHui = dateLocaleISO();
-    liste.forEach(f => {
-      const actuelle = feuilleActuelle && f.id === feuilleActuelle.id;
-      const v = vehiculesActifsCache.find(x => x.id === f.vehicule_id);
-      const nuit = f.date_service < aujourdHui && estServiceEnCours(f, true);
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "btn-choix-feuille" + (actuelle ? " actuelle" : "");
-      b.dataset.feuilleId = f.id;
-      b.innerHTML = `<span style="display:block;">${actuelle ? "👉 " : ""}<b>${esc(nuit ? jjmm(f.date_service) + " → " + jjmm(aujourdHui) + " (nuit)" : jjmm(f.date_service))}</b>`
-        + ` · ${esc(v ? v.nom : "Véhicule ?")} · dès ${esc(frHHMM(f.heure_debut))}</span>`
-        + `<span style="display:block; font-size:.8rem; font-weight:600; color:${f.verrouillee ? "#1f6b3f" : "#8a5a00"};">${f.verrouillee ? "✅ Signée" : "📝 En cours"}${actuelle ? " — feuille affichée" : " — toucher pour l'ouvrir"}</span>`;
-      b.style.cssText = "display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:6px; border-radius:10px; font-size:.9rem; background:"
-        + (actuelle ? "#eef4fb; border:2px solid #1d4f86;" : "#fff; border:1px solid #ccc;");
-      if (!actuelle) b.addEventListener("click", () => basculerVersFeuille(f.id));
-      barre.appendChild(b);
+  const jourFeuille = feuilleActuelle ? feuilleActuelle.date_service : dateLocaleISO();
+  const jour = jourOnglets || jourFeuille;
+  const surJourFeuille = jour === jourFeuille;
+  // 1) ‹ date › (jours précédents : onglets par véhicule de ce jour-là)
+  const nav = document.createElement("div");
+  nav.id = "nav-jour-feuilles";
+  nav.style.cssText = "display:flex; align-items:center; gap:6px; margin-bottom:6px;";
+  const bt = (txt, id, fn, dis) => { const x = document.createElement("button"); x.type = "button"; x.id = id; x.textContent = txt; x.disabled = !!dis;
+    x.style.cssText = "padding:6px 12px; border-radius:10px; border:1px solid #bbb; background:#fff; font-weight:800; font-size:1rem;" + (dis ? "opacity:.35;" : "");
+    x.addEventListener("click", fn); return x; };
+  nav.appendChild(bt("‹", "btn-jour-precedent", () => { jourOnglets = decalerJourISO(jour, -1); afficherSelecteurFeuilles(); }));
+  const lib = document.createElement("div");
+  lib.id = "jour-onglets";
+  lib.style.cssText = "flex:1; text-align:center; font-weight:800; font-size:.92rem; color:#333;";
+  lib.textContent = "📋 " + libelleJourCourt(jour) + (jour === dateLocaleISO() ? " (aujourd'hui)" : "");
+  nav.appendChild(lib);
+  nav.appendChild(bt("›", "btn-jour-suivant", () => { jourOnglets = decalerJourISO(jour, 1); afficherSelecteurFeuilles(); }, jour >= dateLocaleISO()));
+  if (!surJourFeuille) nav.appendChild(bt("↩︎", "btn-jour-retour", () => { jourOnglets = null; afficherSelecteurFeuilles(); }));
+  barre.appendChild(nav);
+  // 2) Onglets (une feuille par véhicule)
+  const rangee = document.createElement("div");
+  rangee.id = "onglets-feuilles";
+  rangee.setAttribute("role", "tablist");
+  rangee.style.cssText = "display:flex; flex-wrap:wrap; gap:8px; padding:2px 0 8px; margin-bottom:8px;";
+  barre.appendChild(rangee);
+  if (surJourFeuille) {
+    const liste = trierFeuillesParDebut(toutesLesFeuillesDuJour.map(f => (feuilleActuelle && f.id === feuilleActuelle.id) ? feuilleActuelle : f));
+    if (feuilleActuelle && !liste.some(f => f.id === feuilleActuelle.id)) liste.push(feuilleActuelle);
+    liste.forEach(f => rangee.appendChild(ongletFeuille(f, feuilleActuelle && f.id === feuilleActuelle.id, () => basculerVersFeuille(f.id))));
+    const autre = document.createElement("button");
+    autre.type = "button"; autre.id = "btn-changer-vehicule"; autre.className = "onglet-autre-voiture";
+    autre.innerHTML = `<span style="display:block; font-weight:800; font-size:1.02rem; white-space:nowrap;">➕ Autre voiture</span><span style="display:block; font-size:.86rem; font-weight:700; white-space:nowrap;">= nouvelle feuille</span>`;
+    autre.title = "🚗 Je change de voiture → nouvelle feuille";
+    autre.style.cssText = "flex:1 1 150px; text-align:left; padding:10px 14px; border-radius:14px; min-height:64px; border:3px dashed var(--vert); background:#eef8f1; color:var(--vert);";
+    autre.addEventListener("click", ouvrirChangementVehicule);
+    rangee.appendChild(autre);
+  } else {
+    rangee.innerHTML = '<span style="padding:8px; color:#666; font-size:.88rem;">Chargement…</span>';
+    feuillesDuJourOnglets(jour).then(liste => {
+      if ((jourOnglets || jourFeuille) !== jour) return;   // l'utilisateur a déjà changé de jour
+      rangee.innerHTML = "";
+      if (!liste.length) { rangee.innerHTML = '<span style="padding:8px; color:#666; font-size:.88rem;">Aucune feuille ce jour-là.</span>'; return; }
+      liste.forEach(f => rangee.appendChild(ongletFeuille(f, feuilleActuelle && f.id === feuilleActuelle.id, () => {
+        if (toutesLesFeuillesDuJour.some(x => x.id === f.id)) { jourOnglets = null; basculerVersFeuille(f.id); return; }
+        location.href = "feuille-de-route.html?feuille=" + encodeURIComponent(f.id);
+      })));
     });
+    return;   // autre jour : seulement les onglets (la feuille ouverte ne change pas tant qu'on ne touche pas un onglet)
   }
-  // 2) Changement de voiture — seulement si la feuille est encore ouverte (elle reste ouverte, jamais bloquant)
+  // 3) Grand titre : quelle voiture / quel jour / quel chauffeur + statut de CETTE feuille
+  const ent = document.createElement("div");
+  ent.id = "entete-feuille-vehicule";
+  ent.style.cssText = "margin:0 0 8px; padding:10px 12px; border-radius:12px; background:#0e2f55; color:#fff;";
+  barre.appendChild(ent);
+  majEnteteFeuilleVehicule();
+  // 4) Feuille ouverte : rappel « Feuille à clôturer » + correction de voiture (feuille sans course)
   const signee = feuilleActuelle && feuilleActuelle.verrouillee;
-  if (!signee) {
+  if (feuilleActuelle && !signee) {
+    const rappel = document.createElement("div");
+    rappel.id = "rappel-feuille-a-cloturer";
+    rappel.style.cssText = "margin:0 0 8px; padding:8px 12px; border-radius:10px; border:2px solid #e0a040; background:#fff4e0; color:#7a4a00; font-size:.86rem; font-weight:700;";
+    rappel.innerHTML = `📝 Feuille à clôturer — ${esc(libelleVehiculeFeuille())}<br><span style="font-weight:600;">Une voiture = une feuille. Complète-la (compteurs et heure de fin) et signe-la quand tu as fini avec cette voiture.</span>`;
+    barre.appendChild(rappel);
     const btnVoitureFeuille = document.createElement("button");
     btnVoitureFeuille.type = "button";
     btnVoitureFeuille.id = "btn-changer-voiture-feuille";
-    btnVoitureFeuille.textContent = "🚗 Changer la voiture de cette feuille";
-    btnVoitureFeuille.style.cssText = "width:100%; margin-bottom:8px; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid #8a5a00; background:#fff8ec; color:#8a5a00; font-weight:800;";
+    btnVoitureFeuille.textContent = "🚗 Changer la voiture de cette feuille (mauvais choix)";
+    btnVoitureFeuille.style.cssText = "width:100%; margin-bottom:6px; padding:9px; font-size:.88rem; border-radius:12px; border:1px solid #8a5a00; background:#fff8ec; color:#8a5a00; font-weight:700;";
     btnVoitureFeuille.addEventListener("click", changerVoitureDeLaFeuille);
+    if (feuilleADesLignes()) btnVoitureFeuille.style.display = "none";   // feuille avec des courses → « ➕ Autre voiture »
     barre.appendChild(btnVoitureFeuille);
-    const btnChanger = document.createElement("button");
-    btnChanger.type = "button";
-    btnChanger.id = "btn-changer-vehicule";
-    btnChanger.textContent = "🚗 Je change de voiture → nouvelle feuille";
-    btnChanger.style.cssText = "width:100%; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid var(--vert); background:#eef8f1; color:var(--vert); font-weight:800;";
-    btnChanger.addEventListener("click", ouvrirChangementVehicule);
-    barre.appendChild(btnChanger);
   }
-  // 3) Nouvelle feuille : toujours possible (même pendant un service de nuit, après signature, etc.)
+  // 5) Nouvelle feuille : toujours possible (même pendant un service de nuit, après signature, etc.)
   const btnNouvelle = document.createElement("button");
   btnNouvelle.type = "button";
   btnNouvelle.id = "btn-nouvelle-feuille";
   btnNouvelle.textContent = "➕ Nouvelle feuille de route";
-  btnNouvelle.style.cssText = "width:100%; margin-top:8px; padding:13px; font-size:.95rem; border-radius:12px; border:2px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:800;";
+  btnNouvelle.style.cssText = "width:100%; padding:8px; font-size:.86rem; border-radius:12px; border:1px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:700;";
   btnNouvelle.addEventListener("click", ouvrirNouvelleFeuille);
   barre.appendChild(btnNouvelle);
 }
@@ -2671,6 +2784,7 @@ async function chargerFeuilleActive(user) {
   afficherSelecteurFeuilles();
   await afficherSectionsPassees();
   await remplirIdentite(user);
+  try { majControleVoitureFeuille(); } catch (e) {}
   remplirEntete();
   calculerTotaux();
   ouvrirFermerService(!feuilleActuelle.heure_debut);
@@ -2687,48 +2801,11 @@ async function chargerFeuilleActive(user) {
 // aujourd'hui avant celui en cours — pour voir d'un coup d'œil "de telle heure à telle heure,
 // tel véhicule ; ensuite, tel autre véhicule", sans changer de page.
 async function afficherSectionsPassees() {
+  // Les autres feuilles du jour sont déjà listées dans « 📋 Mes feuilles de route » (toucher pour ouvrir) :
+  // plus de carte récapitulative d'une feuille précédente en haut de la feuille actuelle.
+  // Le détail d'une feuille signée s'affiche quand on ouvre cette feuille elle-même.
   const zone = document.getElementById("sections-passees");
-  zone.innerHTML = "";
-  const passees = feuillesMemeDate().filter(f => f.id !== feuilleActuelle.id);
-  if (passees.length === 0) { document.getElementById("vehicule-actuel-titre").style.display = "none"; return; }
-  document.getElementById("vehicule-actuel-titre").style.display = "block";
-
-  for (const f of passees) {
-    const { data: vehicule } = f.vehicule_id
-      ? await supabase.from("vehicules").select("nom, plaque").eq("id", f.vehicule_id).maybeSingle()
-      : { data: null };
-    const { data: lignesBrutes } = await supabase
-      .from("lignes_feuille_route").select("*, courses(statut, date_heure, prix, surprime, paye_en_ligne_montant, reste_a_payer, acompte_paye, acompte_montant, paiement_choisi)").eq("feuille_route_id", f.id).order("n_ordre");
-    const lignes = trierLignesChrono(lignesBrutes || [], f);
-
-    const recettes = (f.recettes_debut != null && f.recettes_fin != null)
-      ? (parseFloat(f.recettes_fin) - parseFloat(f.recettes_debut)).toFixed(2) + " €" : "—";
-    const km = (f.index_km_debut != null && f.index_km_fin != null)
-      ? (parseFloat(f.index_km_fin) - parseFloat(f.index_km_debut)).toFixed(1) + " km" : "—";
-
-    const div = document.createElement("div");
-    div.className = "section-passee";
-    div.innerHTML = `
-      <div class="sp-titre">${f.verrouillee ? "✅" : "📝"} ${esc(vehicule?.nom) || "Véhicule"}${vehicule?.plaque ? " (" + esc(vehicule.plaque) + ")" : ""}</div>
-      <div class="sp-sous">De ${valeurOuTiret(f.heure_debut?.slice(0,5))} à ${valeurOuTiret(f.heure_fin?.slice(0,5))} · ${(lignes||[]).length} course(s)${f.verrouillee ? "" : " · <b>pas encore signée</b>"}</div>
-      <div class="sp-ligne"><span>Km parcourus</span><b>${km}</b></div>
-      <div class="sp-ligne"><span>Recettes</span><b>${recettes}</b></div>
-      ${pourboiresDesLignes(lignes) > 0 ? `<div class="sp-ligne"><span>Pourboires (hors recette)</span><b>${esc(formatEuro(pourboiresDesLignes(lignes)))}</b></div>` : ""}
-      ${(lignes||[]).map((l, i) => {
-        const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).join(" → ") || "Détails non remplis";
-        return `<div class="sp-course">Course ${i + 1} · ${esc(trajet)}</div>`;
-      }).join("")}
-    `;
-    if (!f.verrouillee) {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "btn-ouvrir-section-passee";
-      b.textContent = "📂 Ouvrir cette feuille";
-      b.style.cssText = "margin-top:8px; width:100%; padding:10px; border-radius:10px; border:1px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-weight:700;";
-      b.addEventListener("click", () => basculerVersFeuille(f.id));
-      div.appendChild(b);
-    }
-    zone.appendChild(div);
-  }
+  if (zone) zone.innerHTML = "";
 }
 
 function valeurOuTiret(v) {
@@ -2976,7 +3053,14 @@ async function enregistrerInterruptions(elements, label, sansRedessiner) {
 }
 // ---- Bloc « Horaires & interruptions » repliable (fermé par défaut, état gardé sur le téléphone) ----
 const CLE_BLOC_PAUSES_OUVERT = "taxiwal_bloc_pauses_ouvert";
-function blocPausesOuvert() { try { return localStorage.getItem(CLE_BLOC_PAUSES_OUVERT) === "1"; } catch (e) { return false; } }
+// Ouvert seulement si le chauffeur l'a ouvert lui-même SUR CETTE feuille ; sinon (nouvelle feuille, aucun choix) : fermé.
+const CLE_BLOC_PAUSES_FEUILLE = "taxiwal_bloc_pauses_feuille";
+function blocPausesOuvert() {
+  try {
+    return localStorage.getItem(CLE_BLOC_PAUSES_OUVERT) === "1" && !!feuilleActuelle
+      && localStorage.getItem(CLE_BLOC_PAUSES_FEUILLE) === String(feuilleActuelle.id);
+  } catch (e) { return false; }
+}
 function appliquerEtatBlocPauses() {
   const bloc = document.getElementById("bloc-pauses"), ouvert = blocPausesOuvert();
   if (!bloc) return;
@@ -2985,7 +3069,7 @@ function appliquerEtatBlocPauses() {
 }
 function ouvrirFermerBlocPauses(forcer) {
   const ouvert = typeof forcer === "boolean" ? forcer : !blocPausesOuvert();
-  try { localStorage.setItem(CLE_BLOC_PAUSES_OUVERT, ouvert ? "1" : "0"); } catch (e) {}
+  try { localStorage.setItem(CLE_BLOC_PAUSES_OUVERT, ouvert ? "1" : "0"); if (feuilleActuelle) localStorage.setItem(CLE_BLOC_PAUSES_FEUILLE, String(feuilleActuelle.id)); } catch (e) {}
   appliquerEtatBlocPauses();
 }
 // Résumé d'une ligne : « 🕐 06:30 → 17:10 · ⏸️ 2 pauses (45 min) » ou « ⏸️ En pause depuis 12:30 · 7 min »
@@ -3200,8 +3284,8 @@ async function chargerLignes() {
   planifierCaisse();
 }
 
-// ================== CAISSE DU JOUR ==================
-// Toutes les courses de la journée (tous véhicules), forfaits compris, classées par mode de paiement.
+// ================== CAISSE DE CETTE FEUILLE ==================
+// Courses de la feuille affichée SEULEMENT (une voiture = une feuille), forfaits compris, par mode de paiement.
 let minuterieCaisse = null;
 // Recette (même règle que recette_feuille en base : sommes perçues seulement, hors Uber / privé)
 // et pourboires (toujours à part, jamais dans la recette), calculés sur les lignes du téléphone
@@ -3234,11 +3318,10 @@ function majTotauxFeuilleLocale() {
 function planifierCaisse() { try { majTotauxFeuilleLocale(); } catch (e) { console.warn(e); } clearTimeout(minuterieCaisse); minuterieCaisse = setTimeout(afficherCaisse, 300); }
 async function afficherCaisse() {
   const zone = document.getElementById("contenu-caisse");
-  const ids = feuillesMemeDate().map(f => f.id);
-  if (!ids.length) return;
-  const { data: lignes, error } = await supabase
-    .from("lignes_feuille_route").select("*").in("feuille_route_id", ids);
-  if (error) { zone.textContent = "Erreur de calcul de la caisse."; return; }
+  if (!zone || !feuilleActuelle) return;
+  try { majControleVoitureFeuille(); } catch (e) {}
+  // Caisse de CETTE feuille (une voiture) uniquement — jamais les autres feuilles du même jour
+  const lignes = (lignesActuelles || []).filter(l => !l.feuille_route_id || l.feuille_route_id === feuilleActuelle.id);
 
   const modes = {
     cash: { nom: "💶 Espèces (dans la caisse)", total: 0, nb: 0 },
@@ -3286,7 +3369,7 @@ async function afficherCaisse() {
   });
   if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
   html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber)</span><b>${formatEuro(totalGeneral)}</b></div>`;
-  if (totalPourboiresJour > 0) html += `<div class="caisse-ligne caisse-pourboires"><span>💶 Pourboires du jour (non compris dans la recette)</span><b>${formatEuro(totalPourboiresJour)}</b></div>`;
+  if (totalPourboiresJour > 0) html += `<div class="caisse-ligne caisse-pourboires"><span>💶 Pourboires de cette feuille (non compris dans la recette)</span><b>${formatEuro(totalPourboiresJour)}</b></div>`;
   if (nbAnnulees) html += `<div class="caisse-ligne"><span>❌ Courses annulées (rien encaissé)</span><b>${nbAnnulees}</b></div>`;
   if (sansMode) html += `<div class="caisse-alerte">⚠️ ${sansMode} course(s) sans mode de paiement : choisis Cash, Carte… sinon elles ne comptent pas dans la caisse.</div>`;
   if (sansMontant) html += `<div class="caisse-alerte">⚠️ ${sansMontant} course(s) sans prix rempli.</div>`;
@@ -3333,6 +3416,7 @@ function afficherLignes() {
     if (conteneur.children[i] !== el) conteneur.insertBefore(el, conteneur.children[i] || null);
   });
   try { majTotauxFeuilleLocale(); } catch (e) { console.warn(e); }
+  try { majControleVoitureFeuille(); } catch (e) {}
   window.scrollTo(0, positionPage);
 }
 
@@ -4715,7 +4799,29 @@ function afficherImpressionDansPage(html) {
   zone.appendChild(ifr);
   ov.appendChild(barre); ov.appendChild(zoneStatut); ov.appendChild(zone);
   document.body.appendChild(ov);
-  bFermer.addEventListener("click", () => ov.remove());
+  // Téléphone : la page A4 garde sa vraie largeur DANS l'aperçu (toutes les colonnes, même mise en page
+  // que le PDF) et l'aperçu entier est réduit à la largeur de l'écran — rien n'est coupé à gauche/droite.
+  const LARGEUR_APERCU_A4 = 830;
+  const ajusterApercu = () => {
+    if (!ov.isConnected) { window.removeEventListener("resize", ajusterApercu); return; }
+    const w = zone.clientWidth, h = zone.clientHeight;
+    if (!w || !h) return;
+    const k = Math.min(1, w / LARGEUR_APERCU_A4);
+    if (k < 1) {
+      zone.style.overflow = "hidden";
+      ifr.style.width = LARGEUR_APERCU_A4 + "px";
+      ifr.style.height = Math.ceil(h / k) + "px";
+      ifr.style.transformOrigin = "0 0";
+      ifr.style.transform = "scale(" + k + ")";
+    } else {
+      zone.style.overflow = "auto";
+      ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.transform = "";
+    }
+    ifr.dataset.echelle = String(k);
+  };
+  ajusterApercu();
+  window.addEventListener("resize", ajusterApercu);
+  bFermer.addEventListener("click", () => { window.removeEventListener("resize", ajusterApercu); ov.remove(); });
   let pdfEnCours = false;
   bImprimer.addEventListener("click", async () => {
     if (pdfEnCours) return;
@@ -4738,10 +4844,9 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
     payload: { imprimee_a: new Date().toISOString(), imprimee_par: user?.id || null }, label: "Impression" });
 
-  // Un bloc "Service + Courses" par véhicule utilisé aujourd'hui, tous à la suite sur le même
-  // document — même s'il y a eu un changement de véhicule en cours de journée.
+  // UNE FEUILLE = UNE VOITURE : on imprime uniquement la feuille affichée (jamais les autres feuilles du jour).
   const blocsVehicules = [];
-  for (const f of feuillesMemeDate()) {
+  for (const f of [feuilleActuelle]) {
     const { data: vehicule } = f.vehicule_id
       ? await supabase.from("vehicules").select("*").eq("id", f.vehicule_id).maybeSingle()
       : { data: null };
@@ -4789,7 +4894,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             <td><span class="mini">Véhicule</span><br><span class="valeur">${esc(vehicule?.nom) || "—"}</span></td>
             <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(f.numero_identification || vehicule?.numero_identification) || "—"}</span></td></tr>
       </table>
-      <h2>Service ${feuillesMemeDate().length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
+      <h2>Service</h2>
       <table>
         <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
         <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${esc(texteInterruptionsResume(f.interruptions))}</td>
@@ -4805,7 +4910,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut ?? (f.recettes_fin != null ? "0.00" : ""))}</td></tr>
         <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
       </table>
-      <h2>Courses ${feuillesMemeDate().length > 1 ? "— " + (esc(vehicule?.nom) || "véhicule") : ""}</h2>
+      <h2>Courses</h2>
       <table class="courses-table">
         <thead>
         <tr>
@@ -4827,7 +4932,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   }
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <title>Feuille de route — ${esc(document.getElementById("identite-chauffeur").textContent)} — ${esc(document.getElementById("identite-date").textContent)}</title>
+  <title>Feuille de route — ${esc(document.getElementById("identite-chauffeur").textContent)} — ${esc(document.getElementById("identite-date").textContent)} — ${esc(libelleVehiculeFeuille())}</title>
   <style>
     @page { size: A4; margin: 8mm; }
     * { box-sizing: border-box; }
@@ -4888,7 +4993,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     </div>
     <template id="tpl-pied">
       <div class="signature">Signature du chauffeur : ______________________________</div>
-      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.${feuillesMemeDate().length > 1 ? " Journée avec changement de véhicule : un bloc par véhicule utilisé." : ""}</div>
+      <div class="note-bas">* Après déduction d'une remise commerciale éventuelle.</div>
       <div class="num-page"></div>
     </template>
     <script>
