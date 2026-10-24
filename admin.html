@@ -56,10 +56,12 @@ function ajouterTexteLibre(select, valeurActuelle) {
   if (valeurActuelle && ![...select.options].some(o => o.value === valeurActuelle)) {
     select.add(new Option("✏️ " + valeurActuelle, valeurActuelle), select.options.length - 1);
   }
-  select.addEventListener("change", (ev) => {
+  select.addEventListener("change", async (ev) => {
     if (select.value !== "__ecrire__") return;
     ev.stopImmediatePropagation();
-    const texte = (prompt("Écris ton texte (il apparaîtra tel quel sur la feuille de route) :") || "").trim();
+    const rep = await saisieDansPageFA({ titre: "✏️ Écrire mon propre texte", texte: "Il apparaîtra tel quel sur la feuille de route.",
+      champs: [{ id: "t", label: "Ton texte", type: "text" }], okLabel: "✅ Utiliser ce texte" });
+    const texte = ((rep && rep.t) || "").trim();
     if (!texte) { select.value = valeurActuelle || ""; return; }
     select.add(new Option("✏️ " + texte, texte), select.options.length - 1);
     select.value = texte;
@@ -8578,7 +8580,7 @@ function ouvrirEditionIdentiteFeuille(feuille, chauffeur) {
     };
     if (maj.chauffeur_id !== feuille.chauffeur_id) {
       const nouveau = (chauffeursCache || []).find(x => x.id === maj.chauffeur_id);
-      if (!confirm(`Donner cette feuille de route à ${nouveau?.nom || "ce chauffeur"} ?\n\nElle disparaîtra de l'app de ${chauffeur?.nom || "l'ancien chauffeur"} et ses courses passeront au nom de ${nouveau?.nom || "ce chauffeur"}.`)) return;
+      if (!(await confirmerDansPageFA(`Donner cette feuille de route à ${nouveau?.nom || "ce chauffeur"} ?\n\nElle disparaîtra de l'app de ${chauffeur?.nom || "l'ancien chauffeur"} et ses courses passeront au nom de ${nouveau?.nom || "ce chauffeur"}.`, "✅ Donner la feuille", "Annuler"))) return;
     }
     const { error } = await supabase.from("feuilles_route").update(maj).eq("id", feuille.id);
     if (error) { alert("Erreur : " + error.message); return; }
@@ -8589,39 +8591,164 @@ function ouvrirEditionIdentiteFeuille(feuille, chauffeur) {
   });
 }
 
-// ---- Suppression d'une feuille de route protégée par un code choisi par l'admin ----
-async function definirCodeSuppression(ancienCode) {
-  const nouveau = prompt("Choisis ton code de suppression (au moins 4 caractères) :");
-  if (!nouveau) return false;
-  const confirmation = prompt("Retape le même code pour confirmer :");
-  if (confirmation !== nouveau) { alert("Les deux codes ne sont pas identiques. Recommence."); return false; }
-  const { error } = await supabase.rpc("admin_definir_code_suppression", { p_ancien: ancienCode || null, p_nouveau: nouveau });
-  if (error) { alert("Erreur : " + error.message); return false; }
-  alert("✅ Code de suppression enregistré. Garde-le pour toi.");
+// ---- Suppression d'une feuille de route ----
+// Pour l'instant : PAS de code (choix du gérant). La base garde un code fixe (SUPPRESSION_CODE_FIXE)
+// et vérifie de toute façon is_admin() : seul l'admin peut supprimer.
+// Pour réactiver un code personnel plus tard : mettre SUPPRESSION_SANS_CODE = false
+// (la création / le changement de code se font alors dans des fenêtres de la page, sans prompt()).
+const SUPPRESSION_SANS_CODE = true;
+const SUPPRESSION_CODE_FIXE = "SANS-CODE-ADMIN";
+
+// Petite fenêtre de saisie dans la page (remplace prompt(), peu fiable sur iPhone en mode écran d'accueil).
+// champs : [{ id, label, type: "password" | "text", valeur }] ; liens : [{ texte, action }]
+// valider(valeurs, afficherErreur) → true pour fermer, false pour garder ouvert. Résout avec les valeurs ou null.
+function saisieDansPageFA({ titre, texte, champs, okLabel, annulerLabel, couleurOk, liens, valider }) {
+  return new Promise(resolve => {
+    const fond = document.createElement("div");
+    fond.className = "modale-saisie-fa";
+    fond.style.cssText = "position:fixed; inset:0; z-index:100001; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; padding:16px;";
+    const boite = document.createElement("div");
+    boite.style.cssText = "background:#fff; color:#111; border-radius:14px; padding:18px; width:100%; max-width:440px; max-height:85vh; overflow:auto; font-size:1rem;";
+    if (titre) { const h = document.createElement("div"); h.style.cssText = "font-weight:800; font-size:1.1rem; margin-bottom:8px;"; h.textContent = titre; boite.appendChild(h); }
+    if (texte) { const t = document.createElement("div"); t.style.cssText = "white-space:pre-wrap; word-break:break-word; margin-bottom:10px;"; t.textContent = texte; boite.appendChild(t); }
+    const inputs = {};
+    (champs || []).forEach(c => {
+      const lab = document.createElement("label");
+      lab.style.cssText = "display:block; font-weight:700; margin:10px 0 4px;";
+      lab.textContent = c.label || "";
+      const ligne = document.createElement("div");
+      ligne.style.cssText = "display:flex; gap:6px;";
+      const inp = document.createElement("input");
+      inp.type = c.type || "text"; inp.value = c.valeur || ""; inp.className = "sp-champ";
+      inp.dataset.champ = c.id;
+      inp.autocomplete = c.type === "password" ? "off" : "on";
+      inp.style.cssText = "flex:1; min-width:0; padding:12px; font-size:16px; border:1px solid #bbb; border-radius:10px;";
+      ligne.appendChild(inp);
+      if (c.type === "password") {
+        const oeil = document.createElement("button");
+        oeil.type = "button"; oeil.className = "sp-oeil"; oeil.textContent = "👁 afficher";
+        oeil.style.cssText = "padding:0 10px; border-radius:10px; border:1px solid #bbb; background:#f3f3f1; color:#111; font-weight:700; white-space:nowrap;";
+        oeil.addEventListener("click", e => { e.stopPropagation(); const cache = inp.type === "password"; inp.type = cache ? "text" : "password"; oeil.textContent = cache ? "🙈 cacher" : "👁 afficher"; });
+        ligne.appendChild(oeil);
+      }
+      boite.appendChild(lab); boite.appendChild(ligne);
+      inputs[c.id] = inp;
+    });
+    const erreur = document.createElement("div");
+    erreur.className = "sp-erreur";
+    erreur.style.cssText = "display:none; margin-top:10px; padding:8px 10px; border-radius:8px; background:#fde8ea; color:#b3141b; font-weight:800;";
+    boite.appendChild(erreur);
+    const boutons = document.createElement("div");
+    boutons.style.cssText = "display:flex; gap:8px; margin-top:16px;";
+    const non = document.createElement("button");
+    non.type = "button"; non.className = "sp-non"; non.textContent = annulerLabel || "Annuler";
+    non.style.cssText = "flex:1; padding:14px; border-radius:10px; border:none; background:#e3e3e0; color:#111; font-weight:700; font-size:1rem;";
+    const oui = document.createElement("button");
+    oui.type = "button"; oui.className = "sp-oui"; oui.textContent = okLabel || "OK";
+    oui.style.cssText = `flex:2; padding:14px; border-radius:10px; border:none; background:${couleurOk || "var(--vert)"}; color:#fff; font-weight:800; font-size:1rem;`;
+    boutons.appendChild(non); boutons.appendChild(oui); boite.appendChild(boutons);
+    let fini = false;
+    const fermer = v => { if (fini) return; fini = true; fond.remove(); resolve(v); };
+    (liens || []).forEach(l => {
+      const a = document.createElement("button");
+      a.type = "button"; a.className = "sp-lien"; a.textContent = l.texte;
+      a.style.cssText = "display:block; margin-top:12px; background:none; border:none; padding:4px 0; color:#1a5fb4; text-decoration:underline; font-size:.95rem; text-align:left;";
+      a.addEventListener("click", e => { e.stopPropagation(); l.action({ fermer: () => fermer(null), afficherErreur }); });
+      boite.appendChild(a);
+    });
+    function afficherErreur(msg, couleur) {
+      erreur.textContent = msg || ""; erreur.style.display = msg ? "block" : "none";
+      erreur.style.background = couleur === "info" ? "#eaf2fc" : "#fde8ea";
+      erreur.style.color = couleur === "info" ? "#123" : "#b3141b";
+    }
+    const lire = () => { const v = {}; for (const k in inputs) v[k] = inputs[k].value; return v; };
+    oui.addEventListener("click", async e => {
+      e.stopPropagation();
+      const v = lire();
+      if (valider) {
+        oui.disabled = true;
+        let okFermer = false;
+        try { okFermer = await valider(v, afficherErreur); } catch (err) { afficherErreur("Erreur : " + (err?.message || err)); }
+        oui.disabled = false;
+        if (!okFermer) return;
+      }
+      fermer(v);
+    });
+    Object.values(inputs).forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); oui.click(); } }));
+    non.addEventListener("click", e => { e.stopPropagation(); fermer(null); });
+    fond.addEventListener("click", e => { if (e.target === fond) fermer(null); });
+    boite.addEventListener("click", e => e.stopPropagation());
+    fond.appendChild(boite);
+    document.body.appendChild(fond);
+    const premier = Object.values(inputs)[0];
+    if (premier) try { premier.focus(); } catch (_) {}
+  });
+}
+
+// Création (ancienCode = null) ou changement du code de suppression — utilisé seulement si SUPPRESSION_SANS_CODE = false
+async function definirCodeSuppression(ancienCode, avecAncien) {
+  const champs = [];
+  if (avecAncien) champs.push({ id: "ancien", label: "Ton code actuel", type: "password" });
+  champs.push({ id: "nouveau", label: avecAncien ? "Nouveau code (au moins 4 caractères)" : "Code (au moins 4 caractères)", type: "password" });
+  champs.push({ id: "conf", label: "Retape le même code", type: "password" });
+  const r = await saisieDansPageFA({
+    titre: avecAncien ? "🔑 Changer mon code de suppression" : "🔑 Crée ton code de suppression",
+    texte: avecAncien ? "" : "Ce code sera demandé à chaque suppression de feuille de route. Garde-le pour toi.",
+    champs, okLabel: "💾 Enregistrer le code",
+    valider: async (v, err) => {
+      const nouveau = (v.nouveau || "").trim();
+      if (avecAncien && !v.ancien) { err("Tape ton code actuel."); return false; }
+      if (nouveau.length < 4) { err("Le code doit faire au moins 4 caractères."); return false; }
+      if (nouveau !== (v.conf || "").trim()) { err("Les deux codes ne sont pas identiques."); return false; }
+      const { error } = await supabase.rpc("admin_definir_code_suppression", { p_ancien: avecAncien ? v.ancien : (ancienCode || null), p_nouveau: nouveau });
+      if (error) { err(/incorrect/i.test(error.message) ? "❌ Code actuel incorrect" : "Erreur : " + error.message); return false; }
+      return true;
+    }
+  });
+  if (!r) return false;
+  toastAdmin("✅ Code de suppression enregistré");
   return true;
 }
-async function demanderCodeEtSupprimerFeuille(feuilleId, nom, dateChoisie, nbLignes) {
+
+async function demanderCodeEtSupprimerFeuille(feuilleId, nom, dateChoisie, nbLignes, vehiculeTxt) {
+  const dateTxt = new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE");
+  const resume = `Feuille de route à supprimer :\n` +
+    `👤 Chauffeur : ${nom}\n🚗 Véhicule : ${vehiculeTxt || "—"}\n📅 Date : ${dateTxt}\n🧾 Lignes : ${nbLignes} course(s)\n\n` +
+    `⚠️ Suppression DÉFINITIVE. ${nbLignes} course(s) seront retirées de la feuille. Les courses saisies à la main disparaissent aussi de la caisse. ` +
+    `Les courses de la centrale restent dans le système.`;
+
+  if (SUPPRESSION_SANS_CODE) {
+    if (!(await confirmerDansPageFA(resume, "🗑️ Supprimer définitivement", "Annuler", "var(--rouge)"))) return false;
+    const { error } = await supabase.rpc("admin_supprimer_feuille", { p_feuille_id: feuilleId, p_code: SUPPRESSION_CODE_FIXE });
+    if (error) { alert("Erreur : " + error.message + "\n\nLa feuille n'a pas été supprimée."); return false; }
+    toastAdmin("✅ Feuille de route supprimée");
+    return true;
+  }
+
+  // --- Mode avec code personnel (désactivé tant que SUPPRESSION_SANS_CODE = true) ---
   const { data: codeExiste, error: e0 } = await supabase.rpc("admin_code_suppression_defini");
   if (e0) { alert("Erreur : " + e0.message); return false; }
-  if (!codeExiste) {
-    alert("Aucun code de suppression n'est encore défini. Tu vas d'abord le créer.");
-    if (!(await definirCodeSuppression(null))) return false;
-  }
-  const dateTxt = new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE");
-  if (!confirm(`Supprimer DÉFINITIVEMENT la feuille de route de ${nom} du ${dateTxt} ?\n\n` +
-      `${nbLignes} course(s) seront retirées de la feuille. Les courses saisies à la main disparaissent aussi de la caisse. ` +
-      `Les courses de la centrale restent dans le système.`)) return false;
-  const code = prompt("Tape ton code de suppression :\n(ou tape CHANGER pour modifier ton code)");
-  if (!code) return false;
-  if (code.trim().toUpperCase() === "CHANGER") {
-    const ancien = prompt("Tape ton code actuel :");
-    if (!ancien) return false;
-    await definirCodeSuppression(ancien);
-    return false;
-  }
-  const { error } = await supabase.rpc("admin_supprimer_feuille", { p_feuille_id: feuilleId, p_code: code });
-  if (error) { alert(error.message.includes("Code incorrect") ? "❌ Code incorrect. La feuille n'a pas été supprimée." : "Erreur : " + error.message); return false; }
-  alert("✅ Feuille de route supprimée.");
+  if (!codeExiste && !(await definirCodeSuppression(null, false))) return false;
+  let changer = false;
+  const r = await saisieDansPageFA({
+    titre: "🗑️ Supprimer la feuille de route ?",
+    texte: resume,
+    champs: [{ id: "code", label: "Ton code de suppression", type: "password" }],
+    okLabel: "🗑️ Supprimer définitivement", couleurOk: "var(--rouge)",
+    liens: [
+      { texte: "🔑 Changer mon code", action: ({ fermer }) => { changer = true; fermer(); } },
+      { texte: "Code oublié ?", action: ({ afficherErreur }) => afficherErreur("Demande à ton assistant de réinitialiser le code.", "info") }
+    ],
+    valider: async (v, err) => {
+      if (!v.code) { err("Tape ton code."); return false; }
+      const { error } = await supabase.rpc("admin_supprimer_feuille", { p_feuille_id: feuilleId, p_code: v.code });
+      if (error) { err(error.message.includes("Code incorrect") ? "❌ Code incorrect" : "Erreur : " + error.message); return false; }
+      return true;
+    }
+  });
+  if (changer) { await definirCodeSuppression(null, true); return false; }
+  if (!r) return false;
+  toastAdmin("✅ Feuille de route supprimée");
   return true;
 }
 
@@ -8665,7 +8792,7 @@ async function chargerDemandesChauffeurs() {
       if (el) { const b = el.querySelector(".btn-grand-ligne"); if (b) b.click(); else el.scrollIntoView({ behavior: "smooth", block: "center" }); }
     });
     item.querySelector(".dc-suppr").addEventListener("click", async () => {
-      if (!confirm("Supprimer cette course de la feuille de route du chauffeur ?")) return;
+      if (!(await confirmerDansPageFA("Supprimer cette course de la feuille de route du chauffeur ?", "🗑️ Supprimer", "Annuler", "var(--rouge)"))) return;
       const { error } = await supabase.from("lignes_feuille_route").delete().eq("id", id);
       if (error) { alert("Erreur : " + error.message); return; }
       await chargerDemandesChauffeurs(); chargerFeuillesAdmin();
@@ -9062,7 +9189,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   if (btnVerifierAdmin) {
     btnVerifierAdmin.addEventListener("click", async () => {
       if (feuille.verifiee_admin) {
-        if (!confirm("Retirer la vérification de cette feuille ?")) return;
+        if (!(await confirmerDansPageFA("Retirer la vérification de cette feuille ?", "Retirer", "Annuler", "#b86e00"))) return;
         await supabase.from("feuilles_route").update({ verifiee_admin: false, verifiee_admin_a: null, verifiee_admin_par: null }).eq("id", feuille.id);
       } else {
         const { data: { user } } = await supabase.auth.getUser();
@@ -9076,7 +9203,8 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   entete.querySelector(".btn-identite-fa").addEventListener("click", () => ouvrirEditionIdentiteFeuille(feuille, chauffeur));
   entete.querySelector(".btn-supprimer-feuille-fa").addEventListener("click", async () => {
     const nom = feuille.profils?.nom || "ce chauffeur";
-    const ok = await demanderCodeEtSupprimerFeuille(feuille.id, nom, dateChoisie, lignes.length);
+    const vehTxt = ((feuille.vehicules?.nom || "") + " " + (feuille.plaque || feuille.vehicules?.plaque || "")).trim();
+    const ok = await demanderCodeEtSupprimerFeuille(feuille.id, nom, dateChoisie, lignes.length, vehTxt);
     if (ok) chargerFeuillesAdmin();
   });
   entete.querySelector(".btn-imprimer-fa").addEventListener("click", () => {
@@ -9487,13 +9615,13 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   btnSupprimer.addEventListener("click", async (e) => {
     e.stopPropagation();
     if (ligne.course_id) {
-      if (!confirm("Cette ligne est liée à une vraie course. La supprimer supprimera définitivement la course elle-même. Continuer ?")) return;
+      if (!(await confirmerDansPageFA("Cette ligne est liée à une vraie course. La supprimer supprimera définitivement la course elle-même. Continuer ?", "🗑️ Supprimer", "Annuler", "var(--rouge)"))) return;
       // On supprime la LIGNE : la base supprime alors la course liée (trigger supprimer_course_ligne_manuelle).
       // (Supprimer la course directement garderait une ligne clôturée, marquée « annulée ».)
       const { error } = await supabase.from("lignes_feuille_route").delete().eq("id", ligne.id);
       if (error) { alert("Erreur : " + error.message); return; }
     } else {
-      if (!confirm("Supprimer cette ligne de la feuille de route ?")) return;
+      if (!(await confirmerDansPageFA("Supprimer cette ligne de la feuille de route ?", "🗑️ Supprimer", "Annuler", "var(--rouge)"))) return;
       const { error } = await supabase.from("lignes_feuille_route").delete().eq("id", ligne.id);
       if (error) { alert("Erreur : " + error.message); return; }
     }
@@ -9572,8 +9700,10 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
           : `<button type="button" class="st-mod" style="width:100%; padding:8px; border-radius:8px; border:1px dashed #b3141b; background:#fff; color:#b3141b; font-weight:700; font-size:.82rem;">✏️ Écrire un texte au lieu du montant</button>`;
         zoneTexte.querySelector(".st-mod").addEventListener("click", async (ev) => {
           ev.stopPropagation();
-          const t = prompt("Texte à la place du montant (laisse vide pour effacer) :", ligne.sommes_texte || "");
-          if (t === null) return;
+          const rep = await saisieDansPageFA({ titre: "✏️ Texte à la place du montant", texte: "Laisse vide pour effacer le texte.",
+            champs: [{ id: "t", label: "Texte", type: "text", valeur: ligne.sommes_texte || "" }], okLabel: "💾 Enregistrer" });
+          if (rep === null) return;
+          const t = rep.t || "";
           const val = t.trim() || null;
           const { error } = await supabase.from("lignes_feuille_route").update({ sommes_texte: val }).eq("id", ligne.id);
           if (error) { alert("Erreur : " + error.message); return; }
