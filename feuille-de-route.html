@@ -485,6 +485,7 @@ async function cloturerLigneEnBase(ligne) {
   if (el) { if (el.classList.contains("plein-ecran")) fermerPleinEcran(); el._ligne = null; }
   afficherLignes();
   planifierCaisse();
+  try { rafraichirPanneauSignature(); } catch (_) {}
   return null;
 }
 async function tenterClotureAuto(id) {
@@ -635,6 +636,19 @@ window.onerror = function(msg, url, line, col, err) {
   input:disabled, select:disabled{ opacity:.6; }
   .grille3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
   .total-ro{ background:#e6e6e4 !important; color:var(--gris) !important; font-weight:600; }
+  /* Compteurs : nom du TICKET en gras, nom officiel (modèle légal) en petit dessous */
+  .lib-compteur{ margin:10px 0 4px; font-size:.92rem; color:var(--blanc); line-height:1.25; }
+  .lib-compteur small{ display:block; font-size:.72rem; color:var(--gris); font-weight:400; }
+  .titre-ticket{ margin:16px 0 2px; font-size:.8rem; font-weight:800; color:var(--blanc); text-transform:uppercase; letter-spacing:.03em; }
+  .sous-ticket{ font-size:.74rem; color:var(--gris); margin-bottom:6px; }
+  .aide-ticket{ margin:4px 0 6px; font-size:.85rem; }
+  .aide-ticket summary{ cursor:pointer; color:#1d4f86; font-weight:700; padding:6px 0; }
+  .mini-ticket{ font-family:ui-monospace,Menlo,Consolas,monospace; background:#fffef6; color:#222; border:1px dashed #b9b6a6; border-radius:6px; padding:8px 10px; max-width:320px; font-size:.8rem; }
+  .mini-ticket .mt-titre{ font-weight:800; text-align:center; margin-bottom:4px; }
+  .mini-ticket .mt-l{ display:flex; justify-content:space-between; gap:8px; }
+  .mini-ticket .mt-l i{ font-style:normal; color:#1f6b3f; font-weight:700; font-family:inherit; }
+  .mini-ticket .mt-l i.mt-non{ color:#999; font-weight:400; }
+  .mt-note{ font-size:.76rem; color:var(--gris); margin-top:6px; }
   .identite{ font-size:.85rem; margin:2px 0; }
   .identite b{ color:var(--blanc); }
   .identite span{ color:var(--gris); }
@@ -757,6 +771,10 @@ window.onerror = function(msg, url, line, col, err) {
   #bloc-pauses input.champ-heure-invalide{ border-color:#b3141b; background:#fdecee; }
   .horaires-vis{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
   .horaires-vis > div{ min-width:0; }
+  /* Début / Fin / Pauses : la rangée [−5][Maintenant][+5] ne tient pas dans 1/3 de largeur sur téléphone → une heure par ligne */
+  .grille3 > *{ min-width:0; }
+  .rangee-heure > button{ min-width:0; }
+  @media (max-width:560px){ .grille-heures{ grid-template-columns:1fr; gap:0; } }
   .horaires-vis .rangee-heure{ display:grid; grid-template-columns:1fr 1.6fr 1fr; gap:4px; margin-top:6px; }
   .horaires-vis .rangee-heure button{ min-width:0; width:100%; padding:9px 2px; font-size:.78rem; margin:0; }
   #liste-pauses{ margin-top:10px; }
@@ -783,6 +801,14 @@ window.onerror = function(msg, url, line, col, err) {
   #contenu-pauses{ display:none; padding:0 12px 12px; }
   #bloc-pauses.ouvert #contenu-pauses{ display:block; }
   #btn-pause-manuelle{ width:100%; margin-top:10px; padding:11px; border-radius:10px; border:1px dashed #1d4f86; background:#f2f6fb; color:#1d4f86; font-weight:700; font-size:.95rem; }
+  #signature-manque .sm-titre{ margin-bottom:2px; }
+  #signature-manque .sm-aide{ font-size:.8rem; font-weight:400; color:#7a1a1a; margin-bottom:8px; }
+  #signature-manque .sm-item{ border-top:1px solid #f0c4c4; padding:8px 0 2px; }
+  #signature-manque .sm-lien{ display:block; width:100%; text-align:left; background:none; border:none; padding:2px 0 6px; color:#b3141b; font-weight:800; font-size:.92rem; text-decoration:underline dotted; }
+  #signature-manque .sm-input{ margin-bottom:6px; background:#fff; color:#111; border:2px solid #e3a0a5; }
+  #signature-manque .sm-aller{ width:100%; padding:11px; margin-bottom:6px; border-radius:8px; border:none; background:#1d4f86; color:#fff; font-weight:800; font-size:.92rem; }
+  #signature-manque .sm-ok{ color:#1f6b3f; }
+  .ligne-course.ligne-a-completer{ outline:3px solid #e8a200; outline-offset:2px; }
   .btn-y-aller{ width:100%; padding:11px; margin:-4px 0 10px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:800; font-size:.95rem; }
 </style>
 </head>
@@ -809,6 +835,7 @@ window.onerror = function(msg, url, line, col, err) {
   <p class="identite"><span>Véhicule :</span> <select id="identite-vehicule-select" style="width:auto; display:inline-block; padding:6px 8px; margin:0; font-size:.9rem;"><option value="">— Aucun —</option></select></p>
   <p class="identite"><span>N° plaque d'immatriculation :</span> <b id="identite-plaque">—</b></p>
   <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
+  <button type="button" id="btn-modifier-identite" style="display:none; width:100%; margin-top:8px; padding:10px; border-radius:10px; border:1px solid #8a5a00; background:#fff8ec; color:#8a5a00; font-weight:700; font-size:.9rem;">✏️ Modifier l'exploitant / le n° d'identification (cette feuille)</button>
 </div>
 
 <div id="bloc-pauses">
@@ -852,59 +879,72 @@ window.onerror = function(msg, url, line, col, err) {
   <div class="resume-repli" id="resume-service-replie"></div>
   <div class="contenu-repliable" id="contenu-service">
     <div id="bloc-entete-interieur">
-      <div class="grille3">
+      <div class="grille3 grille-heures">
         <div><label>Début</label><input type="text" id="heure-debut" inputmode="numeric" placeholder="ex : 0630"></div>
         <div><label>Fin</label><input type="text" id="heure-fin" inputmode="numeric" placeholder="ex : 1830"></div>
         <div><label>Interruptions / pauses</label><input type="text" id="interruptions" placeholder="ex: 12:30-13:00"></div>
       </div>
 
-      <div class="sous-titre-mini">INDEX KM — TABLEAU DE BORD</div>
-      <div class="grille3">
-        <div><label>Début</label><input type="number" step="0.1" id="km-debut"></div>
-        <div><label>Fin</label><input type="number" step="0.1" id="km-fin"></div>
-        <div><label>Total</label><input class="total-ro" type="text" id="km-total" disabled></div>
-      </div>
-
-      <div class="sous-titre-mini">INDEX TAXIMÈTRE</div>
-      <div class="grille3">
-        <div><label>Début</label><input type="number" step="0.1" id="taxi-debut"></div>
-        <div><label>Fin</label><input type="number" step="0.1" id="taxi-fin"></div>
-        <div><label>Total</label><input class="total-ro" type="text" id="taxi-total" disabled></div>
-      </div>
+    <div class="lib-compteur"><b>Compteur voiture</b> (tableau de bord) km<small>Index km — tableau de bord · pas sur le ticket</small></div>
+    <div class="grille3">
+      <div><label>Début</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="km-debut"></div>
+      <div><label>Fin</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="km-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="km-total" disabled></div>
+    </div>
     </div>
 
-    <div class="sous-titre-mini" style="margin-top:16px;">PRISE EN CHARGE</div>
+    <div class="titre-ticket">🧾 Ticket du taximètre « TOTALISATEURS »</div>
+    <div class="sous-ticket">Début = ticket imprimé en début de service · Fin = ticket imprimé en fin de service</div>
+    <details class="aide-ticket" id="aide-ticket">
+      <summary>📄 Où trouver ces chiffres ?</summary>
+      <div class="mini-ticket" aria-label="Ordre des lignes sur le ticket">
+        <div class="mt-titre">TOTALISATEURS</div>
+        <div class="mt-l"><span>Courses</span><i>→ Courses</i></div>
+        <div class="mt-l"><span>Nbre chutes</span><i>→ Nbre chutes</i></div>
+        <div class="mt-l"><span>Dernière course</span><i class="mt-non">pas à noter</i></div>
+        <div class="mt-l"><span>Rec. globale</span><i>→ Rec. globale</i></div>
+        <div class="mt-l"><span>Rec. suppl.</span><i class="mt-non">pas à noter</i></div>
+        <div class="mt-l"><span>Dist. charge</span><i>→ Dist. charge</i></div>
+        <div class="mt-l"><span>Dist. totale</span><i>→ Dist. totale</i></div>
+      </div>
+      <div class="mt-note">Le <b>compteur de la voiture</b> n'est pas sur le ticket : lis-le sur le tableau de bord. Les <b>Recettes</b> se calculent toutes seules avec tes courses.</div>
+    </details>
+
+    <div class="lib-compteur"><b>Courses</b> (ticket)<small>Nombre de prises en charge</small></div>
     <div class="grille3">
-      <div><label>Début</label><input type="number" step="0.1" id="prise-debut"></div>
-      <div><label>Fin</label><input type="number" step="0.1" id="prise-fin"></div>
+      <div><label>Début</label><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" class="champ-compteur" data-mode="int" id="prise-debut"></div>
+      <div><label>Fin</label><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" class="champ-compteur" data-mode="int" id="prise-fin"></div>
       <div><label>Total</label><input class="total-ro" type="text" id="prise-total" disabled></div>
     </div>
-
-    <div class="sous-titre-mini">INDEX KM (KM TOTAUX)</div>
+    <div class="lib-compteur"><b>Nbre chutes</b> (ticket)<small>Chutes — nombre de chutes (pas des €)</small></div>
     <div class="grille3">
-      <div><label>Début</label><input type="number" step="0.1" id="kmtotaux-debut"></div>
-      <div><label>Fin</label><input type="number" step="0.1" id="kmtotaux-fin"></div>
+      <div><label>Début</label><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" class="champ-compteur" data-mode="int" id="chutes-debut"></div>
+      <div><label>Fin</label><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" class="champ-compteur" data-mode="int" id="chutes-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="chutes-total" disabled></div>
+    </div>
+    <div class="lib-compteur"><b>Rec. globale</b> (ticket) €<small>Taximètre — recette totalisée</small></div>
+    <div class="grille3">
+      <div><label>Début</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="taxi-debut"></div>
+      <div><label>Fin</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="taxi-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="taxi-total" disabled></div>
+    </div>
+    <div class="lib-compteur"><b>Dist. charge</b> (ticket) km<small>Km en charge</small></div>
+    <div class="grille3">
+      <div><label>Début</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="kmcharge-debut"></div>
+      <div><label>Fin</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="kmcharge-fin"></div>
+      <div><label>Total</label><input class="total-ro" type="text" id="kmcharge-total" disabled></div>
+    </div>
+    <div class="lib-compteur"><b>Dist. totale</b> (ticket) km<small>Index km (km totaux) du taximètre</small></div>
+    <div class="grille3">
+      <div><label>Début</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="kmtotaux-debut"></div>
+      <div><label>Fin</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="kmtotaux-fin"></div>
       <div><label>Total</label><input class="total-ro" type="text" id="kmtotaux-total" disabled></div>
     </div>
 
-    <div class="sous-titre-mini">KM EN CHARGE</div>
+    <div class="lib-compteur"><b>Recettes de la feuille</b> €<small>Recettes — somme des courses (pas sur le ticket)</small></div>
     <div class="grille3">
-      <div><label>Début</label><input type="number" step="0.1" id="kmcharge-debut"></div>
-      <div><label>Fin</label><input type="number" step="0.1" id="kmcharge-fin"></div>
-      <div><label>Total</label><input class="total-ro" type="text" id="kmcharge-total" disabled></div>
-    </div>
-
-    <div class="sous-titre-mini">CHUTES (€)</div>
-    <div class="grille3">
-      <div><label>Début</label><input type="number" step="0.01" id="chutes-debut"></div>
-      <div><label>Fin</label><input type="number" step="0.01" id="chutes-fin"></div>
-      <div><label>Total</label><input class="total-ro" type="text" id="chutes-total" disabled></div>
-    </div>
-
-    <div class="sous-titre-mini">RECETTES (€)</div>
-    <div class="grille3">
-      <div><label>Début</label><input type="number" step="0.01" id="recettes-debut"></div>
-      <div><label>Fin (auto)</label><input type="number" step="0.01" id="recettes-fin" readonly title="Calculé automatiquement avec les courses"></div>
+      <div><label>Début</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="recettes-debut"></div>
+      <div><label>Fin (auto)</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="recettes-fin" readonly title="Calculé automatiquement avec les courses"></div>
       <div><label>Total</label><input class="total-ro" type="text" id="recettes-total" disabled></div>
     </div>
   </div>
@@ -940,7 +980,7 @@ window.onerror = function(msg, url, line, col, err) {
   <p id="avertissement">À faire <b>seulement quand ta journée est terminée</b>. Une fois signée, la feuille de route se verrouille : plus aucune modification possible côté chauffeur. Seule la direction pourra la corriger.</p>
   <button id="btn-signer" type="button">✍️ Ma journée est finie : signer la feuille</button>
   <div id="etape-signature" style="display:none; margin-top:12px; border:2px solid #b3141b; border-radius:12px; padding:12px; background:#fff7f7;">
-    <div id="signature-manque" style="color:#b3141b; font-weight:700; white-space:pre-wrap;"></div>
+    <div id="signature-manque" style="color:#b3141b; font-weight:700;"></div>
     <label style="display:flex; gap:10px; align-items:center; margin:10px 0; font-weight:700;"><input type="checkbox" id="chk-fin-journee" style="width:26px; height:26px;"> Oui, ma journée est terminée</label>
     <button id="btn-signer-confirmer" type="button" disabled style="width:100%; padding:14px; border-radius:10px; border:none; background:#b3141b; color:#fff; font-weight:800; opacity:.45;">🔒 Je signe et je clôture ma feuille</button>
     <button id="btn-signer-annuler" type="button" style="width:100%; padding:12px; border-radius:10px; border:1px solid #ccc; background:#fff; margin-top:8px;">Annuler</button>
@@ -1782,12 +1822,21 @@ const pairesTotal = [
   ["recettes-debut", "recettes-fin", "recettes-total"]
 ];
 
+// "" → "" ; texte non reconnu → undefined ; sinon chiffre avec un point décimal
+function normaliserCompteur(brut, mode) {
+  const t = String(brut ?? "").replace(/[\s\u00a0€]/g, "").replace(/km$/i, "").replace(",", ".");
+  if (t === "") return "";
+  if (mode === "int" ? !/^\d+$/.test(t) : !/^-?\d+(\.\d+)?$|^-?\d+\.$/.test(t)) return undefined;
+  return t.replace(/\.$/, "");
+}
 function calculerTotaux() {
   pairesTotal.forEach(([idDebut, idFin, idTotal]) => {
-    const debut = parseFloat(document.getElementById(idDebut).value);
-    const fin = parseFloat(document.getElementById(idFin).value);
+    const elD = document.getElementById(idDebut);
+    const debut = nombreOuNull(elD.value);
+    const fin = nombreOuNull(document.getElementById(idFin).value);
+    const entier = elD.dataset.mode === "int";
     document.getElementById(idTotal).value =
-      (!isNaN(debut) && !isNaN(fin)) ? (fin - debut).toFixed(2) : "";
+      (debut !== null && fin !== null) ? (entier ? String(Math.round(fin - debut)) : (fin - debut).toFixed(2)) : "";
   });
   mettreAJourResumeServiceReplie();
 }
@@ -1812,7 +1861,7 @@ function mettreAJourResumeServiceReplie() {
   if (totPauses > 0) morceaux.push("pauses " + formatDureePause(totPauses));
   document.getElementById("resume-service-replie").textContent = morceaux.length
     ? morceaux.join(" · ") + " · touche pour voir/modifier"
-    : "Touche pour remplir (index km, taximètre, horaires…)";
+    : "Touche pour remplir (compteur voiture, ticket du taximètre, horaires…)";
 }
 document.getElementById("entete-service-repliable").addEventListener("click", () => ouvrirFermerService());
 
@@ -1821,7 +1870,7 @@ let vehiculesActifsCache = [];
 
 // ================== VÉHICULE DU JOUR ==================
 // Plus de voiture attitrée : chaque jour la centrale attribue une voiture au chauffeur (ou il en choisit
-// une LIBRE le matin). Une fois la voiture du jour connue, la feuille s'ouvre directement avec elle.
+// une parmi TOUTES le matin). Une fois la voiture du jour connue, la feuille s'ouvre directement avec elle.
 // Copie gardée sur le téléphone : sans réseau, on réutilise la dernière voiture connue.
 const CLE_VEHICULE_DU_JOUR = "taxiwal_vehicule_du_jour";
 const CLE_DERNIER_VEHICULE = "taxiwal_dernier_vehicule";
@@ -1869,14 +1918,28 @@ async function chargerVehiculeDuJour(uid, date) {
   if (date === dateLocaleISO()) vehiculeDuJour = v;
   return v;
 }
-// Voitures LIBRES aujourd'hui (+ la sienne). null = pas de réseau / liste indisponible.
+// RÈGLE DU PATRON : TOUTES les voitures actives sont toujours proposées (jamais cachées).
+// Une voiture utilisée par un autre chauffeur garde une petite note « (aussi utilisée par …) ».
+// null = pas de réseau / liste indisponible.
 async function chargerVehiculesDisponibles() {
   if (TWHL.horsLigne()) return null;
+  let data = null;
   try {
-    const { data, error } = await supabase.rpc("chauffeur_vehicules_disponibles", { p_date: dateLocaleISO() });
-    if (!error && Array.isArray(data)) return data;
+    const r = await supabase.rpc("chauffeur_vehicules_choix", { p_date: dateLocaleISO() });
+    if (!r.error && Array.isArray(r.data)) data = r.data;
+    else {
+      const r2 = await supabase.rpc("chauffeur_vehicules_disponibles", { p_date: dateLocaleISO() });
+      if (!r2.error && Array.isArray(r2.data)) data = r2.data;
+    }
   } catch (e) {}
-  return null;
+  if (!data) return null;
+  // + toute voiture active connue du téléphone que le serveur n'aurait pas renvoyée
+  const ids = new Set(data.map(v => v.id));
+  (vehiculesActifsCache || []).forEach(v => { if (v && v.id && !ids.has(v.id)) { data.push(v); ids.add(v.id); } });
+  return data;
+}
+function noteUtiliseePar(v) {
+  return v && v.utilise_par ? "aussi utilisée par " + v.utilise_par : "";
 }
 // Enregistre auprès de la centrale la voiture choisie par le chauffeur pour aujourd'hui.
 // Renvoie { ok:true } ou { ok:false, pris:true|false, message }.
@@ -1908,24 +1971,21 @@ function memoriserVehiculeDuJourLocal(v) {
   if (uidFeuille) ecrireCacheVehiculeDuJour(uidFeuille, dateLocaleISO(), row);
 }
 // « 🚗 Changer la voiture de cette feuille » : même feuille, autre voiture (jamais bloqué par les compteurs).
-// En ligne : voitures libres + la sienne, et la voiture du jour suit. Hors ligne : liste gardée sur le téléphone.
+// En ligne : toutes les voitures, et la voiture du jour suit. Hors ligne : liste gardée sur le téléphone.
 // Renvoie true si la voiture de la feuille a été changée.
 let changementVoitureFeuilleEnCours = false;
 async function changerVoitureDeLaFeuille(vImpose) {
   if (vImpose && vImpose.type === "click") vImpose = null;
   if (!feuilleActuelle || feuilleActuelle.verrouillee || changementVoitureFeuilleEnCours) return false;
-  if (feuilleADesLignes()) {
-    alert("🚗 Cette feuille a déjà des courses : sa voiture ne peut plus être changée.\n\nUne voiture = une feuille. Utilise « 🚗 Je change de voiture → nouvelle feuille » : cette feuille-ci reste ouverte pour être complétée et signée.");
-    try { majControleVoitureFeuille(); } catch (e) {}
-    return false;
-  }
+  // RÈGLE DU PATRON : le chauffeur peut changer la voiture de sa feuille (non signée) À TOUT MOMENT,
+  // même si la feuille a déjà des courses.
   changementVoitureFeuilleEnCours = true;
   try {
     let v = vImpose || null;
     if (!v) {
       const { liste, enLigne } = await listeVehiculesPourChoix();
       v = await choisirVehicule("🚗 Changer la voiture de cette feuille", { liste,
-        note: (enLigne ? "Seulement pour corriger un mauvais choix (feuille sans course) — vérifie ensuite les compteurs de DÉBUT." : "📴 Hors ligne : voitures gardées sur le téléphone.") });
+        note: (enLigne ? "Toutes les voitures. Vérifie ensuite les compteurs de DÉBUT." : "📴 Hors ligne : toutes les voitures sont affichées.") });
       if (!v) return false;
     }
     if (v.id === feuilleActuelle.vehicule_id) return false;
@@ -1953,7 +2013,7 @@ async function changerVoitureDeLaFeuille(vImpose) {
     return true;
   } finally { changementVoitureFeuilleEnCours = false; }
 }
-// Le matin, sans voiture attribuée : le chauffeur choisit une voiture LIBRE (réseau obligatoire).
+// Le matin, sans voiture attribuée : le chauffeur choisit sa voiture parmi TOUTES (réseau obligatoire).
 // Renvoie l'objet véhicule choisi, ou null (« Plus tard » / pas de réseau).
 async function choisirVehiculeDuJourLibre() {
   for (let essai = 0; essai < 5; essai++) {
@@ -1962,8 +2022,8 @@ async function choisirVehiculeDuJourLibre() {
       afficherToast("📴 Pas de réseau : choisir une voiture demande du réseau. Réessaie dès que le réseau revient.");
       return null;
     }
-    const v = await choisirVehicule("🚗 Aucune voiture ne t'a été attribuée aujourd'hui — choisis une voiture libre", {
-      liste: libres, libelleAnnuler: "Plus tard", note: libres.length ? "" : "Aucune voiture libre pour le moment — appelle la centrale."
+    const v = await choisirVehicule("🚗 Aucune voiture ne t'a été attribuée aujourd'hui — choisis ta voiture", {
+      liste: libres, libelleAnnuler: "Plus tard", note: libres.length ? "" : "Aucune voiture active pour le moment — appelle la centrale."
     });
     if (!v) return null;
     const r = await enregistrerChoixVehicule(v);
@@ -1974,7 +2034,16 @@ async function choisirVehiculeDuJourLibre() {
   }
   return null;
 }
-// Véhicule de la nouvelle feuille du jour : attribution du jour, sinon choix d'une voiture libre.
+// Feuille (non signée, sans heure de début) pour la voiture attribuée par la centrale
+async function creerFeuilleVoitureAttribuee(uid, vdj) {
+  if (!uid || !vdj || !vdj.vehicule_id) return null;
+  const champs = { id: TWHL.uuid(), chauffeur_id: uid, date_service: dateLocaleISO(), vehicule_id: vdj.vehicule_id };
+  const locale = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champs);
+  const { data, error } = await TWHL.ecrire({ table: "feuilles_route", op: "upsert", payload: champs,
+    select: "*", optimiste: locale, local: locale, label: "Feuille de la voiture attribuée" });
+  return (error || !data) ? null : data;
+}
+// Véhicule de la nouvelle feuille du jour : attribution du jour, sinon choix parmi toutes les voitures.
 // Hors ligne : attribution gardée sur le téléphone, sinon la dernière voiture utilisée.
 async function vehiculePourFeuilleDuJour(uid) {
   const hors = TWHL.horsLigne();
@@ -2013,6 +2082,22 @@ async function verifierVehiculeDuJour(force) {
       return cacher();
     }
     if (vdj.choisi_par !== "admin") return cacher();
+    // Toutes les feuilles du jour sont signées et la centrale attribue une NOUVELLE voiture (ex. Toyota signée,
+    // BMW attribuée à 19:07) → la feuille de cette voiture s'ouvre toute seule : onglets [Toyota ✅] [BMW 📝]
+    if (feuilleActuelle.verrouillee && feuilleActuelle.date_service === dateLocaleISO()
+        && !toutesLesFeuillesDuJour.some(f => !f.verrouillee && !f.signee)
+        && !toutesLesFeuillesDuJour.some(f => f.date_service === dateLocaleISO() && f.vehicule_id === vdj.vehicule_id)) {
+      const nf = await creerFeuilleVoitureAttribuee(uidFeuille, vdj);
+      if (nf) {
+        if (!toutesLesFeuillesDuJour.some(f => f.id === nf.id)) toutesLesFeuillesDuJour.push(nf);
+        feuilleActuelle = nf;
+        memoriserFeuilleChoisie(nf);
+        reinitialiserBandeauFeuille();
+        cacher();
+        setTimeout(() => { chargerFeuilleActive({ id: uidFeuille }).catch(() => {}); afficherToast("🚗 La centrale t'a attribué " + libelleVehicule(vdj) + " : nouvelle feuille ouverte."); }, 0);
+        return;
+      }
+    }
     // Une autre feuille ouverte du service a déjà cette voiture : proposer d'y aller
     const autre = toutesLesFeuillesDuJour.find(f => f.id !== feuilleActuelle.id && !f.verrouillee && f.vehicule_id === vdj.vehicule_id && feuilleDuServiceEnCours(f));
     bandeau.innerHTML = `<div style="font-weight:800; margin-bottom:8px;">🚗 La centrale t'a attribué <span class="vdj-nom">${esc(libelleVehicule(vdj))}</span></div>`;
@@ -2127,7 +2212,7 @@ function libelleVehiculeFeuille(f) {
   const plaque = f.plaque || (v && v.plaque) || "";
   return [nom, plaque].filter(Boolean).join(" ") || (f.vehicule_id ? "véhicule" : "sans véhicule");
 }
-// Feuille actuelle avec au moins une ligne de course : sa voiture ne se change plus (→ nouvelle feuille)
+// Feuille actuelle avec au moins une ligne de course (info seulement : la voiture reste modifiable)
 function feuilleADesLignes() { return (lignesActuelles || []).length > 0; }
 function majEnteteFeuilleVehicule() {
   const ent = document.getElementById("entete-feuille-vehicule");
@@ -2147,13 +2232,13 @@ function majEnteteFeuilleVehicule() {
 }
 function majControleVoitureFeuille() {
   try { majEnteteFeuilleVehicule(); } catch (e) {}
-  const avecLignes = feuilleADesLignes();
+  // Voiture modifiable à tout moment sur une feuille non signée (avec ou sans courses)
   const b = document.getElementById("btn-changer-voiture-feuille");
-  if (b) b.style.display = avecLignes ? "none" : "";
+  if (b) { b.style.display = ""; b.disabled = false; }
   const sel = document.getElementById("identite-vehicule-select");
   if (sel && feuilleActuelle) {
-    sel.disabled = !!feuilleActuelle.verrouillee || avecLignes;
-    sel.title = avecLignes ? "Cette feuille a déjà des courses : pour une autre voiture, « Je change de voiture → nouvelle feuille »." : "";
+    sel.disabled = !!feuilleActuelle.verrouillee;
+    sel.title = feuilleActuelle.verrouillee ? "Feuille signée : pour une autre voiture, « ➕ Autre voiture »." : "";
   }
   const t = document.getElementById("titre-caisse");
   if (t && feuilleActuelle) t.textContent = "💰 Caisse de cette feuille (" + libelleVehiculeFeuille() + ")";
@@ -2360,8 +2445,17 @@ function mettreAJourAffichageDate() {
     if (!nuitRows.length && feuilles.length === 0 && TWHL.horsLigne() && await ouvrirDepuisInstantane()) return;
     // Feuilles encore ouvertes : nuit en cours (hier) + feuilles du jour non clôturées
     const ouvertes = [...nuitRows.filter(f => idsNuit.has(f.id) && !f.verrouillee), ...feuilles.filter(f => !f.verrouillee)];
+    // Feuilles du jour toutes signées + nouvelle voiture attribuée par la centrale (ex. BMW à 19:07) :
+    // sa feuille est ouverte → onglets [Toyota ✅] [BMW 📝] [➕ Autre voiture]
+    if (!ouvertes.length && feuilles.length > 0 && !nuitRows.some(f => !f.verrouillee)) {
+      const vdjA = await chargerVehiculeDuJour(user.id);
+      if (vdjA && vdjA.vehicule_id && vdjA.choisi_par === "admin" && !feuilles.some(f => f.vehicule_id === vdjA.vehicule_id)) {
+        const nfA = await creerFeuilleVoitureAttribuee(user.id, vdjA);
+        if (nfA) { feuilles.push(nfA); ouvertes.push(nfA); }
+      }
+    }
     if (!ouvertes.length && feuilles.length === 0) {
-      // Voiture du jour : attribuée par la centrale → directement ; sinon choix d'une voiture libre
+      // Voiture du jour : attribuée par la centrale → directement ; sinon choix parmi toutes les voitures
       const { data: vehsInit } = await supabase.from("vehicules").select("*").eq("actif", true);
       vehiculesActifsCache = vehsInit || vehiculesActifsCache;
       const vehInit = await vehiculePourFeuilleDuJour(user.id);
@@ -2449,6 +2543,16 @@ async function feuillesDuJourOnglets(jour) {
   cacheOngletsJour.set(jour, liste);
   return liste;
 }
+// « ➕ Autre voiture » : GRAND bouton, toujours visible dans la barre d'onglets (feuille signée, aucune feuille, autre jour…)
+function boutonAutreVoiture() {
+  const autre = document.createElement("button");
+  autre.type = "button"; autre.id = "btn-changer-vehicule"; autre.className = "onglet-autre-voiture";
+  autre.innerHTML = `<span style="display:block; font-weight:900; font-size:1.18rem; white-space:nowrap;">➕ Autre voiture</span><span style="display:block; font-size:.9rem; font-weight:700; white-space:nowrap;">= nouvelle feuille</span>`;
+  autre.title = "🚗 Je change de voiture → nouvelle feuille";
+  autre.style.cssText = "flex:1 1 170px; text-align:left; padding:12px 16px; border-radius:14px; min-height:72px; border:3px dashed var(--vert); background:#e3f5e9; color:var(--vert); box-shadow:0 2px 8px rgba(31,138,76,.18);";
+  autre.addEventListener("click", () => { jourOnglets = null; ouvrirChangementVehicule(); });
+  return autre;
+}
 function afficherSelecteurFeuilles() {
   let barre = document.getElementById("barre-selecteur-feuilles");
   if (!barre) {
@@ -2487,23 +2591,19 @@ function afficherSelecteurFeuilles() {
     const liste = trierFeuillesParDebut(toutesLesFeuillesDuJour.map(f => (feuilleActuelle && f.id === feuilleActuelle.id) ? feuilleActuelle : f));
     if (feuilleActuelle && !liste.some(f => f.id === feuilleActuelle.id)) liste.push(feuilleActuelle);
     liste.forEach(f => rangee.appendChild(ongletFeuille(f, feuilleActuelle && f.id === feuilleActuelle.id, () => basculerVersFeuille(f.id))));
-    const autre = document.createElement("button");
-    autre.type = "button"; autre.id = "btn-changer-vehicule"; autre.className = "onglet-autre-voiture";
-    autre.innerHTML = `<span style="display:block; font-weight:800; font-size:1.02rem; white-space:nowrap;">➕ Autre voiture</span><span style="display:block; font-size:.86rem; font-weight:700; white-space:nowrap;">= nouvelle feuille</span>`;
-    autre.title = "🚗 Je change de voiture → nouvelle feuille";
-    autre.style.cssText = "flex:1 1 150px; text-align:left; padding:10px 14px; border-radius:14px; min-height:64px; border:3px dashed var(--vert); background:#eef8f1; color:var(--vert);";
-    autre.addEventListener("click", ouvrirChangementVehicule);
-    rangee.appendChild(autre);
+    rangee.appendChild(boutonAutreVoiture());
+    if (!feuilleActuelle) return;   // pas encore de feuille : les onglets + « ➕ Autre voiture » suffisent
   } else {
     rangee.innerHTML = '<span style="padding:8px; color:#666; font-size:.88rem;">Chargement…</span>';
     feuillesDuJourOnglets(jour).then(liste => {
       if ((jourOnglets || jourFeuille) !== jour) return;   // l'utilisateur a déjà changé de jour
       rangee.innerHTML = "";
-      if (!liste.length) { rangee.innerHTML = '<span style="padding:8px; color:#666; font-size:.88rem;">Aucune feuille ce jour-là.</span>'; return; }
+      if (!liste.length) rangee.innerHTML = '<span style="padding:8px; color:#666; font-size:.88rem;">Aucune feuille ce jour-là.</span>';
       liste.forEach(f => rangee.appendChild(ongletFeuille(f, feuilleActuelle && f.id === feuilleActuelle.id, () => {
         if (toutesLesFeuillesDuJour.some(x => x.id === f.id)) { jourOnglets = null; basculerVersFeuille(f.id); return; }
         location.href = "feuille-de-route.html?feuille=" + encodeURIComponent(f.id);
       })));
+      rangee.appendChild(boutonAutreVoiture());   // toujours là (nouvelle feuille d'aujourd'hui)
     });
     return;   // autre jour : seulement les onglets (la feuille ouverte ne change pas tant qu'on ne touche pas un onglet)
   }
@@ -2524,10 +2624,9 @@ function afficherSelecteurFeuilles() {
     const btnVoitureFeuille = document.createElement("button");
     btnVoitureFeuille.type = "button";
     btnVoitureFeuille.id = "btn-changer-voiture-feuille";
-    btnVoitureFeuille.textContent = "🚗 Changer la voiture de cette feuille (mauvais choix)";
-    btnVoitureFeuille.style.cssText = "width:100%; margin-bottom:6px; padding:9px; font-size:.88rem; border-radius:12px; border:1px solid #8a5a00; background:#fff8ec; color:#8a5a00; font-weight:700;";
-    btnVoitureFeuille.addEventListener("click", changerVoitureDeLaFeuille);
-    if (feuilleADesLignes()) btnVoitureFeuille.style.display = "none";   // feuille avec des courses → « ➕ Autre voiture »
+    btnVoitureFeuille.textContent = "🚗 Changer la voiture de cette feuille";
+    btnVoitureFeuille.style.cssText = "width:100%; margin-bottom:6px; padding:11px; font-size:.95rem; border-radius:12px; border:2px solid #8a5a00; background:#fff8ec; color:#8a5a00; font-weight:800;";
+    btnVoitureFeuille.addEventListener("click", changerVoitureDeLaFeuille);   // toujours actif (avec ou sans courses)
     barre.appendChild(btnVoitureFeuille);
   }
   // 5) Nouvelle feuille : toujours possible (même pendant un service de nuit, après signature, etc.)
@@ -2557,6 +2656,14 @@ function choisirVehicule(titre, opts) {
       b.dataset.vehiculeId = v.id;
       const actuelle = feuilleActuelle && feuilleActuelle.vehicule_id === v.id;
       b.textContent = (v.nom || "Véhicule") + (v.plaque ? " · " + v.plaque : "") + (actuelle ? "  (voiture actuelle)" : "");
+      const autre = noteUtiliseePar(v);
+      if (autre) {
+        const n = document.createElement("span");
+        n.className = "note-utilisee-par";
+        n.style.cssText = "display:block; font-size:.8rem; font-weight:400; color:#777; margin-top:2px;";
+        n.textContent = "(" + autre + ")";
+        b.appendChild(n);
+      }
       b.style.cssText = "display:block; width:100%; text-align:left; padding:14px; margin-bottom:8px; border-radius:12px; border:1px solid #ccc; background:" + (actuelle ? "#f3f3f3" : "#fff") + "; font-size:1rem; font-weight:700;";
       b.onclick = () => { fond.remove(); resolve(v); };
       boite.appendChild(b);
@@ -2572,11 +2679,15 @@ function choisirVehicule(titre, opts) {
   });
 }
 
-// Liste proposée au chauffeur : voitures libres aujourd'hui (+ la sienne) ; hors ligne : toutes
+// Liste proposée au chauffeur : TOUTES les voitures actives (avec « aussi utilisée par … ») ; hors ligne : toutes
 async function listeVehiculesPourChoix() {
   const libres = await chargerVehiculesDisponibles();
   if (!libres) return { liste: vehiculesActifsCache, enLigne: false };
-  return { liste: libres, enLigne: true };
+  // + sa propre voiture (celle de la feuille ouverte), même si le serveur la compte ailleurs
+  const liste = libres.slice();
+  const idF = feuilleActuelle && !feuilleActuelle.verrouillee && feuilleActuelle.vehicule_id;
+  if (idF && !liste.some(v => v.id === idF)) { const v = (vehiculesActifsCache || []).find(x => x.id === idF); if (v) liste.push(v); }
+  return { liste, enLigne: true };
 }
 async function ouvrirChangementVehicule(vehiculeImpose) {
   if (vehiculeImpose && vehiculeImpose.type === "click") vehiculeImpose = null;  // appelé depuis le bouton
@@ -2918,9 +3029,22 @@ async function remplirIdentite(user) {
   // reste modifiable à tout moment si le mauvais véhicule a été retenu.
   const selectVehicule = document.getElementById("identite-vehicule-select");
   const { data: tousLesVehicules } = await supabase.from("vehicules").select("*").eq("actif", true).order("nom");
-  const listeSelectVehicules = (tousLesVehicules && tousLesVehicules.length) ? tousLesVehicules : (vehiculesActifsCache || []);
+  const tousActifs = (tousLesVehicules && tousLesVehicules.length) ? tousLesVehicules : (vehiculesActifsCache || []);
+  // TOUTES les voitures actives (règle du patron) ; celles utilisées par un autre chauffeur sont
+  // simplement notées « (aussi utilisée par …) ».
+  let listeSelectVehicules = tousActifs;
+  if (!feuilleActuelle.verrouillee) {
+    const libres = await chargerVehiculesDisponibles();
+    if (libres) {
+      listeSelectVehicules = libres.map(l => Object.assign({}, tousActifs.find(v => v.id === l.id) || {}, l));
+      const ids = new Set(listeSelectVehicules.map(v => v.id));
+      [feuilleActuelle.vehicule_id, vehiculeDuJour && vehiculeDuJour.vehicule_id].forEach(id => {
+        if (id && !ids.has(id)) { const v = tousActifs.find(x => x.id === id); if (v) { listeSelectVehicules.push(v); ids.add(id); } }
+      });
+    }
+  }
   selectVehicule.innerHTML = `<option value="">— Aucun —</option>` +
-    listeSelectVehicules.map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("");
+    listeSelectVehicules.map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}${noteUtiliseePar(v) ? " (" + esc(noteUtiliseePar(v)) + ")" : ""}</option>`).join("");
   selectVehicule.onchange = async () => {
     // Choix d'une voiture : même chemin que « 🚗 Changer la voiture de cette feuille » (voiture du jour mise à jour)
     if (selectVehicule.value) {
@@ -2940,7 +3064,68 @@ async function remplirIdentite(user) {
   document.getElementById("identite-numid").textContent = feuilleActuelle.numero_identification || vehicule?.numero_identification || "—";
   identiteSocieteActuelle = feuilleActuelle.identite_exploitant || vehicule?.identite_exploitant || "Rasikh international";
   document.getElementById("identite-societe").textContent = identiteSocieteActuelle;
+  vehiculeIdentiteFeuille = vehicule || null;
+  majBoutonIdentite();
 }
+// ---- Identité de CETTE feuille (exploitant / n° d'identification) : modifiable par le chauffeur tant
+// qu'elle n'est pas signée. Enregistré sur la feuille seulement (les autres feuilles ne changent pas). ----
+let vehiculeIdentiteFeuille = null;
+function majBoutonIdentite() {
+  const b = document.getElementById("btn-modifier-identite");
+  const modifiable = !!(feuilleActuelle && !feuilleActuelle.verrouillee && !feuilleActuelle.signee);
+  if (b) b.style.display = modifiable ? "block" : "none";
+  ["identite-societe", "identite-numid"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement) { el.parentElement.style.cursor = modifiable ? "pointer" : ""; el.parentElement.title = modifiable ? "Toucher pour modifier" : ""; }
+  });
+}
+function ouvrirEditionIdentiteChauffeur() {
+  if (!feuilleActuelle || feuilleActuelle.verrouillee || feuilleActuelle.signee) return;
+  if (document.querySelector(".modale-identite-feuille")) return;
+  const veh = vehiculeIdentiteFeuille || {};
+  const fond = document.createElement("div");
+  fond.className = "modale-identite-feuille";
+  fond.style.cssText = "position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center;";
+  const st = "width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #ccc; font-size:1rem; margin:0;";
+  fond.innerHTML = `<div style="background:#fff; color:#111; width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px); max-height:85vh; overflow:auto;">
+    <div style="font-weight:800; font-size:1.05rem; margin-bottom:4px;">✏️ Identité de cette feuille</div>
+    <div style="font-size:.85rem; color:#666; margin-bottom:10px;">Seulement pour cette feuille (${esc(libelleVehiculeFeuille())}). Laisse vide pour reprendre la valeur de la voiture.</div>
+    <label style="display:block; font-size:.85rem; font-weight:700; margin:8px 0 4px;">Identité de l'exploitant</label>
+    <input class="mi-exploitant" style="${st}" placeholder="${esc(veh.identite_exploitant || "Rasikh international")}">
+    <label style="display:block; font-size:.85rem; font-weight:700; margin:10px 0 4px;">N° identification</label>
+    <input class="mi-numid" style="${st}" placeholder="${esc(veh.numero_identification || "")}">
+    <div class="mi-erreur" style="display:none; margin-top:10px; color:#b3141b; font-weight:700;"></div>
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <button type="button" class="mi-annuler" style="flex:1; padding:13px; border-radius:12px; border:none; background:#e3e3e0; font-weight:700;">Annuler</button>
+      <button type="button" class="mi-ok" style="flex:2; padding:13px; border-radius:12px; border:none; background:var(--vert); color:#fff; font-weight:800;">✅ Enregistrer</button>
+    </div></div>`;
+  fond.querySelector(".mi-exploitant").value = feuilleActuelle.identite_exploitant || "";
+  fond.querySelector(".mi-numid").value = feuilleActuelle.numero_identification || "";
+  document.body.appendChild(fond);
+  const fermer = () => fond.remove();
+  fond.querySelector(".mi-annuler").addEventListener("click", fermer);
+  fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
+  fond.querySelector(".mi-ok").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const maj = { identite_exploitant: fond.querySelector(".mi-exploitant").value.trim() || null,
+                  numero_identification: fond.querySelector(".mi-numid").value.trim() || null };
+    btn.disabled = true;
+    const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
+      payload: maj, local: maj, label: "Identité de la feuille" });
+    if (error) { btn.disabled = false; const z = fond.querySelector(".mi-erreur"); z.textContent = "Erreur : " + error.message; z.style.display = "block"; return; }
+    Object.assign(feuilleActuelle, maj);
+    toutesLesFeuillesDuJour = toutesLesFeuillesDuJour.map(f => f.id === feuilleActuelle.id ? feuilleActuelle : f);
+    fermer();
+    try { await remplirIdentite({ id: uidFeuille }); } catch (_) {}
+    sauverInstantaneFeuille();
+    afficherToast("✅ Identité de cette feuille enregistrée");
+  });
+}
+document.getElementById("btn-modifier-identite").addEventListener("click", ouvrirEditionIdentiteChauffeur);
+["identite-societe", "identite-numid"].forEach(id => {
+  const el = document.getElementById(id);
+  if (el && el.parentElement) el.parentElement.addEventListener("click", ouvrirEditionIdentiteChauffeur);
+});
 
 function remplirEntete() {
   Object.entries(champsEntete).forEach(([idHtml, champBdd]) => {
@@ -2965,8 +3150,20 @@ function remplirEntete() {
 Object.keys(champsEntete).forEach(idHtml => {
   document.getElementById(idHtml).addEventListener("change", async (e) => {
     const champBdd = champsEntete[idHtml];
-    const valeur = e.target.value === "" ? null : e.target.value;
     const erreurEl = document.getElementById("erreur");
+    // Compteurs : virgule ou point acceptés (« 12,5 » → 12.5), espaces / € / km ignorés
+    if (e.target.classList.contains("champ-compteur")) {
+      const brut = e.target.value;
+      const propre = normaliserCompteur(brut, e.target.dataset.mode);
+      if (propre === undefined) {
+        e.target.value = feuilleActuelle[champBdd] ?? "";
+        erreurEl.style.color = "var(--rouge)";
+        erreurEl.textContent = "⚠️ « " + brut + " » : chiffre non reconnu" + (e.target.dataset.mode === "int" ? " (nombre entier, sans virgule)" : "") + ".";
+        return;
+      }
+      e.target.value = propre;
+    }
+    const valeur = e.target.value === "" ? null : e.target.value;
     const { error, enAttente } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
       payload: { [champBdd]: valeur }, label: "Service : " + champBdd });
     if (error) { erreurEl.textContent = "⚠️ Non enregistré : " + error.message; erreurEl.style.color = "var(--rouge)"; return; }
@@ -2978,6 +3175,7 @@ Object.keys(champsEntete).forEach(idHtml => {
     erreurEl.textContent = okTexte;
     setTimeout(() => { if (erreurEl.textContent === okTexte) erreurEl.textContent = ""; }, 2500);
     calculerTotaux();
+    rafraichirPanneauSignature();
   });
 });
 
@@ -4335,25 +4533,137 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
 });
 
 // Signature en 2 étapes (bouton éloigné de « Clôturer cette course » pour éviter les erreurs)
-function manquesSignature() {
+// Champs obligatoires pour signer (ordre : horaires, compteur voiture, puis ticket dans l'ordre du ticket)
+const CHAMPS_SIGNATURE = [
+  ["heure_debut", "heure de début", "heure-debut"], ["heure_fin", "heure de fin", "heure-fin"],
+  ["index_km_debut", "compteur voiture (tableau de bord) — début", "km-debut"], ["index_km_fin", "compteur voiture (tableau de bord) — fin", "km-fin"],
+  ["prise_en_charge_debut", "Courses (ticket) — début", "prise-debut"], ["prise_en_charge_fin", "Courses (ticket) — fin", "prise-fin"],
+  ["chutes_debut", "Nbre chutes (ticket) — début", "chutes-debut"], ["chutes_fin", "Nbre chutes (ticket) — fin", "chutes-fin"],
+  ["taximetre_debut", "Rec. globale (ticket) — début", "taxi-debut"], ["taximetre_fin", "Rec. globale (ticket) — fin", "taxi-fin"],
+  ["km_en_charge_debut", "Dist. charge (ticket) — début", "kmcharge-debut"], ["km_en_charge_fin", "Dist. charge (ticket) — fin", "kmcharge-fin"],
+  ["index_km_totaux_debut", "Dist. totale (ticket) — début", "kmtotaux-debut"], ["index_km_totaux_fin", "Dist. totale (ticket) — fin", "kmtotaux-fin"]
+];
+// Liste détaillée : { cle, libelle, idHtml } pour un champ, { cle, libelle, ligneId, numero } pour une course ouverte
+function manquesSignatureDetail() {
   const f = feuilleActuelle || {};
-  const champs = [["heure_debut","heure de début"],["heure_fin","heure de fin"],["index_km_debut","index km début"],["index_km_fin","index km fin"],
-    ["taximetre_debut","taximètre début"],["taximetre_fin","taximètre fin"],["prise_en_charge_debut","prise en charge début"],["prise_en_charge_fin","prise en charge fin"],
-    ["index_km_totaux_debut","km totaux début"],["index_km_totaux_fin","km totaux fin"],["km_en_charge_debut","km en charge début"],["km_en_charge_fin","km en charge fin"],
-    ["chutes_debut","chutes début"],["chutes_fin","chutes fin"]];
-  const m = champs.filter(([c]) => f[c] === null || f[c] === undefined || f[c] === "").map(([, l]) => l);
-  const ouvertes = (lignesActuelles || []).filter(l => !l.cloturee).length;
-  if (ouvertes) m.push(ouvertes + " course(s) pas encore clôturée(s)");
+  const m = CHAMPS_SIGNATURE.filter(([c]) => f[c] === null || f[c] === undefined || f[c] === "")
+    .map(([c, l, idHtml]) => ({ cle: c, libelle: l, idHtml }));
+  const nums = numerosCourses(lignesActuelles || []);
+  (lignesActuelles || []).filter(l => !l.cloturee).forEach((l, i) => {
+    const n = nums.get(l.id) || l.n_ordre || (i + 1);
+    m.push({ cle: "ligne:" + l.id, libelle: "course n° " + n + " pas encore clôturée", ligneId: l.id, numero: n });
+  });
   return m;
+}
+function manquesSignature() { return manquesSignatureDetail().map(x => x.libelle); }
+
+// ---- Panneau de signature autonome : chaque manque se remplit SUR PLACE (même enregistrement que le champ d'origine) ----
+function panneauSignatureOuvert() { const e = document.getElementById("etape-signature"); return !!e && e.style.display !== "none"; }
+function allerAuChamp(idHtml) {
+  if (idHtml === "heure-debut" || idHtml === "heure-fin") {
+    try { ouvrirFermerBlocPauses(true); } catch (_) {}
+    const vis = document.getElementById(idHtml === "heure-debut" ? "horaire-debut-vis" : "horaire-fin-vis");
+    const bloc = document.getElementById("bloc-pauses");
+    if (vis && bloc && bloc.style.display !== "none") { vis.scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => { try { vis.focus({ preventScroll: true }); } catch (_) {} }, 350); return; }
+  }
+  try { ouvrirFermerService(true); } catch (_) {}
+  const el = document.getElementById(idHtml);
+  if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => { try { el.focus({ preventScroll: true }); } catch (_) {} }, 350); }
+}
+function allerALaCourse(ligneId) {
+  etatManuelLignes.set(ligneId, true);
+  try { afficherLignes(); } catch (_) {}
+  const el = document.querySelector(`.ligne-course[data-ligne-id="${ligneId}"]`);
+  if (el) { el.scrollIntoView({ block: "start", behavior: "smooth" }); el.classList.add("ligne-a-completer"); setTimeout(() => el.classList.remove("ligne-a-completer"), 2500); }
+}
+function creerLigneManque(item) {
+  const row = document.createElement("div");
+  row.className = "sm-item";
+  row.dataset.cle = item.cle;
+  const lien = document.createElement("button");
+  lien.type = "button"; lien.className = "sm-lien";
+  lien.textContent = "• " + item.libelle.charAt(0).toUpperCase() + item.libelle.slice(1) + " ↗";
+  lien.title = "Aller à cet endroit de la feuille";
+  row.appendChild(lien);
+  if (item.ligneId) {
+    lien.addEventListener("click", () => allerALaCourse(item.ligneId));
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "sm-aller";
+    b.textContent = "➡️ Aller à la course n° " + item.numero;
+    b.addEventListener("click", () => allerALaCourse(item.ligneId));
+    row.appendChild(b);
+    return row;
+  }
+  lien.addEventListener("click", () => allerAuChamp(item.idHtml));
+  const vrai = document.getElementById(item.idHtml);
+  const input = document.createElement("input");
+  input.className = "sm-input";
+  input.dataset.pour = item.idHtml;
+  input.setAttribute("aria-label", item.libelle);
+  const estHeure = item.idHtml === "heure-debut" || item.idHtml === "heure-fin";
+  // La valeur tapée ici est recopiée dans le VRAI champ, qui l'enregistre (avec la file hors ligne)
+  const envoyer = () => {
+    if (!vrai || input.value === vrai.value) return;
+    vrai.value = input.value;
+    vrai.dispatchEvent(new Event("change"));
+  };
+  if (estHeure) {
+    attacherNormalisationHeure(input);
+    input.placeholder = "HH:MM (ex : 1830)";
+    input.addEventListener("change", envoyer);
+    row.appendChild(input);
+    row.appendChild(creerBoutonMaintenant(input));
+  } else {
+    input.type = "text";
+    input.inputMode = vrai && vrai.dataset.mode === "int" ? "numeric" : "decimal";
+    input.autocomplete = "off";
+    input.placeholder = vrai && vrai.dataset.mode === "int" ? "nombre entier" : "chiffre (virgule ou point)";
+    input.addEventListener("change", envoyer);
+    row.appendChild(input);
+  }
+  return row;
+}
+function majEtatBoutonSignature(m) {
+  const b = document.getElementById("btn-signer-confirmer");
+  const chk = document.getElementById("chk-fin-journee");
+  chk.disabled = m.length > 0;
+  if (m.length) chk.checked = false;
+  b.disabled = !chk.checked || m.length > 0; b.style.opacity = b.disabled ? ".45" : "1";
+}
+function rendrePanneauSignature() {
+  const z = document.getElementById("signature-manque");
+  const m = manquesSignatureDetail();
+  z.innerHTML = "";
+  if (m.length) {
+    const t = document.createElement("div"); t.className = "sm-titre";
+    t.textContent = "❌ Impossible de signer, il manque :";
+    z.appendChild(t);
+    const aide = document.createElement("div"); aide.className = "sm-aide";
+    aide.textContent = "Remplis-les directement ici (ou touche un nom pour aller à l'endroit) :";
+    z.appendChild(aide);
+    m.forEach(item => z.appendChild(creerLigneManque(item)));
+  }
+  majEtatBoutonSignature(m);
+}
+// Après chaque enregistrement : on enlève seulement ce qui est rempli (sans casser la saisie en cours)
+function rafraichirPanneauSignature() {
+  if (!panneauSignatureOuvert()) return;
+  const z = document.getElementById("signature-manque");
+  const m = manquesSignatureDetail();
+  const cles = new Set(m.map(x => x.cle));
+  z.querySelectorAll(".sm-item").forEach(r => { if (!cles.has(r.dataset.cle)) r.remove(); });
+  const presentes = new Set([...z.querySelectorAll(".sm-item")].map(r => r.dataset.cle));
+  m.filter(x => !presentes.has(x.cle)).forEach(item => z.appendChild(creerLigneManque(item)));
+  if (!m.length && z.querySelector(".sm-titre")) {
+    z.innerHTML = '<div class="sm-ok">✅ Tout est rempli : tu peux cocher et signer.</div>';
+  }
+  majEtatBoutonSignature(m);
 }
 document.getElementById("btn-signer").addEventListener("click", () => {
   const etape = document.getElementById("etape-signature");
-  const m = manquesSignature();
-  document.getElementById("signature-manque").textContent = m.length ? "❌ Impossible de signer, il manque :\n• " + m.join("\n• ") : "";
   document.getElementById("chk-fin-journee").checked = false;
-  document.getElementById("chk-fin-journee").disabled = m.length > 0;
-  const b = document.getElementById("btn-signer-confirmer"); b.disabled = true; b.style.opacity = ".45";
   etape.style.display = "block";
+  rendrePanneauSignature();
   etape.scrollIntoView({ block: "center", behavior: "smooth" });
 });
 document.getElementById("chk-fin-journee").addEventListener("change", (e) => {
@@ -4399,6 +4709,7 @@ document.getElementById("btn-voir-details").addEventListener("click", () => {
 
 function appliquerVerrouillage() {
   const verrou = feuilleActuelle.verrouillee;
+  try { majBoutonIdentite(); } catch (e) {}
   // Feuille d'un jour précédent qu'on vient de clôturer → on propose d'ouvrir la suivante / celle du jour
   const aujourdHuiIso = dateLocaleISO();
   if (verrou && feuilleActuelle.date_service < aujourdHuiIso && estServiceEnCours(feuilleActuelle, true)) {
@@ -4896,7 +5207,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       </table>
       <h2>Service</h2>
       <table>
-        <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
+        <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th><b>Compteur voiture</b> km<br><span class="mini">Tableau de bord</span></th><th><b>Rec. globale</b> (ticket) €<br><span class="mini">Taximètre</span></th></tr>
         <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${esc(texteInterruptionsResume(f.interruptions))}</td>
             <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.taximetre_fin)}</td></tr>
         <tr><td>Fin</td><td>${fmtVal(f.heure_fin ? String(f.heure_fin).slice(0, 5) : "")}</td><td></td>
@@ -4905,7 +5216,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             <td>Total</td><td>${calcTotal2(f.index_km_debut, f.index_km_fin)}</td><td>${calcTotal2(f.taximetre_debut, f.taximetre_fin)}</td></tr>
       </table>
       <table>
-        <tr><th></th><th>Prise en charge</th><th>Index Km (Km totaux)</th><th>Km en charge</th><th>Chutes (€)</th><th>Recettes</th></tr>
+        <tr><th></th><th><b>Courses</b> (ticket)<br><span class="mini">Prise en charge</span></th><th><b>Dist. totale</b> (ticket) km<br><span class="mini">Index Km (Km totaux)</span></th><th><b>Dist. charge</b> (ticket) km<br><span class="mini">Km en charge</span></th><th><b>Nbre chutes</b> (ticket)<br><span class="mini">Chutes</span></th><th><b>Recettes</b> €<br><span class="mini">somme des courses</span></th></tr>
         <tr><td>Fin</td><td>${fmtVal(f.prise_en_charge_fin)}</td><td>${fmtVal(f.index_km_totaux_fin)}</td><td>${fmtVal(f.km_en_charge_fin)}</td><td>${fmtVal(f.chutes_fin)}</td><td>${fmtVal(f.recettes_fin)}</td></tr>
         <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut ?? (f.recettes_fin != null ? "0.00" : ""))}</td></tr>
         <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>

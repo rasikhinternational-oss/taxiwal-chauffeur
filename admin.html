@@ -731,6 +731,17 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin .mini-titre{ font-size:.7rem; color:var(--gris); text-transform:uppercase; margin:10px 0 4px; }
   .feuille-admin .bloc-service-fa{ margin-bottom:10px; }
   .feuille-admin .bloc-service-fa .sous-titre-fa{ font-size:.68rem; color:var(--gris); text-transform:uppercase; margin:8px 0 4px; }
+  .feuille-admin .lib-compteur-fa{ font-size:.86rem; margin:8px 0 4px; line-height:1.25; }
+  .feuille-admin .lib-compteur-fa small{ display:block; font-size:.68rem; color:var(--gris); font-weight:400; }
+  .feuille-admin .titre-ticket-fa{ margin:12px 0 4px; font-size:.74rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; }
+  .feuille-admin .aide-ticket-fa{ text-transform:none; letter-spacing:0; font-weight:400; font-size:.82rem; margin-top:4px; }
+  .feuille-admin .aide-ticket-fa summary{ cursor:pointer; color:#1d4f86; font-weight:700; padding:4px 0; }
+  .feuille-admin .mini-ticket-fa{ font-family:ui-monospace,Menlo,Consolas,monospace; background:#fffef6; color:#222; border:1px dashed #b9b6a6; border-radius:6px; padding:8px 10px; max-width:320px; font-size:.78rem; }
+  .feuille-admin .mini-ticket-fa .mt-titre{ font-weight:800; text-align:center; margin-bottom:4px; }
+  .feuille-admin .mini-ticket-fa .mt-l{ display:flex; justify-content:space-between; gap:8px; }
+  .feuille-admin .mini-ticket-fa .mt-l i{ font-style:normal; color:#1f6b3f; font-weight:700; }
+  .feuille-admin .mini-ticket-fa .mt-l i.mt-non{ color:#999; font-weight:400; }
+  .feuille-admin .aide-ticket-fa .mt-note{ font-size:.74rem; color:var(--gris); margin-top:6px; }
   .feuille-admin .total-fa{ font-size:.72rem; color:var(--vert); font-weight:700; margin-top:2px; }
   .feuille-admin .btn-verrou{ width:auto; padding:8px 12px; border-radius:8px; border:none; font-size:.8rem; font-weight:700; cursor:pointer; flex-shrink:0; }
   .feuille-admin .btn-verrou.rouvrir{ background:var(--rouge); color:#fff; }
@@ -2159,9 +2170,10 @@ function optionsTypeVehicule(valeur) {
     <option value="van" ${valeur === "van" ? "selected" : ""}>🚐 7 places (van)</option>
     <option value="pmr" ${valeur === "pmr" ? "selected" : ""}>♿ PMR</option>`;
 }
-function optionsVehiculesFlotte(idSelectionne) {
+function optionsVehiculesFlotte(idSelectionne, quand) {
+  // Toutes les voitures actives, avec leur détenteur du jour de la course (jamais cachées à l'admin)
   return `<option value="">— Véhicule précis : au choix —</option>` +
-    vehiculesCache.map(v => `<option value="${v.id}" ${v.id === idSelectionne ? "selected" : ""}>${esc(v.nom)}${v.places ? " · " + v.places + " places" : ""}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("");
+    vehiculesCache.map(v => `<option value="${v.id}" ${v.id === idSelectionne ? "selected" : ""}>${esc(v.nom)}${v.places ? " · " + v.places + " places" : ""}${v.plaque ? " · " + esc(v.plaque) : ""} — ${esc(texteDetenteursAdmin(detenteursVehiculeAdmin(v.id, quand)))}</option>`).join("");
 }
 
 // ---------- CONNEXION ADMIN (OTP email + vérification du rôle) ----------
@@ -2817,6 +2829,7 @@ async function chargerAttributionsCache() {
     const { data, error } = await supabase.from("attributions_vehicules").select("*").eq("actif", true).gte("date_service", depuis);
     if (!error && Array.isArray(data)) attributionsCache = data;
   } catch (e) {}
+  await chargerFeuillesOuvertesCache();
   return attributionsCache;
 }
 // Voiture du jour d'un chauffeur pour une date (YYYY-MM-DD ou date/heure), sinon celle d'aujourd'hui
@@ -2840,6 +2853,74 @@ function chauffeurDuVehiculeAdmin(vehiculeId, quand) {
   return a ? a.chauffeur_id : null;
 }
 function libVehAdmin(v) { return v ? (v.nom || "Véhicule") + (v.plaque ? " · " + v.plaque : "") : "—"; }
+// ---- L'ADMIN VOIT TOUJOURS TOUTES LES VOITURES (jamais cachées), chacune avec son détenteur actuel ----
+// « Toyota Corolla · TXAQ203 — utilisée par Hatice (feuille ouverte) », « Renault · TXAW084 — Abdul », « BMW · T-LAN-480 — libre »
+let feuillesOuvertesCache = [];   // feuilles non signées (avant-hier → futur) : qui roule avec quelle voiture
+async function chargerFeuillesOuvertesCache() {
+  const depuis = dateBruxellesISO(new Date(Date.now() - 2 * 864e5));
+  try {
+    const { data, error } = await supabase.from("feuilles_route").select("id, chauffeur_id, vehicule_id, date_service, verrouillee")
+      .eq("verrouillee", false).gte("date_service", depuis);
+    if (!error && Array.isArray(data)) feuillesOuvertesCache = data;
+  } catch (e) {}
+  return feuillesOuvertesCache;
+}
+function nomChauffeurAdmin(id) {
+  const c = (chauffeursCache || []).find(x => x.id === id) || (partenairesCache || []).find(x => x.id === id);
+  return (c && (c.nom || c.telephone)) || "un chauffeur";
+}
+function dateISOAdmin(quand) {
+  if (!quand) return dateBruxellesISO();
+  const s = String(quand);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? dateBruxellesISO() : dateBruxellesISO(d);
+}
+// Chauffeurs qui tiennent une voiture ce jour-là : attribution active et/ou feuille ouverte avec elle
+function detenteursVehiculeAdmin(vehiculeId, quand, attribs, ouvertes) {
+  if (!vehiculeId) return [];
+  const date = dateISOAdmin(quand);
+  const veille = veilleISO(date);
+  attribs = attribs || attributionsCache; ouvertes = ouvertes || feuillesOuvertesCache;
+  const res = [];
+  const ajouter = (id, ouverte) => {
+    if (!id) return;
+    const x = res.find(r => r.id === id);
+    if (x) { x.ouverte = x.ouverte || ouverte; return; }
+    res.push({ id, nom: nomChauffeurAdmin(id), ouverte: !!ouverte });
+  };
+  (attribs || []).filter(a => a.actif !== false && a.vehicule_id === vehiculeId && a.date_service === date).forEach(a => ajouter(a.chauffeur_id, false));
+  (ouvertes || []).filter(f => !f.verrouillee && f.vehicule_id === vehiculeId && (f.date_service === date || f.date_service === veille)).forEach(f => ajouter(f.chauffeur_id, true));
+  return res;
+}
+function texteDetenteursAdmin(dets) {
+  if (!dets || !dets.length) return "libre";
+  return dets.map(d => d.ouverte ? "utilisée par " + d.nom + " (feuille ouverte)" : d.nom).join(", ");
+}
+function libVehDetenteurAdmin(v, quand, attribs, ouvertes) {
+  return libVehAdmin(v) + " — " + texteDetenteursAdmin(detenteursVehiculeAdmin(v && v.id, quand, attribs, ouvertes));
+}
+// <option> de TOUTES les voitures actives (+ la voiture déjà choisie si elle n'est plus active)
+function optionsVehiculesAdmin(idSelectionne, quand, libelleVide, attribs, ouvertes, vehicules) {
+  const liste = (vehicules || vehiculesCache || []).slice();
+  if (idSelectionne && !liste.some(v => v.id === idSelectionne)) liste.push({ id: idSelectionne, nom: "Véhicule (inactif)" });
+  return `<option value="">${esc(libelleVide || "— Aucun —")}</option>` +
+    liste.map(v => `<option value="${v.id}" ${v.id === idSelectionne ? "selected" : ""}>${esc(libVehDetenteurAdmin(v, quand, attribs, ouvertes))}</option>`).join("");
+}
+// Voiture tenue par un AUTRE chauffeur : confirmation dans la page, puis admin_attribuer_vehicule (qui la déplace).
+// Renvoie true si on peut continuer (voiture libre / à lui, ou transfert confirmé et fait).
+async function prendreVehiculePourChauffeurAdmin(vehiculeId, chauffeurId, quand, attribs, ouvertes) {
+  const autres = detenteursVehiculeAdmin(vehiculeId, quand, attribs, ouvertes).filter(d => d.id !== chauffeurId);
+  if (!autres.length) return { ok: true, transfert: false };
+  const v = (vehiculesCache || []).find(x => x.id === vehiculeId) || {};
+  const court = String(v.nom || "voiture").split(" ")[0];
+  const msg = `Retirer la ${court} à ${autres.map(d => d.nom).join(" et ")} et la donner à ${nomChauffeurAdmin(chauffeurId)} ?`
+    + `\n\n${libVehAdmin(v)} — ${texteDetenteursAdmin(autres)}`;
+  if (!(await confirmerDansPageFA(msg, "🚗 Oui, la donner", "Annuler", "#b86e00"))) return { ok: false };
+  const { error } = await supabase.rpc("admin_attribuer_vehicule", { p_chauffeur: chauffeurId, p_vehicule: vehiculeId, p_date: dateISOAdmin(quand) });
+  if (error) { toastAdmin("Erreur : " + error.message, "#b3141b"); return { ok: false }; }
+  return { ok: true, transfert: true };
+}
 
 let vjDate = null;
 const MOTIFS_LIBERATION_VJ = { feuille_signee: "feuille signée", changement_voiture: "changement de voiture", reattribuee: "réattribuée par la centrale", retiree: "retirée par la centrale" };
@@ -2854,10 +2935,11 @@ async function chargerVehiculesDuJour() {
   if (!vjDate) vjDate = dateBruxellesISO();
   inp.value = vjDate;
   zone.innerHTML = '<p style="color:var(--gris);">Chargement…</p>';
-  const [{ data: attribs, error }, { data: vehs }, { data: chs }] = await Promise.all([
+  const [{ data: attribs, error }, { data: vehs }, { data: chs }, { data: fOuv }] = await Promise.all([
     supabase.from("attributions_vehicules").select("*").eq("date_service", vjDate),
     supabase.from("vehicules").select("id, nom, plaque, places, actif").eq("actif", true).order("nom"),
-    supabase.from("profils").select("id, nom, telephone").eq("role", "chauffeur").eq("actif", true).order("nom")
+    supabase.from("profils").select("id, nom, telephone").eq("role", "chauffeur").eq("actif", true).order("nom"),
+    supabase.from("feuilles_route").select("id, chauffeur_id, vehicule_id, date_service, verrouillee").eq("verrouillee", false).in("date_service", [veilleISO(vjDate), vjDate])
   ]);
   if (error) { zone.innerHTML = '<p style="color:var(--rouge);">Erreur : ' + esc(error.message) + '</p>'; return; }
   const vehicules = vehs || [], chauffeurs = chs || [];
@@ -2868,6 +2950,8 @@ async function chargerVehiculesDuJour() {
   liberees.forEach(a => { if (!libereeParChauffeur[a.chauffeur_id]) libereeParChauffeur[a.chauffeur_id] = a; if (!libereeParVehicule[a.vehicule_id]) libereeParVehicule[a.vehicule_id] = a; });
   zone.innerHTML = "";
   if (!chauffeurs.length) { zone.innerHTML = '<p style="color:var(--gris);">Aucun chauffeur actif.</p>'; return; }
+  const ouvertesVj = fOuv || [];
+  chs && chs.forEach(c => { if (!(chauffeursCache || []).some(x => x.id === c.id)) chauffeursCache.push(c); });
   const parChauffeur = {}; liste.forEach(a => { parChauffeur[a.chauffeur_id] = a; });
   const prises = new Set(liste.map(a => a.vehicule_id));
   chauffeurs.forEach(ch => {
@@ -2889,11 +2973,17 @@ async function chargerVehiculesDuJour() {
     const ligne = document.createElement("div"); ligne.className = "vj-ligne";
     const sel = document.createElement("select"); sel.className = "vj-select";
     sel.setAttribute("aria-label", "Véhicule de " + (ch.nom || "ce chauffeur"));
-    const libres = vehicules.filter(v => !prises.has(v.id) || (a && a.vehicule_id === v.id));
-    sel.innerHTML = `<option value="">— Choisir une voiture —</option>` +
-      libres.map(v => `<option value="${v.id}" ${a && a.vehicule_id === v.id ? "selected" : ""}>${esc(libVehAdmin(v))}</option>`).join("");
+    // L'admin voit TOUTES les voitures actives, chacune avec son détenteur (jamais cachées)
+    sel.innerHTML = optionsVehiculesAdmin(a ? a.vehicule_id : null, vjDate, "— Choisir une voiture —", liste, ouvertesVj, vehicules);
     sel.addEventListener("change", async () => {
       if (!sel.value) return;
+      const autres = detenteursVehiculeAdmin(sel.value, vjDate, liste, ouvertesVj).filter(d => d.id !== ch.id);
+      if (autres.length) {
+        const v = vehicules.find(x => x.id === sel.value) || {};
+        const msg = `Retirer la ${String(v.nom || "voiture").split(" ")[0]} à ${autres.map(d => d.nom).join(" et ")} et la donner à ${ch.nom || "ce chauffeur"} ?`
+          + `\n\n${libVehAdmin(v)} — ${texteDetenteursAdmin(autres)}`;
+        if (!(await confirmerDansPageFA(msg, "🚗 Oui, la donner", "Annuler", "#b86e00"))) { sel.value = a ? a.vehicule_id : ""; return; }
+      }
       sel.disabled = true;
       const { error: e } = await supabase.rpc("admin_attribuer_vehicule", { p_chauffeur: ch.id, p_vehicule: sel.value, p_date: vjDate });
       if (e) toastAdmin("Erreur : " + e.message, "#b3141b");
@@ -6052,7 +6142,7 @@ function construireCarteAdmin(course) {
       <label>Type de véhicule${course.nb_vehicules > 1 ? ` (véhicule ${course.rang_vehicule}/${course.nb_vehicules})` : ""}</label>
       <select class="select-type-veh">${optionsTypeVehicule(course.vehicule_souhaite)}</select>
       <label>Véhicule de la flotte</label>
-      <select class="select-veh-flotte">${optionsVehiculesFlotte(course.vehicule_id)}</select>
+      <select class="select-veh-flotte">${optionsVehiculesFlotte(course.vehicule_id, course.date_heure)}</select>
     `;
     // Enregistré seulement avec le bouton « ✅ Enregistrer » (jamais au simple choix dans la liste)
     selectAvecEnregistrer(blocVeh.querySelector(".select-type-veh"), async (valeur) => {
@@ -7768,23 +7858,36 @@ const IDENTITE_EXPLOITANT = "Rasikh international";
 
 const champsEnteteFA = {
   "heure_debut": ["Début service", "time"], "heure_fin": ["Fin service", "time"], "interruptions": ["Interruptions", "text"],
-  "index_km_debut": ["Km tableau bord — début", "number"], "index_km_fin": ["Km tableau bord — fin", "number"],
-  "taximetre_debut": ["Taximètre — début", "number"], "taximetre_fin": ["Taximètre — fin", "number"],
-  "prise_en_charge_debut": ["Prise en charge — début", "number"], "prise_en_charge_fin": ["Prise en charge — fin", "number"],
-  "index_km_totaux_debut": ["Km totaux — début", "number"], "index_km_totaux_fin": ["Km totaux — fin", "number"],
-  "km_en_charge_debut": ["Km en charge — début", "number"], "km_en_charge_fin": ["Km en charge — fin", "number"],
-  "chutes_debut": ["Chutes — début", "number"], "chutes_fin": ["Chutes — fin", "number"],
-  "recettes_debut": ["Recettes — début", "number"], "recettes_fin": ["Recettes — fin", "number"]
+  "index_km_debut": ["Début", "number"], "index_km_fin": ["Fin", "number"],
+  "prise_en_charge_debut": ["Début", "int"], "prise_en_charge_fin": ["Fin", "int"],
+  "chutes_debut": ["Début", "int"], "chutes_fin": ["Fin", "int"],
+  "taximetre_debut": ["Début", "number"], "taximetre_fin": ["Fin", "number"],
+  "km_en_charge_debut": ["Début", "number"], "km_en_charge_fin": ["Fin", "number"],
+  "index_km_totaux_debut": ["Début", "number"], "index_km_totaux_fin": ["Fin", "number"],
+  "recettes_debut": ["Début", "number"], "recettes_fin": ["Fin (auto)", "number"]
 };
+// Ordre = ordre du ticket « TOTALISATEURS » du taximètre (après le compteur de la voiture).
+// titre = mot du TICKET (en gras), officiel = nom du modèle légal (en petit dessous).
 const blocsEnteteFA = [
-  { titre: "Km tableau de bord", debut: "index_km_debut", fin: "index_km_fin" },
-  { titre: "Taximètre", debut: "taximetre_debut", fin: "taximetre_fin" },
-  { titre: "Prise en charge", debut: "prise_en_charge_debut", fin: "prise_en_charge_fin" },
-  { titre: "Index Km (Km totaux)", debut: "index_km_totaux_debut", fin: "index_km_totaux_fin" },
-  { titre: "Km en charge", debut: "km_en_charge_debut", fin: "km_en_charge_fin" },
-  { titre: "Chutes (€)", debut: "chutes_debut", fin: "chutes_fin" },
-  { titre: "Recettes", debut: "recettes_debut", fin: "recettes_fin" }
+  { titre: "<b>Compteur voiture</b> (tableau de bord) km", officiel: "Index km — tableau de bord · pas sur le ticket", debut: "index_km_debut", fin: "index_km_fin" },
+  { titre: "<b>Courses</b> (ticket)", officiel: "Nombre de prises en charge", debut: "prise_en_charge_debut", fin: "prise_en_charge_fin", ticket: true },
+  { titre: "<b>Nbre chutes</b> (ticket)", officiel: "Chutes — nombre de chutes (pas des €)", debut: "chutes_debut", fin: "chutes_fin" },
+  { titre: "<b>Rec. globale</b> (ticket) €", officiel: "Taximètre — recette totalisée", debut: "taximetre_debut", fin: "taximetre_fin" },
+  { titre: "<b>Dist. charge</b> (ticket) km", officiel: "Km en charge", debut: "km_en_charge_debut", fin: "km_en_charge_fin" },
+  { titre: "<b>Dist. totale</b> (ticket) km", officiel: "Index km (km totaux) du taximètre", debut: "index_km_totaux_debut", fin: "index_km_totaux_fin" },
+  { titre: "<b>Recettes de la feuille</b> €", officiel: "Recettes — somme des courses (pas sur le ticket)", debut: "recettes_debut", fin: "recettes_fin" }
 ];
+const AIDE_TICKET_FA = `<details class="aide-ticket-fa"><summary>📄 Où trouver ces chiffres ?</summary>
+  <div class="mini-ticket-fa"><div class="mt-titre">TOTALISATEURS</div>
+  <div class="mt-l"><span>Courses</span><i>→ Courses</i></div>
+  <div class="mt-l"><span>Nbre chutes</span><i>→ Nbre chutes</i></div>
+  <div class="mt-l"><span>Dernière course</span><i class="mt-non">pas à noter</i></div>
+  <div class="mt-l"><span>Rec. globale</span><i>→ Rec. globale</i></div>
+  <div class="mt-l"><span>Rec. suppl.</span><i class="mt-non">pas à noter</i></div>
+  <div class="mt-l"><span>Dist. charge</span><i>→ Dist. charge</i></div>
+  <div class="mt-l"><span>Dist. totale</span><i>→ Dist. totale</i></div></div>
+  <div class="mt-note">Début = ticket du début de service · Fin = ticket de fin de service. Le compteur de la voiture n'est pas sur le ticket (tableau de bord). Les recettes se calculent avec les courses.</div>
+</details>`;
 
 const champsLigneFA = [
   ["index_depart", "Index départ", "number"],
@@ -8237,6 +8340,19 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
     titre.className = "titre-chauffeur-jour-fa";
     titre.textContent = "👤 " + (chauffeur.nom || "Chauffeur") + " — " + new Date(dateChoisie + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
     conteneur.appendChild(titre);
+    if (!entrees.length) {
+      // Aucune feuille ce jour-là : l'onglet « ➕ Nouvelle feuille » reste là (choix de la voiture)
+      const rangee = document.createElement("div");
+      rangee.id = "onglets-feuilles-fa";
+      rangee.setAttribute("role", "tablist");
+      rangee.appendChild(ongletNouvelleFeuilleFA(chauffeur, dateChoisie));
+      const vide = document.createElement("p");
+      vide.id = "feuilles-vide";
+      vide.textContent = "Pas encore de feuille ce jour-là pour ce chauffeur.";
+      conteneur.appendChild(rangee);
+      conteneur.appendChild(vide);
+      return;
+    }
     if (entrees.length) {
       const cleOnglet = chauffeur.id + "|" + dateChoisie;
       let actif = ongletActifFA.get(cleOnglet);
@@ -8267,6 +8383,7 @@ async function chargerFeuillesAdminInterne(dejaCreees) {
           b.addEventListener("click", () => { if (actif === f.id) return; actif = f.id; ongletActifFA.set(cleOnglet, actif); rendre(); });
           rangee.appendChild(b);
         });
+        rangee.appendChild(ongletNouvelleFeuilleFA(chauffeur, dateChoisie));
         const e = entrees.find(x => x.f.id === actif);
         const f = e.f, v = f.vehicules || {};
         const signee = !!(f.verrouillee || f.signee);
@@ -8408,6 +8525,16 @@ function ajouterBoutonNouvelleFeuilleFA(carte, chauffeur, dateVue, feuille) {
   if (ref) ref.insertAdjacentElement("afterend", b); else entete.appendChild(b);
   return carte;
 }
+// Onglet « ➕ Nouvelle feuille » dans la vue chauffeur → jour → onglets par voiture
+function ongletNouvelleFeuilleFA(chauffeur, dateVue) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "onglet-feuille-fa onglet-nouvelle-feuille-fa";
+  b.innerHTML = `<span class="of-nom">➕ Nouvelle feuille</span><span class="of-statut" style="color:#1f6b3f;">choisir la voiture</span>`;
+  b.style.cssText = "border:3px dashed var(--vert); background:#eef8f1; color:var(--vert);";
+  b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirAjoutFeuilleFA(chauffeur, dateVue, (vehiculeDuJourAdmin(chauffeur && chauffeur.id, dateVue) || {}).id); });
+  return b;
+}
 function ouvrirAjoutFeuilleFA(chauffeur, dateVue, vehiculeId) {
   const fond = document.createElement("div");
   fond.className = "modale-ajout-feuille-fa";
@@ -8418,7 +8545,7 @@ function ouvrirAjoutFeuilleFA(chauffeur, dateVue, vehiculeId) {
     <div style="font-weight:800; font-size:1.05rem;">➕ Nouvelle feuille de route</div>
     <div style="font-size:.85rem; color:var(--gris); margin-top:2px;">Pour <b>${esc(chauffeur?.nom || "ce chauffeur")}</b> — une feuille de plus, les autres feuilles ne changent pas.</div>
     ${lab("Date de la feuille")}<input type="date" class="af-date" style="${st}" value="${esc(dateVue || "")}">
-    ${lab("Véhicule")}<select class="af-vehicule" style="${st}"><option value="">— Aucun —</option>${(vehiculesCache || []).map(v => `<option value="${v.id}" ${v.id === vehiculeId ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}</select>
+    ${lab("Véhicule")}<select class="af-vehicule" style="${st}">${optionsVehiculesAdmin(vehiculeId, dateVue)}</select>
     ${lab("Heure de début (facultatif)")}<input type="time" class="af-heure" style="${st}">
     <div class="af-erreur" style="display:none; margin-top:12px; padding:10px; border-radius:8px; background:#fdecec; color:#8a1f1f; font-weight:600;"></div>
     <div style="display:flex; gap:8px; margin-top:16px;">
@@ -8429,6 +8556,10 @@ function ouvrirAjoutFeuilleFA(chauffeur, dateVue, vehiculeId) {
   const fermer = () => fond.remove();
   fond.querySelector(".af-annuler").addEventListener("click", fermer);
   fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
+  fond.querySelector(".af-date").addEventListener("change", (e) => {
+    const sv = fond.querySelector(".af-vehicule"), val = sv.value;
+    sv.innerHTML = optionsVehiculesAdmin(val || null, e.target.value || dateVue);
+  });
   const zoneErr = fond.querySelector(".af-erreur");
   const montrerErreur = (t) => { zoneErr.textContent = t; zoneErr.style.display = "block"; };
   fond.querySelector(".af-ok").addEventListener("click", async (e) => {
@@ -8438,6 +8569,10 @@ function ouvrirAjoutFeuilleFA(chauffeur, dateVue, vehiculeId) {
     const heure = fond.querySelector(".af-heure").value;
     const ligne = { chauffeur_id: chauffeur.id, date_service: date, vehicule_id: fond.querySelector(".af-vehicule").value || null };
     if (heure) ligne.heure_debut = heure;
+    if (ligne.vehicule_id) {
+      const r = await prendreVehiculePourChauffeurAdmin(ligne.vehicule_id, chauffeur.id, date);
+      if (!r.ok) return;
+    }
     btn.disabled = true; btn.textContent = "Création…";
     const { error } = await supabase.from("feuilles_route").insert(ligne);
     if (error) {
@@ -8446,6 +8581,7 @@ function ouvrirAjoutFeuilleFA(chauffeur, dateVue, vehiculeId) {
       return;
     }
     fermer();
+    try { await chargerAttributionsCache(); } catch (_) {}
     if (date !== document.getElementById("fa-date").value) document.getElementById("fa-date").value = date;
     derniereActiviteFeuilles = 0;
     chargerFeuillesAdmin(true);
@@ -8549,7 +8685,7 @@ function ouvrirEditionIdentiteFeuille(feuille, chauffeur) {
     ${champ("Chauffeur (à qui appartient la feuille)", `<select id="idf-chauffeur" style="${st}">${(chauffeursCache || []).map(c => `<option value="${c.id}" ${c.id === feuille.chauffeur_id ? "selected" : ""}>${esc(c.nom || "Chauffeur")}</option>`).join("")}</select>`)}
     ${champ("Nom du chauffeur écrit sur la feuille", `<input id="idf-nom" style="${st}" placeholder="${esc(chauffeur?.nom || "")}" value="${esc(feuille.nom_chauffeur_affiche || "")}">`)}
     ${champ("Date de la feuille", `<input id="idf-date" type="date" style="${st}" value="${esc(feuille.date_service || "")}">`)}
-    ${champ("Véhicule", `<select id="idf-vehicule" style="${st}"><option value="">— Aucun —</option>${(vehiculesCache || []).map(v => `<option value="${v.id}" ${v.id === feuille.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}</select>`)}
+    ${champ("Véhicule", `<select id="idf-vehicule" style="${st}">${optionsVehiculesAdmin(feuille.vehicule_id, feuille.date_service)}</select>`)}
     ${champ("Identité de l'exploitant", `<input id="idf-exploitant" style="${st}" placeholder="${esc(veh.identite_exploitant || IDENTITE_EXPLOITANT)}" value="${esc(feuille.identite_exploitant || "")}">`)}
     ${champ("N° plaque d'immatriculation", `<input id="idf-plaque" style="${st}" placeholder="${esc(veh.plaque || "")}" value="${esc(feuille.plaque || "")}">`)}
     ${champ("N° identification", `<input id="idf-numid" style="${st}" placeholder="${esc(veh.numero_identification || "")}" value="${esc(feuille.numero_identification || "")}">`)}
@@ -8582,9 +8718,11 @@ function ouvrirEditionIdentiteFeuille(feuille, chauffeur) {
       const nouveau = (chauffeursCache || []).find(x => x.id === maj.chauffeur_id);
       if (!(await confirmerDansPageFA(`Donner cette feuille de route à ${nouveau?.nom || "ce chauffeur"} ?\n\nElle disparaîtra de l'app de ${chauffeur?.nom || "l'ancien chauffeur"} et ses courses passeront au nom de ${nouveau?.nom || "ce chauffeur"}.`, "✅ Donner la feuille", "Annuler"))) return;
     }
+    // Admin : toujours possible, feuille signée ou non (RLS is_admin, aucun trigger ne bloque)
     const { error } = await supabase.from("feuilles_route").update(maj).eq("id", feuille.id);
-    if (error) { alert("Erreur : " + error.message); return; }
+    if (error) { toastAdmin("Erreur : " + error.message, "#b3141b"); return; }
     fermer();
+    toastAdmin("✅ Identité de la feuille enregistrée");
     if (maj.date_service !== feuille.date_service) document.getElementById("fa-date").value = maj.date_service;
     derniereActiviteFeuilles = 0;
     chargerFeuillesAdmin(true);
@@ -9142,8 +9280,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
         <div class="sous" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <span>Véhicule :</span>
           <select class="select-vehicule-feuille" style="width:auto; padding:6px 8px; border-radius:6px; border:1px solid #cfcfcd; font-size:.82rem;" onclick="event.stopPropagation()">
-            <option value="">— Aucun —</option>
-            ${vehiculesCache.map(v => `<option value="${v.id}" ${v.id === feuille.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}</option>`).join("")}
+            ${optionsVehiculesAdmin(feuille.vehicule_id, feuille.date_service || dateChoisie)}
           </select>
           <span>· 🕐 ${feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "--:--"} → ${feuille.heure_fin ? String(feuille.heure_fin).slice(0, 5) : (feuille.heure_debut ? "en service" : "--:--")}${feuille.heure_debut && feuille.heure_fin ? (() => { const d = minutesDepuisHeure(String(feuille.heure_debut).slice(0, 5)), f = minutesDepuisHeure(String(feuille.heure_fin).slice(0, 5)); return (d !== null && f !== null) ? " (" + formatDureeMinutes((f - d + 1440) % 1440) + ")" : ""; })() : ""}</span>
           <span>· ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}<span class="recette-entete-fa">${texteRecetteEnteteFA(feuille, lignes)}</span>${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</span>
@@ -9180,9 +9317,21 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   entete.querySelector(".btn-nouvelle-course-fa").addEventListener("click", () => {
     ouvrirModaleCourse({ chauffeurId: chauffeur.id, date: dateChoisie + "T09:00" });
   });
-  entete.querySelector(".select-vehicule-feuille").addEventListener("change", async (e) => {
-    const { error } = await supabase.from("feuilles_route").update({ vehicule_id: e.target.value || null }).eq("id", feuille.id);
-    if (error) { alert("Erreur : " + error.message); return; }
+  // Voiture de la feuille : TOUJOURS modifiable par l'admin (feuille signée ou non)
+  const selVehFA = entete.querySelector(".select-vehicule-feuille");
+  selVehFA.disabled = false;
+  selVehFA.addEventListener("change", async (e) => {
+    const vid = e.target.value || null;
+    // Feuille ouverte + voiture tenue par un autre chauffeur : on la lui retire (confirmation) avant
+    if (vid && !feuille.verrouillee) {
+      const r = await prendreVehiculePourChauffeurAdmin(vid, feuille.chauffeur_id, feuille.date_service || dateChoisie);
+      if (!r.ok) { e.target.value = feuille.vehicule_id || ""; return; }
+    }
+    const { error } = await supabase.from("feuilles_route").update({ vehicule_id: vid }).eq("id", feuille.id);
+    if (error) { alert("Erreur : " + error.message); e.target.value = feuille.vehicule_id || ""; return; }
+    feuille.vehicule_id = vid;
+    toastAdmin("🚗 Voiture de la feuille : " + libVehAdmin((vehiculesCache || []).find(v => v.id === vid)));
+    await chargerAttributionsCache();
     chargerFeuillesAdmin();
   });
   const btnVerifierAdmin = entete.querySelector(".btn-verifier-admin");
@@ -9279,12 +9428,19 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     const wrap = document.createElement("div");
     const lab = document.createElement("label"); lab.textContent = libelle;
     const input = document.createElement("input");
-    if (type === "number") { input.type = "text"; input.inputMode = "decimal"; }
+    const numerique = type === "number" || type === "int";
+    if (numerique) { input.type = "text"; input.inputMode = type === "int" ? "numeric" : "decimal"; input.autocomplete = "off"; }
     else input.type = type;
     input.value = feuille[champ] ?? "";
     input.dataset.champEntete = champ;
     input.addEventListener("change", async (e) => {
-      const valeur = type === "number" ? (e.target.value || "").replace(",", ".") || null : (e.target.value || null);
+      if (numerique) {
+        const t = String(e.target.value || "").replace(/[\s\u00a0€]/g, "").replace(/km$/i, "").replace(",", ".").replace(/\.$/, "");
+        const ok = t === "" || (type === "int" ? /^\d+$/.test(t) : /^-?\d+(\.\d+)?$/.test(t));
+        if (!ok) { alert("« " + e.target.value + " » : chiffre non reconnu" + (type === "int" ? " (nombre entier)" : "") + "."); e.target.value = feuille[champ] ?? ""; return; }
+        e.target.value = t;
+      }
+      const valeur = numerique ? (e.target.value || null) : (e.target.value || null);
       await supabase.from("feuilles_route").update({ [champ]: valeur }).eq("id", feuille.id);
       if (onChangeExtra) onChangeExtra();
     });
@@ -9293,9 +9449,15 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   }
 
   blocsEnteteFA.forEach(bloc => {
+    if (bloc.ticket) {
+      const t = document.createElement("div");
+      t.className = "titre-ticket-fa";
+      t.innerHTML = "🧾 Ticket du taximètre « TOTALISATEURS »" + AIDE_TICKET_FA;
+      corps.appendChild(t);
+    }
     const wrapBloc = document.createElement("div");
     wrapBloc.className = "bloc-service-fa";
-    wrapBloc.innerHTML = `<div class="sous-titre-fa">${bloc.titre}</div>`;
+    wrapBloc.innerHTML = `<div class="lib-compteur-fa">${bloc.titre}<small>${bloc.officiel}</small></div>`;
     const grille = document.createElement("div");
     grille.className = "grille3-fa";
     const totalDiv = document.createElement("div");
@@ -9308,7 +9470,8 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
 
     function calculerTotalBloc() {
       const vd = parseFloat(String(inputDebut.input.value).replace(",", ".")), vf = parseFloat(String(inputFin.input.value).replace(",", "."));
-      totalDiv.textContent = (!isNaN(vd) && !isNaN(vf)) ? "Total : " + (vf - vd).toFixed(2) : "";
+      const entier = champsEnteteFA[bloc.debut][1] === "int";
+      totalDiv.textContent = (!isNaN(vd) && !isNaN(vf)) ? "Total : " + (entier ? String(Math.round(vf - vd)) : (vf - vd).toFixed(2)) : "";
     }
     calculerTotalBloc();
 
@@ -10491,7 +10654,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
 
     <h2>Service</h2>
     <table>
-      <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th>Tableau de bord</th><th>Taximètre</th></tr>
+      <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th><b>Compteur voiture</b> km<br><span class="mini">Tableau de bord</span></th><th><b>Rec. globale</b> (ticket) €<br><span class="mini">Taximètre</span></th></tr>
       <tr><td>Début</td><td>${fmtNombre(feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${fmtNombre(feuille.interruptions)}</td>
           <td>Fin</td><td>${fmtNombre(feuille.index_km_fin)}</td><td>${fmtNombre(feuille.taximetre_fin)}</td></tr>
       <tr><td>Fin</td><td>${fmtNombre(feuille.heure_fin ? String(feuille.heure_fin).slice(0, 5) : "")}</td><td></td>
@@ -10501,7 +10664,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     </table>
 
     <table>
-      <tr><th></th><th>Prise en charge</th><th>Index Km (Km totaux)</th><th>Km en charge</th><th>Chutes (€)</th><th>Recettes</th></tr>
+      <tr><th></th><th><b>Courses</b> (ticket)<br><span class="mini">Prise en charge</span></th><th><b>Dist. totale</b> (ticket) km<br><span class="mini">Index Km (Km totaux)</span></th><th><b>Dist. charge</b> (ticket) km<br><span class="mini">Km en charge</span></th><th><b>Nbre chutes</b> (ticket)<br><span class="mini">Chutes</span></th><th><b>Recettes</b> €<br><span class="mini">somme des courses</span></th></tr>
       <tr><td>Fin</td><td>${fmtNombre(feuille.prise_en_charge_fin)}</td><td>${fmtNombre(feuille.index_km_totaux_fin)}</td><td>${fmtNombre(feuille.km_en_charge_fin)}</td><td>${fmtNombre(feuille.chutes_fin)}</td><td>${fmtNombre(feuille.recettes_fin)}</td></tr>
       <tr><td>Début</td><td>${fmtNombre(feuille.prise_en_charge_debut)}</td><td>${fmtNombre(feuille.index_km_totaux_debut)}</td><td>${fmtNombre(feuille.km_en_charge_debut)}</td><td>${fmtNombre(feuille.chutes_debut)}</td><td>${fmtNombre(feuille.recettes_debut ?? (feuille.recettes_fin != null ? "0.00" : ""))}</td></tr>
       <tr><td>Total</td><td>${calcTotalBloc(feuille.prise_en_charge_debut, feuille.prise_en_charge_fin)}</td><td>${calcTotalBloc(feuille.index_km_totaux_debut, feuille.index_km_totaux_fin)}</td><td>${calcTotalBloc(feuille.km_en_charge_debut, feuille.km_en_charge_fin)}</td><td>${calcTotalBloc(feuille.chutes_debut, feuille.chutes_fin)}</td><td>${calcTotalBloc(feuille.recettes_debut, feuille.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
@@ -10648,9 +10811,7 @@ function construireVehiculeAdmin(vehicule) {
   const champs = [
     ["nom", "Nom du véhicule", "text"],
     ["plaque", "Plaque d'immatriculation", "text"],
-    ["numero_identification", "N° identification", "text"],
-    ["places", "Nombre de places", "number"],
-    ["identite_exploitant", "Société (feuille de route) — vide = Rasikh international", "text"]
+    ["places", "Nombre de places", "number"]
   ];
 
   // Vignette photo (présentation) : van si 7+ places ou nom Trafic/van, sinon berline
@@ -10678,13 +10839,43 @@ function construireVehiculeAdmin(vehicule) {
     input.type = type; input.value = vehicule[champ] ?? "";
     input.addEventListener("change", async (e) => {
       const val = type === "number" ? (e.target.value ? parseInt(e.target.value) : null) : (e.target.value || null);
-      await supabase.from("vehicules").update({ [champ]: val }).eq("id", vehicule.id);
+      const { error } = await supabase.from("vehicules").update({ [champ]: val }).eq("id", vehicule.id);
+      if (error) { toastAdmin("Erreur : " + error.message, "#b3141b"); return; }
+      vehicule[champ] = val;
+      toastAdmin("✅ " + libelle + " enregistré");
       chargerChauffeurs();
     });
     wrap.appendChild(lab); wrap.appendChild(input);
     grille.appendChild(wrap);
   });
   div.appendChild(grille);
+
+  // 🪪 Identité écrite sur les feuilles de route de cette voiture (exploitant + n° d'identification).
+  // Les feuilles qui ont leur propre valeur (corrigée sur la feuille) la gardent.
+  const blocId = document.createElement("div");
+  blocId.className = "veh-identite-fr";
+  blocId.style.cssText = "margin-top:10px; padding:10px; border-radius:8px; border:1px solid #e8c77a; background:#fff8ec;";
+  blocId.innerHTML = `<div style="font-weight:800; margin-bottom:6px;">🪪 Identité sur la feuille de route</div>
+    <label style="display:block; font-size:.8rem; color:var(--gris); margin:6px 0 3px;">Identité de l'exploitant (vide = Rasikh international)</label>
+    <input type="text" class="vi-exploitant" style="width:100%; box-sizing:border-box;" placeholder="Rasikh international">
+    <label style="display:block; font-size:.8rem; color:var(--gris); margin:8px 0 3px;">N° identification</label>
+    <input type="text" class="vi-numid" style="width:100%; box-sizing:border-box;">
+    <button type="button" class="vi-ok" style="display:block; width:auto; margin-top:8px; padding:9px 14px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:800;">💾 Enregistrer l'identité</button>`;
+  blocId.querySelector(".vi-exploitant").value = vehicule.identite_exploitant || "";
+  blocId.querySelector(".vi-numid").value = vehicule.numero_identification || "";
+  blocId.querySelector(".vi-ok").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const maj = { identite_exploitant: blocId.querySelector(".vi-exploitant").value.trim() || null,
+                  numero_identification: blocId.querySelector(".vi-numid").value.trim() || null };
+    btn.disabled = true;
+    const { error } = await supabase.from("vehicules").update(maj).eq("id", vehicule.id);
+    btn.disabled = false;
+    if (error) { toastAdmin("Erreur : " + error.message, "#b3141b"); return; }
+    Object.assign(vehicule, maj);
+    toastAdmin("✅ Identité enregistrée pour " + (vehicule.nom || "ce véhicule"));
+    chargerChauffeurs();
+  });
+  div.appendChild(blocId);
 
   // « Chauffeur attitré » : obsolète — les voitures sont attribuées chaque jour (🚗 Véhicules du jour)
   const wrapChauffeur = document.createElement("div");
