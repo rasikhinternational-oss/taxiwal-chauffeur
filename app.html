@@ -30,6 +30,16 @@ window.onerror = function(msg, url, line, col, err) {
     'ERREUR JS : ' + msg + ' (ligne ' + line + ')</div>');
   return false;
 };
+// Photos véhicules : si un fichier manque (404, mauvais type…), on cache l'<img> et on garde le fond dégradé (jamais d'icône « image cassée »)
+function twImgKo(img) {
+  try { img.onerror = null; img.classList.add("tw-img-ko"); img.removeAttribute("alt"); var p = img.parentNode; if (p && p.classList) p.classList.add("tw-photo-ko"); } catch (e) {}
+}
+document.addEventListener("error", function (e) { var el = e.target; if (el && el.tagName === "IMG" && /\.webp(\?|$)/i.test(el.getAttribute("src") || "")) twImgKo(el); }, true);
+function twVerifImages() {
+  document.querySelectorAll('img[src$=".webp"]').forEach(function (i) { if (i.complete && i.naturalWidth === 0 && i.currentSrc) twImgKo(i); });
+}
+document.addEventListener("DOMContentLoaded", twVerifImages);
+window.addEventListener("load", twVerifImages);
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>
@@ -1672,7 +1682,8 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
 
   #ecran-login{ padding:40px 20px; max-width:360px; margin:0 auto; }
   /* ---- Photos véhicules (présentation uniquement) ---- */
-  .tw-photo{ position:relative; overflow:hidden; border-radius:16px; background:#1c1c1c; box-shadow:0 6px 18px rgba(0,0,0,.12); }
+  .tw-photo{ position:relative; overflow:hidden; border-radius:16px; background:#1c1c1c linear-gradient(135deg, #c81e2c 0%, #7d121d 55%, #2a0d11 100%); box-shadow:0 6px 18px rgba(0,0,0,.12); }
+  img.tw-img-ko{ display:none !important; }
   .tw-photo img{ display:block; width:100%; height:100%; object-fit:cover; }
   .tw-photo .tw-voile{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.72) 100%); pointer-events:none; }
   .tw-photo .tw-texte{ position:absolute; left:14px; right:14px; bottom:12px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5); }
@@ -1682,7 +1693,7 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .tw-hero-login{ height:170px; margin:-20px 0 22px; }
   #section-reserver > .tw-hero-reserver{ display:block !important; height:155px; margin:0 0 16px; }
   .tw-photo-bagages{ height:96px; margin:10px 0 0; border-radius:12px; }
-  .rz-vehicule .rz-v-photo{ width:100%; height:64px; border-radius:10px; overflow:hidden; background:#eee; margin-bottom:8px; }
+  .rz-vehicule .rz-v-photo{ width:100%; height:64px; border-radius:10px; overflow:hidden; background:#eee linear-gradient(135deg, #c81e2c, #7d121d); margin-bottom:8px; }
   .rz-vehicule .rz-v-photo img{ display:block; width:100%; height:100%; object-fit:cover; }
 
   #ecran-login label, #ecran-profil-setup label{ display:block; font-size:.85rem; color:var(--gris); margin-bottom:6px; }
@@ -1895,7 +1906,10 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .rz-prix{ background:linear-gradient(135deg,#fff5f5,#f1f9f4); border:1px solid #eadada; border-radius:14px; padding:12px 14px; margin-bottom:14px; }
   .rz-prix b{ font-size:1.35rem; }
   .rz-prix small{ display:block; color:var(--gris); font-size:.76rem; margin-top:3px; }
-  .rz-nav{ position:sticky; bottom:0; display:flex; gap:10px; padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 10px); background:linear-gradient(to top, var(--noir) 75%, transparent); z-index:20; }
+  .rz-nav{ position:sticky; bottom:0; display:flex; gap:10px; padding:12px 0 calc(env(safe-area-inset-bottom,0px) + 10px); background:linear-gradient(to top, var(--noir) 82%, rgba(255,255,255,0)); z-index:20; transition:transform .22s ease, opacity .22s ease; }
+  .rz-nav.rz-nav-cache{ transform:translateY(110%); opacity:0; pointer-events:none; }
+  #section-reserver{ padding-bottom:calc(env(safe-area-inset-bottom,0px) + 24px); }
+  .sv-zone{ scroll-margin-bottom:96px; }
   .rz-nav button{ margin:0 !important; }
   .rz-nav .rz-retour{ flex:0 0 32%; background:#fff !important; color:#111 !important; border:1px solid #cfcfcd !important; }
   .rz-nav .rz-suivant{ flex:1; }
@@ -2099,7 +2113,7 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
 <!-- ÉCRAN CONNEXION -->
 <div id="ecran-login">
   <div class="tw-photo tw-hero-login">
-    <img src="van-principal.webp" alt="Véhicule Taxi Wal" data-i18n-alt="alt.vehicule" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+    <img src="van-principal.webp" alt="Véhicule Taxi Wal" data-i18n-alt="alt.vehicule" width="720" height="540" loading="lazy" decoding="async" onerror="twImgKo(this)">
     <div class="tw-voile"></div>
     <div class="tw-texte"><b>Taxi Wal</b><span data-i18n="hero.region">Région Mons-Borinage · gares &amp; aéroports</span></div>
   </div>
@@ -2145,7 +2159,7 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   <section id="section-reserver" class="visible">
     <span class="badge-marque">TAXI WAL</span>
     <div class="tw-photo tw-hero-reserver">
-      <img src="van-principal.webp" alt="Véhicule Taxi Wal" data-i18n-alt="alt.vehicule" width="720" height="540" loading="lazy" decoding="async" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
+      <img src="van-principal.webp" alt="Véhicule Taxi Wal" data-i18n-alt="alt.vehicule" width="720" height="540" loading="lazy" decoding="async" onerror="twImgKo(this)">
       <div class="tw-voile"></div>
       <div class="tw-texte"><b data-i18n="hero.ou">Où allons-nous ?</b><span data-i18n="hero.region">Région Mons-Borinage · gares &amp; aéroports</span></div>
     </div>
@@ -2228,7 +2242,7 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
     <div class="champ">
       <label data-i18n="f.bagages">Bagages (optionnel)</label>
       <input type="number" id="input-bagages" value="0" min="0">
-      <div class="tw-photo tw-photo-bagages"><img src="van-bagages.webp" alt="Coffre du van Taxi Wal" data-i18n-alt="alt.coffre" width="720" height="540" loading="lazy" decoding="async" style="object-position:center 40%;" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';"></div>
+      <div class="tw-photo tw-photo-bagages"><img src="van-bagages.webp" alt="Coffre du van Taxi Wal" data-i18n-alt="alt.coffre" width="720" height="540" loading="lazy" decoding="async" style="object-position:center 40%;" onerror="twImgKo(this)"></div>
     </div>
     <div class="champ">
       <label data-i18n="f.notes">Notes pour le chauffeur (optionnel)</label>
@@ -4429,7 +4443,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     const b = document.createElement("div");
     b.className = "rz-vehicule"; b.dataset.val = val;
     const photoVeh = { berline: "berline.webp", van: "van-principal.webp" }[val];
-    b.innerHTML = (photoVeh ? `<div class="rz-v-photo"><img src="${photoVeh}" alt="" width="160" height="64" loading="lazy" decoding="async" style="object-position:center ${val === "berline" ? "78%" : "55%"};" onerror="this.parentNode.style.display='none'"></div>` : "") + `<div class="rz-v-icone">${ico}</div><div class="rz-v-nom" data-i18n="${nom}">${esc(t(nom))}</div><div class="rz-v-detail" data-i18n="${det}">${esc(t(det))}</div>`;
+    b.innerHTML = (photoVeh ? `<div class="rz-v-photo"><img src="${photoVeh}" alt="" width="160" height="64" loading="lazy" decoding="async" style="object-position:center ${val === "berline" ? "78%" : "55%"};" onerror="twImgKo(this)"></div>` : "") + `<div class="rz-v-icone">${ico}</div><div class="rz-v-nom" data-i18n="${nom}">${esc(t(nom))}</div><div class="rz-v-detail" data-i18n="${det}">${esc(t(det))}</div>`;
     b.addEventListener("click", () => { selVeh.value = val; selVeh.dispatchEvent(new Event("change", { bubbles: true })); majVehicules(); });
     grille.appendChild(b);
   });
@@ -4466,6 +4480,22 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   nav.appendChild(btnReserver);
   section.appendChild(nav);
   btnReserver.classList.add("rz-suivant");
+  // Le bouton flottant ne doit jamais masquer les tuiles de services : tant que la grille passerait
+  // sous le bouton (petits écrans 360–430 px), on le fait glisser hors de l'écran ; il revient dès qu'on défile.
+  function majNavFlottante() {
+    const g = document.querySelector("#sv-zone .sv-grille");
+    let cache = false;
+    if (g && g.offsetParent && section.classList.contains("visible") !== false) {
+      const r = g.getBoundingClientRect(), h = window.innerHeight || document.documentElement.clientHeight;
+      const hNav = nav.offsetHeight || 70;
+      cache = r.top < h && r.bottom > h - hNav - 4;
+    }
+    nav.classList.toggle("rz-nav-cache", cache);
+  }
+  window.addEventListener("scroll", majNavFlottante, { passive: true });
+  window.addEventListener("resize", majNavFlottante);
+  document.addEventListener("click", () => setTimeout(majNavFlottante, 60), true);
+  setTimeout(majNavFlottante, 0);
 
   const TITRES = [["rz.t1", "rz.s1"], ["rz.t2", "rz.s2"], ["rz.t3", "rz.s3"], ["rz.t4", "rz.s4"]];
   let etapeActuelle = 1;
@@ -4678,7 +4708,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   zoneSv.className = "sv-zone"; zoneSv.id = "sv-zone";
   zoneSv.innerHTML = `<div class="sv-titre" data-i18n="sv.titre">${esc(t("sv.titre"))}</div><div class="sv-grille">` +
     SERVICES.map(([v, ico, nom, det, img, pos]) => `<button type="button" class="sv-tuile" data-sv="${v}" aria-pressed="false">
-      <span class="sv-visuel">${img ? `<img src="${img}" alt="" width="180" height="62" loading="lazy" decoding="async" style="object-position:${pos};" onerror="this.style.display='none'">` : ""}<span class="sv-ico">${ico}</span></span>
+      <span class="sv-visuel">${img ? `<img src="${img}" alt="" width="180" height="62" loading="lazy" decoding="async" style="object-position:${pos};" onerror="twImgKo(this)">` : ""}<span class="sv-ico">${ico}</span></span>
       <span class="sv-nom" data-i18n="${nom}">${esc(t(nom))}</span><span class="sv-det" data-i18n="${det}">${esc(t(det))}</span></button>`).join("") +
     `</div><div class="sv-extra" id="sv-extra" style="display:none;"></div>`;
   section.insertBefore(zoneSv, entete);
