@@ -1788,7 +1788,63 @@ window.addEventListener("focus", () => {
   if (document.getElementById("ecran-principal").style.display !== "none") chargerCourses();
 });
 
+// ================== COMPTE ADMINISTRATEUR ≠ COMPTE CHAUFFEUR ==================
+// Les personnes à la fois admin et chauffeur ont DEUX comptes. Si l'app chauffeur / feuille de route est
+// ouverte avec le compte ADMIN (profils.role = 'admin'), on n'ouvre rien (aucune feuille créée, aucune
+// donnée chauffeur chargée) : écran plein qui demande de se reconnecter avec le compte chauffeur.
+// Hors ligne : rôle gardé sur le téléphone (dernière lecture avec réseau).
+async function roleDuCompte(user) {
+  const cle = "taxiwal_role_" + user.id;
+  let enCache = null;
+  try { enCache = localStorage.getItem(cle); } catch (e) {}
+  if (TWHL.horsLigne() && enCache) return enCache;
+  try {
+    const { data, error } = await supabase.from("profils").select("role").eq("id", user.id).maybeSingle();
+    if (!error && data && data.role) {
+      try { localStorage.setItem(cle, data.role); } catch (e) {}
+      return data.role;
+    }
+  } catch (e) {}
+  return enCache;
+}
+function afficherBlocageCompteAdmin(user) {
+  if (document.getElementById("blocage-compte-admin")) return;
+  const div = document.createElement("div");
+  div.id = "blocage-compte-admin";
+  div.setAttribute("role", "alertdialog");
+  div.style.cssText = "position:fixed; inset:0; z-index:2147483000; background:#fff7e6; display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;";
+  div.innerHTML = `<div style="max-width:420px; width:100%; background:#fff; border:3px solid #d9822b; border-radius:18px; padding:26px 20px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,.15);">
+      <div style="font-size:3rem; line-height:1;">⚠️</div>
+      <div style="font-size:1.25rem; font-weight:800; color:#7a3e00; margin:12px 0 10px;">Tu es connecté avec ton compte ADMINISTRATEUR</div>
+      <div style="font-size:1rem; color:#333; word-break:break-all; margin-bottom:12px;">(${esc(user.email || "")})</div>
+      <div style="font-size:1.05rem; color:#222; line-height:1.45; margin-bottom:22px;">Pour conduire et remplir ta feuille de route, connecte-toi avec ton compte <b>CHAUFFEUR</b>.</div>
+      <button type="button" id="btn-blocage-admin-deconnexion" style="width:100%; padding:16px; border:none; border-radius:14px; background:#1d4f86; color:#fff; font-size:1.08rem; font-weight:800;">🔄 Se déconnecter et me connecter en chauffeur</button>
+      <div style="margin-top:18px;"><a href="admin.html" style="color:#555; font-size:.9rem; text-decoration:underline;">Ouvrir l'app administrateur</a></div>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById("btn-blocage-admin-deconnexion").addEventListener("click", async (e) => {
+    e.currentTarget.disabled = true;
+    e.currentTarget.textContent = "Déconnexion…";
+    try { await TWHL.deconnecter(); } catch (err) {}
+    APRES_DECONNEXION_COMPTE_ADMIN();
+  });
+}
+// true = compte chauffeur (on continue) ; false = compte admin (écran de blocage affiché, on arrête tout)
+async function verifierCompteChauffeur(user) {
+  if (!user) return true;
+  const role = await roleDuCompte(user);
+  if (role === "admin") { afficherBlocageCompteAdmin(user); return false; }
+  return true;
+}
+// Après déconnexion : retour à l'écran de connexion
+const APRES_DECONNEXION_COMPTE_ADMIN = () => { location.reload(); };
+
 async function demarrerEspaceChauffeur() {
+  // Compte ADMIN : on ne lance pas l'espace chauffeur (ni courses, ni GPS, ni feuille)
+  {
+    const { data: { user: compte } } = await supabase.auth.getUser();
+    if (!(await verifierCompteChauffeur(compte))) { document.getElementById("ecran-login").style.display = "none"; return; }
+  }
   document.getElementById("ecran-login").style.display = "none";
   document.getElementById("ecran-principal").style.display = "block";
   document.getElementById("sous-titre").textContent = "Connecté";
