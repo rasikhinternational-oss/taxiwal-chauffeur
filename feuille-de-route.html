@@ -760,6 +760,17 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-course input[type=time]{ -webkit-appearance:none; appearance:none; width:100%; }
   .ligne-course .champ-wrap, .ligne-course > div > div{ min-width:0; }
   html, body{ max-width:100%; overflow-x:hidden; }
+  @supports (overflow-x:clip){ html, body{ overflow-x:clip; } }
+  /* Aucun champ ne dépasse l'écran (iPhone : un <select> à libellé long élargissait toute la page) ; 16px = pas de zoom iOS au toucher */
+  input, select, textarea{ box-sizing:border-box; max-width:100%; min-width:0; font-size:16px; }
+  select{ width:100%; text-overflow:ellipsis; white-space:nowrap; overflow:hidden; }
+  .bloc, .bloc-repliable, .bloc > *, .contenu-repliable > *, .grille2 > *, .grille3 > *{ min-width:0; max-width:100%; }
+  .bloc, .bloc-repliable{ overflow-wrap:anywhere; }
+  .identite-vehicule{ display:flex; flex-direction:column; gap:4px; margin:6px 0; }
+  #identite-vehicule-select{ display:block; width:100%; max-width:100%; min-width:0; padding:8px 10px; margin:0; font-size:16px; }
+  pre{ white-space:pre-wrap; overflow-wrap:anywhere; max-width:100%; }
+  table{ max-width:100%; }
+  img, video, canvas, svg{ max-width:100%; }
   /* Pauses / interruptions */
   #bloc-pauses{ margin:12px 20px 0; background:#fff; border:1px solid #dcdcd8; border-radius:12px; padding:12px; }
   #btn-pause{ width:100%; padding:16px 12px; border:none; border-radius:12px; background:#1d4f86; color:#fff; font-weight:800; font-size:1.1rem; line-height:1.3; }
@@ -832,7 +843,7 @@ window.onerror = function(msg, url, line, col, err) {
   <p class="identite"><span>Identité de l'exploitant :</span> <b id="identite-societe">—</b></p>
   <p class="identite"><span>Date :</span> <b id="identite-date">—</b></p>
   <p class="identite"><span>Nom du chauffeur :</span> <b id="identite-chauffeur">—</b></p>
-  <p class="identite"><span>Véhicule :</span> <select id="identite-vehicule-select" style="width:auto; display:inline-block; padding:6px 8px; margin:0; font-size:.9rem;"><option value="">— Aucun —</option></select></p>
+  <p class="identite identite-vehicule"><span>Véhicule :</span> <select id="identite-vehicule-select"><option value="">— Aucun —</option></select></p>
   <p class="identite"><span>N° plaque d'immatriculation :</span> <b id="identite-plaque">—</b></p>
   <p class="identite"><span>N° identification :</span> <b id="identite-numid">—</b></p>
   <button type="button" id="btn-modifier-identite" style="display:none; width:100%; margin-top:8px; padding:10px; border-radius:10px; border:1px solid #8a5a00; background:#fff8ec; color:#8a5a00; font-weight:700; font-size:.9rem;">✏️ Modifier l'exploitant / le n° d'identification (cette feuille)</button>
@@ -1940,6 +1951,17 @@ async function chargerVehiculesDisponibles() {
 }
 function noteUtiliseePar(v) {
   return v && v.utilise_par ? "aussi utilisée par " + v.utilise_par : "";
+}
+// Version courte pour le menu déroulant (largeur d'un téléphone) : « aussi : Abdul » (prénom(s) seulement)
+function noteUtiliseeParCourte(v) {
+  if (!v || !v.utilise_par) return "";
+  const noms = String(v.utilise_par).split(/\s*[,;&+]\s*|\s+et\s+/).map(n => n.trim().split(/\s+/)[0]).filter(Boolean);
+  return "aussi : " + (noms.length ? noms.join(", ") : v.utilise_par);
+}
+// Nom court de la voiture pour le menu : 2 premiers mots (« Renault Trafic Space Class » → « Renault Trafic »)
+function nomVehiculeCourt(nom) {
+  const m = String(nom || "Véhicule").trim().split(/\s+/);
+  return m.length > 2 ? m.slice(0, 2).join(" ") : m.join(" ");
 }
 // Enregistre auprès de la centrale la voiture choisie par le chauffeur pour aujourd'hui.
 // Renvoie { ok:true } ou { ok:false, pris:true|false, message }.
@@ -3097,7 +3119,7 @@ async function remplirIdentite(user) {
     }
   }
   selectVehicule.innerHTML = `<option value="">— Aucun —</option>` +
-    listeSelectVehicules.map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""}>${esc(v.nom)}${v.plaque ? " · " + esc(v.plaque) : ""}${noteUtiliseePar(v) ? " (" + esc(noteUtiliseePar(v)) + ")" : ""}</option>`).join("");
+    listeSelectVehicules.map(v => `<option value="${v.id}" ${v.id === feuilleActuelle.vehicule_id ? "selected" : ""} title="${esc((v.nom || "") + (v.plaque ? " · " + v.plaque : "") + (noteUtiliseePar(v) ? " (" + noteUtiliseePar(v) + ")" : ""))}">${esc(nomVehiculeCourt(v.nom))}${v.plaque ? " · " + esc(v.plaque) : ""}${noteUtiliseeParCourte(v) ? " (" + esc(noteUtiliseeParCourte(v)) + ")" : ""}</option>`).join("");
   selectVehicule.onchange = async () => {
     // Choix d'une voiture : même chemin que « 🚗 Changer la voiture de cette feuille » (voiture du jour mise à jour)
     if (selectVehicule.value) {
