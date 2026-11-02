@@ -96,13 +96,23 @@ function demanderTexteDansPage(message, valeurInitiale, okLabel) {
   });
 }
 // En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
+// « Script error. » sans fichier, ligne ni détail = erreur venue d'un script EXTERNE (extension Safari,
+// remplissage auto iOS, traducteur, navigateur intégré d'une app…) : le navigateur en cache le contenu.
+// Ce n'est pas une erreur de l'application → simple note dans la console, pas de bandeau qui fait peur.
+function twErreurExterneMuette(msg, fichier, ligne, err) {
+  return /^\s*script error\.?\s*$/i.test(String(msg || "")) && !err && !ligne;
+}
 window.addEventListener("error", function (e) {
   try {
+    if (twErreurExterneMuette(e.message, e.filename, e.lineno, e.error)) {
+      try { console.warn("Erreur externe ignorée (script tiers / extension) :", e.message); } catch (_) {}
+      return;
+    }
     var b = document.getElementById("bandeau-erreur-js");
     if (!b) { b = document.createElement("div"); b.id = "bandeau-erreur-js";
       b.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#b3141b;color:#fff;padding:10px 12px;border-radius:10px;font:13px Arial,sans-serif;";
       (document.body || document.documentElement).appendChild(b); }
-    b.textContent = "⚠️ Erreur : " + (e.message || "inconnue") + " — fais une capture et envoie-la. Recharge la page pour continuer.";
+    b.textContent = "⚠️ Erreur : " + (e.message || "inconnue") + (e.lineno ? " (ligne " + e.lineno + ")" : "") + " — fais une capture et envoie-la. Recharge la page pour continuer.";
   } catch (_) {}
 });
 </script>
@@ -151,6 +161,7 @@ document.addEventListener("focusin", (e) => {
 });
 
 window.onerror = function(msg, url, line, col, err) {
+  if (typeof twErreurExterneMuette === "function" ? twErreurExterneMuette(msg, url, line, err) : (/^\s*script error\.?\s*$/i.test(String(msg || "")) && !err && !line)) return false;
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
     'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +

@@ -24,6 +24,7 @@ async function etatPaiementEnLigne() {
 }
 
 window.onerror = function(msg, url, line, col, err) {
+  if (typeof twErreurExterneMuette === "function" ? twErreurExterneMuette(msg, url, line, err) : (/^\s*script error\.?\s*$/i.test(String(msg || "")) && !err && !line)) return false;
   document.documentElement.insertAdjacentHTML("afterbegin",
     '<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#c81e2c;color:#fff;' +
     'padding:14px;font-size:12px;word-break:break-word;font-family:monospace;">' +
@@ -60,6 +61,26 @@ fr: {
   "install": "📲 Installer l'application",
   "alt.vehicule": "Véhicule Taxi Wal",
   "alt.coffre": "Coffre du van Taxi Wal",
+  "gal.titre": "Notre flotte",
+  "gal.sous": "Mercedes Classe E · Toyota Corolla · Renault Trafic — faites défiler",
+  "gal.c1": "Toute la flotte à la gare de Mons",
+  "gal.c2": "Renault Trafic — van",
+  "gal.c3": "Toyota Corolla — break",
+  "gal.c4": "Mercedes Classe E — break",
+  "gal.c5": "Mercedes Classe E — avant",
+  "gal.c6": "Mercedes Classe E — arrière",
+  "gal.c7": "Mercedes Classe E — profil",
+  "gal.c8": "Mercedes Classe E — poste de conduite",
+  "gal.c9": "Mercedes Classe E — sièges arrière",
+  "gal.a1": "Les trois véhicules Taxi Wal devant la gare de Mons",
+  "gal.a2": "Van Renault Trafic Taxi Wal devant la gare de Mons",
+  "gal.a3": "Toyota Corolla Taxi Wal devant la gare de Mons",
+  "gal.a4": "Mercedes Classe E Taxi Wal devant la gare de Mons",
+  "gal.a5": "Mercedes Classe E noire Taxi Wal, vue avant",
+  "gal.a6": "Mercedes Classe E noire Taxi Wal, vue arrière",
+  "gal.a7": "Mercedes Classe E noire Taxi Wal, vue de profil",
+  "gal.a8": "Volant et tableau de bord de la Mercedes Classe E",
+  "gal.a9": "Sièges arrière en cuir de la Mercedes Classe E",
   "hero.region": "Région Mons-Borinage · gares & aéroports",
   "hero.ou": "Où allons-nous ?",
   "login.email": "Adresse email",
@@ -542,6 +563,26 @@ nl: {
   "install": "📲 De app installeren",
   "alt.vehicule": "Voertuig van Taxi Wal",
   "alt.coffre": "Koffer van de Taxi Wal-van",
+  "gal.titre": "Onze vloot",
+  "gal.sous": "Mercedes E-Klasse · Toyota Corolla · Renault Trafic — scroll om te bekijken",
+  "gal.c1": "De hele vloot aan het station van Bergen",
+  "gal.c2": "Renault Trafic — busje",
+  "gal.c3": "Toyota Corolla — break",
+  "gal.c4": "Mercedes E-Klasse — break",
+  "gal.c5": "Mercedes E-Klasse — voorkant",
+  "gal.c6": "Mercedes E-Klasse — achterkant",
+  "gal.c7": "Mercedes E-Klasse — zijkant",
+  "gal.c8": "Mercedes E-Klasse — bestuurdersplaats",
+  "gal.c9": "Mercedes E-Klasse — achterbank",
+  "gal.a1": "De drie voertuigen van Taxi Wal aan het station van Bergen",
+  "gal.a2": "Renault Trafic-busje van Taxi Wal aan het station van Bergen",
+  "gal.a3": "Toyota Corolla van Taxi Wal aan het station van Bergen",
+  "gal.a4": "Mercedes E-Klasse van Taxi Wal aan het station van Bergen",
+  "gal.a5": "Zwarte Mercedes E-Klasse van Taxi Wal, vooraanzicht",
+  "gal.a6": "Zwarte Mercedes E-Klasse van Taxi Wal, achteraanzicht",
+  "gal.a7": "Zwarte Mercedes E-Klasse van Taxi Wal, zijaanzicht",
+  "gal.a8": "Stuur en dashboard van de Mercedes E-Klasse",
+  "gal.a9": "Lederen achterbank van de Mercedes E-Klasse",
   "hero.region": "Regio Mons-Borinage · stations & luchthavens",
   "hero.ou": "Waar gaan we naartoe?",
   "login.email": "E-mailadres",
@@ -1053,6 +1094,26 @@ en: {
   "install": "📲 Install the app",
   "alt.vehicule": "Taxi Wal vehicle",
   "alt.coffre": "Boot of the Taxi Wal van",
+  "gal.titre": "Our fleet",
+  "gal.sous": "Mercedes E-Class · Toyota Corolla · Renault Trafic — swipe to browse",
+  "gal.c1": "The whole fleet at Mons station",
+  "gal.c2": "Renault Trafic — van",
+  "gal.c3": "Toyota Corolla — estate",
+  "gal.c4": "Mercedes E-Class — estate",
+  "gal.c5": "Mercedes E-Class — front",
+  "gal.c6": "Mercedes E-Class — rear",
+  "gal.c7": "Mercedes E-Class — side",
+  "gal.c8": "Mercedes E-Class — cockpit",
+  "gal.c9": "Mercedes E-Class — rear seats",
+  "gal.a1": "The three Taxi Wal vehicles in front of Mons station",
+  "gal.a2": "Taxi Wal Renault Trafic van in front of Mons station",
+  "gal.a3": "Taxi Wal Toyota Corolla in front of Mons station",
+  "gal.a4": "Taxi Wal Mercedes E-Class in front of Mons station",
+  "gal.a5": "Black Taxi Wal Mercedes E-Class, front view",
+  "gal.a6": "Black Taxi Wal Mercedes E-Class, rear view",
+  "gal.a7": "Black Taxi Wal Mercedes E-Class, side view",
+  "gal.a8": "Steering wheel and dashboard of the Mercedes E-Class",
+  "gal.a9": "Leather rear seats of the Mercedes E-Class",
   "hero.region": "Mons-Borinage area · stations & airports",
   "hero.ou": "Where are we going?",
   "login.email": "Email address",
@@ -1553,6 +1614,159 @@ en: {
   </div>`
 }
 };
+// ---- Chauffeur privé : client habitué, choix du véhicule, sociétés de facturation (FR / NL / EN) ----
+(function () {
+  var X = {
+    fr: {
+      "hab.oui": "✅ Client habitué — pas besoin d'attendre un prix",
+      "hab.ouiS": "Ta demande part directement à la centrale, qui confirme et t'attribue un chauffeur. Paiement dans la voiture.",
+      "hab.non": "Nouveau client : la centrale vous envoie le prix avant confirmation",
+      "hab.nonS": "Dès ta première course terminée avec nous, tu deviens client habitué.",
+      "hab.carte": "✅ Client habitué — rien à payer à l'avance. La centrale confirme et t'attribue un chauffeur ; paiement dans la voiture.",
+      "resa.suiteDirecte": " Client habitué : pas de prix à attendre. Notre équipe confirme et t'attribue un chauffeur ; tu paies dans la voiture. Suis l'avancement dans « Mes courses ».",
+      "cp.titre": "Choisis ta voiture",
+      "cp.sous": "Ton choix est transmis à la centrale (selon disponibilité). Touche à nouveau pour « peu importe ».",
+      "cp.places": "{n} places",
+      "cp.trop": "Trop petit pour {n} passagers",
+      "cp.bientot": "Photo bientôt",
+      "cp.mercedes": "Mercedes Classe E", "cp.mercedesD": "Break premium · intérieur cuir",
+      "cp.bmw": "BMW Série 5", "cp.bmwD": "Berline premium",
+      "cp.toyota": "Toyota Corolla break", "cp.toyotaD": "Confortable · grand coffre",
+      "cp.trafic": "Renault Trafic", "cp.traficD": "Van · groupes et bagages",
+      "cp.recap": "{v} (souhait)",
+      "cp.retire": "La {v} n'a que {n} places : ton choix de voiture a été retiré.",
+      "cp.carte": "🚘 Voiture souhaitée : {v}",
+      "so.titre": "🏢 Mes sociétés (facturation)",
+      "so.sous": "Pour recevoir tes factures au nom de ta société.",
+      "so.vide": "Aucune société enregistrée.",
+      "so.ajouter": "+ Ajouter une société",
+      "so.modifier": "✏️ Modifier",
+      "so.retirer": "Retirer",
+      "so.retirerQ": "Retirer « {n} » de tes sociétés ? Les courses déjà facturées à cette société ne changent pas.",
+      "so.dlgAjout": "Nouvelle société",
+      "so.dlgModif": "Modifier la société",
+      "so.nom": "Nom de la société *", "so.nom.ph": "ex : Dupont SRL",
+      "so.tva": "N° de TVA", "so.tva.ph": "BE0123.456.789",
+      "so.rue": "Rue *", "so.numero": "N° *", "so.boite": "Boîte", "so.cp": "Code postal *", "so.ville": "Ville *", "so.pays": "Pays",
+      "so.email": "E-mail de facturation (optionnel)", "so.email.ph": "compta@societe.be",
+      "so.enregistrer": "Enregistrer",
+      "so.vNom": "Indique le nom de la société.",
+      "so.vTva": "N° de TVA belge : BE + 10 chiffres (ex. BE0123.456.789).",
+      "so.vTvaAutre": "N° de TVA trop court.",
+      "so.vAdr": "Adresse incomplète (rue, n°, code postal, ville).",
+      "so.vCp": "Code postal belge : 4 chiffres.",
+      "so.vEmail": "E-mail invalide.",
+      "so.ok": "✅ Société enregistrée.",
+      "so.facturer": "🏢 Facturer à une société",
+      "so.choisir": "— Choisis la société —",
+      "so.errChoisir": "Choisis une société (ou décoche « Facturer à une société »).",
+      "so.recap": "Facture au nom de : {n}",
+      "so.facturee": "🏢 Facturée à : {n}",
+      "so.voirFacture": "📄 Voir la facture",
+      "so.remplir": "🏢 Remplir avec une de mes sociétés",
+      "so.remplirOpt": "— Choisir —"
+    },
+    nl: {
+      "hab.oui": "✅ Vaste klant — u hoeft niet op een prijs te wachten",
+      "hab.ouiS": "Uw aanvraag gaat rechtstreeks naar de centrale, die bevestigt en u een chauffeur toewijst. Betaling in de wagen.",
+      "hab.non": "Nieuwe klant: de centrale stuurt u de prijs vóór de bevestiging",
+      "hab.nonS": "Na uw eerste voltooide rit bij ons wordt u vaste klant.",
+      "hab.carte": "✅ Vaste klant — niets vooraf te betalen. De centrale bevestigt en wijst u een chauffeur toe; betaling in de wagen.",
+      "resa.suiteDirecte": " Vaste klant: u hoeft niet op een prijs te wachten. Ons team bevestigt en wijst u een chauffeur toe; u betaalt in de wagen. Volg de voortgang in « Mijn ritten ».",
+      "cp.titre": "Kies uw wagen",
+      "cp.sous": "Uw keuze wordt aan de centrale doorgegeven (volgens beschikbaarheid). Tik opnieuw voor « maakt niet uit ».",
+      "cp.places": "{n} plaatsen",
+      "cp.trop": "Te klein voor {n} passagiers",
+      "cp.bientot": "Foto volgt",
+      "cp.mercedes": "Mercedes E-Klasse", "cp.mercedesD": "Premium break · lederen interieur",
+      "cp.bmw": "BMW 5 Reeks", "cp.bmwD": "Premium sedan",
+      "cp.toyota": "Toyota Corolla break", "cp.toyotaD": "Comfortabel · grote koffer",
+      "cp.trafic": "Renault Trafic", "cp.traficD": "Van · groepen en bagage",
+      "cp.recap": "{v} (wens)",
+      "cp.retire": "De {v} heeft maar {n} plaatsen: uw wagenkeuze werd verwijderd.",
+      "cp.carte": "🚘 Gewenste wagen: {v}",
+      "so.titre": "🏢 Mijn bedrijven (facturatie)",
+      "so.sous": "Om uw facturen op naam van uw bedrijf te ontvangen.",
+      "so.vide": "Geen bedrijf opgeslagen.",
+      "so.ajouter": "+ Bedrijf toevoegen",
+      "so.modifier": "✏️ Wijzigen",
+      "so.retirer": "Verwijderen",
+      "so.retirerQ": "« {n} » uit uw bedrijven verwijderen? Ritten die al op dit bedrijf gefactureerd zijn, blijven ongewijzigd.",
+      "so.dlgAjout": "Nieuw bedrijf",
+      "so.dlgModif": "Bedrijf wijzigen",
+      "so.nom": "Bedrijfsnaam *", "so.nom.ph": "bv. Dupont BV",
+      "so.tva": "Btw-nummer", "so.tva.ph": "BE0123.456.789",
+      "so.rue": "Straat *", "so.numero": "Nr. *", "so.boite": "Bus", "so.cp": "Postcode *", "so.ville": "Gemeente *", "so.pays": "Land",
+      "so.email": "Facturatie-e-mail (optioneel)", "so.email.ph": "boekhouding@bedrijf.be",
+      "so.enregistrer": "Opslaan",
+      "so.vNom": "Vul de bedrijfsnaam in.",
+      "so.vTva": "Belgisch btw-nummer: BE + 10 cijfers (bv. BE0123.456.789).",
+      "so.vTvaAutre": "Btw-nummer te kort.",
+      "so.vAdr": "Onvolledig adres (straat, nr., postcode, gemeente).",
+      "so.vCp": "Belgische postcode: 4 cijfers.",
+      "so.vEmail": "Ongeldig e-mailadres.",
+      "so.ok": "✅ Bedrijf opgeslagen.",
+      "so.facturer": "🏢 Factureren aan een bedrijf",
+      "so.choisir": "— Kies het bedrijf —",
+      "so.errChoisir": "Kies een bedrijf (of vink « Factureren aan een bedrijf » uit).",
+      "so.recap": "Factuur op naam van: {n}",
+      "so.facturee": "🏢 Gefactureerd aan: {n}",
+      "so.voirFacture": "📄 Factuur bekijken",
+      "so.remplir": "🏢 Invullen met een van mijn bedrijven",
+      "so.remplirOpt": "— Kiezen —"
+    },
+    en: {
+      "hab.oui": "✅ Regular customer — no need to wait for a price",
+      "hab.ouiS": "Your request goes straight to dispatch, who confirm it and assign you a driver. Payment in the car.",
+      "hab.non": "New customer: dispatch will send you the price before confirmation",
+      "hab.nonS": "After your first completed ride with us, you become a regular customer.",
+      "hab.carte": "✅ Regular customer — nothing to pay in advance. Dispatch confirms and assigns you a driver; payment in the car.",
+      "resa.suiteDirecte": " Regular customer: no price to wait for. Our team confirms and assigns you a driver; you pay in the car. Follow its progress in “My rides”.",
+      "cp.titre": "Choose your car",
+      "cp.sous": "Your choice is passed on to dispatch (subject to availability). Tap again for “no preference”.",
+      "cp.places": "{n} seats",
+      "cp.trop": "Too small for {n} passengers",
+      "cp.bientot": "Photo coming soon",
+      "cp.mercedes": "Mercedes E-Class", "cp.mercedesD": "Premium estate · leather interior",
+      "cp.bmw": "BMW 5 Series", "cp.bmwD": "Premium saloon",
+      "cp.toyota": "Toyota Corolla estate", "cp.toyotaD": "Comfortable · large boot",
+      "cp.trafic": "Renault Trafic", "cp.traficD": "Van · groups and luggage",
+      "cp.recap": "{v} (preferred)",
+      "cp.retire": "The {v} only has {n} seats: your car choice was removed.",
+      "cp.carte": "🚘 Preferred car: {v}",
+      "so.titre": "🏢 My companies (invoicing)",
+      "so.sous": "To receive your invoices in your company's name.",
+      "so.vide": "No company saved.",
+      "so.ajouter": "+ Add a company",
+      "so.modifier": "✏️ Edit",
+      "so.retirer": "Remove",
+      "so.retirerQ": "Remove “{n}” from your companies? Rides already invoiced to this company stay unchanged.",
+      "so.dlgAjout": "New company",
+      "so.dlgModif": "Edit company",
+      "so.nom": "Company name *", "so.nom.ph": "e.g. Dupont Ltd",
+      "so.tva": "VAT number", "so.tva.ph": "BE0123.456.789",
+      "so.rue": "Street *", "so.numero": "No. *", "so.boite": "Box", "so.cp": "Postcode *", "so.ville": "City *", "so.pays": "Country",
+      "so.email": "Invoice e-mail (optional)", "so.email.ph": "accounts@company.be",
+      "so.enregistrer": "Save",
+      "so.vNom": "Enter the company name.",
+      "so.vTva": "Belgian VAT number: BE + 10 digits (e.g. BE0123.456.789).",
+      "so.vTvaAutre": "VAT number too short.",
+      "so.vAdr": "Incomplete address (street, no., postcode, city).",
+      "so.vCp": "Belgian postcode: 4 digits.",
+      "so.vEmail": "Invalid e-mail.",
+      "so.ok": "✅ Company saved.",
+      "so.facturer": "🏢 Invoice a company",
+      "so.choisir": "— Choose the company —",
+      "so.errChoisir": "Choose a company (or untick “Invoice a company”).",
+      "so.recap": "Invoice to: {n}",
+      "so.facturee": "🏢 Invoiced to: {n}",
+      "so.voirFacture": "📄 View invoice",
+      "so.remplir": "🏢 Fill in with one of my companies",
+      "so.remplirOpt": "— Choose —"
+    }
+  };
+  ["fr", "nl", "en"].forEach(function (l) { var d = X[l]; for (var k in d) I18N[l][k] = d[k]; });
+})();
 var LANGUES = ["fr", "nl", "en"];
 var LANG = (function () {
   var l = null;
@@ -2076,6 +2290,74 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .sv-aide{ font-size:.78rem; color:var(--gris); margin-top:6px; }
   .sv-conseil-van{ margin-top:8px; background:#eef4fb; border-radius:10px; padding:8px 10px; font-size:.85rem; color:#1d4f86; }
   .sv-conseil-van button{ margin-top:6px; padding:10px; font-size:.9rem; background:#1d4f86; }
+  /* Galerie « Notre flotte » (défilement horizontal) */
+  .tw-galerie{ margin:4px 0 16px; }
+  .tw-gal-titre{ display:flex; flex-direction:column; margin:0 0 8px; }
+  .tw-gal-titre b{ font-weight:800; font-size:1.05rem; }
+  .tw-gal-titre small{ font-size:.78rem; color:var(--gris); margin-top:2px; }
+  .tw-gal-piste{ display:flex; align-items:flex-start; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; padding:2px 2px 8px; margin:0 -2px; scrollbar-width:none; }
+  .tw-gal-piste::-webkit-scrollbar{ display:none; }
+  .tw-gal-item{ position:relative; flex:0 0 auto; height:210px; aspect-ratio:4/3; max-width:86%; margin:0; border-radius:14px; overflow:hidden; scroll-snap-align:start; background:#1c1c1c linear-gradient(135deg, #2a2c30, #0d0d0f); box-shadow:0 4px 12px rgba(0,0,0,.14); }
+  .tw-gal-item.tw-gal-large{ aspect-ratio:16/9; max-width:94%; }
+  .tw-gal-item img{ display:block; width:100%; height:100%; object-fit:cover; }
+  .tw-gal-item figcaption{ position:absolute; left:0; right:0; top:0; padding:7px 10px 18px; font-size:.78rem; font-weight:700; color:#fff; background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0)); text-shadow:0 1px 2px rgba(0,0,0,.5); }
+  .tw-gal-item.tw-photo-ko figcaption{ display:none; }
+
+  /* ---- Chauffeur privé : client habitué / choix de la voiture / sociétés ---- */
+  .hab-box{ border-radius:12px; padding:10px 12px; font-size:.86rem; line-height:1.4; margin-top:2px; }
+  .hab-box b{ display:block; font-size:.92rem; }
+  .hab-box small{ display:block; color:var(--gris); margin-top:3px; font-size:.8rem; }
+  .hab-box.oui{ background:#e9f7ef; border:1px solid #bfe5cd; color:#1f6b3f; }
+  .hab-box.non{ background:#f4f6fa; border:1px solid #dde3ee; color:#1d4f86; }
+  .cp-zone{ margin-bottom:14px; }
+  .cp-titre{ font-weight:800; font-size:1rem; margin:0 0 2px; }
+  .cp-sous{ font-size:.78rem; color:var(--gris); margin:0 0 10px; line-height:1.35; }
+  .cp-grille{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .cp-carte{ position:relative; border:2px solid #e3e3e0; border-radius:14px; background:#fff; padding:0 0 10px; overflow:hidden; text-align:left; cursor:pointer; font:inherit; color:inherit; transition:border-color .15s, transform .15s, box-shadow .15s; min-width:0; }
+  .cp-photo{ height:86px; background:#111 linear-gradient(135deg, #2b2b2b, #0e0e0e); overflow:hidden; }
+  .cp-photo img{ display:block; width:100%; height:100%; object-fit:cover; }
+  .cp-photo.vide{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:linear-gradient(135deg, #1f2a3a, #0f1520); color:#cfd8e6; }
+  .cp-photo.vide .cp-sil{ font-size:1.9rem; line-height:1; opacity:.85; }
+  .cp-photo.vide small{ font-size:.68rem; letter-spacing:.04em; text-transform:uppercase; opacity:.75; }
+  .cp-nom{ font-weight:800; font-size:.9rem; margin:8px 10px 0; line-height:1.2; }
+  .cp-det{ font-size:.72rem; color:var(--gris); margin:2px 10px 0; line-height:1.3; }
+  .cp-places{ display:inline-block; margin:6px 10px 0; font-size:.72rem; font-weight:800; background:#f1f1ef; border-radius:20px; padding:2px 8px; }
+  .cp-carte.choisi{ border-color:var(--rouge); box-shadow:0 6px 16px rgba(200,30,44,.14); transform:translateY(-2px); }
+  .cp-carte.choisi::after{ content:"✓"; position:absolute; top:6px; right:6px; width:24px; height:24px; border-radius:50%; background:var(--rouge); color:#fff; font-weight:900; display:flex; align-items:center; justify-content:center; font-size:.85rem; }
+  .cp-carte:disabled{ cursor:not-allowed; opacity:.45; filter:grayscale(1); transform:none; box-shadow:none; }
+  .cp-carte:disabled .cp-places{ background:#fdecee; color:#8a1520; }
+  .cp-avis{ font-size:.82rem; color:#7a4b00; background:#fff7e6; border-radius:10px; padding:8px 10px; margin-top:10px; }
+  .so-resa{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px 12px; }
+  .so-case{ display:flex !important; gap:10px; align-items:center; font-weight:700; margin:0 !important; cursor:pointer; }
+  .so-case span{ color:var(--blanc); font-size:.95rem; font-weight:700; }
+  .so-case input{ width:22px; height:22px; flex-shrink:0; margin:0; }
+  #so-resa-choix{ margin-top:10px; }
+  #so-resa-choix select{ width:100%; }
+  .so-lien{ background:none !important; border:none !important; color:var(--rouge) !important; font-weight:700; padding:8px 0 0 !important; width:auto !important; text-decoration:underline; cursor:pointer; font-size:.88rem; }
+  .so-bloc-profil{ margin-top:22px; padding-top:16px; border-top:1px solid #e3e3e0; }
+  .so-bloc-profil h3{ margin:0 0 2px; font-size:1rem; }
+  .so-bloc-profil > p{ margin:0 0 10px; font-size:.8rem; color:var(--gris); }
+  .so-vide{ color:var(--gris); font-size:.86rem; margin:0 0 8px; }
+  .so-carte{ background:#fff; border:1px solid #e3e3e0; border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:.86rem; overflow-wrap:anywhere; }
+  .so-carte-nom{ font-weight:800; font-size:.95rem; }
+  .so-carte-l{ color:var(--gris); margin-top:2px; }
+  .so-carte-actions{ display:flex; gap:8px; margin-top:8px; }
+  .so-carte-actions button{ flex:1; padding:9px 6px; font-size:.85rem; margin:0; }
+  .so-carte-actions .so-retirer{ background:#fff; color:#8a1520; border:1px solid #e8b9be; }
+  .so-dlg .tw-dialogue-boite{ max-width:440px; }
+  .so-dlg-titre{ font-weight:800; font-size:1.05rem; margin-bottom:10px; }
+  .so-l{ display:block; font-size:.78rem; color:var(--gris); margin-bottom:8px; min-width:0; }
+  .so-l input, .so-l select{ display:block; width:100%; box-sizing:border-box; margin-top:3px; padding:10px; border-radius:9px; border:1px solid #cfcfcd; font-size:16px; color:#1c1c1c; background:#fff; }
+  .so-l input.invalide{ border-color:var(--rouge); box-shadow:0 0 0 3px rgba(200,30,44,.12); }
+  .so-ligne{ display:flex; gap:8px; }
+  .so-ligne .so-g{ flex:2; } .so-ligne .so-p{ flex:1; }
+  .so-err{ color:var(--rouge); font-size:.82rem; min-height:1em; margin:2px 0 6px; }
+  .so-extras{ margin-top:8px; display:flex; flex-direction:column; gap:5px; }
+  .so-info{ font-size:.82rem; background:#f4f6fa; border-radius:8px; padding:6px 9px; color:#1d4f86; overflow-wrap:anywhere; }
+  .so-info.hab{ background:#e9f7ef; color:#1f6b3f; font-weight:600; }
+  .so-voir-facture{ background:var(--vert) !important; color:#fff !important; border:none; border-radius:9px; padding:9px 12px; font-weight:700; width:100%; margin:0; }
+  .so-remplir select{ width:100%; }
+  .demande-facture.so-flash{ box-shadow:0 0 0 3px rgba(31,138,76,.45); transition:box-shadow .3s; }
   .tw-dialogue{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:300; display:flex; align-items:center; justify-content:center; padding:16px; }
   .tw-dialogue-boite{ background:#fff; color:#1c1c1c; border-radius:14px; width:100%; max-width:420px; max-height:85vh; overflow:auto; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
   .tw-dialogue-texte{ white-space:pre-wrap; overflow-wrap:anywhere; font-size:.95rem; line-height:1.45; margin-bottom:14px; }
@@ -2162,6 +2444,20 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
       <img src="van-principal.webp" alt="Véhicule Taxi Wal" data-i18n-alt="alt.vehicule" width="720" height="540" loading="lazy" decoding="async" onerror="twImgKo(this)">
       <div class="tw-voile"></div>
       <div class="tw-texte"><b data-i18n="hero.ou">Où allons-nous ?</b><span data-i18n="hero.region">Région Mons-Borinage · gares &amp; aéroports</span></div>
+    </div>
+    <div class="tw-galerie" id="tw-galerie">
+      <div class="tw-gal-titre"><b data-i18n="gal.titre">Notre flotte</b><small data-i18n="gal.sous">Mercedes Classe E · Toyota Corolla · Renault Trafic — faites défiler</small></div>
+      <div class="tw-gal-piste" role="list" tabindex="0" data-i18n-aria="gal.titre" aria-label="Notre flotte">
+        <figure class="tw-gal-item tw-gal-large" role="listitem"><img src="flotte-mons.webp" alt="Les trois véhicules Taxi Wal devant la gare de Mons" data-i18n-alt="gal.a1" width="1600" height="775" loading="lazy" decoding="async" style="object-position:left center;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c1">Toute la flotte à la gare de Mons</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="flotte-mons-trafic.webp" alt="Van Renault Trafic Taxi Wal devant la gare de Mons" data-i18n-alt="gal.a2" width="1200" height="822" loading="lazy" decoding="async" style="object-position:center 70%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c2">Renault Trafic — van</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="flotte-mons-corolla.webp" alt="Toyota Corolla Taxi Wal devant la gare de Mons" data-i18n-alt="gal.a3" width="1200" height="822" loading="lazy" decoding="async" style="object-position:center 70%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c3">Toyota Corolla — break</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="flotte-mons-mercedes.webp" alt="Mercedes Classe E Taxi Wal devant la gare de Mons" data-i18n-alt="gal.a4" width="1200" height="822" loading="lazy" decoding="async" style="object-position:left 70%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c4">Mercedes Classe E — break</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="mercedes-avant.webp" alt="Mercedes Classe E noire Taxi Wal, vue avant" data-i18n-alt="gal.a5" width="1200" height="900" loading="lazy" decoding="async" style="object-position:center 55%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c5">Mercedes Classe E — avant</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="mercedes-arriere.webp" alt="Mercedes Classe E noire Taxi Wal, vue arrière" data-i18n-alt="gal.a6" width="1200" height="860" loading="lazy" decoding="async" style="object-position:center 50%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c6">Mercedes Classe E — arrière</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="mercedes-cote.webp" alt="Mercedes Classe E noire Taxi Wal, vue de profil" data-i18n-alt="gal.a7" width="1200" height="900" loading="lazy" decoding="async" style="object-position:left 45%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c7">Mercedes Classe E — profil</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="mercedes-interieur-tableau.webp" alt="Volant et tableau de bord de la Mercedes Classe E" data-i18n-alt="gal.a8" width="1200" height="1072" loading="lazy" decoding="async" style="object-position:center 35%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c8">Mercedes Classe E — poste de conduite</figcaption></figure>
+        <figure class="tw-gal-item" role="listitem"><img src="mercedes-interieur-arriere.webp" alt="Sièges arrière en cuir de la Mercedes Classe E" data-i18n-alt="gal.a9" width="1200" height="1200" loading="lazy" decoding="async" style="object-position:center 45%;" onerror="twImgKo(this)"><figcaption data-i18n="gal.c9">Mercedes Classe E — sièges arrière</figcaption></figure>
+      </div>
     </div>
     <div id="info-process">
       <b data-i18n="info.titre">Comment ça se passe :</b>
@@ -2291,6 +2587,12 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
     </div>
     <p id="erreur-edit-profil"></p>
     <button id="btn-sauver-profil" class="vert" data-i18n="p.enregistrer">Enregistrer</button>
+    <div class="so-bloc-profil" id="so-bloc-profil">
+      <h3 data-i18n="so.titre">🏢 Mes sociétés (facturation)</h3>
+      <p data-i18n="so.sous">Pour recevoir tes factures au nom de ta société.</p>
+      <div id="so-liste-profil"></div>
+      <button type="button" id="so-ajouter-profil" class="secondaire" data-i18n="so.ajouter">+ Ajouter une société</button>
+    </div>
     <div class="champ" style="margin-top:16px;">
       <label data-i18n="p.langue">🌐 Langue de l'application</label>
       <div class="choix-langue-profil">
@@ -2891,8 +3193,10 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
     duree_min: (window.__dureeTrajetMin ? Math.round(window.__dureeTrajetMin) : null),
     notes: document.getElementById("input-notes").value.trim(),
     type_service: (window.__typeServiceClient && window.__typeServiceClient()) || null,
-    numero_vol: (document.getElementById("input-numero-vol") && document.getElementById("input-numero-vol").value.trim().toUpperCase().slice(0, 20)) || null
-  }).select("id, numero_reservation").maybeSingle();
+    numero_vol: (document.getElementById("input-numero-vol") && document.getElementById("input-numero-vol").value.trim().toUpperCase().slice(0, 20)) || null,
+    modele_vehicule: (window.__modeleVehicule && window.__modeleVehicule()) || null,
+    societe_facturation_id: (window.__societeFacturation && window.__societeFacturation()) || null
+  }).select("id, numero_reservation, reservation_directe").maybeSingle();
 
   if (error) { erreur.textContent = t("erreur", { msg: error.message }); return; }
   const numeroResa = nouvelleCourse && nouvelleCourse.numero_reservation ? nouvelleCourse.numero_reservation : "";
@@ -2903,7 +3207,8 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
   document.getElementById("input-chauffeur-prefere").value = "";
   document.getElementById("input-notes").value = "";
   if (window.__svReset) window.__svReset();
-  twAlert(t("resa.envoyee") + (numeroResa ? t("resa.numero", { num: numeroResa }) : "") + t("resa.suite"));
+  if (window.__socResetResa) window.__socResetResa();
+  twAlert(t("resa.envoyee") + (numeroResa ? t("resa.numero", { num: numeroResa }) : "") + t(nouvelleCourse && nouvelleCourse.reservation_directe ? "resa.suiteDirecte" : "resa.suite"));
   document.querySelector('[data-onglet="mes-courses"]').click();
   chargerMesCourses();
 });
@@ -3150,6 +3455,7 @@ async function chargerMesCourses() {
   }
   videMsg.style.display = "none";
 
+  if (window.TWSoc) { try { await window.TWSoc.chargerFacturesCourses(); } catch (e) {} }
   for (const c of courses) conteneur.appendChild(await construireCarteCourseClient(c));
 }
 
@@ -3552,6 +3858,8 @@ async function construireCarteCourseClient(course) {
       ${lignePrixClient(course)}
     </div>
   `;
+
+  if (window.TWSoc) window.TWSoc.extrasCourse(div, course);
 
   // --- Demande publiée au marché : afficher les propositions reçues des chauffeurs ---
   if (course.statut === "en_attente" && course.ouverte_marche) {
@@ -3965,7 +4273,7 @@ async function construireCarteCourseClient(course) {
   }
 
   // --- Course terminée : demander une facture (onglet « Facture », course pré-cochée) ---
-  if (course.statut === "terminee") {
+  if (course.statut === "terminee" && !(window.TWSoc && window.TWSoc.aFacture(course.id))) {
     const blocFacture = document.createElement("div");
     blocFacture.className = "bloc-facture";
     blocFacture.innerHTML = `<button type="button" class="btn-demander-facture">${esc(t("menu.facture"))}</button>`;
@@ -4513,7 +4821,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     nav.querySelector("button.rz-suivant:not(#btn-reserver)").style.display = n === 4 ? "none" : "";
     btnReserver.style.display = n === 4 ? "" : "none";
     if (n === 1) setTimeout(() => { if (carte) carte.invalidateSize(); }, 50);
-    if (n === 3) { if (!selVeh.value && (parseInt($("input-passagers").value, 10) || 1) > 4) selVeh.value = "van"; majVehicules(); }
+    if (n === 3) { if (!selVeh.value && (parseInt($("input-passagers").value, 10) || 1) > 4) selVeh.value = "van"; majVehicules(); if (window.__majChoixVoiture) window.__majChoixVoiture(); }
     if (n === 4) {
       majRecap();
       if (!$("rz-nom").value && typeof monProfil !== "undefined" && monProfil) $("rz-nom").value = monProfil.nom || "";
@@ -4624,6 +4932,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   async function lancerCalculPrix() {
     const zone = $("rz-zone-prix");
     if (!zone) return;
+    if (window.__estDirect && window.__estDirect()) { zone.innerHTML = ""; return; }
     // Pas de prix calculé automatiquement : on montre seulement la distance, Taxi Wal envoie le prix
     const km = infoTrajet.km;
     zone.innerHTML = `<div class="rz-prix">${km ? `${t("rz.distance", { km: fmtNombre(km, 1) })}${infoTrajet.min ? ` · ⏱️ ${Math.max(1, Math.round(infoTrajet.min))} min` : ""}` : `<b>${esc(t("rz.distanceCalcul"))}</b>`}
@@ -4640,9 +4949,11 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
         <div class="rz-recap-ligne"><span>🕐</span><div>${d ? e(d.toLocaleString(LOCALE(), { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })) : "—"}</div><a data-aller="2">${e(t("rz.modifier"))}</a></div>
         <div class="rz-recap-ligne"><span>👥</span><div>${e(t("rz.passBag", { p: $("input-passagers").value || 1, b: $("input-bagages").value || 0 }))}</div><a data-aller="2">${e(t("rz.modifier"))}</a></div>
         <div class="rz-recap-ligne"><span>${$("rz-aller-retour").checked ? "🔁" : "➡️"}</span><div>${e($("rz-aller-retour").checked ? t("rz.arOui") : t("rz.arNon"))}</div><a data-aller="2">${e(t("rz.modifier"))}</a></div>
-        <div class="rz-recap-ligne"><span>${veh[1]}</span><div>${e(t(veh[2]))}</div><a data-aller="3">${e(t("rz.modifier"))}</a></div>
+        <div class="rz-recap-ligne"><span>${(window.__recapVoiture && window.__recapVoiture()) ? "🚘" : veh[1]}</span><div>${e((window.__recapVoiture && window.__recapVoiture()) || t(veh[2]))}</div><a data-aller="3">${e(t("rz.modifier"))}</a></div>
         ${ligneServiceRecap()}
-      </div><div id="rz-zone-prix"></div>`;
+        ${window.__recapSociete ? window.__recapSociete() : ""}
+      </div>${window.__habitueHtml ? window.__habitueHtml() : ""}<div id="rz-zone-prix"></div>`;
+    if (window.__majEtape4Habitue) window.__majEtape4Habitue();
     lancerCalculPrix();
     recap.querySelectorAll("[data-aller]").forEach(a => a.addEventListener("click", () => allerEtape(Number(a.dataset.aller))));
   }
@@ -4689,7 +5000,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 
   // --- Tuiles « services » en haut de l'écran Réserver : pré-remplissent le formulaire + type de service ---
   const SERVICES = [
-    ["chauffeur_prive", "🚘", "sv.prive", "sv.priveS", "mercedes.webp", "center 60%"],
+    ["chauffeur_prive", "🚘", "sv.prive", "sv.priveS", "mercedes.webp", "center 70%"],
     ["taxi_immediat", "🚕", "sv.immediat", "sv.immediatS", "berline.webp", "center 78%"],
     ["navette_aeroport", "✈️", "sv.aeroport", "sv.aeroportS", "van-bagages.webp", "center 40%"],
     ["groupes", "👥", "sv.groupes", "sv.groupesS", "van-principal.webp", "center 55%"]
@@ -4704,6 +5015,91 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   ];
   const SORTIES = ["trajet_groupe", "sortie", "visite_ville", "parc_attractions", "visite_guidee"];
   let service = null, sousService = null;
+
+  // --- Chauffeur privé : client habitué (au moins une course terminée, ou marqué par la centrale) ---
+  // La règle est appliquée par la base (trigger regles_demande_client) ; ici on l'affiche seulement.
+  let estHabitue = null, chargementHabitue = null;
+  function chargerHabitue() {
+    if (chargementHabitue) return chargementHabitue;
+    chargementHabitue = (async () => {
+      try { const { data, error } = await supabase.rpc("client_est_habitue"); estHabitue = !error && data === true; }
+      catch (e) { estHabitue = false; }
+      majServices();
+      if (window.__majRecapResa) window.__majRecapResa();
+    })();
+    return chargementHabitue;
+  }
+  function habitueHtml() {
+    if (service !== "chauffeur_prive" || estHabitue === null) return "";
+    return estHabitue
+      ? `<div class="hab-box oui"><b>${esc(t("hab.oui"))}</b><small>${esc(t("hab.ouiS"))}</small></div>`
+      : `<div class="hab-box non"><b>${esc(t("hab.non"))}</b><small>${esc(t("hab.nonS"))}</small></div>`;
+  }
+  const estDirect = () => service === "chauffeur_prive" && estHabitue === true;
+  window.__habitueHtml = () => service === "chauffeur_prive" ? habitueHtml() : "";
+  window.__estDirect = estDirect;
+  // Étape 4 : pour un client habitué, pas de « prix / acompte » ni d'envoi aux chauffeurs pour un prix
+  window.__majEtape4Habitue = () => {
+    const d = estDirect();
+    const marche = $("input-ouverte-marche") && $("input-ouverte-marche").closest(".champ");
+    if (marche) marche.style.display = d ? "none" : "";
+    const inf = $("info-process"); if (inf) inf.style.display = d ? "none" : "";
+  };
+
+  // --- Chauffeur privé : choix de la voiture (photos, places) ---
+  // [valeur, nom, détail, places par défaut, photo, cadrage]
+  const MODELES = [
+    ["mercedes_classe_e", "cp.mercedes", "cp.mercedesD", 4, "mercedes-avant.webp", "center 62%"],
+    ["bmw_serie_5", "cp.bmw", "cp.bmwD", 4, null, ""],
+    ["toyota_corolla", "cp.toyota", "cp.toyotaD", 4, "berline.webp", "center 78%"],
+    ["renault_trafic", "cp.trafic", "cp.traficD", 7, "van-principal.webp", "center 55%"]
+  ];
+  let modele = null, avisRetire = "";
+  const cpZone = document.createElement("div");
+  cpZone.className = "cp-zone"; cpZone.id = "cp-zone"; cpZone.style.display = "none";
+  etapes[2].insertBefore(cpZone, grille);
+  const nbPassagers = () => Math.max(1, parseInt($("input-passagers").value, 10) || 1);
+  function rendreChoixVoiture() {
+    const n = nbPassagers();
+    cpZone.innerHTML = `<div class="cp-titre">${esc(t("cp.titre"))}</div><div class="cp-sous">${esc(t("cp.sous"))}</div>
+      <div class="cp-grille">${MODELES.map(([v, nom, det, pl, img, pos]) => {
+        const trop = n > pl;
+        return `<button type="button" class="cp-carte${modele === v ? " choisi" : ""}" data-modele="${v}" aria-pressed="${modele === v}" ${trop ? "disabled" : ""}>
+          ${img ? `<div class="cp-photo"><img src="${img}" alt="${esc(t(nom))}" width="200" height="86" loading="lazy" decoding="async" style="object-position:${pos};" onerror="twImgKo(this)"></div>`
+                : `<div class="cp-photo vide" aria-hidden="true"><span class="cp-sil">🚘</span><small>${esc(t("cp.bientot"))}</small></div>`}
+          <div class="cp-nom">${esc(t(nom))}</div><div class="cp-det">${esc(t(det))}</div>
+          <span class="cp-places">👥 ${esc(trop ? t("cp.trop", { n }) : t("cp.places", { n: pl }))}</span>
+        </button>`;
+      }).join("")}</div>${avisRetire ? `<div class="cp-avis">${esc(avisRetire)}</div>` : ""}`;
+    cpZone.querySelectorAll(".cp-carte").forEach(b => b.addEventListener("click", () => {
+      if (b.disabled) return;
+      modele = modele === b.dataset.modele ? null : b.dataset.modele;
+      avisRetire = "";
+      selVeh.value = modele ? (modele === "renault_trafic" ? "van" : "berline") : "";
+      selVeh.dispatchEvent(new Event("change", { bubbles: true }));
+      majVehicules(); rendreChoixVoiture();
+    }));
+  }
+  function majChoixVoiture() {
+    const prive = service === "chauffeur_prive";
+    cpZone.style.display = prive ? "" : "none";
+    grille.style.display = prive ? "none" : "";
+    if (!prive) { if (modele) { modele = null; if (["berline", "van"].includes(selVeh.value)) selVeh.value = ""; majVehicules(); } avisRetire = ""; return; }
+    const n = nbPassagers();
+    const m = MODELES.find(x => x[0] === modele);
+    if (m && n > m[3]) { avisRetire = t("cp.retire", { v: t(m[1]), n: m[3] }); modele = null; selVeh.value = ""; }
+    if (!modele && n > 4) { modele = "renault_trafic"; selVeh.value = "van"; }
+    if (selVeh.value === "pmr") selVeh.value = "";
+    majVehicules();
+    rendreChoixVoiture();
+  }
+  window.__majChoixVoiture = majChoixVoiture;
+  window.__modeleVehicule = () => service === "chauffeur_prive" ? modele : null;
+  window.__recapVoiture = () => { const m = service === "chauffeur_prive" && MODELES.find(x => x[0] === modele); return m ? t("cp.recap", { v: t(m[1]) }) : ""; };
+  ["input", "change"].forEach(ev => $("input-passagers").addEventListener(ev, () => { if (service === "chauffeur_prive") majChoixVoiture(); }));
+  window.__hooksLangue.push(() => { if (service === "chauffeur_prive") rendreChoixVoiture(); });
+  ["rr-moins", "rr-plus"].forEach(id => { const b = $(id); if (b) b.addEventListener("click", () => setTimeout(() => { if (service === "chauffeur_prive") majChoixVoiture(); }, 0)); });
+
   const zoneSv = document.createElement("div");
   zoneSv.className = "sv-zone"; zoneSv.id = "sv-zone";
   zoneSv.innerHTML = `<div class="sv-titre" data-i18n="sv.titre">${esc(t("sv.titre"))}</div><div class="sv-grille">` +
@@ -4712,6 +5108,9 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       <span class="sv-nom" data-i18n="${nom}">${esc(t(nom))}</span><span class="sv-det" data-i18n="${det}">${esc(t(det))}</span></button>`).join("") +
     `</div><div class="sv-extra" id="sv-extra" style="display:none;"></div>`;
   section.insertBefore(zoneSv, entete);
+  // Galerie « Notre flotte » : affichée juste sous les tuiles de services
+  const galerie = $("tw-galerie");
+  if (galerie) { galerie.style.display = ""; zoneSv.after(galerie); }
   // Numéro de vol (étape 1, sous l'arrivée) : visible pour la navette aéroport ou si une adresse est un aéroport
   const champVol = document.createElement("div");
   champVol.className = "champ"; champVol.id = "champ-numero-vol"; champVol.style.display = "none";
@@ -4737,7 +5136,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   }
   function brancherVan(zone) {
     zone.querySelectorAll(".sv-choisir-van").forEach(b => b.addEventListener("click", () => {
-      selVeh.value = "van"; selVeh.dispatchEvent(new Event("change", { bubbles: true })); majVehicules(); majServices();
+      selVeh.value = "van"; if (service === "chauffeur_prive") modele = "renault_trafic"; selVeh.dispatchEvent(new Event("change", { bubbles: true })); majVehicules(); majServices();
     }));
   }
   function majConseilVan() {
@@ -4752,6 +5151,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     const ex = $("sv-extra");
     let h = "";
     if (service === "taxi_immediat") h = `<div class="sv-asap" style="margin:0;">${esc(t("sv.asap"))}</div>`;
+    else if (service === "chauffeur_prive") { h = habitueHtml(); if (estHabitue === null) chargerHabitue(); }
     else if (service === "navette_aeroport") {
       const arr = $("input-arrivee").value;
       h = `<div class="sv-sous-titre">${esc(t("sv.aeroports"))}</div><div class="sv-puces">` +
@@ -4773,7 +5173,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     ex.querySelectorAll("[data-sortie]").forEach(b => b.addEventListener("click", () => { sousService = sousService === b.dataset.sortie ? null : b.dataset.sortie; majServices(); }));
     brancherVan(ex);
     bandeauAsap.style.display = service === "taxi_immediat" ? "" : "none";
-    majChampVol(); majConseilVan();
+    majChampVol(); majConseilVan(); majChoixVoiture();
   }
   function choisirService(v) {
     service = service === v ? null : v;
@@ -4795,7 +5195,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   $("rr-plus") && $("rr-plus").addEventListener("click", () => setTimeout(majConseilVan, 0));
   selVeh.addEventListener("change", () => { majConseilVan(); });
   window.__typeServiceClient = () => service ? (service === "groupes" && sousService ? "groupes:" + sousService : service) : null;
-  window.__svReset = () => { service = null; sousService = null; const v = $("input-numero-vol"); if (v) v.value = ""; majServices(); };
+  window.__svReset = () => { service = null; sousService = null; modele = null; const v = $("input-numero-vol"); if (v) v.value = ""; majServices(); majChoixVoiture(); };
   window.__hooksLangue.push(majServices);
   function ligneServiceRecap() {
     if (!service) return "";
@@ -4816,6 +5216,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   });
 
   allerEtape(1);
+  window.__majRecapResa = () => { if (etapeActuelle === 4) majRecap(); };
   window.__hooksLangue.push(function () { majTitres(); majBoutonVue(); if (etapeActuelle === 4) majRecap(); });
   // La carte s'initialise quand l'onglet est visible
   setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 400);
@@ -4832,6 +5233,285 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     }
   } catch (e) {}
   document.querySelectorAll('nav.onglets button[data-onglet="reserver"]').forEach(b => b.addEventListener("click", () => setTimeout(() => { initCarte(); carte && carte.invalidateSize(); }, 150)));
+})();
+</script>
+<script>
+// ================== SOCIÉTÉS DE FACTURATION (table societes_clients) + extras des cartes de course ==================
+(function () {
+  const $ = id => document.getElementById(id);
+  if (typeof supabase === "undefined" || !supabase) return;
+  const PAYS = [["Belgique", "pays.be"], ["France", "pays.fr"], ["Pays-Bas", "pays.nl"], ["Luxembourg", "pays.lu"], ["Allemagne", "pays.de"], ["Autre", "pays.autre"]];
+  let liste = [], charge = null, uid = null;
+  const ecouteurs = [];
+  let facturesParCourse = new Map();   // course_id → demande de facture envoyée (avec fichier)
+
+  // ---------- N° de TVA (contrôle léger) ----------
+  function chiffresTvaBe(v) {
+    let c = String(v || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+    if (c.indexOf("BE") === 0) c = c.slice(2);
+    if (/^\d{9}$/.test(c)) c = "0" + c;
+    return c;
+  }
+  function tvaBeValide(v) {
+    const c = chiffresTvaBe(v);
+    if (!/^[01]\d{9}$/.test(c)) return false;
+    return 97 - (parseInt(c.slice(0, 8), 10) % 97) === parseInt(c.slice(8), 10);
+  }
+  function formatTvaBe(v) { const c = chiffresTvaBe(v); return "BE" + c.slice(0, 4) + "." + c.slice(4, 7) + "." + c.slice(7); }
+  const adresseSoc = s => [[s.rue, s.numero].filter(Boolean).join(" ") + (s.boite ? " / " + s.boite : ""), [s.code_postal, s.ville].filter(Boolean).join(" ")].filter(Boolean).join(", ") + (s.pays && s.pays !== "Belgique" ? ", " + s.pays : "");
+
+  // ---------- Chargement ----------
+  async function utilisateur() {
+    if (uid) return uid;
+    const { data } = await supabase.auth.getUser();
+    uid = data && data.user ? data.user.id : null;
+    return uid;
+  }
+  async function charger(force) {
+    if (charge && !force) return charge;
+    charge = (async () => {
+      const id = await utilisateur();
+      if (!id) { liste = []; return liste; }
+      const { data, error } = await supabase.from("societes_clients").select("*").eq("client_id", id).eq("archivee", false).order("created_at", { ascending: true });
+      if (error) { console.error("societes:", error.message); liste = []; } else liste = data || [];
+      ecouteurs.forEach(fn => { try { fn(liste); } catch (e) { console.error(e); } });
+      return liste;
+    })();
+    return charge;
+  }
+
+  // ---------- Fenêtre « société » (dans la page) ----------
+  function ouvrirDialogue(soc) {
+    return new Promise(resolve => {
+      const s = soc || {};
+      const fond = document.createElement("div");
+      fond.className = "tw-dialogue so-dlg";
+      fond.innerHTML = `<div class="tw-dialogue-boite" role="dialog" aria-modal="true" aria-labelledby="so-dlg-titre">
+        <div class="so-dlg-titre" id="so-dlg-titre">${esc(t(soc ? "so.dlgModif" : "so.dlgAjout"))}</div>
+        <label class="so-l">${esc(t("so.nom"))}<input type="text" data-k="nom" maxlength="150" autocomplete="organization" placeholder="${esc(t("so.nom.ph"))}"></label>
+        <label class="so-l">${esc(t("so.tva"))}<input type="text" data-k="numero_tva" maxlength="30" autocapitalize="characters" placeholder="${esc(t("so.tva.ph"))}"></label>
+        <div class="so-ligne"><label class="so-l so-g">${esc(t("so.rue"))}<input type="text" data-k="rue" maxlength="150" autocomplete="address-line1"></label>
+          <label class="so-l so-p">${esc(t("so.numero"))}<input type="text" data-k="numero" maxlength="20"></label></div>
+        <div class="so-ligne"><label class="so-l so-p">${esc(t("so.boite"))}<input type="text" data-k="boite" maxlength="20"></label>
+          <label class="so-l so-p">${esc(t("so.cp"))}<input type="text" data-k="code_postal" maxlength="12" inputmode="numeric" autocomplete="postal-code"></label></div>
+        <div class="so-ligne"><label class="so-l so-g">${esc(t("so.ville"))}<input type="text" data-k="ville" maxlength="100" autocomplete="address-level2"></label>
+          <label class="so-l so-g">${esc(t("so.pays"))}<select data-k="pays">${PAYS.map(([v, k]) => `<option value="${v}">${esc(t(k))}</option>`).join("")}</select></label></div>
+        <label class="so-l">${esc(t("so.email"))}<input type="email" data-k="email_facturation" maxlength="200" autocomplete="email" placeholder="${esc(t("so.email.ph"))}"></label>
+        <div class="so-err" role="alert"></div>
+        <div class="tw-dialogue-actions"><button type="button" class="tw-d-annuler">${esc(t("annuler"))}</button><button type="button" class="tw-d-ok">${esc(t("so.enregistrer"))}</button></div>
+      </div>`;
+      const champ = k => fond.querySelector(`[data-k="${k}"]`);
+      ["nom", "numero_tva", "rue", "numero", "boite", "code_postal", "ville", "email_facturation"].forEach(k => { champ(k).value = s[k] || ""; });
+      champ("pays").value = s.pays || "Belgique";
+      if (s.numero_tva && (s.pays || "Belgique") === "Belgique" && tvaBeValide(s.numero_tva)) champ("numero_tva").value = formatTvaBe(s.numero_tva);
+      const err = fond.querySelector(".so-err");
+      let fini = false;
+      const fermer = v => { if (fini) return; fini = true; document.removeEventListener("keydown", clavier, true); fond.remove(); resolve(v); };
+      const clavier = e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fermer(null); } };
+      document.addEventListener("keydown", clavier, true);
+      fond.addEventListener("click", e => { e.stopPropagation(); if (e.target === fond) fermer(null); });
+      fond.querySelector(".tw-d-annuler").addEventListener("click", e => { e.stopPropagation(); fermer(null); });
+      fond.querySelectorAll("input,select").forEach(i => i.addEventListener("input", () => { i.classList.remove("invalide"); err.textContent = ""; }));
+      champ("numero_tva").addEventListener("blur", () => { if (champ("pays").value === "Belgique" && tvaBeValide(champ("numero_tva").value)) champ("numero_tva").value = formatTvaBe(champ("numero_tva").value); });
+      const ok = fond.querySelector(".tw-d-ok");
+      ok.addEventListener("click", async e => {
+        e.stopPropagation();
+        const v = k => champ(k).value.trim();
+        const d = { nom: v("nom"), numero_tva: v("numero_tva") || null, rue: v("rue"), numero: v("numero"), boite: v("boite") || null,
+          code_postal: v("code_postal"), ville: v("ville"), pays: champ("pays").value || "Belgique", email_facturation: v("email_facturation") || null };
+        const fautes = [];
+        if (d.nom.length < 2) fautes.push(["nom", t("so.vNom")]);
+        if (d.numero_tva) {
+          if (d.pays === "Belgique") { if (!tvaBeValide(d.numero_tva)) fautes.push(["numero_tva", t("so.vTva")]); else d.numero_tva = formatTvaBe(d.numero_tva); }
+          else if (d.numero_tva.replace(/[^0-9a-z]/gi, "").length < 4) fautes.push(["numero_tva", t("so.vTvaAutre")]);
+          else d.numero_tva = d.numero_tva.toUpperCase().replace(/\s+/g, "");
+        }
+        ["rue", "numero", "code_postal", "ville"].forEach(k => { if (!d[k]) fautes.push([k, t("so.vAdr")]); });
+        if (d.code_postal && d.pays === "Belgique" && !/^\d{4}$/.test(d.code_postal)) fautes.push(["code_postal", t("so.vCp")]);
+        if (d.email_facturation && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email_facturation)) fautes.push(["email_facturation", t("so.vEmail")]);
+        fond.querySelectorAll(".invalide").forEach(i => i.classList.remove("invalide"));
+        if (fautes.length) {
+          fautes.forEach(([k]) => champ(k).classList.add("invalide"));
+          err.textContent = [...new Set(fautes.map(f => f[1]))].join(" ");
+          try { champ(fautes[0][0]).focus(); } catch (x) {}
+          return;
+        }
+        ok.disabled = true; ok.textContent = t("envoi");
+        try {
+          const id = await utilisateur();
+          const r = soc && soc.id
+            ? await supabase.from("societes_clients").update(d).eq("id", soc.id).select("*").maybeSingle()
+            : await supabase.from("societes_clients").insert(Object.assign({ client_id: id }, d)).select("*").maybeSingle();
+          if (r.error) throw r.error;
+          await charger(true);
+          if (typeof window.toastClient === "function") window.toastClient(t("so.ok"));
+          fermer(r.data || null);
+        } catch (x) {
+          ok.disabled = false; ok.textContent = t("so.enregistrer");
+          err.textContent = t("erreur", { msg: x.message || x });
+        }
+      });
+      (document.body || document.documentElement).appendChild(fond);
+      setTimeout(() => { try { champ("nom").focus(); } catch (x) {} }, 30);
+    });
+  }
+
+  // ---------- Profil : « Mes sociétés (facturation) » ----------
+  function rendreProfil() {
+    const zone = $("so-liste-profil");
+    if (!zone) return;
+    if (!liste.length) { zone.innerHTML = `<p class="so-vide">${esc(t("so.vide"))}</p>`; return; }
+    zone.innerHTML = liste.map(s => `<div class="so-carte" data-id="${esc(s.id)}">
+        <div class="so-carte-nom">${esc(s.nom)}</div>
+        ${s.numero_tva ? `<div class="so-carte-l">${esc(s.numero_tva)}</div>` : ""}
+        <div class="so-carte-l">${esc(adresseSoc(s))}</div>
+        ${s.email_facturation ? `<div class="so-carte-l">✉️ ${esc(s.email_facturation)}</div>` : ""}
+        <div class="so-carte-actions"><button type="button" class="secondaire" data-a="modifier">${esc(t("so.modifier"))}</button><button type="button" class="so-retirer" data-a="retirer">${esc(t("so.retirer"))}</button></div>
+      </div>`).join("");
+    zone.querySelectorAll("button[data-a]").forEach(b => b.addEventListener("click", async () => {
+      const s = liste.find(x => x.id === b.closest(".so-carte").dataset.id);
+      if (!s) return;
+      if (b.dataset.a === "modifier") { await ouvrirDialogue(s); return; }
+      if (!(await twConfirm(t("so.retirerQ", { n: s.nom })))) return;
+      const { error } = await supabase.from("societes_clients").update({ archivee: true }).eq("id", s.id);
+      if (error) { twAlert(t("erreur", { msg: error.message })); return; }
+      await charger(true);
+    }));
+  }
+  ecouteurs.push(rendreProfil);
+  const btnAjoutProfil = $("so-ajouter-profil");
+  if (btnAjoutProfil) btnAjoutProfil.addEventListener("click", () => ouvrirDialogue(null));
+  document.querySelectorAll('nav.onglets button[data-onglet="profil"]').forEach(b => b.addEventListener("click", () => charger(true)));
+
+  // ---------- Réservation (étape 4) : « Facturer à une société » ----------
+  const etape4 = document.querySelector('.rz-etape[data-n="4"]');
+  const notes = $("input-notes") && $("input-notes").closest(".champ");
+  const blocResa = document.createElement("div");
+  blocResa.className = "champ so-resa";
+  blocResa.innerHTML = `<label class="so-case"><input type="checkbox" id="so-facturer"><span data-i18n="so.facturer">${esc(t("so.facturer"))}</span></label>
+    <div id="so-resa-choix" style="display:none;">
+      <select id="so-select" aria-label="${esc(t("so.facturer"))}"></select>
+      <button type="button" class="so-lien" id="so-ajout-resa" data-i18n="so.ajouter">${esc(t("so.ajouter"))}</button>
+    </div>`;
+  if (etape4 && notes && notes.parentNode === etape4) etape4.insertBefore(blocResa, notes);
+  else if (etape4) etape4.appendChild(blocResa);
+  const cb = $("so-facturer"), sel = $("so-select"), zoneChoix = $("so-resa-choix");
+  function rendreSelect(garder) {
+    const avant = garder || sel.value;
+    sel.innerHTML = `<option value="">${esc(t("so.choisir"))}</option>` + liste.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join("");
+    if (avant && liste.some(s => s.id === avant)) sel.value = avant;
+    else if (liste.length === 1) sel.value = liste[0].id;
+  }
+  ecouteurs.push(() => rendreSelect());
+  cb.addEventListener("change", async () => {
+    zoneChoix.style.display = cb.checked ? "" : "none";
+    if (!cb.checked) return;
+    await charger();
+    rendreSelect();
+    if (!liste.length) {
+      const s = await ouvrirDialogue(null);
+      if (s) rendreSelect(s.id); else { cb.checked = false; zoneChoix.style.display = "none"; }
+    }
+    if (typeof window.__majRecapResa === "function") window.__majRecapResa();
+  });
+  sel.addEventListener("change", () => { sel.classList.remove("invalide"); if (typeof window.__majRecapResa === "function") window.__majRecapResa(); });
+  $("so-ajout-resa").addEventListener("click", async () => { const s = await ouvrirDialogue(null); if (s) { rendreSelect(s.id); sel.classList.remove("invalide"); if (typeof window.__majRecapResa === "function") window.__majRecapResa(); } });
+  window.__societeFacturation = () => (cb.checked && sel.value) ? sel.value : null;
+  window.__socResetResa = () => { cb.checked = false; zoneChoix.style.display = "none"; sel.value = ""; };
+  window.__recapSociete = () => {
+    const id = window.__societeFacturation(); const s = id && liste.find(x => x.id === id);
+    return s ? `<div class="rz-recap-ligne"><span>🏢</span><div>${esc(t("so.recap", { n: s.nom }))}</div></div>` : "";
+  };
+  const validerAvant = window.validerDemandeClient;
+  window.validerDemandeClient = async function () {
+    if (cb.checked && !sel.value) {
+      sel.classList.add("invalide");
+      const e = $("erreur-reservation"); if (e) e.textContent = t("so.errChoisir");
+      try { sel.focus(); } catch (x) {}
+      return false;
+    }
+    return validerAvant ? validerAvant() : true;
+  };
+
+  // ---------- Onglet Facture : remplir avec une société ----------
+  const carteFa = $("fa-nom") && $("fa-nom").closest(".carte-facture");
+  let societeFacture = null;   // id de la société utilisée pour remplir le formulaire de facture
+  if (carteFa) {
+    const ligne = document.createElement("div");
+    ligne.className = "champ so-remplir"; ligne.id = "so-remplir"; ligne.style.display = "none";
+    ligne.innerHTML = `<label for="so-remplir-select" data-i18n="so.remplir">${esc(t("so.remplir"))}</label><select id="so-remplir-select"></select>`;
+    carteFa.querySelector("h2").after(ligne);
+    const selFa = $("so-remplir-select");
+    const rendreFa = () => {
+      ligne.style.display = liste.length ? "" : "none";
+      const avant = selFa.value || societeFacture || "";
+      selFa.innerHTML = `<option value="">${esc(t("so.remplirOpt"))}</option>` + liste.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join("");
+      selFa.value = liste.some(s => s.id === avant) ? avant : "";
+    };
+    ecouteurs.push(rendreFa);
+    selFa.addEventListener("change", () => { const s = liste.find(x => x.id === selFa.value); if (s) remplirFacture(s); });
+    document.querySelectorAll('nav.onglets button[data-onglet="facture"]').forEach(b => b.addEventListener("click", () => charger(true)));
+    $("btn-menu-facture") && $("btn-menu-facture").addEventListener("click", () => charger(true));
+    $("fa-nom").addEventListener("input", () => { societeFacture = null; selFa.value = ""; });
+  }
+  // s : ligne societes_clients ou copie figée enregistrée sur la course (courses.societe_facturation)
+  function remplirFacture(s) {
+    if (!s || !$("fa-nom")) return;
+    const mettre = (id, v) => { const el = $(id); if (el && v != null && v !== "") { el.value = v; el.classList.remove("invalide"); const z = el.closest(".champ") && el.closest(".champ").querySelector(".msg-erreur"); if (z) z.textContent = ""; } };
+    const pays = s.pays || "Belgique";
+    if ($("fa-pays")) $("fa-pays").value = PAYS.some(p => p[0] === pays) ? pays : "Autre";
+    mettre("fa-nom", s.nom); mettre("fa-numero-entreprise", s.numero_tva); mettre("fa-email", s.email_facturation || s.email);
+    mettre("fa-rue", s.rue); mettre("fa-numero", s.numero); if ($("fa-boite")) $("fa-boite").value = s.boite || "";
+    mettre("fa-ville", s.ville); mettre("fa-code-postal", s.code_postal);
+    $("fa-numero-entreprise") && $("fa-numero-entreprise").dispatchEvent(new Event("input"));
+    societeFacture = s.id || null;
+    const selFa = $("so-remplir-select"); if (selFa) selFa.value = liste.some(x => x.id === societeFacture) ? societeFacture : "";
+  }
+
+  // ---------- Factures déjà envoyées, par course (bouton « Voir la facture » sur la carte) ----------
+  async function chargerFacturesCourses() {
+    const id = await utilisateur(); if (!id) return;
+    const { data, error } = await supabase.from("demandes_facture").select("id, course_ids, statut, fichier_path, created_at").eq("client_id", id).order("created_at", { ascending: false });
+    if (error) return;
+    const m = new Map();
+    (data || []).filter(d => d.statut === "envoyee" && d.fichier_path).forEach(d => (d.course_ids || []).forEach(c => { if (!m.has(c)) m.set(c, d); }));
+    facturesParCourse = m;
+  }
+  async function ouvrirFactureDeCourse(courseId) {
+    const d = facturesParCourse.get(courseId);
+    const b = document.querySelector('nav.onglets button[data-onglet="facture"]');
+    if (b) b.click();
+    if (typeof window.initFactureClient === "function") await window.initFactureClient();
+    setTimeout(() => {
+      const el = d && document.querySelector(`#fa-mes-demandes .demande-facture[data-id="${d.id}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("so-flash"); setTimeout(() => el.classList.remove("so-flash"), 2200);
+    }, 350);
+  }
+  const NOMS_MODELES = { mercedes_classe_e: "cp.mercedes", bmw_serie_5: "cp.bmw", toyota_corolla: "cp.toyota", renault_trafic: "cp.trafic" };
+  // Lignes ajoutées sous le trajet d'une carte « Mes courses »
+  function extrasCourse(div, c) {
+    let h = "";
+    if (c.reservation_directe && ["en_attente", "confirmee"].includes(c.statut)) h += `<div class="so-info hab">${esc(t("hab.carte"))}</div>`;
+    if (c.modele_vehicule && NOMS_MODELES[c.modele_vehicule]) h += `<div class="so-info">${esc(t("cp.carte", { v: t(NOMS_MODELES[c.modele_vehicule]) }))}</div>`;
+    if (c.societe_facturation && c.societe_facturation.nom) h += `<div class="so-info">${esc(t("so.facturee", { n: c.societe_facturation.nom }))}</div>`;
+    const f = facturesParCourse.get(c.id);
+    if (f) h += `<button type="button" class="so-voir-facture">${esc(t("so.voirFacture"))}</button>`;
+    if (!h) return;
+    const z = document.createElement("div"); z.className = "so-extras"; z.innerHTML = h;
+    const tr = div.querySelector(".trajet");
+    if (tr) tr.after(z); else div.appendChild(z);
+    const bf = z.querySelector(".so-voir-facture");
+    if (bf) bf.addEventListener("click", () => ouvrirFactureDeCourse(c.id));
+  }
+
+  window.TWSoc = { charger, ouvrirDialogue, remplirFacture, chargerFacturesCourses, extrasCourse, aFacture: id => facturesParCourse.has(id),
+    societeFacture: () => societeFacture, liste: () => liste };
+  window.__hooksLangue.push(function () {
+    ecouteurs.forEach(fn => { try { fn(liste); } catch (e) {} });
+  });
+  supabase.auth.getUser().then(r => { if (r && r.data && r.data.user) charger(); }).catch(() => {});
 })();
 </script>
 <script>
@@ -4961,7 +5641,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   // ---------- Liste des courses à facturer ----------
   async function chargerCourses() {
     const { data, error } = await supabase.from("courses")
-      .select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, prix, prix_client, surprime, statut")
+      .select("id, numero_reservation, date_heure, adresse_depart, adresse_arrivee, prix, prix_client, surprime, statut, societe_facturation")
       .eq("client_id", utilisateur.id)
       .not("statut", "in", "(annulee,refusee)")
       .order("date_heure", { ascending: false });
@@ -4993,6 +5673,8 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     zone.querySelectorAll("input[data-course]").forEach(cb => cb.addEventListener("change", () => {
       if (cb.checked) coursesCochees.add(cb.dataset.course); else coursesCochees.delete(cb.dataset.course);
       $("fa-erreur-courses").textContent = "";
+      const cc = cb.checked && coursesFacturables.find(x => x.id === cb.dataset.course);
+      if (cc && cc.societe_facturation && window.TWSoc) window.TWSoc.remplirFacture(cc.societe_facturation);
     }));
   }
 
@@ -5114,7 +5796,8 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       const { error: e1 } = await supabase.from("clients_facturation").upsert({ client_id: utilisateur.id, ...f, updated_at: new Date().toISOString() }, { onConflict: "client_id" });
       if (e1) throw e1;
       const message = $("fa-message").value.trim() || null;
-      const { error: e2 } = await supabase.from("demandes_facture").insert({ client_id: utilisateur.id, course_ids: ids, ...f, message });
+      const societeId = (window.TWSoc && window.TWSoc.societeFacture()) || null;
+      const { error: e2 } = await supabase.from("demandes_facture").insert(Object.assign({ client_id: utilisateur.id, course_ids: ids, ...f, message }, societeId ? { societe_id: societeId } : {}));
       if (e2) throw e2;
       coursesCochees.clear();
       $("fa-message").value = "";
@@ -5171,6 +5854,8 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     if (b) b.click();
     if (!initFait) await window.initFactureClient(); else await chargerCourses();
     rendreCourses();
+    const cSoc = courseId && coursesFacturables.find(x => x.id === courseId);
+    if (cSoc && cSoc.societe_facturation && window.TWSoc) window.TWSoc.remplirFacture(cSoc.societe_facturation);
     const cb = document.querySelector(`#fa-liste-courses input[data-course="${courseId}"]`);
     (cb ? cb.closest(".ligne-course-facture") : $("section-facture")).scrollIntoView({ behavior: "smooth", block: "center" });
   };
