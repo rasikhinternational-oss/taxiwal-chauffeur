@@ -355,10 +355,22 @@ function anomaliesFeuille(lignes, feuille) {
   return { triees, parId, liste, total: parId.size };
 }
 // ================== COURSE COMPLÈTE / CLÔTURE ==================
+// ================== 🚕 COURSES UBER ==================
+// Trois façons d'être payé : dans l'app Uber (« uber »), en cash au chauffeur (« uber_cash », dans la caisse),
+// par carte au chauffeur (« uber_carte »). Le prix de la course Uber est noté dans prix_taximetre ET sommes_percues
+// (cases jamais vides sur la feuille imprimée). AUCUNE course Uber ne compte dans la recette (Uber déclare la TVA).
+const MODES_UBER = ["uber", "uber_cash", "uber_carte"];
+const LIB_UBER_PAYE = { uber: "APP UBER", uber_cash: "CASH", uber_carte: "CARTE" };
+function estLigneUber(l) { return !!l && (l.type_course === "uber" || MODES_UBER.includes(l.mode_paiement)); }
+function montantUber(l) {
+  const s = frNum(l && l.sommes_percues), p = frNum(l && l.prix_taximetre);
+  return (s !== null && s > 0) ? s : (p !== null && p > 0) ? p : null;
+}
+function euroVirgule(n) { return Number(n).toFixed(2).replace(".", ","); }
 // Une course sans argent encaissé est « expliquée » par un motif (facture, contrat, école, Uber, annulée…)
 function sansArgentExplique(l) {
   return !!l.motif_sans_prix || !!(l.sommes_texte && String(l.sommes_texte).trim())
-    || ["facture", "uber", "uber_cash", "annulee"].includes(l.mode_paiement)
+    || ["facture", "uber", "uber_cash", "uber_carte", "annulee"].includes(l.mode_paiement)
     || ["uber", "prive"].includes(l.type_course);
 }
 // Motifs « pas de prix » qui passent quand même par un paiement (facture, Uber, annulée) → mode obligatoire
@@ -394,7 +406,9 @@ function etatCompletude(l, triees, feuille) {
     exiger(rempli(l.debarquement_lieu), "debarquement_lieu", "lieu de débarquement");
     exiger(!!l.debarquement_heure, "debarquement_heure", "heure de débarquement");
   }
-  const typeSansPrix = ["uber", "prive"].includes(l.type_course) || ["uber", "uber_cash", "annulee"].includes(l.mode_paiement);
+  const typeSansPrix = ["uber", "prive"].includes(l.type_course) || ["uber", "uber_cash", "uber_carte", "annulee"].includes(l.mode_paiement);
+  // Uber : le prix de la course Uber est obligatoire (il remplit « Prix taximètre » et « Sommes perçues »)
+  if (estLigneUber(l)) exiger(montantUber(l) !== null, "prix_taximetre", "prix de la course Uber");
   if (l.type_course === "forfait") {
     exiger(!!l.motif_forfait, "motif_forfait", "motif du forfait");
     exiger((somme !== null && somme > 0) || sansArgentExplique(l), "sommes_percues", "sommes perçues (ou motif sans argent)");
@@ -429,12 +443,13 @@ function problemesLigneCaisse(l) {
   const pb = [];
   if (!l || estLigneRelais(l) || ligneCaisseVide(l)) return pb;
   const prive = l.type_course === "prive";
-  const uber = l.type_course === "uber" || ["uber", "uber_cash"].includes(l.mode_paiement);
+  const uber = estLigneUber(l);
   const annulee = l.mode_paiement === "annulee";
   const enLigneTout = !!(paiementEnLigneLigne(l) || {}).tout;
   const motifSansPaiement = !!l.motif_sans_prix && !MOTIFS_AVEC_PAIEMENT[l.motif_sans_prix];
   const rempli = v => v !== null && v !== undefined && String(v).trim() !== "";
   if (!prive && !uber && !annulee && !enLigneTout && !motifSansPaiement && !rempli(l.mode_paiement)) pb.push("Mode de paiement manquant");
+  if (uber && montantUber(l) === null) pb.push("Prix Uber manquant");
   if (!prive && !uber && !annulee) {
     if (l.type_course === "forfait") { if (!l.motif_forfait) pb.push("Motif du forfait manquant"); }
     else {
@@ -488,7 +503,7 @@ function allerALaCourseProbleme(id) {
   el.scrollIntoView({ block: "start", behavior: "smooth" });
   el.classList.remove("clignote-probleme"); void el.offsetWidth; el.classList.add("clignote-probleme");
 }
-const LIBELLES_MODE_COURT = { cash: "CASH", carte: "CARTE", facture: "FACTURE", qr: "QR", cheque_social: "CHÈQUE", uber: "UBER", uber_cash: "UBER CASH", annulee: "ANNULÉE" };
+const LIBELLES_MODE_COURT = { cash: "CASH", carte: "CARTE", facture: "FACTURE", qr: "QR", cheque_social: "CHÈQUE", uber: "UBER", uber_cash: "UBER CASH", uber_carte: "UBER CARTE", annulee: "ANNULÉE" };
 function lieuCourt(v) {
   const s = String(v || "").replace(/\s*Notes?\s*:.*$/i, "").split(",").map(x => x.trim()).filter(Boolean);
   return s.slice(0, 2).join(", ") || "—";
@@ -502,7 +517,7 @@ function resumeLigneFermee(l, numero) {
   if (l.mode_paiement === "annulee") argent = "❌ ANNULÉE";
   else if (l.type_course === "prive") argent = "PRIVÉ";
   else if (somme !== null && somme > 0) argent = formatEuro(somme) + (mode ? " " + mode : "");
-  else if (l.type_course === "uber" || l.mode_paiement === "uber") argent = "UBER";
+  else if (estLigneUber(l)) argent = "UBER · ⚠️ prix manquant";
   else if (l.mode_paiement === "facture") argent = mode;
   else if (l.motif_sans_prix) argent = l.motif_sans_prix;
   else if (l.sommes_texte) argent = "✏️ " + l.sommes_texte;
@@ -562,7 +577,7 @@ function saisieDansCarte(el) {
 }
 async function cloturerLigneEnBase(ligne) {
   if (ligne.course_id && !estCourseManuelle(ligne) && !estTermineeParCentrale(ligne)) {
-    const modesCourse = ["cash", "carte", "facture", "uber", "cheque_social", "qr", "uber_cash"];
+    const modesCourse = ["cash", "carte", "facture", "uber", "cheque_social", "qr", "uber_cash", "uber_carte"];
     const { error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: ligne.course_id },
       payload: { statut: "terminee", mode_paiement: modesCourse.includes(ligne.mode_paiement) ? ligne.mode_paiement : null },
       label: "Clôture de la course (terminée)" });
@@ -1040,6 +1055,8 @@ window.onerror = function(msg, url, line, col, err) {
   .qa-puces{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
   .qa-puce{ border-radius:999px; border:2px solid #dfe1dc; background:#fff; padding:10px 13px; font-weight:700; font-size:.9rem; color:#1c1c1c; margin:0; }
   .qa-puce.choisie{ background:#1d4f86; border-color:#1d4f86; color:#fff; }
+  .qa-uber{ margin-top:8px; gap:6px; }
+  .qa-uber .qa-puce{ padding:8px 10px; font-size:.82rem; }
   .qa-sous{ margin-top:10px; padding-top:10px; border-top:1px dashed #dfe1dc; }
   .qa-sous > b{ display:block; font-size:.8rem; color:#3b3b3b; margin-bottom:2px; }
   .qa-info{ margin-top:10px; font-size:.86rem; padding:9px 11px; border-radius:10px; background:#eef4fb; color:#1d4f86; display:none; line-height:1.35; }
@@ -3916,7 +3933,7 @@ let minuterieCaisse = null;
 function recetteDesLignes(lignes) {
   return (lignes || []).reduce((s, l) => {
     const somme = nombreOuNull(l.sommes_percues);
-    if (l.type_course === "uber" || l.type_course === "prive" || estLigneRelais(l) || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+    if (estLigneUber(l) || l.type_course === "prive" || estLigneRelais(l)) return s;
     if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
     return s + (somme !== null ? somme : 0);
   }, 0);
@@ -3952,8 +3969,9 @@ async function afficherCaisse() {
     qr: { nom: "📱 QR / virement", total: 0, nb: 0 },
     facture: { nom: "🧾 Facture", total: 0, nb: 0 },
     cheque_social: { nom: "🎫 Chèque social/communal", total: 0, nb: 0 },
-    uber: { nom: "🚕 Uber (payé sur Uber)", total: 0, nb: 0 },
-    uber_cash: { nom: "🚕💵 Uber payé en cash (dans la caisse, hors recette)", total: 0, nb: 0 }
+    uber: { nom: "🚕 Uber payé dans l'app (hors recette)", total: 0, nb: 0 },
+    uber_cash: { nom: "🚕💵 Uber payé en cash (dans la caisse, hors recette)", total: 0, nb: 0 },
+    uber_carte: { nom: "🚕💳 Uber payé par carte (hors recette)", total: 0, nb: 0 }
   };
   let nbForfaits = 0, totalForfaits = 0, nbAnnulees = 0;
   (lignes || []).forEach(l => {
@@ -3962,10 +3980,10 @@ async function afficherCaisse() {
     const montant = (somme !== null && somme > 0) ? somme : (nombreOuNull(l.prix_taximetre) ?? 0);
     if (l.type_course === "prive") return;
     if (l.mode_paiement === "annulee") { nbAnnulees++; return; }
-    const mode = (l.mode_paiement === "uber_cash") ? "uber_cash" : (l.type_course === "uber") ? "uber" : l.mode_paiement;
+    const mode = estLigneUber(l) ? (MODES_UBER.includes(l.mode_paiement) ? l.mode_paiement : "uber") : l.mode_paiement;
     if (!mode || !modes[mode]) return;
     modes[mode].nb++;
-    if (mode !== "uber") modes[mode].total += montant;
+    modes[mode].total += estLigneUber(l) ? (montantUber(l) || 0) : montant;
     if (l.type_course === "forfait") { nbForfaits++; totalForfaits += montant; }
   });
   // Recette = somme des "Sommes perçues" (même règle que la base : recette_feuille / recettes_fin).
@@ -3984,7 +4002,7 @@ async function afficherCaisse() {
     </div>`;
   Object.values(modes).forEach(m => {
     if (!m.nb) return;
-    html += `<div class="caisse-ligne"><span>${m.nom} · ${m.nb}</span><b>${m === modes.uber ? "—" : formatEuro(m.total)}</b></div>`;
+    html += `<div class="caisse-ligne"><span>${m.nom} · ${m.nb}</span><b>${formatEuro(m.total)}</b></div>`;
   });
   if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
   html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber)</span><b>${formatEuro(totalGeneral)}</b></div>`;
@@ -4114,7 +4132,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
   if (ligne.cloturee) badge = " · 🔒 clôturée";
   else if (ligne.course_id && !courseManuelle) badge = ligneTerminee ? " · ✅ course faite — à compléter puis clôturer" : " · attribuée par la centrale";
   if (ligne.mode_paiement === "uber_cash") badge += " · 🚕💵 Uber cash";
-  else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
+  else if (ligne.mode_paiement === "uber_carte") badge += " · 🚕💳 Uber carte";
+  else if (estLigneUber(ligne)) badge += " · 🚕 Uber";
   const _enLigneBadge = paiementEnLigneLigne(ligne);
   if (_enLigneBadge && _enLigneBadge.tout) badge += " · ✅ payé par Bancontact";
   else if (_enLigneBadge) badge += " · 💳 acompte payé en ligne";
@@ -4245,6 +4264,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="cheque_social">🎫 Chèque social</option>
         <option value="uber">🚕 Uber</option>
         <option value="uber_cash">🚕💵 Uber payé cash</option>
+        <option value="uber_carte">🚕💳 Uber payé carte</option>
         <option value="annulee">❌ Annulée / absent</option>
       `;
       ajouterTexteLibre(input, ligne.mode_paiement);
@@ -4253,7 +4273,6 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="">— (il y a un prix) —</option>
         <option value="Forfait école">🏫 Forfait école</option>
         <option value="Contrat / sur facture">🧾 Contrat / sur facture</option>
-        <option value="Uber (prix dans l'app)">🚕 Uber (prix dans l'app)</option>
         <option value="Course annulée / client absent">❌ Course annulée / client absent</option>
         <option value="Trajet privé">🚗 Trajet privé</option>
         <option value="Achat / course pour la société">🛒 Achat / course pour la société</option>
@@ -4340,6 +4359,13 @@ function construireLigneHtml(ligne, numeroAffiche) {
       const maj = { [champ]: valeur };
       if (champ === "motif_sans_prix" && valeur !== null) maj.prix_taximetre = null;
       if (champ === "prix_taximetre" && valeur !== null && ligne.motif_sans_prix) maj.motif_sans_prix = null;
+      // 🚕 Uber : le prix de la course Uber = somme perçue (les deux cases toujours remplies)
+      if (champ === "prix_taximetre" && estLigneUber(ligne)) maj.sommes_percues = valeur;
+      if (champ === "mode_paiement" && MODES_UBER.includes(valeur)) {
+        maj.type_course = "uber"; maj.motif_sans_prix = null;
+        const m = montantUber(ligne);
+        if (m !== null) { maj.prix_taximetre = m; maj.sommes_percues = m; }
+      }
       // Motif qui implique un paiement (école / contrat → facture, Uber, annulée) : mode choisi d'office s'il est vide
       if (champ === "motif_sans_prix" && valeur && MOTIFS_AVEC_PAIEMENT[valeur] && !ligne.mode_paiement) maj.mode_paiement = MOTIFS_AVEC_PAIEMENT[valeur];
       const { data: ligneServeur, error, enAttente } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update",
@@ -4418,8 +4444,14 @@ function construireLigneHtml(ligne, numeroAffiche) {
 
   const mentionUber = document.createElement("div");
   mentionUber.className = "mention-uber";
-  mentionUber.textContent = "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber.";
   corps.insertBefore(mentionUber, wrapsParChamp["mode_paiement"]);
+  // 🚕 Uber : comment le client a payé (une seule petite rangée) — « Payé dans l'app Uber » par défaut
+  const pucesUber = document.createElement("div");
+  pucesUber.className = "puces puces-uber";
+  pucesUber.style.gridColumn = "1 / -1";
+  wrapsParChamp["mode_paiement"].appendChild(pucesUber);
+  const labelPrix = wrapsParChamp["prix_taximetre"].querySelector("label");
+  const textePrixOrigine = labelPrix ? labelPrix.textContent : "Prix taximètre";
 
   // Plusieurs adresses (autres clients à prendre / à déposer)
   const editeurArrets = creerEditeurArrets(ligne.arrets, {
@@ -4442,7 +4474,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
 
   const mentionUberCash = document.createElement("div");
   mentionUberCash.className = "mention-uber";
-  mentionUberCash.textContent = "🚕💵 Uber payé en cash : l'argent va dans ta caisse, mais ne compte PAS dans la recette (Uber déclare déjà la TVA). Indique la somme reçue.";
+  mentionUberCash.textContent = "🚕💵 Uber payé en cash : l'argent va dans ta caisse, mais ne compte PAS dans la recette (Uber déclare déjà la TVA).";
   corps.insertBefore(mentionUberCash, wrapsParChamp["mode_paiement"]);
 
   const mentionPrive = document.createElement("div");
@@ -4748,22 +4780,45 @@ function construireLigneHtml(ligne, numeroAffiche) {
     inputsParChamp["mode_paiement"].value = ligne.mode_paiement || "";
     inputsParChamp["prix_taximetre"].value = ligne.prix_taximetre ?? "";
     inputsParChamp["sommes_percues"].value = ligne.sommes_percues ?? "";
+    // Uber : la case « Prix de la course Uber » montre le montant connu (ancien Uber cash : sommes perçues seules)
+    if (estLigneUber(ligne) && ligne.prix_taximetre == null && montantUber(ligne) !== null) inputsParChamp["prix_taximetre"].value = String(montantUber(ligne));
   }
 
   function appliquerVisibilitePaiement() {
     const mode = inputsParChamp["mode_paiement"].value;
     const typeCourse = inputsParChamp["type_course"].value;
     const estUberCash = mode === "uber_cash";
-    const estUber = !estUberCash && (mode === "uber" || typeCourse === "uber");
+    const famUber = MODES_UBER.includes(mode) || typeCourse === "uber";
+    const estUber = famUber && !estUberCash;
     const estPrive = typeCourse === "prive";
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
     const estForfait = typeCourse === "forfait";
     wrapsParChamp["motif_forfait"].style.display = estForfait ? "" : "none";
-    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estUberCash || estAnnulee || estForfait) ? "none" : "";
-    wrapsParChamp["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
+    // Uber : UNE case « Prix de la course Uber (€) » → remplit aussi « Sommes perçues »
+    wrapsParChamp["prix_taximetre"].style.display = (estPrive || estAnnulee || estForfait) ? "none" : "";
+    if (labelPrix) labelPrix.textContent = famUber ? "Prix de la course Uber (€)" : textePrixOrigine;
+    if (famUber) inputsParChamp["prix_taximetre"].placeholder = "ex : 27,50";
+    else if (inputsParChamp["prix_taximetre"].placeholder === "ex : 27,50") inputsParChamp["prix_taximetre"].placeholder = "";
+    wrapsParChamp["motif_sans_prix"].style.display = (famUber || estAnnulee || estForfait) ? "none" : "";
     // Facture : on peut noter le montant facturé (imprimé « 170 » puis « FACTURE Taxi Vert n° 123 »)
-    wrapsParChamp["sommes_percues"].style.display = (estUber || estPrive || estAnnulee) ? "none" : "";
+    wrapsParChamp["sommes_percues"].style.display = (famUber || estPrive || estAnnulee) ? "none" : "";
+    pucesUber.style.display = famUber && !estPrive ? "" : "none";
+    if (famUber) {
+      const actuel = MODES_UBER.includes(ligne.mode_paiement) ? ligne.mode_paiement : "uber";
+      pucesUber.replaceChildren(...[["uber", "📱 Payé dans l'app Uber"], ["uber_cash", "💶 Payé en cash"], ["uber_carte", "💳 Payé par carte"]].map(([v, t]) => {
+        const b = creerPuce(t, actuel === v, ligneVerrouillee, () => {
+          if (v === ligne.mode_paiement) return;
+          inputsParChamp["mode_paiement"].value = v;
+          inputsParChamp["mode_paiement"].dispatchEvent(new Event("change"));
+        });
+        b.dataset.uber = v;
+        return b;
+      }));
+      mentionUber.textContent = mode === "uber_carte"
+        ? "🚕💳 Uber payé par carte : tape le prix de la course Uber. Hors recette (Uber déclare la TVA)."
+        : "🚕 Course Uber payée dans l'app : tape le prix affiché dans l'app Uber. Rien à encaisser, hors recette.";
+    }
     wrapPourboire.style.display = ((estUber || estPrive || estAnnulee) && !(Number(ligne.pourboire) > 0)) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = "none"; // remplacé par le bloc « Facture : pour qui ? »
     blocPayeur.style.display = (!estPrive && (estFacture || inputsParChamp["motif_sans_prix"].value === "Contrat / sur facture")) ? "" : "none";
@@ -4797,9 +4852,12 @@ function construireLigneHtml(ligne, numeroAffiche) {
       const defil = zone.scrollLeft;
       const enBase = valeurEnBase();
       if (select.value !== enBase && [...select.options].some(o => o.value === enBase)) select.value = enBase;
-      zone.replaceChildren(...[...select.options].filter(o => o.value !== "").map(o =>
-        creerPuce(o.value === "__ecrire__" ? "✏️ Autre…" : o.textContent, o.value === enBase, select.disabled, () => {
+      const estPaiementPuces = champPuces === "mode_paiement";
+      const egal = (v, base) => v === base || (estPaiementPuces && v === "uber" && MODES_UBER.includes(base));
+      zone.replaceChildren(...[...select.options].filter(o => o.value !== "" && !(estPaiementPuces && ["uber_cash", "uber_carte"].includes(o.value))).map(o =>
+        creerPuce(o.value === "__ecrire__" ? "✏️ Autre…" : o.textContent, egal(o.value, enBase), select.disabled, () => {
           const actuel = valeurEnBase();
+          if (!deselection && egal(o.value, actuel)) { select.value = actuel; rafraichirPuces(); return; }
           const v = (o.value === actuel && deselection) ? "" : o.value;
           if (v === actuel) { select.value = actuel; rafraichirPuces(); return; }
           select.value = v;
@@ -4877,6 +4935,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   requestAnimationFrame(() => pucesARafraichir.forEach(f => f()));
   chargerPayeursRecents();
 
+  if (estLigneUber(ligne)) synchroniserChampsUber();
   appliquerVisibilitePaiement();
 
   // ---- Prix taximètre ⇄ « Pas de prix ? » : l'un ou l'autre ----
@@ -4966,9 +5025,12 @@ const QA_MODES = [
   ["uber", "🚕", "Uber"], ["facture", "🧾", "Facture"], ["__autre__", "➕", "Autre"]
 ];
 const QA_AUTRES = [
-  ["cheque_social", "🎫 Chèque social"], ["uber_cash", "🚕💵 Uber payé cash"], ["__forfait__", "📦 Forfait"],
+  ["cheque_social", "🎫 Chèque social"], ["__forfait__", "📦 Forfait"],
   ["__prive__", "🔒 Trajet privé"], ["annulee", "❌ Annulée / absent"], ["__sansprix__", "🚫 Sans prix (motif)"]
 ];
+// 🚕 Uber : comment le client a payé (rangée sous les modes, « app » par défaut)
+const QA_UBER = [["uber", "📱 Payé dans l'app Uber"], ["uber_cash", "💶 Payé en cash"], ["uber_carte", "💳 Payé par carte"]];
+function qaModePrincipal(m) { return MODES_UBER.includes(m) ? "uber" : m; }
 const QA_MOTIFS_SANS_PRIX = ["Forfait école", "Contrat / sur facture", "Course annulée / client absent", "Trajet privé", "Achat / course pour la société",
   "Déplacement à vide (garage, retour…)", "Carwash / entretien", "Plein de carburant", "Course gratuite / geste commercial", "Autre (voir note)"];
 const QA_MOTIFS_FORFAIT = ["Forfait gare", "Client habitué (tarif régulier)", "Payé à l'avance", "Prix convenu à la réservation", "Aéroport / longue distance", "Convention entreprise / école", "Autre"];
@@ -5020,13 +5082,14 @@ function qaConstruire() {
     </section>
     <section class="qa-prix" id="qa-bloc-prix">
       <div class="qa-2">
-        <div id="qa-wrap-prix"><label for="qa-prix">Prix taximètre</label><div class="qa-euro"><input type="text" inputmode="decimal" id="qa-prix" autocomplete="off" placeholder="0"><span>€</span></div></div>
+        <div id="qa-wrap-prix"><label for="qa-prix" id="qa-lab-prix">Prix taximètre</label><div class="qa-euro"><input type="text" inputmode="decimal" id="qa-prix" autocomplete="off" placeholder="0"><span>€</span></div></div>
         <div id="qa-wrap-somme"><label for="qa-somme">Somme perçue</label><div class="qa-euro auto" id="qa-euro-somme"><input type="text" inputmode="decimal" id="qa-somme" autocomplete="off" placeholder="= prix"><span>€</span></div></div>
       </div>
     </section>
     <section class="qa-pay">
       <label>Paiement</label>
       <div class="qa-modes" id="qa-modes"></div>
+      <div class="qa-puces qa-uber" id="qa-uber" style="display:none"></div>
       <div class="qa-puces" id="qa-autres" style="display:none"></div>
       <div class="qa-sous" id="qa-sous-forfait" style="display:none"><b>📦 Motif du forfait</b><div class="qa-puces" id="qa-motifs-forfait"></div></div>
       <div class="qa-sous" id="qa-sous-sansprix" style="display:none"><b>🚫 Pas de prix : pourquoi ?</b><div class="qa-puces" id="qa-motifs-sansprix"></div></div>
@@ -5186,7 +5249,7 @@ async function ouvrirAjoutRapide(ligne) {
   qa.payeur = pf.payeur || "";
   $("qa-facture-num").value = pf.numero || "";
   $("qa-payeur-autre").value = ""; $("qa-payeur-autre").style.display = "none";
-  qa.autreOuvert = !!(qa.mode && !QA_MODES.some(m => m[0] === qa.mode)) || ["forfait", "prive"].includes(qa.type) || !!qa.motifSansPrix;
+  qa.autreOuvert = !!(qa.mode && !QA_MODES.some(m => m[0] === qaModePrincipal(qa.mode))) || ["forfait", "prive"].includes(qa.type) || !!qa.motifSansPrix;
   qa.arrets = normaliserArrets(l.arrets).filter(a => a.adresse);
   const num = ligne ? (numerosCourses(lignesActuelles).get(ligne.id) || ligne.n_ordre) : (numerosCourses(lignesActuelles).size + 1);
   const enRoute = !!ligne && !l.debarquement_heure && frNum(l.debarquement_index) === null;
@@ -5201,8 +5264,9 @@ async function ouvrirAjoutRapide(ligne) {
   $("qa-dep-index").placeholder = qa.indexAuto != null ? formatIndex(qa.indexAuto) : "ex : 245";
   $("qa-arr-index").value = l.debarquement_index != null ? formatIndex(l.debarquement_index) : "";
   $("qa-arr-index").placeholder = idxDep != null && idxDep !== "" ? "≥ " + formatIndex(idxDep) : "ex : 262";
-  $("qa-prix").value = l.prix_taximetre != null ? String(l.prix_taximetre).replace(".", ",") : "";
-  qa.sommeTouchee = l.sommes_percues != null && frNum(l.sommes_percues) !== frNum(l.prix_taximetre);
+  $("qa-prix").value = l.prix_taximetre != null ? String(l.prix_taximetre).replace(".", ",")
+    : (estLigneUber(l) && montantUber(l) !== null ? String(montantUber(l)).replace(".", ",") : "");
+  qa.sommeTouchee = !estLigneUber(l) && l.sommes_percues != null && frNum(l.sommes_percues) !== frNum(l.prix_taximetre);
   $("qa-somme").value = qa.sommeTouchee ? String(l.sommes_percues).replace(".", ",") : "";
   $("qa-note").value = l.note_chauffeur || "";
   $("qa-ar").checked = !!l.aller_retour;
@@ -5264,7 +5328,8 @@ function qaValeurs() {
   if (somme === null && !qa.sommeTouchee) somme = qa.type === "forfait" ? prix : (v.prix_taximetre != null ? v.prix_taximetre : null);
   v.sommes_percues = somme;
   if (qa.type === "prive") { v.mode_paiement = null; v.sommes_percues = null; v.prix_taximetre = null; }
-  if (v.mode_paiement === "uber") { v.type_course = "uber"; v.prix_taximetre = null; v.sommes_percues = null; }
+  // 🚕 Uber (app / cash / carte) : prix de la course Uber = somme perçue (jamais de case vide à l'impression)
+  if (MODES_UBER.includes(v.mode_paiement)) { v.type_course = "uber"; v.motif_sans_prix = null; v.prix_taximetre = prix; v.sommes_percues = prix; }
   if (v.mode_paiement === "annulee") v.sommes_percues = null;
   if (v.motif_sans_prix && MOTIFS_AVEC_PAIEMENT[v.motif_sans_prix] && !v.mode_paiement) v.mode_paiement = MOTIFS_AVEC_PAIEMENT[v.motif_sans_prix];
   if (v.motif_sans_prix && !MOTIFS_AVEC_PAIEMENT[v.motif_sans_prix] && !qa.sommeTouchee) v.sommes_percues = null;
@@ -5291,17 +5356,17 @@ function qaMaj() {
   const $ = qaChamp;
   const v = qaValeurs();
   // Modes principaux
-  const autreChoisi = qa.autreOuvert || (qa.mode && !QA_MODES.some(m => m[0] === qa.mode)) || ["forfait", "prive"].includes(qa.type) || !!qa.motifSansPrix;
+  const autreChoisi = qa.autreOuvert || (qa.mode && !QA_MODES.some(m => m[0] === qaModePrincipal(qa.mode))) || ["forfait", "prive"].includes(qa.type) || !!qa.motifSansPrix;
   $("qa-modes").replaceChildren(...QA_MODES.map(([val, ico, lib]) => {
     const b = document.createElement("button"); b.type = "button";
-    const ch = val === "__autre__" ? autreChoisi : (qa.mode === val && qa.type !== "prive");
+    const ch = val === "__autre__" ? autreChoisi : (qaModePrincipal(qa.mode) === val && qa.type !== "prive");
     b.className = "qa-mode" + (val === "__autre__" ? " autre" : "") + (ch ? " choisi" : "");
     b.dataset.mode = val;
     b.innerHTML = `<i>${ico}</i>${lib}`;
     b.addEventListener("click", () => {
-      if (val === "__autre__") { qa.autreOuvert = !qa.autreOuvert || !!(qa.mode && !QA_MODES.some(m => m[0] === qa.mode)) || ["forfait", "prive"].includes(qa.type) || !!qa.motifSansPrix; }
+      if (val === "__autre__") { qa.autreOuvert = !qa.autreOuvert || !!(qa.mode && !QA_MODES.some(m => m[0] === qaModePrincipal(qa.mode))) || ["forfait", "prive"].includes(qa.type) || !!qa.motifSansPrix; }
       else {
-        qa.mode = qa.mode === val ? null : val;
+        qa.mode = qaModePrincipal(qa.mode) === val ? null : val;
         if (qa.type === "prive" || qa.type === "uber") qa.type = "normale";
         if (val === "uber" && qa.mode) { qa.type = "uber"; qa.motifSansPrix = null; }
         if (["cash", "carte", "qr"].includes(val) && qa.motifSansPrix && MOTIFS_AVEC_PAIEMENT[qa.motifSansPrix]) qa.motifSansPrix = null;
@@ -5310,6 +5375,9 @@ function qaMaj() {
     });
     return b;
   }));
+  const famUber = MODES_UBER.includes(qa.mode) && qa.type !== "prive";
+  $("qa-uber").style.display = famUber ? "flex" : "none";
+  if (famUber) qaRendrePuces($("qa-uber"), QA_UBER, val => qa.mode === val, val => { qa.mode = val; qa.type = "uber"; qa.motifSansPrix = null; });
   $("qa-autres").style.display = autreChoisi ? "flex" : "none";
   qaRendrePuces($("qa-autres"), QA_AUTRES,
     val => val === "__forfait__" ? qa.type === "forfait" : val === "__prive__" ? qa.type === "prive" : val === "__sansprix__" ? !!qa.motifSansPrix : qa.mode === val,
@@ -5335,15 +5403,20 @@ function qaMaj() {
   qaRendrePuces($("qa-types"), [["normale", "Taximètre"], ["navette_aeroport", "✈️ Navette aéroport"], ["forfait", "📦 Forfait"], ["prive", "🔒 Privé"]],
     t => qa.type === t || (t === "normale" && qa.type === "uber"), t => { qa.type = t; if (t === "prive") { qa.mode = null; qa.motifSansPrix = null; } if (t === "forfait") qa.motifSansPrix = null; });
   // Prix / sommes visibles selon le paiement
-  const sansMontant = qa.type === "prive" || qa.mode === "uber" || qa.mode === "annulee";
+  const sansMontant = qa.type === "prive" || qa.mode === "annulee";
   $("qa-bloc-prix").style.display = sansMontant ? "none" : "";
+  // Uber : une seule case « Prix de la course Uber (€) » (= somme perçue, remplie toute seule)
+  $("qa-lab-prix").textContent = famUber ? "Prix de la course Uber (€)" : "Prix taximètre";
+  $("qa-wrap-somme").style.display = famUber ? "none" : "";
+  $("qa-prix").placeholder = famUber ? "montant de l'app" : "0";
   $("qa-wrap-prix").style.opacity = qa.motifSansPrix ? ".45" : "1";
   $("qa-prix").disabled = !!qa.motifSansPrix && qa.motifSansPrix !== "__choisir__";
   const sommeAuto = !qa.sommeTouchee;
   $("qa-euro-somme").classList.toggle("auto", sommeAuto);
   $("qa-somme").placeholder = sommeAuto && v.sommes_percues != null ? String(v.sommes_percues).replace(".", ",") : "= prix";
-  const info = qa.mode === "uber" ? "🚕 Course Uber : rien à encaisser, le paiement arrive sur le compte Uber."
-    : qa.mode === "uber_cash" ? "🚕💵 Uber payé en cash : indique la somme reçue (hors recette, Uber déclare la TVA)."
+  const info = qa.mode === "uber" ? "🚕 Uber payé dans l'app : tape le prix affiché dans l'app Uber. Rien à encaisser, hors recette."
+    : qa.mode === "uber_cash" ? "🚕💶 Uber payé en cash : l'argent va dans ta caisse, hors recette (Uber déclare la TVA)."
+    : qa.mode === "uber_carte" ? "🚕💳 Uber payé par carte : hors recette (Uber déclare la TVA)."
     : qa.mode === "annulee" ? "❌ Course annulée : rien n'est encaissé. Indique la raison dans la note."
     : qa.type === "prive" ? "🔒 Trajet privé : non facturé, compté pour les km du véhicule. Écris le motif dans la note."
     : "";
@@ -5795,23 +5868,61 @@ function texteFacture(v) {
 // Colonne « Sommes perçues » à l'impression : si la ligne a un montant qui compte dans la recette
 // (même règle que recette_feuille), on imprime TOUJOURS le montant en gros, puis le mode / texte en petit.
 function celluleSommesImpression(l, fmt) {
-  const estUber = l.mode_paiement === "uber" || l.type_course === "uber";
+  const estUber = estLigneUberImp(l);
   const n = (l.sommes_percues === null || l.sommes_percues === undefined || l.sommes_percues === "") ? null : Number(l.sommes_percues);
   const libFacture = esc(texteFacture(l.numero_dossier));
-  const libMode = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH", facture: libFacture, annulee: "ANNULÉE" }[l.mode_paiement]
+  const libMode = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH", uber_carte: "UBER CARTE", facture: libFacture, annulee: "ANNULÉE" }[l.mode_paiement]
     || (l.mode_paiement && l.mode_paiement !== "uber" ? esc(l.mode_paiement).toUpperCase() : null);
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
-  const compte = n !== null && !isNaN(n) && n > 0 && !estUber && l.type_course !== "prive" && l.mode_paiement !== "uber_cash";
+  // 🚕 Uber : montant + comment il a été payé (APP UBER / CASH / CARTE) — jamais une case vide
+  if (estUber) {
+    const m = montantUberImp(l);
+    const lib = { uber: "APP UBER", uber_cash: "CASH", uber_carte: "CARTE" }[l.mode_paiement] || "APP UBER";
+    if (m === null) return `<span style="color:#b3141b; font-weight:bold; font-size:8px;">Prix Uber manquant</span>` + petit(lib);
+    return `<b style="font-size:10pt;">${montantImp(m)}</b>` + petit(lib);
+  }
+  const compte = n !== null && !isNaN(n) && n > 0 && l.type_course !== "prive";
   if (compte) {
-    const montant = Number.isInteger(n) ? String(n) : n.toFixed(2);
-    return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte), true) : "") + (libMode ? petit(libMode) : "");
+    return `<b style="font-size:10pt;">${montantImp(n)}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte), true) : "") + (libMode ? petit(libMode) : "");
   }
   if (l.sommes_texte) return `<span style="color:#b3141b; font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
   if (l.mode_paiement === "facture") return libFacture;
-  if (l.motif_sans_prix && n === null) return "—";
+  if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
   if (l.mode_paiement === "annulee") return "ANNULÉE";
-  if (estUber) return "Payé sur Uber";
+  if (l.motif_sans_prix && n === null) return `<span style="font-size:8px; font-weight:bold;">${esc(texteMotifImp(l))}</span>`;
   return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "");
+}
+// Montant imprimé : 27 → « 27 », 27.5 → « 27,50 »
+function montantImp(n) { n = Number(n); return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(".", ","); }
+function estLigneUberImp(l) { return !!l && (l.type_course === "uber" || ["uber", "uber_cash", "uber_carte"].includes(l.mode_paiement)); }
+function montantUberImp(l) {
+  const v = x => (x === null || x === undefined || x === "" || isNaN(Number(x))) ? null : Number(x);
+  const s = v(l.sommes_percues), p = v(l.prix_taximetre);
+  return (s !== null && s > 0) ? s : (p !== null && p > 0) ? p : null;
+}
+function texteMotifImp(l) { return /^Autre/.test(l.motif_sans_prix || "") && l.note_chauffeur ? l.note_chauffeur : (l.motif_sans_prix || ""); }
+// Colonne « Prix taximètre » à l'impression : jamais vide ni « — » quand on sait quelque chose
+function cellulePrixImpression(l) {
+  const rougeP = t => `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${t}</span>`;
+  if (estLigneUberImp(l)) {
+    const m = montantUberImp(l);
+    return m === null ? rougeP("Prix Uber manquant") : `<span style="white-space:nowrap;">${montantImp(m)} <span style="font-size:7px; font-weight:bold; letter-spacing:.5px;">UBER</span></span>`;
+  }
+  if (l.motif_sans_prix) return rougeP(esc(texteMotifImp(l)));
+  if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
+  if (l.mode_paiement === "annulee") return `<span style="font-size:8px; font-weight:bold;">ANNULÉE</span>`;
+  if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
+  if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? rougeP(esc(l.type_course)) : ""));
+  const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
+  const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br>${rougeP(esc(l.type_course))}` : "";
+  return esc(l.prix_taximetre) + typeLibre;
+}
+// Ligne sous les totaux : « Courses Uber (hors recette, TVA par Uber) : N courses · X,XX € »
+function ligneUberImpression(lignes) {
+  const u = (lignes || []).filter(l => l && estLigneUberImp(l));
+  if (!u.length) return "";
+  const total = u.reduce((s, l) => s + (montantUberImp(l) || 0), 0);
+  return `<tr><td colspan="2" style="text-align:left;">Courses Uber (hors recette, TVA par Uber) : <b>${u.length} course${u.length > 1 ? "s" : ""} · ${total.toFixed(2).replace(".", ",")} €</b></td></tr>`;
 }
 // ================== IMPRESSION COMPATIBLE IPHONE ==================
 // Safari (iPhone) bloque window.open s'il n'est pas appelé tout de suite dans le clic (pas après un
@@ -6196,16 +6307,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${formatIndex(l.debarquement_index)}</td>
         <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
-        <td>${(() => {
-          if (estUber) return "Uber";
-          if (l.motif_sans_prix) return `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
-          if (l.mode_paiement === "annulee") return "—";
-          if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : ""));
-          const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
-          const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : "";
-          return esc(l.prix_taximetre) + typeLibre;
-        })()}</td>
+        <td>${cellulePrixImpression(l)}</td>
         <td>${celluleSommesImpression(l, fmtVal)}</td>
         <td class="pb">${Number(l.pourboire) > 0 ? esc(formatEuro(Number(l.pourboire)).replace(" €", "")) : ""}</td>
       </tr>`;
@@ -6251,6 +6353,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       <table class="totaux-pourboires">
         <tr><td>Recette (somme des sommes perçues) : <b>${esc(formatEuro(recetteDesLignes(lignesF)))}</b></td>
             <td>Total pourboires (hors recette) : <b>${esc(formatEuro(totalPbF))}</b></td></tr>
+        ${ligneUberImpression(lignesF)}
       </table>
     `);
   }
