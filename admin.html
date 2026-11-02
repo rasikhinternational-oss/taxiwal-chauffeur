@@ -8043,8 +8043,9 @@ async function chargerCaisse() {
     const detailFeuilles = feuillesChauffeur.slice().sort((a, b) => String(a.heure_debut || a.created_at || "").localeCompare(String(b.heure_debut || b.created_at || ""))).map(f => {
       const lf = (lignesCaisseJour || []).filter(l => l.feuille_route_id === f.id);
       const recette = recetteLignesFA(lf);
+      // Espèces : cash (sommes perçues) + Uber payé cash (montant dans le prix de la course Uber)
       const especes = Math.round(lf.filter(l => !estLigneRelais(l) && (l.mode_paiement === "cash" || l.mode_paiement === "uber_cash"))
-        .reduce((s, l) => s + (parseFloat(l.sommes_percues) > 0 ? parseFloat(l.sommes_percues) : 0), 0) * 100) / 100;
+        .reduce((s, l) => s + (l.mode_paiement === "uber_cash" ? (montantUberImp(l) || 0) : (parseFloat(l.sommes_percues) > 0 ? parseFloat(l.sommes_percues) : 0)), 0) * 100) / 100;
       const pb = pourboiresLignesFA(lf);
       const nomV = (f.vehicules && f.vehicules.nom) || "Sans véhicule";
       const plaque = f.plaque || (f.vehicules && f.vehicules.plaque) || "";
@@ -9418,7 +9419,8 @@ function problemesLigneCaisse(l) {
   const motifSansPaiement = !!l.motif_sans_prix && !MOTIFS_AVEC_PAIEMENT_FA[l.motif_sans_prix];
   const rempli = v => v !== null && v !== undefined && String(v).trim() !== "";
   if (!prive && !uber && !annulee && !motifSansPaiement && !rempli(l.mode_paiement) && !payeToutEnLigneFA(l)) pb.push("Mode de paiement manquant");
-  if (uber && montantUberImp(l) === null) pb.push("Prix Uber manquant");
+  // Montant obligatoire seulement pour Uber cash / carte (argent reçu) ; Uber payé dans l'app : facultatif
+  if (["uber_cash", "uber_carte"].includes(l.mode_paiement) && montantUberImp(l) === null) pb.push("Prix Uber manquant");
   if (!prive && !uber && !annulee) {
     if (l.type_course === "forfait") { if (!l.motif_forfait) pb.push("Motif du forfait manquant"); }
     else {
@@ -10424,13 +10426,14 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         }
       }
       const majFA = { [champ]: valeur };
-      // 🚕 Uber : le prix de la course Uber remplit aussi « Sommes perçues »
+      // 🚕 Uber : le montant va UNIQUEMENT dans le prix ; « Sommes perçues » reste vide (jamais déclaré deux fois)
       const famUberFA = ["uber", "uber_cash", "uber_carte"];
-      if (champ === "prix_taximetre" && estLigneUberImp(ligne)) majFA.sommes_percues = valeur;
+      if (champ === "prix_taximetre" && estLigneUberImp(ligne)) majFA.sommes_percues = null;
       if (champ === "mode_paiement" && famUberFA.includes(valeur)) {
         majFA.type_course = "uber";
         const m = montantUberImp(ligne);
-        if (m !== null) { majFA.prix_taximetre = m; majFA.sommes_percues = m; }
+        if (m !== null) majFA.prix_taximetre = m;
+        majFA.sommes_percues = null;
       }
       const { data: ligneServeur, error } = await supabase
         .from("lignes_feuille_route").update(majFA).eq("id", ligne.id).select("*").maybeSingle();
@@ -10564,7 +10567,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
 
   const mentionUber = document.createElement("div");
   mentionUber.className = "mention-uber";
-  mentionUber.textContent = "🚕 Course Uber : note le prix de la course Uber (= sommes perçues). Hors recette (TVA par Uber).";
+  mentionUber.textContent = "🚕 Course Uber : note le prix de la course Uber (argent reçu). « Sommes perçues » reste vide : hors recette (TVA par Uber).";
   grille.insertBefore(mentionUber, wrapsParChampAdmin["mode_paiement"]);
   const labelPrixFA = wrapsParChampAdmin["prix_taximetre"].querySelector("label");
   const textePrixFA = labelPrixFA ? labelPrixFA.textContent : "Prix taximètre";
@@ -10585,7 +10588,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     const estAnnulee = mode === "annulee";
     const estForfait = typeCourse === "forfait";
     wrapsParChampAdmin["motif_forfait"].style.display = estForfait ? "" : "none";
-    // Uber : une case « Prix de la course Uber (€) » qui remplit aussi « Sommes perçues »
+    // Uber : une case « Prix de la course Uber (€) » ; « Sommes perçues » reste vide (hors recette)
     wrapsParChampAdmin["prix_taximetre"].style.display = (estPrive || estAnnulee || estForfait) ? "none" : "";
     if (labelPrixFA) labelPrixFA.textContent = famUber ? "Prix de la course Uber (€)" : textePrixFA;
     wrapsParChampAdmin["motif_sans_prix"].style.display = (famUber || estAnnulee || estForfait) ? "none" : "";
@@ -10643,13 +10646,8 @@ function celluleSommesImpression(l, fmt) {
   const libMode = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH", uber_carte: "UBER CARTE", facture: libFacture, annulee: "ANNULÉE" }[l.mode_paiement]
     || (l.mode_paiement && l.mode_paiement !== "uber" ? esc(l.mode_paiement).toUpperCase() : null);
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
-  // 🚕 Uber : montant + comment il a été payé (APP UBER / CASH / CARTE) — jamais une case vide
-  if (estUber) {
-    const m = montantUberImp(l);
-    const lib = { uber: "APP UBER", uber_cash: "CASH", uber_carte: "CARTE" }[l.mode_paiement] || "APP UBER";
-    if (m === null) return `<span style="color:#b3141b; font-weight:bold; font-size:8px;">Prix Uber manquant</span>` + petit(lib);
-    return `<b style="font-size:10pt;">${montantImp(m)}</b>` + petit(lib);
-  }
+  // 🚕 Uber : JAMAIS de montant ici (le montant est dans « Prix taximètre ») → « UBER » + APP / CASH / CARTE
+  if (estUber) return `<b>UBER</b>` + petit({ uber: "APP", uber_cash: "CASH", uber_carte: "CARTE" }[l.mode_paiement] || "APP");
   const compte = n !== null && !isNaN(n) && n > 0 && l.type_course !== "prive";
   if (compte) {
     return `<b style="font-size:10pt;">${montantImp(n)}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte), true) : "") + (libMode ? petit(libMode) : "");
@@ -10663,7 +10661,7 @@ function celluleSommesImpression(l, fmt) {
 }
 // Montant imprimé : 27 → « 27 », 27.5 → « 27,50 »
 function montantImp(n) { n = Number(n); return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(".", ","); }
-function estLigneUberImp(l) { return !!l && (l.type_course === "uber" || ["uber", "uber_cash", "uber_carte"].includes(l.mode_paiement)); }
+function estLigneUberImp(l) { return !!l && (l.type_course === "uber" || ["uber", "uber_cash", "uber_carte"].includes(l.mode_paiement) || l.motif_sans_prix === "Uber (prix dans l'app)"); }
 function montantUberImp(l) {
   const v = x => (x === null || x === undefined || x === "" || isNaN(Number(x))) ? null : Number(x);
   const s = v(l.sommes_percues), p = v(l.prix_taximetre);
@@ -10675,7 +10673,10 @@ function cellulePrixImpression(l) {
   const rougeP = t => `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${t}</span>`;
   if (estLigneUberImp(l)) {
     const m = montantUberImp(l);
-    return m === null ? rougeP("Prix Uber manquant") : `<span style="white-space:nowrap;">${montantImp(m)} <span style="font-size:7px; font-weight:bold; letter-spacing:.5px;">UBER</span></span>`;
+    const lib = { uber_cash: "UBER CASH", uber_carte: "UBER CARTE" }[l.mode_paiement] || "UBER";
+    // Payé dans l'app sans montant : « UBER APP » (normal, pas en rouge) ; cash / carte sans montant : rouge
+    if (m === null) return lib === "UBER" ? `<b style="white-space:nowrap;">UBER APP</b>` : rougeP("Prix Uber manquant");
+    return `<span style="white-space:nowrap;">${Number(m).toFixed(2).replace(".", ",")}</span><br><span style="font-size:7px; font-weight:bold; letter-spacing:.3px; white-space:nowrap;">${lib}</span>`;
   }
   if (l.motif_sans_prix) return rougeP(esc(texteMotifImp(l)));
   if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
@@ -10686,12 +10687,12 @@ function cellulePrixImpression(l) {
   const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br>${rougeP(esc(l.type_course))}` : "";
   return esc(l.prix_taximetre) + typeLibre;
 }
-// Ligne sous les totaux : « Courses Uber (hors recette, TVA par Uber) : N courses · X,XX € »
+// Ligne sous les totaux : « Courses Uber (hors recette, TVA par Uber) : N courses · dont X,XX € reçus en cash par le chauffeur »
 function ligneUberImpression(lignes) {
   const u = (lignes || []).filter(l => l && estLigneUberImp(l));
   if (!u.length) return "";
-  const total = u.reduce((s, l) => s + (montantUberImp(l) || 0), 0);
-  return `<tr><td colspan="2" style="text-align:left;">Courses Uber (hors recette, TVA par Uber) : <b>${u.length} course${u.length > 1 ? "s" : ""} · ${total.toFixed(2).replace(".", ",")} €</b></td></tr>`;
+  const cash = u.filter(l => l.mode_paiement === "uber_cash").reduce((s, l) => s + (montantUberImp(l) || 0), 0);
+  return `<tr><td colspan="2" style="text-align:left;">Courses Uber (hors recette, TVA par Uber) : <b>${u.length} course${u.length > 1 ? "s" : ""} · dont ${cash.toFixed(2).replace(".", ",")} € reçus en cash par le chauffeur</b></td></tr>`;
 }
 function fmtNombre(v) {
   return (v === null || v === undefined || v === "") ? "" : esc(v);
