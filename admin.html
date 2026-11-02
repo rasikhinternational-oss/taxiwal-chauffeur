@@ -813,10 +813,23 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-admin .num-ligne button.btn-grand-ligne{ background:#3b82c4; color:#fff; border-color:#3b82c4; }
   body.ligne-en-grand{ overflow:hidden; }
   .ligne-admin{ background:#f0f1ee; border-radius:10px; padding:10px; margin-bottom:8px; border:1px solid #dcdcda; }
-  .ligne-admin .num-ligne{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; cursor:pointer; gap:8px; }
-  .ligne-admin .num-ligne span{ color:var(--blanc); font-size:.82rem; flex:1; }
+  /* En-tête d'une course : le résumé prend TOUTE la largeur, les boutons passent sur leur propre rangée (téléphone) */
+  .ligne-admin .num-ligne{ display:flex; flex-wrap:wrap; align-items:flex-start; margin-bottom:6px; cursor:pointer; gap:6px 8px; }
+  .ligne-admin .num-ligne .resume-ligne-fa{ flex:1 1 100%; min-width:0; color:var(--blanc); font-size:.82rem; line-height:1.3; }
+  .ligne-admin .num-ligne .rl1{ display:flex; align-items:baseline; gap:6px; font-size:.9rem; }
+  .ligne-admin .num-ligne .rl1 .rl1-t{ flex:1; min-width:0; }
+  .ligne-admin .num-ligne .rl2{ overflow-wrap:anywhere; margin-top:1px; }
+  .ligne-admin .num-ligne .rl3{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .ligne-admin .num-ligne .chip-fa{ font-size:.68rem; line-height:1.2; padding:2px 7px; border-radius:999px; background:#fff; border:1px solid #dcdcda; color:#444; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+  .ligne-admin .num-ligne .chip-fa:empty{ display:none; }
   .ligne-admin .num-ligne .chevron-ligne{ color:var(--gris); font-size:.75rem; margin-left:6px; flex-shrink:0; }
+  .ligne-admin .num-ligne .actions-ligne-fa{ flex:1 1 100%; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
   .ligne-admin .num-ligne button{ width:auto; padding:5px 10px; font-size:.72rem; border-radius:6px; border:1px solid #cfcfcd; background:#fbe2e2; color:#b83232; cursor:pointer; flex-shrink:0; }
+  @media (min-width:760px){
+    .ligne-admin .num-ligne{ flex-wrap:nowrap; }
+    .ligne-admin .num-ligne .resume-ligne-fa{ flex:1 1 auto; }
+    .ligne-admin .num-ligne .actions-ligne-fa{ flex:0 0 auto; }
+  }
   .ligne-admin .grille3-fa > div{ margin-bottom:6px; }
   .ligne-admin .mention-uber{ grid-column:1 / -1; font-size:.8rem; color:var(--gris); background:#fff; border:1px solid #dcdcda; border-radius:8px; padding:8px 10px; margin:4px 8px; }
   #btn-ajouter-ligne-admin{ width:100%; padding:10px; border-radius:8px; border:1px dashed #c7c7c5; background:transparent; color:var(--blanc); font-size:.85rem; margin-top:4px; cursor:pointer; }
@@ -10238,7 +10251,17 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
 
   const entete = document.createElement("div");
   entete.className = "num-ligne";
-  entete.innerHTML = `<span><b>Course n° ${numeroAffiche}</b> · ${esc(resume)}${esc(heureResume)}${ligne.course_id ? " · attribuée par la centrale" : " · manuelle"}<span class="conduit-entete-fa conduit-par-fa">${ligne.conducteur ? " · 🔁 conduit par " + esc(libConducteur(ligne.conducteur)) : ""}</span>${ligne.cloturee ? " · 🔒 clôturée par le chauffeur" : ""}${ligne.signalee_erreur ? " · <b style='color:var(--rouge)'>📨 DEMANDE DU CHAUFFEUR</b>" : ""}${labelStatutLigne ? " · " + esc(labelStatutLigne) : ""}${estUberLigne ? " · 🚕 Uber" : (modeAffiche ? " · payé par " + esc(modeAffiche) : "")}<span class="pb-entete-ligne-fa" style="color:#8a5a00; font-weight:700;">${Number(ligne.pourboire) > 0 ? " · 💶 pourboire " + esc(eurosFr(ligne.pourboire)) : ""}</span> <span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></span>`;
+  // Ligne 1 : « N° 3 · 22:45 → 23:02 · UBER » ; ligne 2 : « départ → arrivée » ; ligne 3 : petites étiquettes
+  const hhmmFA = v => v ? String(v).slice(0, 5) : "--:--";
+  const modeCourtFA = ligne.type_course === "prive" ? "PRIVÉ"
+    : ({ cash: "CASH", carte: "CARTE", qr: "QR", facture: "FACTURE", cheque_social: "CHÈQUE", uber: "UBER", uber_cash: "UBER CASH", uber_carte: "UBER CARTE", annulee: "ANNULÉE" }[modeAffiche]
+      || (estUberLigne ? "UBER" : (modeAffiche ? String(modeAffiche).toUpperCase() : "")));
+  entete.innerHTML = `<div class="resume-ligne-fa">
+      <div class="rl1"><span class="rl1-t"><b>N° ${numeroAffiche}</b> · ${hhmmFA(ligne.embarquement_heure)} → ${hhmmFA(ligne.debarquement_heure)}${modeCourtFA ? " · <b>" + esc(modeCourtFA) + "</b>" : ""}</span><span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></div>
+      <div class="rl2">${esc(resume)}</div>
+      <div class="rl3"><span class="chip-fa">${ligne.course_id ? "attribuée par la centrale" : "manuelle"}</span>${ligne.cloturee ? `<span class="chip-fa">🔒 clôturée</span>` : ""}${labelStatutLigne ? `<span class="chip-fa">${esc(labelStatutLigne)}</span>` : ""}${ligne.signalee_erreur ? `<span class="chip-fa" style="color:var(--rouge); border-color:var(--rouge); font-weight:700;">📨 DEMANDE DU CHAUFFEUR</span>` : ""}<span class="chip-fa conduit-entete-fa conduit-par-fa">${ligne.conducteur ? "🔁 conduit par " + esc(libConducteur(ligne.conducteur)) : ""}</span><span class="chip-fa pb-entete-ligne-fa" style="color:#8a5a00; font-weight:700;">${Number(ligne.pourboire) > 0 ? "💶 pourboire " + esc(eurosFr(ligne.pourboire)) : ""}</span></div>
+    </div><div class="actions-ligne-fa"></div>`;
+  const actionsLigneFA = entete.querySelector(".actions-ligne-fa");
 
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
@@ -10277,7 +10300,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
       setTimeout(rafraichirFeuillesSiPossible, 300);
     }
   });
-  entete.appendChild(btnGrand);
+  actionsLigneFA.appendChild(btnGrand);
   // Rafraîchissement automatique pendant qu'une course est ouverte en grand : on la rouvre
   if (lignesEnGrandAdmin.has(ligne.id)) setTimeout(() => { if (!div.classList.contains("plein-ecran-ligne") && div.isConnected) btnGrand.click(); }, 0);
   if (ligne.cloturee) {
@@ -10292,9 +10315,9 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
       if (error) { alert("Erreur : " + error.message); return; }
       chargerFeuillesAdmin();
     });
-    entete.appendChild(btnRouvrir);
+    actionsLigneFA.appendChild(btnRouvrir);
   }
-  entete.appendChild(btnSupprimer);
+  actionsLigneFA.appendChild(btnSupprimer);
   div.appendChild(entete);
   // Anomalies (index qui recule, débarquement = embarquement, heures manquantes) : ligne en rouge + raison
   if (ctx.anomalies && ctx.anomalies.length) {
@@ -10489,7 +10512,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     if (error || !lg) { toastAdmin("Erreur : " + (error ? error.message : "ligne introuvable"), "#b3141b"); selConducteur.value = ligne.conducteur || ""; return; }
     ligne.conducteur = lg.conducteur;
     const sp = entete.querySelector(".conduit-entete-fa");
-    if (sp) sp.textContent = ligne.conducteur ? " · 🔁 conduit par " + libConducteur(ligne.conducteur) : "";
+    if (sp) sp.textContent = ligne.conducteur ? "🔁 conduit par " + libConducteur(ligne.conducteur) : "";
     toastAdmin(ligne.conducteur ? "Conduit par " + libConducteur(ligne.conducteur) : "Conduit par le chauffeur de la feuille");
   });
   grille.insertBefore(wrapConducteur, grille.firstChild);
@@ -10515,7 +10538,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   inputPb.value = pbAfficheFA(ligne.pourboire);
   const majEntetePb = () => {
     const sp = entete.querySelector(".pb-entete-ligne-fa");
-    if (sp) sp.textContent = Number(ligne.pourboire) > 0 ? " · 💶 pourboire " + eurosFr(ligne.pourboire) : "";
+    if (sp) sp.textContent = Number(ligne.pourboire) > 0 ? "💶 pourboire " + eurosFr(ligne.pourboire) : "";
   };
   let pbEnregistrement = false;
   inputPb.addEventListener("click", e => e.stopPropagation());
