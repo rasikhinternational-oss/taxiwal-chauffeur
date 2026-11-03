@@ -378,6 +378,12 @@ window.onerror = function(msg, url, line, col, err) {
     padding:8px 10px; font-size:.85rem; margin-bottom:10px;
   }
   .code-verification-chauffeur b{ font-size:1.1rem; letter-spacing:2px; color:#c81e2c; }
+  .note-centrale{
+    display:block; width:100%; box-sizing:border-box; margin:0 0 10px;
+    background:#fdecee; border-left:6px solid #c81e2c; border-radius:8px;
+    padding:10px 12px; color:#7a0f15; font-size:16px; font-weight:700; line-height:1.4;
+    white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;
+  }
   .course .statut-label{
     display:inline-block; font-size:.75rem; padding:3px 10px; border-radius:20px;
     background:#dcdcda; color:var(--gris); margin-bottom:10px;
@@ -2526,6 +2532,8 @@ function construireCarteCourse(course) {
     </div>` : "";
 
   div.innerHTML = `
+    ${course.notes && course.statut !== "terminee" && course.statut !== "annulee" ? `<div class="note-centrale">⚠️ Message de la centrale :
+${esc(course.notes)}</div>` : ""}
     ${course.numero_reservation ? `<div style="font-size:.72rem; font-weight:700; color:#1d4f86; margin-bottom:3px;">N° ${esc(course.numero_reservation)}</div>` : ""}<span class="statut-label">${labelStatut}${course.accepte_chauffeur ? " · ✅ acceptée" : ""}${window.TWHL && TWHL.enAttentePour("courses", course.id) ? " · ⏳ en attente d'envoi" : ""}</span>${badgeAllerRetour}${badgeTarification}${badgeRetourAuto}${badgeGroupe}
     <h3>${esc(course.client_nom) || "Client"}</h3>
     <div class="heure">${esc(heure)}</div>
@@ -2535,7 +2543,7 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
       ${ligneVehicule}${ligneGroupe}
       ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}<br>` : ""}
-      ${course.notes ? `<b>Note :</b> ${esc(course.notes)}` : ""}
+      ${course.notes && (course.statut === "terminee" || course.statut === "annulee") ? `<b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
     ${blocEncaisser}
     ${course.code_verification && (course.statut === "assignee" || course.statut === "en_cours") ? `
@@ -2887,6 +2895,8 @@ function construireCarteDemandeOuverte(course, maProposition) {
     weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
   });
   div.innerHTML = `
+    ${course.notes && course.statut !== "terminee" && course.statut !== "annulee" ? `<div class="note-centrale">⚠️ Message de la centrale :
+${esc(course.notes)}</div>` : ""}
     ${course.numero_reservation ? `<div style="font-size:.72rem; font-weight:700; color:#1d4f86; margin-bottom:3px;">N° ${esc(course.numero_reservation)}</div>` : ""}
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
@@ -2894,7 +2904,7 @@ function construireCarteDemandeOuverte(course, maProposition) {
 ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse).map(a => `<b>${a.type === "prise" ? "📍 Prise en charge" : "🏁 Dépose"} :</b> ${esc(a.adresse)}<br>`).join("")}
       <b>Arrivée :</b> ${esc(course.adresse_arrivee)}<br>
       ${course.passagers ? `<b>Passagers :</b> ${esc(course.passagers)}<br>` : ""}
-      ${course.notes ? `<b>Note :</b> ${esc(course.notes)}` : ""}
+      ${course.notes && (course.statut === "terminee" || course.statut === "annulee") ? `<b>Note :</b> ${esc(course.notes)}` : ""}
     </div>
     <div class="form-proposition">
       <label>Ton prix proposé (€)</label>
