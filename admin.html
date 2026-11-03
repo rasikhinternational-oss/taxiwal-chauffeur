@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta charset="UTF-8">
 <script>
 // En cas d'erreur, on l'affiche au lieu d'une page blanche (pour pouvoir la corriger)
 // « Script error. » sans fichier, ligne ni détail = erreur venue d'un script EXTERNE (extension Safari,
@@ -220,7 +221,6 @@ window.onerror = function(msg, url, line, col, err) {
   return false;
 };
 </script>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Taxi Wal — Admin</title>
 <link rel="manifest" href="manifest-admin.json">
@@ -1055,6 +1055,61 @@ window.onerror = function(msg, url, line, col, err) {
   #modale-contenu .nc-avancees-c{ padding:0 12px 12px; }
   #btn-toggle-depuis-message{ padding:15px !important; font-size:1.02rem !important; background:#eef8f1 !important; }
   #btn-creer-course{ background:var(--vert) !important; font-size:1.08rem !important; font-weight:800 !important; padding:16px !important; }
+  /* <<FX-CSS 🛠️ Assistant « trouver et corriger les erreurs » (identique chauffeur / admin) */
+  .fx-bandeau{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; box-sizing:border-box; border-radius:12px; padding:8px 10px; font-size:.95rem; line-height:1.3; }
+  .fx-bandeau.fx-ko{ background:#fdecee; border:2px solid #c81e2c; color:#8a1219; box-shadow:0 3px 12px rgba(0,0,0,.12); }
+  .fx-bandeau.fx-okb{ background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; font-size:.88rem; padding:7px 12px; }
+  .fx-bandeau .fx-b-txt{ flex:1 1 120px; min-width:0; overflow-wrap:anywhere; }
+  .fx-bandeau .fx-b-btn{ flex:1 1 100%; max-width:100%; min-height:48px; padding:10px 14px; border:none; border-radius:10px; background:#c81e2c; color:#fff; font-size:1rem; font-weight:800; font-family:inherit; cursor:pointer; white-space:normal; line-height:1.15; }
+  .fx-bandeau .fx-b-signer{ flex:0 0 auto; min-height:40px; padding:8px 14px; border:none; border-radius:10px; background:#1f8a4c; color:#fff; font-weight:800; font-size:.92rem; font-family:inherit; cursor:pointer; }
+  body.fx-ouvert{ overflow:hidden; }
+  .fx-assistant{ position:fixed; inset:0; z-index:99000; background:#f4f5f7; overflow-y:auto; -webkit-overflow-scrolling:touch; color:#1c1c1c; }
+  .fx-assistant *{ box-sizing:border-box; }
+  .fx-boite{ max-width:560px; margin:0 auto; padding:calc(env(safe-area-inset-top,0px) + 10px) 16px calc(env(safe-area-inset-bottom,0px) + 24px); }
+  .fx-tete{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .fx-fermer{ flex:0 0 auto; min-height:44px; padding:8px 14px; border-radius:10px; border:1px solid #cfcfcd; background:#fff; color:#1c1c1c; font-weight:700; font-size:.95rem; font-family:inherit; }
+  .fx-compteur{ flex:1; text-align:right; font-weight:800; font-size:1.05rem; color:#1d4f86; }
+  .fx-barre{ height:6px; border-radius:6px; background:#dde3ea; overflow:hidden; margin-bottom:12px; }
+  .fx-barre i{ display:block; height:100%; background:#1f8a4c; transition:width .3s; }
+  .fx-flash{ background:#e7f5ec; color:#1f6b3f; border-radius:10px; padding:8px 12px; font-weight:700; margin-bottom:10px; font-size:.92rem; }
+  .fx-sujet{ font-weight:800; font-size:1.05rem; line-height:1.3; overflow-wrap:anywhere; margin-bottom:10px; }
+  .fx-sujet2{ font-weight:500; font-size:.85rem; color:#555; margin-top:3px; }
+  .fx-explication{ background:#fdecee; border:2px solid #c81e2c; color:#8a1219; border-radius:12px; padding:12px; font-weight:800; font-size:1.05rem; line-height:1.35; overflow-wrap:anywhere; }
+  .fx-faire{ margin:10px 2px 12px; font-size:1rem; line-height:1.4; font-weight:600; color:#1c1c1c; overflow-wrap:anywhere; }
+  .fx-message{ background:#fff4e0; border:1px solid #e0a040; color:#6b4200; border-radius:10px; padding:10px 12px; font-weight:700; font-size:.92rem; margin-bottom:12px; overflow-wrap:anywhere; }
+  .fx-champs{ display:flex; flex-direction:column; gap:14px; margin-bottom:16px; }
+  .fx-champ{ position:relative; background:#fff; border:1px solid #e0e0de; border-radius:12px; padding:12px; }
+  .fx-lab{ display:block; font-size:.9rem; font-weight:700; color:#444; margin-bottom:6px; }
+  .fx-input{ display:block; width:100%; min-height:56px; padding:12px 14px; border-radius:10px; border:2px solid #1d4f86; background:#fff; color:#111; font-size:1.6rem; font-weight:800; font-family:inherit; letter-spacing:.03em; }
+  .fx-input.fx-texte{ font-size:1.1rem; font-weight:600; letter-spacing:0; }
+  .fx-input:disabled{ border-color:#cfcfcd; background:#f1f1ef; color:#777; }
+  .fx-heures{ display:flex; gap:6px; margin-top:8px; }
+  .fx-h{ flex:1; min-height:46px; border-radius:10px; border:1px solid #cfcfcd; background:#fff; color:#1c1c1c; font-weight:800; font-size:1rem; font-family:inherit; }
+  .fx-h.fx-h-maint{ flex:2; background:#1d4f86; border-color:#1d4f86; color:#fff; }
+  .fx-puces{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .fx-puce{ min-height:52px; padding:8px 10px; border-radius:10px; border:2px solid #cfcfcd; background:#fff; color:#1c1c1c; font-weight:700; font-size:.95rem; line-height:1.2; text-align:left; font-family:inherit; overflow-wrap:anywhere; }
+  .fx-puce.choisie{ border-color:#1f8a4c; background:#e7f5ec; color:#1f6b3f; box-shadow:inset 0 0 0 1px #1f8a4c; }
+  .fx-puce:disabled{ opacity:.55; }
+  .fx-bas{ position:sticky; bottom:0; z-index:2; display:flex; flex-direction:column; gap:10px; margin:0 -16px; padding:10px 16px calc(env(safe-area-inset-bottom,0px) + 10px); background:linear-gradient(rgba(244,245,247,0), #f4f5f7 14px); }
+  .fx-principal{ width:100%; min-height:58px; padding:14px; border:none; border-radius:12px; background:#1f8a4c; color:#fff; font-size:1.15rem; font-weight:800; font-family:inherit; box-shadow:0 4px 14px rgba(31,138,76,.3); }
+  .fx-principal:disabled{ opacity:.6; }
+  .fx-bas2{ display:flex; gap:8px; }
+  .fx-secondaire{ flex:1 1 0; min-width:0; min-height:50px; padding:10px 8px; border-radius:12px; border:2px solid #1d4f86; background:#fff; color:#1d4f86; font-size:.95rem; font-weight:800; font-family:inherit; line-height:1.2; }
+  .fx-fin{ text-align:center; padding:20px 4px; display:flex; flex-direction:column; gap:12px; }
+  .fx-fin-titre{ font-size:1.6rem; font-weight:900; color:#1f6b3f; }
+  .fx-fin-titre.fx-fin-reste{ color:#b86e00; font-size:1.35rem; }
+  .fx-fin-sous{ font-size:1rem; color:#444; }
+  .fx-attente{ color:#b86e00; font-weight:700; }
+  .fx-fin-liste{ text-align:left; margin:0; padding:0 0 0 20px; font-size:.95rem; line-height:1.4; overflow-wrap:anywhere; }
+  .fx-fin-liste li{ margin-bottom:6px; }
+  .fx-fin-fermer{ flex:none; width:100%; }
+  .fx-btn-carte{ display:inline-block; margin:6px 0 2px; min-height:40px; padding:8px 14px; border-radius:10px; border:none; background:#c81e2c; color:#fff; font-weight:800; font-size:.92rem; font-family:inherit; cursor:pointer; }
+  .fx-ligne-alerte{ display:flex; gap:6px; align-items:stretch; margin-top:8px; }
+  .fx-ligne-alerte > :first-child{ flex:1 1 auto; min-width:0; margin-top:0 !important; margin-bottom:0 !important; }
+  .fx-ligne-alerte .fx-btn-alerte{ flex:0 0 auto; width:auto !important; display:block; margin:0 !important; padding:8px 10px !important; border-radius:8px; border:none !important; background:#c81e2c !important; color:#fff !important; font-weight:800; font-size:.85rem; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  /* FX-CSS>> */
+  .fx-bandeau-fa{ margin:8px 0 6px; }
+  .ligne-admin .probleme-caisse-fa .fx-btn-carte{ margin:6px 0 0; }
 </style>
 </head>
 <body>
@@ -2566,6 +2621,7 @@ function rafraichirFeuillesSiPossible(force = false) {
   if (document.getElementById("vue-historique-fa").style.display === "block") return;
   if (document.getElementById("vue-pourboires-fa").style.display === "block") return;
   if (document.querySelector(".btn-reorg-fa.actif")) return;              // réorganisation à la main en cours
+  if (document.getElementById("fx-assistant")) return;                     // 🛠️ assistant de correction ouvert
   if (saisieEnCoursFeuilles()) return;                                    // l'admin écrit dans un champ
   if (Date.now() - derniereActiviteFeuilles < 4000) return;               // saisie qui vient d'être faite (enregistrement)
   // Positions de défilement à remettre après le nouvel affichage
@@ -9449,7 +9505,7 @@ function problemesLigneCaisse(l) {
   return pb;
 }
 // Cartes en rouge + raison, et alertes « Course n° X : … » (toucher → ouvre la course). Relancé après chaque modification.
-function majProblemesFA(lignes, conteneurLignes, zoneAlertes) {
+function majProblemesFA(lignes, conteneurLignes, zoneAlertes, ouvrirFx) {
   const nums = numerosCoursesFA(lignes);
   const parId = new Map();
   (lignes || []).forEach(l => { const p = problemesLigneCaisse(l); if (p.length) parId.set(String(l.id), p); });
@@ -9461,18 +9517,29 @@ function majProblemesFA(lignes, conteneurLignes, zoneAlertes) {
     if (!boite) {
       boite = document.createElement("div");
       boite.className = "probleme-caisse-fa";
+      boite.innerHTML = '<span class="pc-txt"></span>';
       const ent = el.querySelector(":scope > .num-ligne");
       el.insertBefore(boite, ent ? ent.nextSibling : el.firstChild);
+      if (ouvrirFx) {
+        const bfx = document.createElement("button");
+        bfx.type = "button"; bfx.className = "fx-btn-carte"; bfx.textContent = "🛠️ Corriger";
+        bfx.addEventListener("click", (ev) => { ev.stopPropagation(); ouvrirFx(el.dataset.ligneId); });
+        boite.appendChild(document.createElement("br"));
+        boite.appendChild(bfx);
+      }
     }
+    const span = boite.querySelector(".pc-txt") || boite;
     const txt = pbs.map(p => "⚠️ " + p).join(" · ");
-    if (boite.textContent !== txt) boite.textContent = txt;
+    if (span.textContent !== txt) span.textContent = txt;
   });
   if (!zoneAlertes) return;
   const items = (lignes || []).filter(l => parId.has(String(l.id)));
   zoneAlertes.innerHTML = items.map(l => {
     const raisons = parId.get(String(l.id)).map((p, i) => i ? p.charAt(0).toLowerCase() + p.slice(1) : p.toLowerCase()).join(", ");
-    return `<button type="button" data-aller="${esc(String(l.id))}">⚠️ Course n° ${nums.get(l.id) || "?"} : ${esc(raisons)} — <u>voir la course</u></button>`;
+    const b = `<button type="button" data-aller="${esc(String(l.id))}">⚠️ Course n° ${nums.get(l.id) || "?"} : ${esc(raisons)} — <u>voir la course</u></button>`;
+    return ouvrirFx ? `<div class="fx-ligne-alerte">${b}<button type="button" class="fx-btn-alerte" data-corriger="${esc(String(l.id))}">🛠️ Corriger</button></div>` : b;
   }).join("");
+  if (ouvrirFx) zoneAlertes.querySelectorAll("[data-corriger]").forEach(b => b.addEventListener("click", (ev) => { ev.stopPropagation(); ouvrirFx(b.dataset.corriger); }));
   zoneAlertes.querySelectorAll("[data-aller]").forEach(b => b.addEventListener("click", () => {
     const el = conteneurLignes && conteneurLignes.querySelector(`.ligne-admin[data-ligne-id="${b.dataset.aller}"]`);
     if (!el) return;
@@ -9483,6 +9550,528 @@ function majProblemesFA(lignes, conteneurLignes, zoneAlertes) {
     el.classList.remove("clignote-probleme-fa"); void el.offsetWidth; el.classList.add("clignote-probleme-fa");
   }));
 }
+// <<FX-COMMUN (bloc identique dans feuille-de-route.html et admin.html)
+// ================== 🛠️ ASSISTANT « TROUVER ET CORRIGER LES ERREURS » ==================
+// Les RÈGLES restent celles de la feuille (problemesLigneCaisse / problemesLigne, panneau de signature) :
+// l'assistant les montre UNE PAR UNE, en français simple, avec seulement le(s) champ(s) utile(s),
+// et enregistre par le chemin habituel de la page (adaptateur « ad » : file hors ligne côté chauffeur).
+// Jamais bloquant : « Passer » est toujours possible.
+const FX_MODES = [["cash", "💵 Cash"], ["carte", "💳 Carte"], ["qr", "📱 Bancontact / QR"], ["facture", "🧾 Facture"], ["cheque_social", "🎫 Chèque social"],
+  ["uber", "🚕 Uber (payé dans l'app)"], ["uber_cash", "🚕💵 Uber payé cash"], ["uber_carte", "🚕💳 Uber payé carte"], ["annulee", "❌ Annulée / client absent"]];
+const FX_MOTIFS_FORFAIT = ["Forfait gare", "Client habitué (tarif régulier)", "Payé à l'avance", "Prix convenu à la réservation", "Aéroport / longue distance", "Convention entreprise / école", "Autre"];
+const FX_LIB = {
+  index_depart: "Index de départ", embarquement_index: "Index d'embarquement (client à bord)", debarquement_index: "Index d'arrivée (débarquement)",
+  embarquement_heure: "Heure d'embarquement", debarquement_heure: "Heure d'arrivée (débarquement)",
+  embarquement_lieu: "Lieu d'embarquement", debarquement_lieu: "Lieu d'arrivée (débarquement)",
+  prix_taximetre: "Prix affiché au taximètre (€)", prix_uber: "Montant reçu du client (€)", sommes_percues: "Sommes perçues (€)",
+  mode_paiement: "Comment le client a payé ?", motif_sans_prix: "Pas de prix ? Touche le motif :", motif_forfait: "Motif du forfait"
+};
+const FX_INDEX = ["index_depart", "embarquement_index", "debarquement_index"];
+// Compteurs « fin < début » (les recettes de fin sont calculées : pas contrôlées ici)
+const FX_PAIRES = [["index_km_debut", "index_km_fin", "Compteur voiture (km)"], ["prise_en_charge_debut", "prise_en_charge_fin", "Courses (ticket)"],
+  ["chutes_debut", "chutes_fin", "Nbre chutes (ticket)"], ["taximetre_debut", "taximetre_fin", "Rec. globale (ticket)"],
+  ["km_en_charge_debut", "km_en_charge_fin", "Dist. charge (ticket)"], ["index_km_totaux_debut", "index_km_totaux_fin", "Dist. totale (ticket)"]];
+let fxEtat = null;
+
+function fxNum(v) {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
+  const n = Number(String(v).replace(/[\s €]/g, "").replace(",", "."));
+  return isFinite(n) ? n : null;
+}
+function fxHeure(v) {
+  const s = String(v ?? "").trim().replace(/\s/g, "").replace(/[hH.]/, ":");
+  if (!s) return "";
+  let h, m, x;
+  if ((x = s.match(/^(\d{1,2}):(\d{0,2})$/))) { h = +x[1]; m = +(x[2] || 0); }
+  else if (/^\d{1,4}$/.test(s)) { if (s.length <= 2) { h = +s; m = 0; } else { h = +s.slice(0, s.length - 2); m = +s.slice(-2); } }
+  else return null;
+  if (h > 23 || m > 59) return null;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+function fxHHMM(v) { return v ? String(v).slice(0, 5) : "--:--"; }
+function fxLieu(v) { const s = String(v || "").replace(/\s*Notes?\s*:.*$/i, "").split(",").map(x => x.trim()).filter(Boolean); return s.slice(0, 2).join(", ") || "—"; }
+function fxIdx(v) { return (typeof formatIndex === "function") ? formatIndex(v) : String(v ?? ""); }
+function fxCap(s) { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); }
+function fxEsc(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function fxChiffre(v) { const n = fxNum(v); return n === null ? String(v ?? "") : String(n).replace(".", ","); }
+// Feuille d'un jour passé (service de nuit : la feuille d'hier reste « en cours » jusqu'à 10 h)
+function fxFeuillePassee(f) {
+  if (!f || !f.date_service) return false;
+  const auj = dateLocaleISO();
+  if (f.date_service >= auj) return false;
+  const d = new Date(auj + "T12:00:00"); d.setDate(d.getDate() - 1);
+  return f.date_service < dateLocaleISO(d) || new Date().getHours() >= 10;
+}
+
+// Problème d'une course (texte des règles existantes) → explication simple + champ(s) à montrer
+function fxDecrire(p, l, ad) {
+  const t = String(p || "").replace(/\.$/, "");
+  let x;
+  if (/^Mode de paiement manquant/.test(t)) return { code: "mode", explication: "Il manque le mode de paiement.", faire: "Touche comment le client a payé.", champs: ["mode_paiement"] };
+  if (/^Prix Uber manquant/.test(t)) return { code: "prix_uber", explication: l.mode_paiement === "uber_carte" ? "Uber payé par carte : il manque le montant." : "Uber payé en cash : il manque le montant.", faire: "Tape le montant reçu.", champs: ["prix_uber"] };
+  if (/^Motif du forfait manquant/.test(t)) return { code: "motif_forfait", explication: "C'est un forfait, mais le motif manque.", faire: "Touche le motif du forfait.", champs: ["motif_forfait"] };
+  if (/^Prix manquant/.test(t)) return { code: "prix", explication: "Il manque le prix.", faire: "Tape le montant affiché au taximètre. Pas de prix ? Touche le motif en dessous.", champs: ["prix_taximetre", "motif_sans_prix"] };
+  if (/^Index de débarquement manquant/.test(t)) return { code: "deb_index", explication: "Il manque l'index d'arrivée.", faire: "Tape l'index du compteur à l'arrivée (les 3 derniers chiffres).", champs: ["debarquement_index"] };
+  if (/^Lieu de débarquement manquant/.test(t)) return { code: "deb_lieu", explication: "Il manque le lieu d'arrivée.", faire: "Tape l'adresse où tu as déposé le client.", champs: ["debarquement_lieu"] };
+  if (/^Heure de débarquement manquante/.test(t)) return { code: "deb_heure", explication: "Il manque l'heure d'arrivée.", faire: "Tape l'heure d'arrivée (ou touche « Maintenant »).", champs: ["debarquement_heure"] };
+  if (/^Heure d'embarquement manquante/.test(t)) return { code: "emb_heure", explication: "Il manque l'heure d'embarquement.", faire: "Tape l'heure où le client est monté.", champs: ["embarquement_heure"] };
+  if (/^Index de départ trop petit/.test(t)) return { code: "dep_petit", explication: t + ".", faire: "Vérifie le compteur et corrige l'index de départ.", champs: ["index_depart"] };
+  if ((x = t.match(/^Index d'embarquement \((.*?)\) plus petit que l'index de départ \((.*?)\)/)))
+    return { code: "emb_dep", explication: `Index d'embarquement plus petit que l'index de départ (${x[1]} < ${x[2]}).`, faire: "Vérifie le compteur et corrige le mauvais chiffre.", champs: ["index_depart", "embarquement_index"] };
+  if ((x = t.match(/^Index de débarquement \((.*?)\) plus petit que l'index d'embarquement \((.*?)\)/)))
+    return { code: "deb_emb", explication: `Index d'arrivée plus petit que l'index d'embarquement (${x[1]} < ${x[2]}).`, faire: "Vérifie le compteur et corrige le mauvais chiffre.", champs: ["embarquement_index", "debarquement_index"] };
+  if ((x = t.match(/^Index de débarquement = index d'embarquement \((.*?)\)/)))
+    return { code: "deb_egal", explication: `Index d'arrivée = index d'embarquement (${x[1]}) : la course n'a pas de km.`, faire: "Tape le bon index d'arrivée. Course annulée ? Ouvre « Voir la course complète ».", champs: ["embarquement_index", "debarquement_index"] };
+  if (/^Index de débarquement trop grand/.test(t)) return { code: "deb_grand", explication: t + ".", faire: "Vérifie le compteur : corrige l'index d'arrivée de cette course (ou le départ de la suivante).", champs: ["debarquement_index"] };
+  if (/^Heure de débarquement .* avant l'heure d'embarquement/.test(t)) return { code: "heures", explication: t + ".", faire: "Corrige l'heure qui est fausse.", champs: ["embarquement_heure", "debarquement_heure"] };
+  return { code: "autre", explication: t + ".", faire: "Ouvre la course complète pour corriger.", champs: [] };
+}
+// Course pas encore clôturée (seulement au moment de signer / feuille d'un jour passé, comme le panneau de signature)
+function fxEtapeCloture(l, ad, n) {
+  const st = ad.etatCompletude(l);
+  const champs = [];
+  const ajout = c => { if (!champs.includes(c)) champs.push(c); };
+  [...(st.champs || [])].forEach(c => {
+    if (c === "payeur" || c === "motif_sans_prix") return;
+    if (c === "prix_taximetre") { if (ad.uberMontantObligatoire(l)) ajout("prix_uber"); else { ajout("prix_taximetre"); ajout("motif_sans_prix"); } return; }
+    if (FX_LIB[c]) ajout(c);
+  });
+  (st.bloquants || []).forEach(b => fxDecrire(b, l, ad).champs.forEach(ajout));
+  const manque = (st.manque || []).concat((st.bloquants || []).map(b => b.replace(/\.$/, "").toLowerCase()));
+  return { type: "cloture", ligneId: l.id, numero: n, cle: l.id + "|cloture", complet: !!st.complet,
+    explication: st.complet ? "Cette course n'est pas encore clôturée." : "Cette course n'est pas encore clôturée : il manque " + manque.join(", ") + ".",
+    faire: st.complet ? "Tout est rempli : touche « 🔒 Clôturer la course »." : (champs.length ? "Remplis ce qui manque ci-dessous." : "Ouvre la course complète pour finir (ex : facture : pour qui ?)."),
+    champs };
+}
+// Problèmes de la feuille elle-même (service & compteurs)
+function fxProblemesFeuille(ad) {
+  const f = ad.feuille() || {};
+  const items = [];
+  FX_PAIRES.forEach(([d, fi, lib]) => {
+    const a = fxNum(f[d]), b = fxNum(f[fi]);
+    if (a !== null && b !== null && b < a)
+      items.push({ type: "feuille", cle: "feuille|ordre|" + d, explication: `${lib} : la fin est plus petite que le début (${fxChiffre(b)} < ${fxChiffre(a)}).`,
+        faire: "Vérifie les deux chiffres (tableau de bord / ticket du taximètre) et corrige le mauvais.",
+        champs: [{ champ: d, libelle: lib + " — début", mode: ad.modeChamp(d) }, { champ: fi, libelle: lib + " — fin", mode: ad.modeChamp(fi) }] });
+  });
+  if (ad.controleSignature()) {
+    const vide = c => f[c] === null || f[c] === undefined || f[c] === "";
+    const manq = ad.champsSignature().filter(([c]) => vide(c));
+    // Début / fin du service : l'heure ET les compteurs dans une seule étape
+    const groupe = (fin) => {
+      const suffixe = fin ? "_fin" : "_debut";
+      const g = manq.filter(([c]) => c.endsWith(suffixe));
+      if (!g.length) return;
+      const heure = g.some(([c]) => c.startsWith("heure_"));
+      const nb = g.filter(([c]) => !c.startsWith("heure_")).length;
+      const morceaux = [];
+      if (heure) morceaux.push(fin ? "l'heure de fin" : "l'heure de début");
+      if (nb) morceaux.push(nb + " compteur" + (nb > 1 ? "s" : ""));
+      const faire = !nb ? (fin ? "Tape l'heure où tu as fini (ou touche « Maintenant »)." : "Tape l'heure où tu as commencé.")
+        : fin ? (heure ? "Tape l'heure de fin, puis recopie" : "Recopie") + " les chiffres du ticket « TOTALISATEURS » du taximètre (imprime-le maintenant). Le compteur km se lit au tableau de bord."
+        : (heure ? "Tape l'heure de début, puis recopie" : "Recopie") + " les chiffres du début de service : compteur km au tableau de bord, le reste sur le ticket « TOTALISATEURS » du début.";
+      items.push({ type: "feuille", cle: "feuille|manque|" + (fin ? "fin" : "debut"),
+        explication: (fin ? "Il manque la fin du service : " : "Il manque le début du service : ") + morceaux.join(" et ") + ".", faire,
+        champs: g.map(([c, lib]) => ({ champ: c, libelle: fxCap(lib), mode: ad.modeChamp(c) })) });
+    };
+    groupe(false);
+    groupe(true);
+  }
+  return items;
+}
+// Liste complète, dans l'ordre : courses (n° 1, 2…), courses à clôturer, puis la feuille
+function fxListe(ad) {
+  const lignes = ad.lignes() || [];
+  const nums = ad.numeros(lignes);
+  const ordre = lignes.filter(l => nums.has(l.id)).sort((a, b) => nums.get(a.id) - nums.get(b.id));
+  const items = [];
+  ordre.forEach(l => {
+    const vus = {};
+    (ad.problemesCourse(l) || []).forEach(p => {
+      const d = fxDecrire(p, l, ad);
+      vus[d.code] = (vus[d.code] || 0) + 1;
+      items.push(Object.assign({ type: "course", ligneId: l.id, numero: nums.get(l.id), texte: p, cle: l.id + "|" + d.code + (vus[d.code] > 1 ? "#" + vus[d.code] : "") }, d));
+    });
+  });
+  if (ad.clotureRequise && ad.controleSignature())
+    ordre.forEach(l => { if (!l.cloturee && !items.some(x => x.ligneId === l.id)) items.push(fxEtapeCloture(l, ad, nums.get(l.id))); });
+  return items.concat(fxProblemesFeuille(ad));
+}
+function fxNombre(ad) { try { return fxListe(ad).length; } catch (e) { console.warn(e); return 0; } }
+function fxResumeCourse(l, n) {
+  return `Course n° ${n || "?"} · ${fxHHMM(l.embarquement_heure)} ${fxLieu(l.embarquement_lieu)} → ${fxLieu(l.debarquement_lieu)}`;
+}
+
+// ---- Bandeau en haut de la feuille ----
+function fxRendreBandeau(zone, ad) {
+  if (!zone) return;
+  const n = fxNombre(ad);
+  if (!ad.bandeauVisible(n)) { zone.style.display = "none"; zone.innerHTML = ""; zone.dataset.sig = ""; return; }
+  zone.style.display = "";
+  const signer = !n && !!(ad.peutSigner && ad.peutSigner());
+  const texteOk = signer ? "Feuille complète" : (ad.texteSansErreur ? ad.texteSansErreur() : "Feuille complète");
+  const sig = n + "|" + signer + "|" + texteOk;
+  if (zone.dataset.sig === sig) return;
+  zone.dataset.sig = sig;
+  zone.classList.add("fx-bandeau");
+  zone.classList.toggle("fx-ko", n > 0);
+  zone.classList.toggle("fx-okb", !n);
+  if (n) zone.innerHTML = `<div class="fx-b-txt">⚠️ <b>${n} chose${n > 1 ? "s" : ""} à corriger</b> sur cette feuille</div><button type="button" class="fx-b-btn">🛠️ Corriger maintenant</button>`;
+  else zone.innerHTML = `<div class="fx-b-txt">✅ ${fxEsc(texteOk)}</div>${signer ? '<button type="button" class="fx-b-signer">✍️ Signer</button>' : ""}`;
+  const b = zone.querySelector(".fx-b-btn"); if (b) b.addEventListener("click", (e) => { e.stopPropagation(); fxOuvrir(ad); });
+  const s = zone.querySelector(".fx-b-signer"); if (s) s.addEventListener("click", (e) => { e.stopPropagation(); ad.signer(); });
+}
+
+// ---- Assistant plein écran ----
+function fxOuvrir(ad, opts) {
+  opts = opts || {};
+  if (fxEtat) fxFermer(true);
+  const fond = document.createElement("div");
+  fond.id = "fx-assistant"; fond.className = "fx-assistant";
+  fond.setAttribute("role", "dialog"); fond.setAttribute("aria-modal", "true"); fond.setAttribute("aria-label", "Corriger la feuille");
+  document.body.appendChild(fond);
+  document.body.classList.add("fx-ouvert");
+  fxEtat = { ad, fond, faits: new Set(), passes: new Set(), focusLigne: opts.ligneId != null ? String(opts.ligneId) : null, cle: null,
+             message: "", flash: "", modifie: false, occupe: false, enAttente: false };
+  fxRendre();
+}
+function fxFermer(silencieux) {
+  if (!fxEtat) return;
+  const e = fxEtat; fxEtat = null;
+  e.fond.remove();
+  document.body.classList.remove("fx-ouvert");
+  if (!silencieux && e.ad.apresFermeture) { try { e.ad.apresFermeture(e.modifie); } catch (err) { console.warn(err); } }
+}
+function fxProchain(liste) {
+  const e = fxEtat;
+  const dispo = liste.filter(x => !e.passes.has(x.cle));
+  if (e.cle) { const c = dispo.find(x => x.cle === e.cle); if (c) return c; }
+  if (e.focusLigne) { const f = dispo.find(x => String(x.ligneId) === e.focusLigne); if (f) return f; e.focusLigne = null; }
+  return dispo[0] || null;
+}
+function fxEl(tag, cls, txt) { const x = document.createElement(tag); if (cls) x.className = cls; if (txt !== undefined) x.textContent = txt; return x; }
+function fxBouton(cls, txt, fn) { const b = fxEl("button", cls, txt); b.type = "button"; b.addEventListener("click", (ev) => { ev.stopPropagation(); fn(ev); }); return b; }
+
+// Champ d'une course → { el, nom, champBdd, lire(), focus }
+function fxWidgetCourse(nom, l, ad, verrou) {
+  const w = fxEl("div", "fx-champ"); w.dataset.fxChamp = nom;
+  const lab = fxEl("label", "fx-lab", FX_LIB[nom] || nom);
+  w.appendChild(lab);
+  const res = { el: w, nom, champBdd: nom === "prix_uber" ? "prix_taximetre" : nom, focus: null, lire: () => ({ change: false }) };
+  const entree = (mode, valeur, placeholder) => {
+    const i = fxEl("input", "fx-input");
+    i.type = "text"; i.autocomplete = "off"; i.inputMode = mode;
+    if (mode === "numeric") i.pattern = "[0-9]*";
+    i.value = valeur; i.placeholder = placeholder || ""; i.disabled = !!verrou;
+    i.dataset.fxInput = nom;
+    w.appendChild(i); res.focus = i;
+    return i;
+  };
+  if (FX_INDEX.includes(nom)) {
+    let ph = "ex : 083";
+    if (nom === "index_depart" && ad.indexSuggere) { const s = ad.indexSuggere(l); if (s !== null && s !== undefined) ph = "fin course précédente : " + fxIdx(s); }
+    if (nom === "embarquement_index" && l.index_depart != null) ph = "≥ " + fxIdx(l.index_depart);
+    if (nom === "debarquement_index" && l.embarquement_index != null) ph = "> " + fxIdx(l.embarquement_index);
+    const avant = fxIdx(l[nom]);
+    const i = entree("numeric", avant, ph);
+    res.lire = () => {
+      const v = i.value.trim().replace(/\s/g, "");
+      if (v === avant) return { change: false };
+      if (v === "") return { change: true, valeur: null };
+      if (!/^\d+([.,]\d+)?$/.test(v)) return { erreur: (FX_LIB[nom] || nom) + " : seulement des chiffres." , input: i };
+      return { change: true, valeur: v.replace(",", ".") };
+    };
+  } else if (nom === "embarquement_heure" || nom === "debarquement_heure") {
+    const avant = l[nom] ? String(l[nom]).slice(0, 5) : "";
+    const i = entree("numeric", avant, "HH:MM (ex : 2245)");
+    i.addEventListener("change", () => { const n = fxHeure(i.value); if (n) i.value = n; });
+    if (!verrou) w.appendChild(fxRangeeHeure(i));
+    res.lire = () => {
+      const n = fxHeure(i.value);
+      if (n === null) return { erreur: "Heure non reconnue : tape par ex. 22:45 ou 2245.", input: i };
+      if (n === avant) return { change: false };
+      return { change: true, valeur: n || null };
+    };
+  } else if (nom === "embarquement_lieu" || nom === "debarquement_lieu") {
+    const avant = l[nom] || "";
+    const i = entree("text", avant, "Adresse");
+    i.inputMode = ""; i.classList.add("fx-texte");
+    res.lire = () => { const v = i.value.trim(); return v === String(avant).trim() ? { change: false } : { change: true, valeur: v || null }; };
+  } else if (nom === "prix_taximetre" || nom === "prix_uber" || nom === "sommes_percues") {
+    const brut = nom === "prix_uber" ? ad.montantUber(l) : l[nom];
+    const avant = brut === null || brut === undefined ? "" : String(brut).replace(".", ",");
+    const i = entree("decimal", avant, "0,00");
+    res.lire = () => {
+      const v = i.value.trim().replace(/[\s€]/g, "");
+      if (v === avant) return { change: false };
+      if (v === "") return { change: true, valeur: null };
+      if (!/^\d+([.,]\d{1,2})?$/.test(v)) return { erreur: "Montant non reconnu : tape par ex. 25 ou 25,50.", input: i };
+      return { change: true, valeur: v.replace(",", ".") };
+    };
+  } else if (nom === "mode_paiement" || nom === "motif_sans_prix" || nom === "motif_forfait") {
+    const options = nom === "mode_paiement" ? FX_MODES : (nom === "motif_forfait" ? FX_MOTIFS_FORFAIT.map(m => [m, m]) : (ad.motifsSansPrix || []));
+    const avant = l[nom] || "";
+    let choix = avant;
+    const zone = fxEl("div", "fx-puces" + (nom === "motif_sans_prix" ? " fx-puces-motif" : ""));
+    const liste = options.slice();
+    if (avant && !liste.some(o => o[0] === avant)) liste.push([avant, avant]);
+    const rendre = () => zone.querySelectorAll(".fx-puce").forEach(b => b.classList.toggle("choisie", b.dataset.val === choix));
+    liste.forEach(([v, t]) => {
+      const b = fxBouton("fx-puce", t, () => {
+        if (verrou) return;
+        choix = (choix === v && nom !== "mode_paiement") ? "" : v;
+        rendre();
+        if (res.onChoix) res.onChoix(choix);
+      });
+      b.dataset.val = v; b.disabled = !!verrou;
+      zone.appendChild(b);
+    });
+    w.appendChild(zone);
+    rendre();
+    res.focus = zone.querySelector(".fx-puce");
+    res.vider = () => { choix = ""; rendre(); };
+    res.lire = () => choix === avant ? { change: false } : { change: true, valeur: choix || null };
+  }
+  return res;
+}
+function fxRangeeHeure(i) {
+  const r = fxEl("div", "fx-heures");
+  const mettre = v => { i.value = v; i.dispatchEvent(new Event("input")); };
+  const maintenant = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+  const decaler = (min) => {
+    const base = fxHeure(i.value) || maintenant();
+    const [h, m] = base.split(":").map(Number);
+    const t = ((h * 60 + m + min) % 1440 + 1440) % 1440;
+    mettre(String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"));
+  };
+  r.appendChild(fxBouton("fx-h", "−5", () => decaler(-5)));
+  r.appendChild(fxBouton("fx-h fx-h-maint", "🕐 Maintenant", () => mettre(maintenant())));
+  r.appendChild(fxBouton("fx-h", "+5", () => decaler(5)));
+  return r;
+}
+// Champ de la feuille (heures / compteurs)
+function fxWidgetFeuille(def, f, verrou) {
+  const w = fxEl("div", "fx-champ"); w.dataset.fxChamp = def.champ;
+  w.appendChild(fxEl("label", "fx-lab", def.libelle));
+  const i = fxEl("input", "fx-input");
+  i.type = "text"; i.autocomplete = "off"; i.disabled = !!verrou; i.dataset.fxInput = def.champ;
+  const res = { el: w, champBdd: def.champ, focus: i };
+  if (def.mode === "heure") {
+    const avant = f[def.champ] ? String(f[def.champ]).slice(0, 5) : "";
+    i.inputMode = "numeric"; i.value = avant; i.placeholder = "HH:MM (ex : 1830)";
+    i.addEventListener("change", () => { const n = fxHeure(i.value); if (n) i.value = n; });
+    w.appendChild(i);
+    if (!verrou) w.appendChild(fxRangeeHeure(i));
+    res.lire = () => {
+      const n = fxHeure(i.value);
+      if (n === null) return { erreur: "Heure non reconnue : tape par ex. 18:30 ou 1830.", input: i };
+      return n === avant ? { change: false } : { change: true, valeur: n || null };
+    };
+  } else {
+    const entier = def.mode === "int";
+    const avant = f[def.champ] === null || f[def.champ] === undefined ? "" : String(f[def.champ]);
+    i.inputMode = entier ? "numeric" : "decimal"; if (entier) i.pattern = "[0-9]*";
+    i.value = avant.replace(".", ","); i.placeholder = entier ? "nombre entier" : "chiffre";
+    w.appendChild(i);
+    res.lire = () => {
+      const v = i.value.trim().replace(/[\s €]/g, "").replace(/km$/i, "");
+      if (v === avant.replace(".", ",") || v === avant) return { change: false };
+      if (v === "") return { change: true, valeur: null };
+      const t = v.replace(",", ".").replace(/\.$/, "");
+      if (entier ? !/^\d+$/.test(t) : !/^-?\d+(\.\d+)?$/.test(t)) return { erreur: def.libelle + " : chiffre non reconnu" + (entier ? " (nombre entier, sans virgule)." : "."), input: i };
+      return { change: true, valeur: t };
+    };
+  }
+  return res;
+}
+// Règles de la carte détaillée (prix ⟷ motif, Uber : montant UNIQUEMENT dans le prix, motif → mode…)
+function fxRegles(l, maj, ad) {
+  const MU = ["uber", "uber_cash", "uber_carte"];
+  if ("motif_sans_prix" in maj && maj.motif_sans_prix !== null) maj.prix_taximetre = null;
+  else if ("prix_taximetre" in maj && maj.prix_taximetre !== null && l.motif_sans_prix) maj.motif_sans_prix = null;
+  const uberApres = ("mode_paiement" in maj) ? MU.includes(maj.mode_paiement) : ad.estUber(l);
+  if ("prix_taximetre" in maj && uberApres) maj.sommes_percues = null;
+  if ("mode_paiement" in maj && MU.includes(maj.mode_paiement)) {
+    maj.type_course = "uber"; maj.motif_sans_prix = null;
+    if (!("prix_taximetre" in maj)) { const m = ad.montantUber(l); if (m !== null) maj.prix_taximetre = m; }
+    maj.sommes_percues = null;
+  }
+  if (maj.motif_sans_prix && ad.motifsAvecPaiement && ad.motifsAvecPaiement[maj.motif_sans_prix] && !l.mode_paiement && !("mode_paiement" in maj))
+    maj.mode_paiement = ad.motifsAvecPaiement[maj.motif_sans_prix];
+  if (maj.mode_paiement === "annulee" && l.sommes_percues != null) maj.sommes_percues = null;
+  return maj;
+}
+
+function fxRendre() {
+  const e = fxEtat; if (!e) return;
+  const ad = e.ad;
+  const liste = fxListe(ad);
+  const p = fxProchain(liste);
+  e.fond.innerHTML = "";
+  const boite = fxEl("div", "fx-boite");
+  e.fond.appendChild(boite);
+  const tete = fxEl("div", "fx-tete");
+  tete.appendChild(fxBouton("fx-fermer", "✕ Fermer", () => fxFermer()));
+  const compteur = fxEl("div", "fx-compteur");
+  tete.appendChild(compteur);
+  boite.appendChild(tete);
+  if (e.flash) { boite.appendChild(fxEl("div", "fx-flash", e.flash)); e.flash = ""; }
+  const restants = liste.filter(x => !e.passes.has(x.cle)).length;
+  if (!p) { fxRendreFin(boite, liste); compteur.textContent = ""; return; }
+  e.cle = p.cle;
+  const k = e.faits.size + e.passes.size + 1, N = e.faits.size + e.passes.size + restants;
+  compteur.textContent = `Problème ${k} sur ${N}`;
+  const barre = fxEl("div", "fx-barre"); const plein = fxEl("i"); plein.style.width = Math.round(100 * (k - 1) / Math.max(1, N)) + "%"; barre.appendChild(plein);
+  boite.appendChild(barre);
+  const l = p.ligneId != null ? (ad.lignes() || []).find(x => String(x.id) === String(p.ligneId)) : null;
+  const sujet = fxEl("div", "fx-sujet", p.type === "feuille" ? "📋 Service & compteurs de la feuille" : (l ? fxResumeCourse(l, p.numero) : "Course"));
+  boite.appendChild(sujet);
+  if (l && (l.debarquement_heure || l.mode_paiement)) {
+    const det = [];
+    if (l.debarquement_heure) det.push("arrivée " + fxHHMM(l.debarquement_heure));
+    const iv = v => v == null ? "—" : fxIdx(v);
+    det.push(`index : départ ${iv(l.index_depart)} · client ${iv(l.embarquement_index)} · arrivée ${iv(l.debarquement_index)}`);
+    sujet.appendChild(fxEl("div", "fx-sujet2", det.join(" · ")));
+  }
+  boite.appendChild(fxEl("div", "fx-explication", "⚠️ " + p.explication));
+  const verrou = p.type !== "feuille" && l && ad.peutModifierLigne && !ad.peutModifierLigne(l);
+  boite.appendChild(fxEl("div", "fx-faire", verrou ? ad.texteVerrou : p.faire));
+  if (e.message) boite.appendChild(fxEl("div", "fx-message", e.message));
+  const widgets = [];
+  const zoneChamps = fxEl("div", "fx-champs");
+  if (p.type === "feuille") {
+    const f = ad.feuille() || {};
+    p.champs.forEach(def => widgets.push(fxWidgetFeuille(def, f, false)));
+  } else if (l) {
+    p.champs.forEach(nom => widgets.push(fxWidgetCourse(nom, l, ad, verrou)));
+    // Prix ⟷ motif « pas de prix » : l'un efface l'autre
+    const wp = widgets.find(w => w.nom === "prix_taximetre"), wm = widgets.find(w => w.nom === "motif_sans_prix");
+    if (wp && wm) {
+      wm.onChoix = (v) => { if (v && wp.focus) wp.focus.value = ""; };
+      if (wp.focus) wp.focus.addEventListener("input", () => { if (wp.focus.value.trim()) wm.vider(); });
+    }
+  }
+  widgets.forEach(w => zoneChamps.appendChild(w.el));
+  if (widgets.length) boite.appendChild(zoneChamps);
+  // Boutons
+  const bas = fxEl("div", "fx-bas");
+  const peutCloturer = p.type === "cloture" && p.complet && !verrou;
+  const libPrincipal = verrou || (!widgets.length && !peutCloturer) ? "Suivant ➜" : (peutCloturer && !widgets.length ? "🔒 Clôturer la course" : "✅ Enregistrer et suivant");
+  const principal = fxBouton("fx-principal", libPrincipal, () => {
+    if (verrou || (!widgets.length && !peutCloturer)) { fxPasser(p); return; }
+    fxEnregistrer(p, widgets, principal);
+  });
+  bas.appendChild(principal);
+  const rangee = fxEl("div", "fx-bas2");
+  rangee.appendChild(fxBouton("fx-secondaire", "⏭️ Passer", () => fxPasser(p)));
+  rangee.appendChild(fxBouton("fx-secondaire", p.type === "feuille" ? "🔍 Voir les compteurs" : "🔍 Voir la course complète", () => {
+    const mod = e.modifie; fxFermer(true);
+    try { ad.voir(p, mod); } catch (err) { console.warn(err); }
+  }));
+  bas.appendChild(rangee);
+  boite.appendChild(bas);
+  // Champ prêt à taper (clavier chiffres pour index / prix)
+  const premier = widgets.find(w => w.focus && !w.focus.disabled && w.focus.tagName === "INPUT");
+  if (premier) { try { premier.focus.focus({ preventScroll: true }); } catch (_) {} }
+  if (premier) premier.focus.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); principal.click(); } });
+}
+function fxPasser(p) {
+  const e = fxEtat; if (!e) return;
+  e.passes.add(p.cle); e.cle = null; e.message = "";
+  fxRendre();
+}
+async function fxEnregistrer(p, widgets, bouton) {
+  const e = fxEtat; if (!e || e.occupe) return;
+  const ad = e.ad;
+  const lectures = widgets.map(w => [w, w.lire()]);
+  const err = lectures.find(([, r]) => r.erreur);
+  if (err) {
+    e.message = "⚠️ " + err[1].erreur;
+    let m = e.fond.querySelector(".fx-message");
+    if (!m) { m = fxEl("div", "fx-message"); const champs = e.fond.querySelector(".fx-champs"); if (champs) champs.insertAdjacentElement("beforebegin", m); }
+    m.textContent = e.message;
+    try { err[1].input.focus(); err[1].input.select(); } catch (_) {}
+    return;
+  }
+  const changes = lectures.filter(([, r]) => r.change);
+  const l = p.ligneId != null ? (ad.lignes() || []).find(x => String(x.id) === String(p.ligneId)) : null;
+  if (!changes.length && !(p.type === "cloture" && p.complet)) {
+    e.message = "Rien n'a changé. Corrige le chiffre, ou touche « Passer » si c'est juste.";
+    fxRendre(); return;
+  }
+  e.occupe = true;
+  bouton.disabled = true; bouton.textContent = "Enregistrement…";
+  let res = { ok: true };
+  try {
+    if (p.type === "feuille") {
+      for (const [w, r] of changes) { res = await ad.sauverFeuille(w.champBdd, r.valeur); if (!res.ok) break; if (res.enAttente) e.enAttente = true; }
+    } else if (l && changes.length) {
+      const maj = {};
+      changes.forEach(([w, r]) => { maj[w.champBdd] = r.valeur; });
+      fxRegles(l, maj, ad);
+      res = await ad.sauverLigne(l, maj);
+      if (res.enAttente) e.enAttente = true;
+    }
+    if (res.ok && p.type === "cloture" && fxEtat) {
+      const l2 = (ad.lignes() || []).find(x => String(x.id) === String(p.ligneId));
+      const st = l2 ? ad.etatCompletude(l2) : null;
+      if (l2 && st && st.complet && !(st.avertissements || []).length && !l2.cloturee) {
+        const r2 = await ad.cloturer(l2);
+        if (!r2.ok) res = r2;
+      }
+    }
+  } catch (ex) { res = { ok: false, message: ex && ex.message ? ex.message : String(ex) }; }
+  if (!fxEtat || fxEtat !== e) return;
+  e.occupe = false;
+  if (!res.ok) { e.message = "⚠️ Non enregistré : " + (res.message || "erreur") + ". Réessaie, ou touche « Passer »."; fxRendre(); return; }
+  e.modifie = true;
+  const liste = fxListe(ad);
+  const encore = liste.find(x => x.cle === p.cle);
+  if (encore) {
+    e.message = p.type === "cloture" ? "" : p.type === "feuille" ? "✓ Enregistré. Il reste encore : " + encore.explication.replace(/^Il manque /, "").replace(/^la fin du service : |^le début du service : /, "")
+      : "Enregistré, mais ce n'est pas encore bon : " + encore.explication;
+  } else {
+    e.faits.add(p.cle); e.cle = null; e.message = "";
+    e.flash = res.enAttente ? "⏳ Gardé sur le téléphone — envoi au retour du réseau" : "✓ Enregistré";
+  }
+  fxRendre();
+}
+function fxRendreFin(boite, liste) {
+  const e = fxEtat, ad = e.ad;
+  const passes = liste.filter(x => e.passes.has(x.cle));
+  const fin = fxEl("div", "fx-fin");
+  if (passes.length) {
+    fin.appendChild(fxEl("div", "fx-fin-titre fx-fin-reste", `Il reste ${passes.length} chose${passes.length > 1 ? "s" : ""} à corriger`));
+    fin.appendChild(fxEl("div", "fx-fin-sous", e.faits.size ? `${e.faits.size} correction${e.faits.size > 1 ? "s" : ""} enregistrée${e.faits.size > 1 ? "s" : ""}. Tu as passé :` : "Tu as passé :"));
+    const ul = fxEl("ul", "fx-fin-liste");
+    passes.forEach(x => {
+      const l = x.ligneId != null ? (ad.lignes() || []).find(y => String(y.id) === String(x.ligneId)) : null;
+      ul.appendChild(fxEl("li", "", (x.type === "feuille" ? "Feuille : " : "Course n° " + (x.numero || "?") + " : ") + x.explication));
+    });
+    fin.appendChild(ul);
+    fin.appendChild(fxBouton("fx-principal", "🔁 Revoir ce que j'ai passé", () => { e.passes.clear(); e.cle = null; fxRendre(); }));
+  } else {
+    fin.appendChild(fxEl("div", "fx-fin-titre", "✅ Tout est corrigé"));
+    fin.appendChild(fxEl("div", "fx-fin-sous", e.faits.size ? `${e.faits.size} correction${e.faits.size > 1 ? "s" : ""} enregistrée${e.faits.size > 1 ? "s" : ""}.` : "Aucun problème sur cette feuille."));
+    if (e.enAttente) fin.appendChild(fxEl("div", "fx-fin-sous fx-attente", "⏳ Gardé sur le téléphone : envoi automatique au retour du réseau."));
+    if (ad.peutSigner && ad.peutSigner()) fin.appendChild(fxBouton("fx-principal", "✍️ Signer la feuille", () => { fxFermer(); ad.signer(); }));
+  }
+  fin.appendChild(fxBouton("fx-secondaire fx-fin-fermer", "Fermer", () => fxFermer()));
+  boite.appendChild(fin);
+}
+// FX-COMMUN>>
+// Mêmes champs que le panneau de signature de l'app chauffeur (CHAMPS_SIGNATURE)
+const CHAMPS_SIGNATURE_FA = [
+  ["heure_debut", "heure de début"], ["heure_fin", "heure de fin"],
+  ["index_km_debut", "compteur voiture (tableau de bord) — début"], ["index_km_fin", "compteur voiture (tableau de bord) — fin"],
+  ["prise_en_charge_debut", "Courses (ticket) — début"], ["prise_en_charge_fin", "Courses (ticket) — fin"],
+  ["chutes_debut", "Nbre chutes (ticket) — début"], ["chutes_fin", "Nbre chutes (ticket) — fin"],
+  ["taximetre_debut", "Rec. globale (ticket) — début"], ["taximetre_fin", "Rec. globale (ticket) — fin"],
+  ["km_en_charge_debut", "Dist. charge (ticket) — début"], ["km_en_charge_fin", "Dist. charge (ticket) — fin"],
+  ["index_km_totaux_debut", "Dist. totale (ticket) — début"], ["index_km_totaux_fin", "Dist. totale (ticket) — fin"]
+];
+const FX_MOTIFS_SANS_PRIX_FA = [["Trajet privé", "🚗 Trajet privé"], ["Achat / course pour la société", "🛒 Achat pour la société"], ["Déplacement à vide (garage, retour…)", "↩️ Déplacement à vide"],
+  ["Carwash / entretien", "🧽 Carwash / entretien"], ["Plein de carburant", "⛽ Plein de carburant"], ["Course gratuite / geste commercial", "🎁 Course gratuite"], ["Autre (voir note)", "📝 Autre (voir note)"]];
 function heureMaintenantFA() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 function nomChauffeurFeuilleFA(feuille, chauffeur) { return (feuille && (feuille.nom_chauffeur_affiche || feuille.profils?.nom)) || chauffeur?.nom || "le chauffeur"; }
 function optionsConducteurFA(feuille, valeur, avecChauffeur) {
@@ -9973,7 +10562,86 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   let majTotauxSeq = 0;
   const alertesPbFA = document.createElement("div");
   alertesPbFA.className = "alertes-pb-fa";
-  const majPbFA = () => { try { majProblemesFA(lignes, conteneurLignes, alertesPbFA); } catch (e) { console.warn(e); } };
+  const majPbFA = () => { try { majProblemesFA(lignes, conteneurLignes, alertesPbFA, ouvrirFxFA); } catch (e) { console.warn(e); } majBandeauFxFA(); };
+  // ---- 🛠️ Assistant « trouver et corriger » pour CETTE feuille (la direction peut tout corriger, même signée) ----
+  div.dataset.fxFeuille = feuille.id;
+  const bandeauFxFA = document.createElement("div");
+  bandeauFxFA.className = "fx-bandeau-fa";
+  bandeauFxFA.style.display = "none";
+  entete.insertAdjacentElement("afterend", bandeauFxFA);
+  const adFxFA = {
+    feuille: () => feuille,
+    lignes: () => lignes,
+    numeros: ls => numerosCoursesFA(ls),
+    // Même règle que l'app chauffeur : problèmes « caisse » + index / heures incohérents avec les autres courses
+    problemesCourse: l => {
+      if (!l || estLigneRelais(l) || ligneCaisseVideFA(l)) return [];
+      const pb = problemesLigneCaisse(l).slice();
+      try {
+        const t = trierLignesChrono(lignes, feuille);
+        problemesLigne(t, t.findIndex(x => x.id === l.id), feuille, { suivante: true }).forEach(p => { p = p.replace(/\.$/, ""); if (!pb.includes(p)) pb.push(p); });
+      } catch (_) {}
+      return pb;
+    },
+    controleSignature: () => !!feuille.verrouillee || fxFeuillePassee(feuille),
+    clotureRequise: false,
+    champsSignature: () => CHAMPS_SIGNATURE_FA,
+    modeChamp: c => c.startsWith("heure_") ? "heure" : ((champsEnteteFA[c] || [])[1] === "int" ? "int" : "dec"),
+    uberMontantObligatoire: l => ["uber_cash", "uber_carte"].includes(l.mode_paiement),
+    estUber: l => estLigneUberImp(l),
+    montantUber: l => montantUberImp(l),
+    motifsAvecPaiement: MOTIFS_AVEC_PAIEMENT_FA,
+    motifsSansPrix: FX_MOTIFS_SANS_PRIX_FA,
+    indexSuggere: l => indexDepartSuggere(lignes, l, feuille),
+    peutModifierLigne: () => true,
+    sauverLigne: async (l, maj) => {
+      const { data, error } = await supabase.from("lignes_feuille_route").update(maj).eq("id", l.id).select("*").maybeSingle();
+      if (error) return { ok: false, message: error.message };
+      if (!data) return { ok: false, message: "course introuvable" };
+      Object.assign(l, data);
+      if ("embarquement_heure" in maj && !feuille.ordre_manuel) lignes = trierLignesChrono(lignes, feuille);
+      try { majTotauxFA(); } catch (e) { console.warn(e); }
+      return { ok: true };
+    },
+    sauverFeuille: async (champ, valeur) => {
+      const { error } = await supabase.from("feuilles_route").update({ [champ]: valeur }).eq("id", feuille.id);
+      if (error) return { ok: false, message: error.message };
+      feuille[champ] = valeur;
+      div.querySelectorAll(`[data-champ-entete="${champ}"], [data-champ-heure="${champ}"]`).forEach(i => { i.value = valeur === null || valeur === undefined ? "" : String(valeur); });
+      derniereActiviteFeuilles = Date.now();
+      majBandeauFxFA();
+      return { ok: true };
+    },
+    voir: async (p, modifie) => {
+      feuillesDepliees.add(feuille.id);
+      if (p.type !== "feuille" && p.ligneId != null) etatManuelLignesAdmin.set(p.ligneId, true);
+      if (modifie) { try { await chargerFeuillesAdmin(); } catch (_) {} }
+      setTimeout(() => {
+        const carte = document.querySelector(`.feuille-admin[data-fx-feuille="${feuille.id}"]`) || div;
+        const corpsF = carte.querySelector(".bloc-compteurs-fa") ? carte.querySelector(".bloc-compteurs-fa").parentElement : null;
+        if (corpsF && corpsF.style.display === "none") corpsF.style.display = "block";
+        if (p.type === "feuille") {
+          const det = carte.querySelector(".bloc-compteurs-fa"); if (det) det.open = true;
+          const champ = p.champs[0].champ;
+          const i = carte.querySelector(`[data-champ-entete="${champ}"], [data-champ-heure="${champ}"]`);
+          if (i) { i.scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => { try { i.focus({ preventScroll: true }); } catch (_) {} }, 350); }
+          return;
+        }
+        const el = carte.querySelector(`.ligne-admin[data-ligne-id="${p.ligneId}"]`);
+        if (!el) return;
+        const g = el.querySelector(":scope > .grille3-fa"), ent = el.querySelector(":scope > .num-ligne");
+        if (g && ent && g.style.display === "none") ent.click();
+        el.scrollIntoView({ block: "start", behavior: "smooth" });
+        el.classList.remove("clignote-probleme-fa"); void el.offsetWidth; el.classList.add("clignote-probleme-fa");
+      }, 150);
+    },
+    bandeauVisible: n => n > 0 || lignes.length > 0,
+    peutSigner: null,
+    texteSansErreur: () => (feuille.verrouillee || fxFeuillePassee(feuille)) ? "Feuille complète" : "Pas d'erreur pour l'instant",
+    apresFermeture: (modifie) => { majBandeauFxFA(); if (modifie) { feuillesDepliees.add(feuille.id); chargerFeuillesAdmin(); } }
+  };
+  function majBandeauFxFA() { try { fxRendreBandeau(bandeauFxFA, adFxFA); } catch (e) { console.warn(e); } }
+  function ouvrirFxFA(ligneId) { fxOuvrir(adFxFA, { ligneId }); }
   async function majTotauxFA() {
     rendreTotauxLignesFA();
     majPbFA();
