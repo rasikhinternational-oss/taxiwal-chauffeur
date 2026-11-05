@@ -742,6 +742,12 @@ window.onerror = function(msg, url, line, col, err) {
   .etat-sauvegarde.ok{ color:var(--vert); font-weight:600; }
   .etat-sauvegarde.erreur{ color:var(--rouge); font-weight:600; }
   #resume-signee{ display:none; }
+  /* Feuille signée : le chauffeur ne voit plus rien (ni caisse, ni courses) — seule la centrale vérifie / rouvre */
+  #bloc-feuille-signee-masquee{ display:none; }
+  body.fr-signee-masquee #bloc-feuille-signee-masquee{ display:block; }
+  body.fr-signee-masquee #bloc-identite, body.fr-signee-masquee #bloc-pauses, body.fr-signee-masquee #resume-signee,
+  body.fr-signee-masquee #details-feuille, body.fr-signee-masquee #btn-imprimer-fr, body.fr-signee-masquee #entete-feuille-vehicule,
+  body.fr-signee-masquee #sections-passees, body.fr-signee-masquee #bandeau-service-nuit{ display:none !important; }
   #resume-signee .ligne-resume{ display:flex; justify-content:space-between; font-size:.88rem; margin-bottom:6px; color:var(--gris); }
   #resume-signee .ligne-resume b{ color:var(--blanc); }
   #btn-voir-details{ width:100%; padding:12px; border-radius:8px; border:1px solid #cfcfcd; background:var(--noir); color:var(--blanc); font-size:.88rem; font-weight:600; margin-top:10px; }
@@ -839,6 +845,11 @@ window.onerror = function(msg, url, line, col, err) {
 <div id="bandeau-service-nuit" style="display:none; margin:16px 20px 0; background:#e8f1fb; border:1px solid #bcd4ee; border-radius:10px; padding:12px; font-size:.88rem; color:#1d4f7a;"></div>
 <div id="bandeau-vehicule-du-jour" style="display:none; margin:16px 20px 0; background:#fff4e0; border:2px solid #e0a040; border-radius:12px; padding:12px; font-size:.92rem; color:#6b4200;"></div>
 
+<div id="bloc-feuille-signee-masquee" style="margin:16px 20px 0; background:#e7f5ec; border:2px solid #9fd0b0; border-radius:12px; padding:16px; color:#1f6b3f; text-align:center;">
+  <div style="font-size:1.05rem; font-weight:800;">✅ Feuille signée et transmise à la centrale.</div>
+  <div style="font-size:.9rem; margin-top:6px; color:#245c3a;">Elle n'est plus visible ici. Seule la centrale peut la vérifier ou la rouvrir.</div>
+  <button type="button" id="btn-nouvelle-feuille-apres-signature" style="width:100%; margin-top:12px; padding:14px; border:none; border-radius:12px; background:#1f8a4c; color:#fff; font-weight:800; font-size:1rem;">➕ Nouvelle feuille de route</button>
+</div>
 <div id="sections-passees"></div>
 
 <div class="bloc" id="bloc-identite">
@@ -2682,6 +2693,14 @@ function libelleJourCourt(iso) {
   try { return new Date(iso + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit" }); }
   catch (e) { return jjmm(iso); }
 }
+// Signée / vérifiée / imprimée et classée : le chauffeur ne doit plus rien en voir
+function feuilleSigneePourChauffeur(f) {
+  return !!(f && (f.signee || f.verrouillee || f.verifiee_admin || f.archivee_papier_at));
+}
+function majMasqueFeuilleSignee() {
+  document.body.classList.toggle("fr-signee-masquee", feuilleSigneePourChauffeur(feuilleActuelle));
+}
+document.getElementById("btn-nouvelle-feuille-apres-signature").addEventListener("click", () => { jourOnglets = null; ouvrirChangementVehicule(); });
 function ongletFeuille(f, actuelle, surClic) {
   const v = (vehiculesActifsCache || []).find(x => x.id === f.vehicule_id);
   const nom = (v && v.nom) || (f.vehicule_id ? "Véhicule" : "Sans véhicule");
@@ -2758,8 +2777,9 @@ function afficherSelecteurFeuilles() {
   rangee.style.cssText = "display:flex; flex-wrap:wrap; gap:8px; padding:2px 0 8px; margin-bottom:8px;";
   barre.appendChild(rangee);
   if (surJourFeuille) {
-    const liste = trierFeuillesParDebut(toutesLesFeuillesDuJour.map(f => (feuilleActuelle && f.id === feuilleActuelle.id) ? feuilleActuelle : f));
+    let liste = trierFeuillesParDebut(toutesLesFeuillesDuJour.map(f => (feuilleActuelle && f.id === feuilleActuelle.id) ? feuilleActuelle : f));
     if (feuilleActuelle && !liste.some(f => f.id === feuilleActuelle.id)) liste.push(feuilleActuelle);
+    liste = liste.filter(f => !feuilleSigneePourChauffeur(f));   // feuille signée = invisible pour le chauffeur
     liste.forEach(f => rangee.appendChild(ongletFeuille(f, feuilleActuelle && f.id === feuilleActuelle.id, () => basculerVersFeuille(f.id))));
     rangee.appendChild(boutonAutreVoiture());
     if (!feuilleActuelle) return;   // pas encore de feuille : les onglets + « ➕ Autre voiture » suffisent
@@ -2768,7 +2788,8 @@ function afficherSelecteurFeuilles() {
     feuillesDuJourOnglets(jour).then(liste => {
       if ((jourOnglets || jourFeuille) !== jour) return;   // l'utilisateur a déjà changé de jour
       rangee.innerHTML = "";
-      if (!liste.length) rangee.innerHTML = '<span style="padding:8px; color:#666; font-size:.88rem;">Aucune feuille ce jour-là.</span>';
+      liste = liste.filter(f => !feuilleSigneePourChauffeur(f));   // feuille signée = invisible pour le chauffeur
+      if (!liste.length) rangee.innerHTML = '<span style="padding:8px; color:#666; font-size:.88rem;">Aucune feuille à compléter ce jour-là.</span>';
       liste.forEach(f => rangee.appendChild(ongletFeuille(f, feuilleActuelle && f.id === feuilleActuelle.id, () => {
         if (toutesLesFeuillesDuJour.some(x => x.id === f.id)) { jourOnglets = null; basculerVersFeuille(f.id); return; }
         location.href = "feuille-de-route.html?feuille=" + encodeURIComponent(f.id);
@@ -4910,6 +4931,7 @@ function appliquerVerrouillage() {
   detailsOuvertsMalgreSignature = false;
   if (verrou) remplirResumeSignee();
   afficherPauses();
+  majMasqueFeuilleSignee();
 }
 
 function fmtVal(v) { return (v === null || v === undefined || v === "") ? "" : esc(v); }

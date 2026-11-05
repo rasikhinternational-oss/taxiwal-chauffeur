@@ -493,7 +493,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button class="actif" data-onglet="mes-courses">Mes courses</button>
     <button data-onglet="demandes-ouvertes">📢 Demandes ouvertes</button>
     <button data-onglet="agenda">Agenda</button>
-    <button data-onglet="historique-feuilles">📁 Mes feuilles (30 jours)</button>
+    <button data-onglet="historique-feuilles">📁 Mes feuilles à terminer</button>
     <button data-onglet="mes-horaires">🗓️ Mes horaires</button>
     <button data-onglet="demande-client">📝 Demande d'un client</button>
     <button data-onglet="plein">⛽ J'ai fait le plein</button>
@@ -1752,7 +1752,7 @@ function afficherVehiculeDuJourChauffeur(v, inconnu) {
     el.innerHTML = "🚗 Véhicule du jour : pas de réseau pour le vérifier.";
   } else {
     el.className = "sans";
-    el.innerHTML = `🚗 Aucun véhicule — <a href="feuille-de-route.html" style="color:inherit; text-decoration:underline;">choisis-en un dans ta feuille de route</a>`;
+    el.innerHTML = `🚗 Aucun véhicule — <a href="feuille-de-route.html" style="color:inherit; text-decoration:underline;">choisis ton véhicule en ouvrant une nouvelle feuille de route</a>`;
   }
 }
 async function chargerVehiculeDuJourChauffeur() {
@@ -2125,7 +2125,9 @@ async function chargerCourses() {
   const videMsg = document.getElementById("vide");
   conteneur.innerHTML = "";
 
-  dernieresCoursesChauffeur = courses || [];
+  // Feuille signée = le chauffeur n'en voit plus rien : ses courses terminées disparaissent (caisse, agenda)
+  await chargerCoursesFeuillesSignees(user.id);
+  dernieresCoursesChauffeur = (courses || []).filter(c => !courseSurFeuilleSignee(c));
   rendreCalendrier(dernieresCoursesChauffeur);
   afficherCoursesDuJour(calJourSelectionne);
   mettreAJourGainsJour(dernieresCoursesChauffeur);
@@ -2141,10 +2143,47 @@ async function chargerCourses() {
   coursesActives.forEach(c => conteneur.appendChild(construireCarteCourse(c)));
 }
 
+// ================== FEUILLE SIGNÉE = PLUS RIEN CÔTÉ CHAUFFEUR ==================
+// Dès que le chauffeur a signé sa feuille (ou que la centrale l'a vérifiée / imprimée et classée),
+// les courses terminées de cette feuille ne sont plus montrées (« Aujourd'hui », agenda, historique).
+// Copie gardée sur le téléphone (hors ligne).
+let idsCoursesFeuillesSignees = null, majCoursesSigneesA = 0;
+function feuilleEstSignee(f) {
+  return !!(f && (f.signee || f.verrouillee || f.verifiee_admin || f.archivee_papier_at));
+}
+function courseSurFeuilleSignee(c) {
+  return !!(c && c.statut === "terminee" && idsCoursesFeuillesSignees && idsCoursesFeuillesSignees.has(c.id));
+}
+async function chargerCoursesFeuillesSignees(uid) {
+  const cle = "taxiwal_courses_feuilles_signees_" + uid;
+  if (idsCoursesFeuillesSignees === null) {
+    try { idsCoursesFeuillesSignees = new Set(JSON.parse(localStorage.getItem(cle) || "[]")); } catch (e) { idsCoursesFeuillesSignees = new Set(); }
+  }
+  if (Date.now() - majCoursesSigneesA < 15000) return;
+  try {
+    const depuis = dateLocaleISO(new Date(Date.now() - 45 * 864e5));
+    const { data: feuilles, error } = await supabase.from("feuilles_route")
+      .select("id, signee, verrouillee, verifiee_admin, archivee_papier_at")
+      .eq("chauffeur_id", uid).gte("date_service", depuis);
+    if (error || !Array.isArray(feuilles)) return;
+    const ids = feuilles.filter(feuilleEstSignee).map(f => f.id);
+    const set = new Set();
+    if (ids.length) {
+      const { data: lignes, error: e2 } = await supabase.from("lignes_feuille_route")
+        .select("course_id, feuille_route_id").in("feuille_route_id", ids);
+      if (e2 || !Array.isArray(lignes)) return;
+      lignes.forEach(l => { if (l.course_id) set.add(l.course_id); });
+    }
+    idsCoursesFeuillesSignees = set;
+    majCoursesSigneesA = Date.now();
+    try { localStorage.setItem(cle, JSON.stringify([...set])); } catch (e) {}
+  } catch (e) {}
+}
+
 function mettreAJourGainsJour(courses) {
   const aujourdHui = dateLocaleISO();
   const coursesDuJourTerminees = (courses || []).filter(c =>
-    c.statut === "terminee" && c.date_heure && dateLocaleISO(c.date_heure) === aujourdHui
+    c.statut === "terminee" && c.date_heure && dateLocaleISO(c.date_heure) === aujourdHui && !courseSurFeuilleSignee(c)
   );
 
   let totalCash = 0, totalCarte = 0, totalFacture = 0, nbUber = 0;
@@ -2239,7 +2278,7 @@ async function chargerHistoriqueFeuilles() {
   const ilYA30Jours = dateLocaleISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
   const aujourdHui = dateLocaleISO();
 
-  const { data: feuilles, error } = await supabase
+  let { data: feuilles, error } = await supabase
     .from("feuilles_route")
     .select("*, vehicules:vehicule_id(nom, plaque)")
     .eq("chauffeur_id", user.id)
@@ -2249,8 +2288,10 @@ async function chargerHistoriqueFeuilles() {
     .order("date_service", { ascending: false });
 
   if (error) { conteneur.innerHTML = "Impossible de charger l'historique. Vérifie ta connexion et réessaie."; return; }
-  if (!feuilles || feuilles.length === 0) {
-    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:30px 0;">Aucune feuille de route sur les 30 derniers jours.</p>';
+  // Feuille signée (ou vérifiée / imprimée et classée) : elle disparaît de l'app chauffeur
+  feuilles = (feuilles || []).filter(f => !feuilleEstSignee(f));
+  if (feuilles.length === 0) {
+    conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:30px 0;">Aucune feuille à terminer. Les feuilles signées sont transmises à la centrale.</p>';
     return;
   }
 
@@ -2264,7 +2305,7 @@ async function chargerHistoriqueFeuilles() {
   conteneur.innerHTML = "";
   // Seulement les jours réellement travaillés : pas de feuille vide dans l'historique
   const feuillesTravaillees = feuilles.filter(f => f.verrouillee || f.heure_debut || f.heure_fin || (lignes || []).some(l => l.feuille_route_id === f.id));
-  if (!feuillesTravaillees.length) { conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune feuille de route sur les 30 derniers jours.</p>'; return; }
+  if (!feuillesTravaillees.length) { conteneur.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune feuille à terminer.</p>'; return; }
   feuillesTravaillees.forEach(f => {
     const lignesFeuille = trierLignesChrono((lignes || []).filter(l => l.feuille_route_id === f.id), f);
     conteneur.appendChild(construireFeuilleHistorique(f, lignesFeuille, f.date_service === aujourdHui));
