@@ -233,6 +233,8 @@ function ecartIndex(a, b) {
   }
   return y - x;
 }
+// Ligne vide (rien de rempli sauf éventuellement l'index de départ) : ignorée dans les contrôles d'index
+function ligneVide(l) { return ["embarquement_index", "debarquement_index", "embarquement_lieu", "debarquement_lieu", "embarquement_heure", "debarquement_heure", "prix_taximetre"].every(k => l[k] == null || String(l[k]).trim() === ""); }
 // Course annulée / no-show / sans déplacement : débarquement = embarquement autorisé
 function ligneSansDeplacement(l) {
   return l.type_course === "relais" || l.type_course === "relais_fin" || l.mode_paiement === "annulee" || (l.courses && l.courses.statut === "annulee")
@@ -275,6 +277,7 @@ function indexDepartSuggere(triees, ligne, feuille) {
   const idx = triees.findIndex(x => x.id === ligne.id);
   for (let j = (idx < 0 ? triees.length : idx) - 1; j >= 0; j--) {
     if (frNum(triees[j].debarquement_index) !== null) return frNum(triees[j].debarquement_index);
+    if (!ligneVide(triees[j]) && !estLigneRelais(triees[j])) return null; // course précédente sans débarquement → vide
   }
   return indexDebutFeuille(feuille);
 }
@@ -308,7 +311,7 @@ function problemesLigne(triees, idx, feuille, opts) {
   }
   if (opts.suivante && deb !== null) {
     let suiv = null;
-    for (let j = idx + 1; j < triees.length; j++) { if (frNum(triees[j].index_depart) !== null) { suiv = triees[j]; break; } }
+    for (let j = idx + 1; j < triees.length; j++) { if (frNum(triees[j].index_depart) !== null && !ligneVide(triees[j])) { suiv = triees[j]; break; } }
     if (suiv && ecartIndex(deb, suiv.index_depart) < 0)
       pb.push(`Index de débarquement trop grand : la course suivante (${frHHMM(suiv.embarquement_heure)}) part de ${frIdx(suiv.index_depart)}.`);
   }
@@ -1282,6 +1285,11 @@ window.onerror = function(msg, url, line, col, err) {
     });
   }
 
+  // Mise à jour d'une feuille / course qui ne touche aucune ligne (feuille supprimée par la centrale ?)
+  function sansLigneSurveille(item) { return item.op === "update" && (item.table === "feuilles_route" || item.table === "lignes_feuille_route"); }
+  function signalerSansLigne(item, data) {
+    if (sansLigneSurveille(item) && (data == null || (Array.isArray(data) && !data.length)) && window.surEcritureSansLigne) return window.surEcritureSansLigne(item);
+  }
   // ---- exécution d'une écriture ----
   async function executer(item, avecRetour) {
     var sb = etat.client, q;
@@ -1289,7 +1297,7 @@ window.onerror = function(msg, url, line, col, err) {
       q = sb.from(item.table).update(item.payload);
       Object.keys(item.match || {}).forEach(function (k) { q = q.eq(k, item.match[k]); });
       if (avecRetour && item.select) q = q.select(item.select);
-      else if (item.verifier) q = q.select("id");
+      else if (item.verifier || sansLigneSurveille(item)) q = q.select("id");
       if (avecRetour && item.select && item.single === "maybe") q = q.maybeSingle();
       else if (avecRetour && item.select && item.single) q = q.single();
     } else if (item.op === "upsert") {
@@ -1328,6 +1336,7 @@ window.onerror = function(msg, url, line, col, err) {
       var r = await executer(spec, true);
       if (!r.reseau) {
         if (r.error) return { data: null, error: r.error };
+        await signalerSansLigne(spec, r.data);
         return { data: spec.op === "upsert" ? (r.data || spec.optimiste || null) : r.data, error: null };
       }
     }
@@ -1369,6 +1378,7 @@ window.onerror = function(msg, url, line, col, err) {
         etat.enVol = null;
         if (!r.error && item.verifier && Array.isArray(r.data) && !r.data.length)
           r = { error: { message: "La course n'est plus à toi (retirée ou modifiée par la centrale)." }, reseau: false };
+        if (!r.error) signalerSansLigne(item, r.data);
         if (!r.error) { retirer(item.id, kf); faits++; lsSet(nomVerrou(kf), String(Date.now())); continue; }
         if (r.reseau) break;
         if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
@@ -2456,17 +2466,12 @@ const APRES_DECONNEXION_COMPTE_ADMIN = () => { location.href = "chauffeur.html";
     rappelAutresFeuilles = p;
     window.noteFeuillesAnciennesNuit = `<br><span style="font-size:.82rem;">ℹ️ Il reste aussi ${feuillesBloquantes.length} autre(s) feuille(s) non clôturée(s) (la première : ${esc(new Date(p.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}) — <a href="feuille-de-route.html?feuille=${p.id}" style="color:#1d4f7a; text-decoration:underline;">l'ouvrir</a> après ton service.</span>`;
   } else if (feuillesBloquantes.length > 0) {
+    // Feuille d'un jour précédent pas signée : simple rappel, la feuille du jour s'ouvre normalement
     const premiere = feuillesBloquantes[0];
-    const dateLisible = new Date(premiere.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long" });
-    // RÈGLE : tant que la feuille d'un jour précédent n'est pas clôturée, le chauffeur ne peut
-    // PAS ouvrir la feuille d'aujourd'hui → on l'emmène directement sur l'ancienne.
-    if (!idDepuisUrl || idDepuisUrl !== premiere.id) {
-      const cible = feuillesOubliees.find(f => f.id === idDepuisUrl);
-      if (!cible) { location.replace("feuille-de-route.html?feuille=" + premiere.id); return; }
+    if (idDepuisUrl !== premiere.id) {
+      bandeau.innerHTML = `ℹ️ Ta feuille du ${esc(jjmm(premiere.date_service))} n'est pas encore signée — <a href="feuille-de-route.html?feuille=${premiere.id}" style="color:#8a2020; text-decoration:underline; font-weight:700;">l'ouvrir</a>`;
+      bandeau.style.display = "block";
     }
-    bandeau.innerHTML = `🔒 <b>Feuille du ${esc(dateLisible)} pas encore clôturée.</b><br>Tu dois la compléter et la <b>clôturer</b> (bouton « Signer / clôturer » en bas) avant de pouvoir ouvrir ta feuille d'aujourd'hui.`
-      + (feuillesBloquantes.length > 1 ? `<br>(+ ${feuillesBloquantes.length - 1} autre feuille non clôturée après celle-ci)` : "");
-    bandeau.style.display = "block";
   }
 
   let dateAAfficher = aujourdHui;
@@ -2892,6 +2897,16 @@ function messageErreurCreationFeuille(error) {
   return "Erreur : " + (error ? error.message : "feuille non créée");
 }
 
+// Feuille supprimée par la centrale pendant qu'elle est ouverte : on ne continue pas à écrire dans le vide
+let feuilleSupprimeeVue = false;
+window.surEcritureSansLigne = async function () {
+  if (feuilleSupprimeeVue || !feuilleActuelle) return;
+  const { data, error } = await supabase.from("feuilles_route").select("id").eq("id", feuilleActuelle.id).maybeSingle();
+  if (error || data || feuilleSupprimeeVue) return;
+  feuilleSupprimeeVue = true;
+  alert("Cette feuille a été supprimée par la centrale. Une nouvelle feuille va s'ouvrir.");
+  setTimeout(() => location.replace("feuille-de-route.html"), 2500);
+};
 // Bandeau « feuille oubliée / clôturée » : remis à zéro quand on change de feuille dans la page
 function reinitialiserBandeauFeuille() {
   const b = document.getElementById("bandeau-feuille-oubliee");
@@ -3958,15 +3973,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
       }
       let valeur = estCheckbox ? e.target.checked : (e.target.value === "" ? null : e.target.value);
       if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
-      // Contrôle à la saisie : index qui recule, débarquement = embarquement, heures incohérentes → refusé
+      // Contrôle à la saisie : index qui recule, débarquement = embarquement, heures incohérentes → simple avertissement (on enregistre quand même)
       if (CHAMPS_INDEX.includes(champ) || champ === "embarquement_heure" || champ === "debarquement_heure") {
         const nouveaux = nouveauxProblemesSaisie(lignesActuelles, feuilleActuelle, ligne, champ, valeur);
-        if (nouveaux.length) {
-          alert("❌ " + nouveaux.join("\n❌ ") + "\n\nCorrige la valeur. Si c'est une autre course qui est fausse, corrige-la d'abord (ou demande à la centrale).");
-          const ancienne = ligne[champ];
-          e.target.value = CHAMPS_INDEX.includes(champ) ? formatIndex(ancienne) : (ancienne ? String(ancienne).slice(0, 5) : "");
-          return;
-        }
+        if (nouveaux.length) afficherToast("⚠️ " + nouveaux.join(" ⚠️ ") + " (enregistré quand même)");
       }
       const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
       if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
@@ -4006,7 +4016,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         if (estPaiement || estTypeCourse || estSansPrix) appliquerVisibilitePaiement();
         rafraichirPuces();
         majInfoCompletude();
-        alert("⚠️ Non enregistré : " + (error ? error.message : "la course n'a pas été mise à jour (connexion ? course déjà clôturée ?)") + "\n\nRéessaie. Si ça recommence, ferme et rouvre l'application.");
+        if (!feuilleSupprimeeVue) alert("⚠️ Non enregistré : " + (error ? error.message : "la course n'a pas été mise à jour (connexion ? course déjà clôturée ?)") + "\n\nRéessaie. Si ça recommence, ferme et rouvre l'application.");
       }
       if (etatEl) {
         if (nonEnregistre) {
@@ -4316,12 +4326,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
     btnCloturer.addEventListener("click", async () => {
       // Même règle que la clôture automatique : prix OU motif « pas de prix », sommes OU motif/texte
       const st = etatCompletude(ligne, null, feuilleActuelle);
-      // Bloquant : index incohérents ou heures manquantes (un contrôleur refuserait la feuille)
-      if (st.bloquants.length) {
-        alert("❌ Impossible de clôturer cette course :\n\n• " + st.bloquants.join("\n• ") + "\n\nCorrige d'abord (ou demande à la centrale).");
-        return;
-      }
-      // Aucune case vide : pas de « clôturer quand même » côté chauffeur
+      // Aucune case vide : pas de « clôturer quand même » côté chauffeur (heures manquantes comprises)
+      st.manque.push(...st.bloquants.filter(x => /manquante\.$/.test(x) && !st.manque.length));
       if (st.manque.length) {
         majInfoCompletude();
         alert("❌ Impossible de clôturer : toutes les cases doivent être remplies.\n\nIl manque : " + st.manque.join(", ") + ".\n\nLes cases manquantes sont entourées en rouge (« Obligatoire »).");
@@ -4329,7 +4335,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
         if (premiere) premiere.scrollIntoView({ block: "center", behavior: "smooth" });
         return;
       }
-      if (!(await confirmerDansPage("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).", "✅ Oui, clôturer", "Annuler"))) return;
+      // Index / heures incohérents : simple avertissement, le chauffeur peut clôturer quand même
+      const aVerifier = st.bloquants.filter(x => !/manquante\.$/.test(x));
+      if (aVerifier.length) { if (!(await confirmerDansPage("⚠️ Index à vérifier :\n\n• " + aVerifier.join("\n• ") + "\n\nClôturer quand même ?", "Clôturer quand même", "Corriger"))) return; }
+      else if (!(await confirmerDansPage("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).", "✅ Oui, clôturer", "Annuler"))) return;
       const err = await cloturerLigneEnBase(ligne);
       if (err) { alert("Erreur : " + err.message); return; }
       afficherToast("✅ Course clôturée");
@@ -4586,14 +4595,9 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
   const prochainNumero = lignesActuelles.length > 0
     ? Math.max(...lignesActuelles.map(l => l.n_ordre || 0)) + 1 : 1;
 
-  let indexDepartAuto = null;
-  for (let i = lignesActuelles.length - 1; i >= 0; i--) {
-    if (lignesActuelles[i].debarquement_index !== null && lignesActuelles[i].debarquement_index !== undefined) {
-      indexDepartAuto = lignesActuelles[i].debarquement_index;
-      break;
-    }
-  }
-  if (indexDepartAuto === null) indexDepartAuto = indexDebutFeuille(feuilleActuelle);
+  // Index de départ = débarquement de la course précédente ; si elle n'en a pas encore, on laisse vide
+  const precedente = lignesActuelles.filter(l => !ligneVide(l)).pop();
+  let indexDepartAuto = precedente ? (precedente.debarquement_index ?? null) : indexDebutFeuille(feuilleActuelle);
 
   // Identifiant créé sur le téléphone : la ligne peut être ajoutée puis remplie même sans réseau
   const champsLigne = { id: TWHL.uuid(), feuille_route_id: feuilleActuelle.id, n_ordre: prochainNumero, index_depart: indexDepartAuto };
