@@ -688,7 +688,7 @@ window.onerror = function(msg, url, line, col, err) {
   .bloc-payeur{ background:#fff; border:1px solid #dcdcda; border-radius:10px; padding:10px; margin:6px 0 10px; }
   .obligatoire:not(.bloc-payeur) > label::after, .bloc-payeur.obligatoire > label:first-child::after{ content:" · Obligatoire"; color:#c81e2c; font-weight:800; }
   .obligatoire:not(.bloc-payeur) > input, .obligatoire:not(.bloc-payeur) > select, .obligatoire:not(.bloc-payeur) > textarea, .obligatoire:not(.bloc-payeur) > .puces, .bloc-payeur.obligatoire{ outline:2px solid #c81e2c; outline-offset:1px; border-radius:8px; }
-  .libelle-pas-de-prix{ font-size:.78rem; color:#b3141b; font-weight:700; margin-top:4px; }
+  .libelle-pas-de-prix{ font-size:.78rem; color:#111; font-weight:700; margin-top:4px; }
   #toast-feuille{ position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 24px); transform:translate(-50%, 20px); background:#1f8a4c; color:#fff; padding:11px 18px; border-radius:22px; font-weight:700; font-size:.95rem; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:2000; }
   #toast-feuille.visible{ opacity:1; transform:translate(-50%, 0); }
   .btn-maintenant{ width:100%; padding:9px 6px; margin:-4px 0 10px; border-radius:8px; border:1px solid var(--vert); background:#eaf5ee; color:var(--vert); font-weight:700; font-size:.85rem; }
@@ -1081,7 +1081,7 @@ window.onerror = function(msg, url, line, col, err) {
   function lireFile(k) { return lireFileCle(k || cleFile()); }
   function ecrireFile(f, k) { k = k || cleFile(); if (f.length) lsSet(k, JSON.stringify(f)); else lsDel(k); }
   function clesFilesUtil() { return CLES_FILES.map(cleUtil); }
-  function toutesLesOps() { var t = []; clesFilesUtil().forEach(function (k) { t = t.concat(lireFileCle(k)); }); return t; }
+  function toutesLesOps() { var t = lireFileCle(cleRefus()); clesFilesUtil().forEach(function (k) { t = t.concat(lireFileCle(k)); }); return t; }
   // Ancienne file (avant le rangement par utilisateur) : rattachée à l'utilisateur connecté
   function migrerAnciennesFiles() {
     var u = uidLocal(); if (!u) return;
@@ -1112,6 +1112,56 @@ window.onerror = function(msg, url, line, col, err) {
     var f = lireFile(k);
     f.forEach(function (x) { if (x.id === id) x.erreur = msg; });
     ecrireFile(f, k);
+  }
+  // ---- SÉCURITÉ : une course ne doit JAMAIS disparaître ----
+  // « en vol » : copie gardée sur le téléphone pendant l'envoi direct (app fermée en plein envoi → renvoyée au prochain démarrage).
+  // « refusées » : course que le serveur a refusée / pas trouvée : gardée, réessayée, et ne bloque JAMAIS les autres courses.
+  function cleEnVol() { return cleUtil("taxiwal_outbox_envol"); }
+  function cleRefus() { return cleUtil("taxiwal_outbox_refusees"); }
+  function itemDe(s) { return { id: s.id, cree: s.cree, op: s.op, table: s.table, payload: copie(s.payload), match: s.match, local: copie(s.local), verifier: !!s.verifier, label: s.label || "" }; }
+  function estCourse(it) { return !!it && (it.table === "lignes_feuille_route" || it.table === "courses") && (it.op === "update" || it.op === "upsert"); }
+  function garderEnVol(spec) { if (spec.op !== "update" && spec.op !== "upsert") return; var f = lireFileCle(cleEnVol()); f.push(itemDe(spec)); ecrireFile(f, cleEnVol()); }
+  function lacherEnVol(id) { ecrireFile(lireFileCle(cleEnVol()).filter(function (x) { return x.id !== id; }), cleEnVol()); }
+  function msgErreur(e) { return (e && (e.message || e.details)) || String(e || "refusé par le serveur"); }
+  function aucuneLigneTouchee(it, data) { return it.op === "update" && it.table === "lignes_feuille_route" && (data == null || (Array.isArray(data) && !data.length)); }
+  function garderRefus(it, msg) { var f = lireFileCle(cleRefus()); var x = itemDe(it); x.erreur = msg; f.push(x); ecrireFile(f, cleRefus()); }
+  // Une modification plus récente de la même course a été enregistrée : l'ancienne valeur refusée ne doit pas l'écraser
+  function eleguerRefus(it) {
+    if (it.op !== "update" || !it.match) return;
+    var f = lireFileCle(cleRefus()), change = false;
+    f = f.filter(function (x) {
+      if (x.op !== "update" || x.table !== it.table || JSON.stringify(x.match) !== JSON.stringify(it.match)) return true;
+      Object.keys(it.payload || {}).forEach(function (k) { if (k in x.payload) { delete x.payload[k]; if (x.local) delete x.local[k]; change = true; } });
+      return Object.keys(x.payload).length > 0;
+    });
+    if (change) ecrireFile(f, cleRefus());
+  }
+  function nbCoursesRefusees() {
+    var vus = {};
+    lireFileCle(cleRefus()).forEach(function (x) { vus[x.table + ":" + ((x.match && x.match.id) || (x.payload && x.payload.id) || x.id)] = 1; });
+    return Object.keys(vus).length;
+  }
+  var refusEnCours = false;
+  async function reessayerRefusees() {
+    if (refusEnCours || !etat.client || navigator.onLine === false) return;
+    var f = lireFileCle(cleRefus());
+    if (!f.length) { majBandeau(); return; }
+    refusEnCours = true; var faits = 0;
+    try {
+      for (var i = 0; i < f.length; i++) {
+        var it = f[i];
+        if (!lireFileCle(cleRefus()).some(function (x) { return x.id === it.id; })) continue;
+        var r = await executer(it, false);
+        if (r.reseau) break;
+        if (!r.error && aucuneLigneTouchee(it, r.data)) r.error = { message: "course pas trouvée sur le serveur" };
+        var reste = lireFileCle(cleRefus());
+        if (!r.error) { reste = reste.filter(function (x) { return x.id !== it.id; }); faits++; }
+        else reste.forEach(function (x) { if (x.id === it.id) x.erreur = msgErreur(r.error); });
+        ecrireFile(reste, cleRefus());
+      }
+    } finally { refusEnCours = false; }
+    majBandeau();
+    if (faits && etat.apresSync) { try { etat.apresSync(); } catch (e) {} }
   }
   function enAttentePour(table, id) {
     return toutesLesOps().some(function (o) {
@@ -1232,7 +1282,8 @@ window.onerror = function(msg, url, line, col, err) {
         if (lireFileCle(cles[i]).length) { try { await rejouer(true, cles[i]); } catch (e) {} }
       }
     }
-    var restant = cles.reduce(function (s, k) { return s + lireFileCle(k).length; }, 0);
+    try { await reessayerRefusees(); } catch (e) {}
+    var restant = cles.reduce(function (s, k) { return s + lireFileCle(k).length; }, 0) + lireFileCle(cleRefus()).length;
     return { restant: restant, horsLigne: horsLigne() };
   }
   // Déconnexion complète (après confirmation de l'app) : données locales effacées puis session fermée,
@@ -1333,14 +1384,27 @@ window.onerror = function(msg, url, line, col, err) {
     spec.cree = Date.now();
     if (spec.local === undefined) spec.local = spec.payload ? copie(spec.payload) : null;
     if (!lireFile().length && navigator.onLine !== false) {
+      garderEnVol(spec);
       var r = await executer(spec, true);
       if (!r.reseau) {
+        var vide = !r.error && aucuneLigneTouchee(spec, r.data);
+        if (estCourse(spec) && (r.error || vide)) {
+          // Refusée / pas trouvée : gardée sur le téléphone (bandeau rouge « pas encore envoyée »), jamais perdue
+          garderRefus(spec, r.error ? msgErreur(r.error) : "course pas trouvée sur le serveur");
+          lacherEnVol(spec.id);
+          if (vide) await signalerSansLigne(spec, r.data);
+          majBandeau();
+          return { data: spec.optimiste === undefined ? null : spec.optimiste, error: null, enAttente: true, refusee: true };
+        }
+        lacherEnVol(spec.id);
         if (r.error) return { data: null, error: r.error };
+        eleguerRefus(spec);
         await signalerSansLigne(spec, r.data);
         return { data: spec.op === "upsert" ? (r.data || spec.optimiste || null) : r.data, error: null };
       }
     }
     ajouterALaFile(spec);
+    lacherEnVol(spec.id);
     majBandeau();
     planifier(1500);
     return { data: spec.optimiste === undefined ? null : spec.optimiste, error: null, enAttente: true };
@@ -1379,9 +1443,12 @@ window.onerror = function(msg, url, line, col, err) {
         if (!r.error && item.verifier && Array.isArray(r.data) && !r.data.length)
           r = { error: { message: "La course n'est plus à toi (retirée ou modifiée par la centrale)." }, reseau: false };
         if (!r.error) signalerSansLigne(item, r.data);
-        if (!r.error) { retirer(item.id, kf); faits++; lsSet(nomVerrou(kf), String(Date.now())); continue; }
+        if (!r.error && aucuneLigneTouchee(item, r.data)) r = { error: { message: "course pas trouvée sur le serveur" }, reseau: false };
+        if (!r.error) { eleguerRefus(item); retirer(item.id, kf); faits++; lsSet(nomVerrou(kf), String(Date.now())); continue; }
         if (r.reseau) break;
         if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
+        // Course refusée : mise de côté (gardée + réessayée), les courses suivantes partent quand même
+        if (estCourse(item)) { garderRefus(item, msgErreur(r.error)); retirer(item.id, kf); continue; }
         marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error), kf);
         break;
       }
@@ -1397,8 +1464,21 @@ window.onerror = function(msg, url, line, col, err) {
 
   // ---- bandeau ----
   var minuterieFlash = null;
+  function majLigneRefus() {
+    var n = nbCoursesRefusees(), l = document.getElementById("ligne-non-envoyees");
+    if (!n) { if (l) l.style.display = "none"; return; }
+    if (!l) {
+      l = document.createElement("div"); l.id = "ligne-non-envoyees";
+      l.style.cssText = "position:sticky;top:0;z-index:99991;background:#b3141b;color:#fff;font:700 14px/1.3 -apple-system,Arial,sans-serif;padding:8px 12px;display:flex;align-items:center;gap:8px;";
+      document.body.insertBefore(l, document.body.firstChild);
+    }
+    var html = "<span data-hl=\"details-refus\" style=\"flex:1\">⚠️ " + n + " course(s) pas encore envoyée(s)</span><button type=\"button\" data-hl=\"reessayer-refus\" style=\"padding:6px 12px;border:none;border-radius:8px;background:#fff;color:#b3141b;font-weight:800\">Réessayer</button>";
+    if (l._html !== html) { l.innerHTML = html; l._html = html; }
+    l.style.display = "flex";
+  }
   function majBandeau() {
     if (!document.body) return;
+    majLigneRefus();
     var b = document.getElementById("bandeau-hors-ligne");
     if (!b) {
       b = document.createElement("div");
@@ -1436,6 +1516,11 @@ window.onerror = function(msg, url, line, col, err) {
     var t = e.target && e.target.closest && e.target.closest("[data-hl]");
     if (!t) return;
     e.stopPropagation();
+    if (t.dataset.hl === "reessayer-refus") { reessayerRefusees(); return; }
+    if (t.dataset.hl === "details-refus") {
+      alert("Gardé sur le téléphone, pas encore accepté par le serveur :\n\n" + lireFileCle(cleRefus()).map(function (x) { return "• " + (x.label || x.table) + " — " + x.erreur; }).join("\n") + "\n\nTu peux continuer ta journée normalement. La centrale corrigera si besoin.");
+      return;
+    }
     var err = lireFile().filter(function (x) { return x.erreur; })[0];
     if (t.dataset.hl === "reessayer") { etat.abandonArme = false; rejouer(true); return; }
     if (t.dataset.hl === "abandonner") {
@@ -1448,7 +1533,8 @@ window.onerror = function(msg, url, line, col, err) {
     }
   }, true);
 
-  window.addEventListener("online", function () { majBandeau(); planifier(500); });
+  window.addEventListener("online", function () { majBandeau(); planifier(500); setTimeout(reessayerRefusees, 2500); });
+  setInterval(function () { if (lireFileCle(cleRefus()).length && !lireFile().length) reessayerRefusees(); }, 60000);
   window.addEventListener("offline", function () { etat.reseauKO = true; majBandeau(); });
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") planifier(300); });
   window.addEventListener("focus", function () { planifier(300); });
@@ -1461,6 +1547,10 @@ window.onerror = function(msg, url, line, col, err) {
     etat.app = (cfg && cfg.app) || "chauffeur";
     etat.apresSync = (cfg && cfg.apresSync) || null;
     migrerAnciennesFiles();
+    // Envois coupés (app fermée pendant l'envoi) : remis en tête de la file d'attente
+    var envol = lireFileCle(cleEnVol());
+    if (envol.length) { ecrireFile(envol.concat(lireFile())); lsDel(cleEnVol()); }
+    setTimeout(reessayerRefusees, 4000);
     var auth = client.auth;
     var getSessionOrig = auth.getSession.bind(auth), getUserOrig = auth.getUser.bind(auth);
     // Sans réseau : la session enregistrée sur le téléphone suffit (pas de renvoi vers la connexion)
@@ -1491,7 +1581,7 @@ window.onerror = function(msg, url, line, col, err) {
     estErreurReseau: estErreurReseau, horsLigne: horsLigne, utilisateurLocal: utilisateurLocal,
     viderCacheDonnees: viderCacheDonnees, viderDonneesUtilisateur: viderDonneesUtilisateur, preparerDeconnexion: preparerDeconnexion,
     deconnecter: deconnecter, uuid: uuid, nbEnAttente: function () { return lireFile().length; },
-    file: lireFile, majBandeau: majBandeau, MSG_FEUILLE_DOUBLON: MSG_FEUILLE_DOUBLON
+    file: lireFile, majBandeau: majBandeau, refusees: function () { return lireFileCle(cleRefus()); }, reessayerRefusees: reessayerRefusees, MSG_FEUILLE_DOUBLON: MSG_FEUILLE_DOUBLON
   };
 })();
 </script>
@@ -3855,7 +3945,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
       zoneTexte.style.cssText = "margin-top:6px;";
       const rendreTexte = () => {
         zoneTexte.innerHTML = ligne.sommes_texte
-          ? `<div style="font-size:.85rem; color:#b3141b; font-weight:700;">✏️ ${String(ligne.sommes_texte).replace(/[<>&]/g, "")}</div>
+          ? `<div style="font-size:.85rem; color:#111; font-weight:700;">✏️ ${String(ligne.sommes_texte).replace(/[<>&]/g, "")}</div>
              <button type="button" class="st-mod" style="width:auto; padding:6px 10px; margin-top:4px; border-radius:8px; border:1px solid #ccc; background:#fff; font-size:.8rem;">Modifier / effacer le texte</button>`
           : `<button type="button" class="st-mod" style="width:100%; padding:8px; border-radius:8px; border:1px dashed #b3141b; background:#fff; color:#b3141b; font-weight:700; font-size:.82rem;">✏️ Écrire un texte au lieu du montant</button>`;
         zoneTexte.querySelector(".st-mod").addEventListener("click", async (ev) => {
@@ -4870,9 +4960,9 @@ function celluleSommesImpression(l, fmt) {
   const compte = n !== null && !isNaN(n) && n > 0 && !estUber && l.type_course !== "prive" && l.mode_paiement !== "uber_cash";
   if (compte) {
     const montant = Number.isInteger(n) ? String(n) : n.toFixed(2);
-    return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte), true) : "") + (libMode ? petit(libMode) : "");
+    return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "");
   }
-  if (l.sommes_texte) return `<span style="color:#b3141b; font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
+  if (l.sommes_texte) return `<span style="font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
   if (l.mode_paiement === "facture") return libFacture;
   if (l.motif_sans_prix && n === null) return "—";
   if (l.mode_paiement === "annulee") return "ANNULÉE";
@@ -5264,12 +5354,12 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td>${fmtVal(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
         <td>${(() => {
           if (estUber) return "Uber";
-          if (l.motif_sans_prix) return `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
+          if (l.motif_sans_prix) return `<span style="font-size:8px; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
           if (l.mode_paiement === "annulee") return "—";
           if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : ""));
+          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? `<span style="font-size:8px; font-weight:bold;">${esc(l.type_course)}</span>` : ""));
           const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
-          const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; color:#b3141b; font-weight:bold;">${esc(l.type_course)}</span>` : "";
+          const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; font-weight:bold;">${esc(l.type_course)}</span>` : "";
           return esc(l.prix_taximetre) + typeLibre;
         })()}</td>
         <td>${celluleSommesImpression(l, fmtVal)}</td>

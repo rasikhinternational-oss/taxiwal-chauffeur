@@ -753,6 +753,10 @@ window.onerror = function(msg, url, line, col, err) {
   #a-imprimer-fa summary{ cursor:pointer; font-weight:700; }
   #a-imprimer-fa .ligne-a-imprimer-fa{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 0; border-top:1px solid #f0d49a; }
   #a-imprimer-fa .lai-txt{ flex:1 1 160px; }
+  .confirmee-session-fa > :not(.badges-session-fa){ opacity:.55; }
+  .badges-session-fa{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:6px; flex-basis:100%; font-size:.8rem; }
+  .badge-session-fa{ background:#e8f3ec; color:#1f6b3f; border:1px solid #b9dcc6; border-radius:999px; padding:3px 9px; font-weight:700; }
+  .annuler-session-fa{ color:#b86e00; font-weight:700; text-decoration:underline; cursor:pointer; }
   #a-imprimer-fa button{ width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--bleu); background:#fff; color:var(--bleu); font-size:.8rem; cursor:pointer; }
   .feuille-admin .btn-ouvrir-grand-fa{ display:block; width:100%; margin-top:10px; padding:12px; border:none; border-radius:10px; background:#3b82c4; color:#fff; font-weight:800; font-size:.95rem; }
   .feuille-admin.feuille-en-grand{ position:fixed; inset:0; z-index:640; margin:0; border-radius:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 90px); }
@@ -1234,6 +1238,7 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-feuilles">
   <button type="button" id="btn-vehicules-du-jour-fa">🚗 Véhicules du jour — quelle voiture pour quel chauffeur</button>
   <div id="demandes-chauffeurs-fa"></div>
+  <div id="corbeille-fa" style="margin:0 0 12px;"><button type="button" id="btn-corbeille-fa" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cfcfcd; background:#f7f7f5; color:#333; font-weight:700; font-size:.9rem; cursor:pointer;">🗑️ Corbeille (courses retirées, 30 jours)</button><div id="liste-corbeille-fa" style="display:none;"></div></div>
   <div id="feuilles-sous-onglets">
     <button class="actif" id="btn-vue-jour-fa">📅 Vue du jour</button>
     <button id="btn-vue-historique-fa">📁 Historique par chauffeur</button>
@@ -2607,6 +2612,10 @@ let derniereActiviteFeuilles = 0;
 }, true));
 let feuillePleinEcranId = null;     // feuille ouverte en plein écran (rouverte après chaque rafraîchissement)
 const lignesEnGrandAdmin = new Set(); // course ouverte "en grand" (rouverte après chaque rafraîchissement)
+// Feuilles marquées « vérifiée » / « classée dans la farde » pendant cette session : elles restent affichées
+// (grisées + badge + ↩️ Annuler) jusqu'au rechargement de la page ou au changement de jour / filtre.
+const confirmeesSessionFA = new Map(); // id → { archivee: iso, verifiee: iso }
+let derniereVueSessionFA = null;
 function saisieEnCoursFeuilles() {
   const actif = document.activeElement;
   if (!actif || !actif.closest) return false;
@@ -8604,6 +8613,8 @@ async function chargerFeuillesAdmin(dejaCreees = false) {
 async function chargerFeuillesAdminInterne(dejaCreees) {
   const conteneur = document.getElementById("liste-feuilles-admin");
   const dateChoisie = document.getElementById("fa-date").value;
+  const vueSessionFA = dateChoisie + "|" + (document.getElementById("filtre-chauffeur-fa")?.value || "");
+  if (vueSessionFA !== derniereVueSessionFA) { if (derniereVueSessionFA !== null) confirmeesSessionFA.clear(); derniereVueSessionFA = vueSessionFA; }
   if (!conteneur.children.length) conteneur.innerHTML = "Chargement…";
   chargerAImprimerFA();
 
@@ -8855,7 +8866,7 @@ function ligneFeuilleFA(e, entrees, chauffeur, dateChoisie, opts) {
   const hd = f.heure_debut ? String(f.heure_debut).slice(0, 5) : "--:--";
   const hf = f.heure_fin ? String(f.heure_fin).slice(0, 5) : (f.verrouillee ? "--:--" : "…");
   const row = document.createElement("div");
-  row.className = "ligne-feuille-fa st-" + st.cle + (opts.actif === f.id ? " active" : "");
+  row.className = "ligne-feuille-fa st-" + st.cle + (opts.actif === f.id ? " active" : "") + (confirmeesSessionFA.has(f.id) ? " confirmee-session-fa" : "");
   row.dataset.feuilleId = f.id;
   row.setAttribute("role", "listitem");
   const info = document.createElement("button");
@@ -8869,6 +8880,8 @@ function ligneFeuilleFA(e, entrees, chauffeur, dateChoisie, opts) {
   const ouvrir = () => { if (opts.surOuvrir) opts.surOuvrir(f.id); };
   info.addEventListener("click", ouvrir);
   row.appendChild(info);
+  const badgesSession = badgesSessionFA(f, () => chargerFeuillesAdmin());
+  if (badgesSession) row.appendChild(badgesSession);
   const actions = document.createElement("div");
   actions.className = "lf-actions";
   const btn = (txt, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = txt;
@@ -9340,6 +9353,53 @@ async function demanderCodeEtSupprimerFeuille(feuilleId, nom, dateChoisie, nbLig
   toastAdmin("✅ Feuille de route supprimée");
   return true;
 }
+
+// ================== CORBEILLE : courses retirées des feuilles de route (30 jours) + restauration ==================
+async function chargerCorbeilleFA() {
+  const zone = document.getElementById("liste-corbeille-fa");
+  zone.innerHTML = `<div style="padding:10px; color:#666;">Chargement…</div>`;
+  const { data, error } = await supabase.rpc("admin_corbeille", { p_jours: 30 });
+  if (error) { zone.innerHTML = `<div style="padding:10px; color:var(--rouge);">Erreur : ${esc(error.message)}</div>`; return; }
+  const liste = (data || []).slice().sort((a, b) => String(b.date_service || "").localeCompare(String(a.date_service || "")) || String(a.chauffeur || "").localeCompare(String(b.chauffeur || "")) || (Number(a.ligne?.n_ordre) || 0) - (Number(b.ligne?.n_ordre) || 0));
+  if (!liste.length) { zone.innerHTML = `<div style="padding:10px; color:#666;">Aucune course retirée ces 30 derniers jours.</div>`; return; }
+  const hm = h => h ? String(h).slice(0, 5) : "";
+  const quand = iso => new Date(iso).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  let groupe = "";
+  zone.innerHTML = liste.map(x => {
+    const l = x.ligne || {};
+    const g = (x.chauffeur || "Chauffeur ?") + " · " + (x.date_service ? new Date(x.date_service + "T12:00:00").toLocaleDateString("fr-BE") : "date ?");
+    const titre = g !== groupe ? `<div style="font-weight:800; margin:10px 0 4px;">👤 ${esc(g)}</div>` : "";
+    groupe = g;
+    const trajet = [l.embarquement_lieu, l.debarquement_lieu].filter(Boolean).join(" → ") || "—";
+    const heures = [hm(l.embarquement_heure), hm(l.debarquement_heure)].filter(Boolean).join("–");
+    const idx = (l.embarquement_index != null || l.debarquement_index != null) ? ` · index ${l.embarquement_index ?? "?"}→${l.debarquement_index ?? "?"}` : "";
+    const montant = l.sommes_percues != null ? l.sommes_percues : l.prix_taximetre;
+    const prix = montant != null ? ` · ${esc(String(montant).replace(".", ","))} €` : "";
+    const mode = l.mode_paiement ? " " + esc(l.mode_paiement) : "";
+    let action;
+    if (x.restauree_le) action = `<span style="color:var(--vert); font-weight:700;">✅ restaurée le ${esc(quand(x.restauree_le))}</span>`;
+    else if (!x.feuille_existe && !x.en_tete_archive) action = `<span style="color:#888;">Feuille supprimée (en-tête non archivé) — restauration impossible</span>`;
+    else action = `<button type="button" class="btn-restaurer-fa" data-id="${x.id}" style="width:auto; padding:7px 14px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:700; cursor:pointer;">↩️ Restaurer</button>`;
+    return titre + `<div style="background:#fff; border:1px solid #e3e3e1; border-radius:10px; padding:9px 10px; margin-bottom:6px; font-size:.85rem;">
+      <div><b>Course n° ${esc(String(l.n_ordre ?? "?"))}</b>${heures ? " · " + esc(heures) : ""} · ${esc(trajet)}${idx}${prix}${mode}</div>
+      <div style="color:#777; font-size:.78rem; margin:3px 0 6px;">retirée le ${esc(quand(x.supprimee_le))}${x.par_nom ? " par " + esc(x.par_nom) : ""} · ${esc(x.contexte || "")}</div>${action}</div>`;
+  }).join("");
+  zone.querySelectorAll(".btn-restaurer-fa").forEach(b => b.addEventListener("click", async () => {
+    if (!(await confirmerDansPageFA("Remettre cette course sur la feuille de route du chauffeur ?", "↩️ Restaurer", "Annuler", "var(--vert)"))) return;
+    b.disabled = true;
+    const { error } = await supabase.rpc("admin_restaurer_ligne", { p_archive_id: Number(b.dataset.id) });
+    if (error) { b.disabled = false; alert("Erreur : " + error.message); return; }
+    toastAdmin("✅ Course restaurée sur la feuille de route");
+    await chargerCorbeilleFA();
+    try { chargerFeuillesAdmin(); } catch (_) {}
+  }));
+}
+document.getElementById("btn-corbeille-fa").addEventListener("click", () => {
+  const zone = document.getElementById("liste-corbeille-fa");
+  const ouvrir = zone.style.display === "none";
+  zone.style.display = ouvrir ? "block" : "none";
+  if (ouvrir) chargerCorbeilleFA();
+});
 
 // ================== DEMANDES DES CHAUFFEURS (supprimer / modifier une course de leur feuille) ==================
 async function chargerDemandesChauffeurs() {
@@ -10250,6 +10310,81 @@ function texteSuppressionArchiveFA(iso) {
   const d = new Date(new Date(iso).getTime() + 7 * 86400000);
   return "suppression automatique après le " + d.toLocaleDateString("fr-BE");
 }
+function descFeuilleFA(f) {
+  const nom = f.nom_chauffeur_affiche || f.profils?.nom || "ce chauffeur";
+  const d = f.date_service ? new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" }) : "";
+  const veh = f.vehicules?.nom || f.plaque || f.vehicules?.plaque || "";
+  return nom + (d ? " du " + d : "") + (veh ? " (" + veh + ")" : "");
+}
+function quandCourtFA(iso) {
+  return new Date(iso).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "");
+}
+function marquerSessionFA(id, cle, val) {
+  const o = confirmeesSessionFA.get(id) || {};
+  if (val) o[cle] = val; else delete o[cle];
+  if (Object.keys(o).length) confirmeesSessionFA.set(id, o); else confirmeesSessionFA.delete(id);
+}
+// « ✅ Imprimée et classée dans la farde » (ou annulation) — toujours après confirmation dans la page
+async function basculerArchiveFA(feuille, coche) {
+  const d = descFeuilleFA(feuille);
+  const ok = coche
+    ? await confirmerDansPageFA(`Confirmer : la feuille de ${d} a bien été imprimée et classée dans la farde ?`, "✅ Oui, confirmer", "Annuler")
+    : await confirmerDansPageFA(`Annuler le classement : la feuille de ${d} n'est PAS encore classée dans la farde (elle revient dans « À imprimer ») ?`, "↩️ Oui, annuler le classement", "Annuler", "#b86e00");
+  if (!ok) return false;
+  const valeur = coche ? new Date().toISOString() : null;
+  const { data, error } = await supabase.from("feuilles_route").update({ archivee_papier_at: valeur }).eq("id", feuille.id).select("archivee_papier_at").maybeSingle();
+  if (error || !data) {
+    toastAdmin("Erreur : " + (error ? error.message : "feuille introuvable"), "#b3141b");
+    return false;
+  }
+  feuille.archivee_papier_at = data.archivee_papier_at;
+  marquerSessionFA(feuille.id, "archivee", coche ? (feuille.archivee_papier_at || valeur) : null);
+  toastAdmin(coche ? "✅ Feuille classée — " + texteSuppressionArchiveFA(feuille.archivee_papier_at) : "Feuille remise « à imprimer »");
+  chargerAImprimerFA();
+  return true;
+}
+// « ☑️ Marquer vérifiée » (ou retrait) — toujours après confirmation dans la page
+async function basculerVerifFA(feuille, verifier) {
+  const d = descFeuilleFA(feuille);
+  const ok = verifier
+    ? await confirmerDansPageFA(`Confirmer : la feuille de ${d} a bien été vérifiée ?`, "✅ Oui, confirmer", "Annuler")
+    : await confirmerDansPageFA(`Annuler la vérification de la feuille de ${d} ?`, "↩️ Oui, retirer la vérification", "Annuler", "#b86e00");
+  if (!ok) return false;
+  if (verifier) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const quand = new Date().toISOString();
+    await supabase.from("feuilles_route").update({
+      verifiee_admin: true, verifiee_admin_a: quand, verifiee_admin_par: user?.id || null
+    }).eq("id", feuille.id);
+    feuille.verifiee_admin = true; feuille.verifiee_admin_a = quand;
+    marquerSessionFA(feuille.id, "verifiee", quand);
+  } else {
+    await supabase.from("feuilles_route").update({ verifiee_admin: false, verifiee_admin_a: null, verifiee_admin_par: null }).eq("id", feuille.id);
+    feuille.verifiee_admin = false; feuille.verifiee_admin_a = null;
+    marquerSessionFA(feuille.id, "verifiee", null);
+  }
+  return true;
+}
+// Badges « 📁 Classée le … » / « ☑️ Vérifiée » + « ↩️ Annuler » pour une feuille confirmée pendant cette session
+function badgesSessionFA(feuille, apres) {
+  const o = confirmeesSessionFA.get(feuille.id);
+  if (!o) return null;
+  const zone = document.createElement("div");
+  zone.className = "badges-session-fa";
+  zone.addEventListener("click", e => e.stopPropagation());
+  const ajouter = (texte, cle, annuler) => {
+    const b = document.createElement("span");
+    b.className = "badge-session-fa badge-session-" + cle;
+    b.textContent = texte;
+    const a = document.createElement("a");
+    a.href = "#"; a.className = "annuler-session-fa"; a.dataset.cle = cle; a.textContent = "↩️ Annuler";
+    a.addEventListener("click", async e => { e.preventDefault(); e.stopPropagation(); if (await annuler()) { if (apres) apres(); } });
+    zone.appendChild(b); zone.appendChild(a);
+  };
+  if (o.archivee) ajouter("📁 Classée le " + quandCourtFA(o.archivee), "archivee", () => basculerArchiveFA(feuille, false));
+  if (o.verifiee) ajouter("☑️ Vérifiée", "verifiee", () => basculerVerifFA(feuille, false));
+  return zone;
+}
 function caseArchiveFA(feuille, onChange) {
   const lab = document.createElement("label");
   lab.className = "archive-fa" + (feuille.archivee_papier_at ? " cochee" : "");
@@ -10269,19 +10404,13 @@ function caseArchiveFA(feuille, onChange) {
   rendre();
   chk.addEventListener("change", async () => {
     const coche = chk.checked;
+    chk.checked = !coche;   // rien ne change tant que ce n'est pas confirmé
     chk.disabled = true;
-    const valeur = coche ? new Date().toISOString() : null;
-    const { data, error } = await supabase.from("feuilles_route").update({ archivee_papier_at: valeur }).eq("id", feuille.id).select("archivee_papier_at").maybeSingle();
-    chk.disabled = false;
-    if (error || !data) {
-      chk.checked = !coche;
-      toastAdmin("Erreur : " + (error ? error.message : "feuille introuvable"), "#b3141b");
-      return;
-    }
-    feuille.archivee_papier_at = data.archivee_papier_at;
+    const fait = await basculerArchiveFA(feuille, coche);
+    chk.disabled = !feuille.verrouillee && !feuille.archivee_papier_at;
+    chk.checked = !!feuille.archivee_papier_at;
+    if (!fait) return;
     rendre();
-    toastAdmin(coche ? "✅ Feuille classée — " + texteSuppressionArchiveFA(feuille.archivee_papier_at) : "Feuille remise « à imprimer »");
-    chargerAImprimerFA();
     if (onChange) onChange();
   });
   lab.appendChild(chk); lab.appendChild(t); lab.appendChild(sous);
@@ -10300,14 +10429,29 @@ async function chargerAImprimerFA() {
   if (seq !== chargementAImprimerFA) return;
   if (error) { zone.innerHTML = ""; return; }
   const liste = data || [];
-  if (!liste.length) { zone.innerHTML = ""; zone.style.display = "none"; return; }
+  // Feuilles classées pendant cette session : elles restent dans la liste (grisées) jusqu'au rechargement
+  const idsSession = [...confirmeesSessionFA.entries()].filter(([id, o]) => o.archivee && !liste.some(f => f.id === id)).map(([id]) => id);
+  let dejaClassees = [];
+  if (idsSession.length) {
+    const r = await supabase.from("feuilles_route")
+      .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
+      .in("id", idsSession);
+    if (seq !== chargementAImprimerFA) return;
+    dejaClassees = (r.data || []).filter(f => f.archivee_papier_at);
+  }
+  if (!liste.length && !dejaClassees.length) { zone.innerHTML = ""; zone.style.display = "none"; return; }
   zone.style.display = "";
   const ouvert = zone.querySelector("details")?.open || false;
-  zone.innerHTML = `<details ${ouvert ? "open" : ""}><summary>⚠️ À imprimer : <b>${liste.length}${liste.length >= 500 ? "+" : ""}</b> feuille${liste.length > 1 ? "s" : ""} signée${liste.length > 1 ? "s" : ""} pas encore classée${liste.length > 1 ? "s" : ""} dans la farde</summary><div class="liste-a-imprimer-fa"></div></details>`;
+  const resume = liste.length
+    ? `⚠️ À imprimer : <b>${liste.length}${liste.length >= 500 ? "+" : ""}</b> feuille${liste.length > 1 ? "s" : ""} signée${liste.length > 1 ? "s" : ""} pas encore classée${liste.length > 1 ? "s" : ""} dans la farde`
+    : `📁 Tout est classé dans la farde`;
+  zone.innerHTML = `<details ${ouvert ? "open" : ""}><summary>${resume}</summary><div class="liste-a-imprimer-fa"></div></details>`;
   const cont = zone.querySelector(".liste-a-imprimer-fa");
-  liste.forEach(f => {
+  [...liste, ...dejaClassees].forEach(f => {
     const row = document.createElement("div");
-    row.className = "ligne-a-imprimer-fa";
+    const classeeSession = !!f.archivee_papier_at;
+    row.className = "ligne-a-imprimer-fa" + (classeeSession ? " confirmee-session-fa" : "");
+    row.dataset.feuilleId = f.id;
     const nom = f.nom_chauffeur_affiche || f.profils?.nom || "Chauffeur";
     const vehA = ((f.vehicules?.nom || "") + " " + (f.plaque || f.vehicules?.plaque || "")).trim();
     row.innerHTML = `<span class="lai-txt">${esc(new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }))} · <b>${esc(nom)}</b>${vehA ? " · 🚗 " + esc(vehA) : ""}</span>`;
@@ -10315,7 +10459,11 @@ async function chargerAImprimerFA() {
     bImp.type = "button"; bImp.textContent = "🖨️ Imprimer / PDF";
     bImp.addEventListener("click", () => ouvrirApercuHistoriqueFeuille(f, { nom }));
     row.appendChild(bImp);
-    row.appendChild(caseArchiveFA(f, () => { if (document.getElementById("liste-feuilles-admin")) rafraichirFeuillesSiPossible(); }));
+    const apresFA = () => { if (document.getElementById("liste-feuilles-admin")) rafraichirFeuillesSiPossible(); };
+    if (classeeSession) {
+      const badges = badgesSessionFA(f, () => { chargerAImprimerFA(); apresFA(); });
+      if (badges) row.appendChild(badges);
+    } else row.appendChild(caseArchiveFA(f, apresFA));
     cont.appendChild(row);
   });
 }
@@ -10397,18 +10545,11 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   const btnVerifierAdmin = entete.querySelector(".btn-verifier-admin");
   if (btnVerifierAdmin) {
     btnVerifierAdmin.addEventListener("click", async () => {
-      if (feuille.verifiee_admin) {
-        if (!(await confirmerDansPageFA("Retirer la vérification de cette feuille ?", "Retirer", "Annuler", "#b86e00"))) return;
-        await supabase.from("feuilles_route").update({ verifiee_admin: false, verifiee_admin_a: null, verifiee_admin_par: null }).eq("id", feuille.id);
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from("feuilles_route").update({
-          verifiee_admin: true, verifiee_admin_a: new Date().toISOString(), verifiee_admin_par: user?.id || null
-        }).eq("id", feuille.id);
-      }
-      chargerFeuillesAdmin();
+      if (await basculerVerifFA(feuille, !feuille.verifiee_admin)) chargerFeuillesAdmin();
     });
   }
+  const badgesSessionCarte = badgesSessionFA(feuille, () => chargerFeuillesAdmin());
+  if (badgesSessionCarte) entete.querySelector(".entete-fa-info").appendChild(badgesSessionCarte);
   entete.querySelector(".btn-identite-fa").addEventListener("click", () => ouvrirEditionIdentiteFeuille(feuille, chauffeur));
   entete.querySelector(".btn-supprimer-feuille-fa").addEventListener("click", async () => {
     const nom = feuille.profils?.nom || "ce chauffeur";
@@ -11016,7 +11157,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
       zoneTexte.style.cssText = "margin-top:6px;";
       const rendreTexte = () => {
         zoneTexte.innerHTML = ligne.sommes_texte
-          ? `<div style="font-size:.85rem; color:#b3141b; font-weight:700;">✏️ ${String(ligne.sommes_texte).replace(/[<>&]/g, "")}</div>
+          ? `<div style="font-size:.85rem; color:#111; font-weight:700;">✏️ ${String(ligne.sommes_texte).replace(/[<>&]/g, "")}</div>
              <button type="button" class="st-mod" style="width:auto; padding:6px 10px; margin-top:4px; border-radius:8px; border:1px solid #ccc; background:#fff; font-size:.8rem;">Modifier / effacer le texte</button>`
           : `<button type="button" class="st-mod" style="width:100%; padding:8px; border-radius:8px; border:1px dashed #b3141b; background:#fff; color:#b3141b; font-weight:700; font-size:.82rem;">✏️ Écrire un texte au lieu du montant</button>`;
         zoneTexte.querySelector(".st-mod").addEventListener("click", async (ev) => {
@@ -11341,9 +11482,9 @@ function celluleSommesImpression(l, fmt) {
   if (estUber) return `<b>UBER</b>` + petit({ uber: "APP", uber_cash: "CASH", uber_carte: "CARTE" }[l.mode_paiement] || "APP");
   const compte = n !== null && !isNaN(n) && n > 0 && l.type_course !== "prive";
   if (compte) {
-    return `<b style="font-size:10pt;">${montantImp(n)}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte), true) : "") + (libMode ? petit(libMode) : "");
+    return `<b style="font-size:10pt;">${montantImp(n)}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "");
   }
-  if (l.sommes_texte) return `<span style="color:#b3141b; font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
+  if (l.sommes_texte) return `<span style="font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
   if (l.mode_paiement === "facture") return libFacture;
   if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
   if (l.mode_paiement === "annulee") return "ANNULÉE";
@@ -11361,7 +11502,8 @@ function montantUberImp(l) {
 function texteMotifImp(l) { return /^Autre/.test(l.motif_sans_prix || "") && l.note_chauffeur ? l.note_chauffeur : (l.motif_sans_prix || ""); }
 // Colonne « Prix taximètre » à l'impression : jamais vide ni « — » quand on sait quelque chose
 function cellulePrixImpression(l) {
-  const rougeP = t => `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${t}</span>`;
+  const rougeP = t => `<span style="font-size:8px; color:#b3141b; font-weight:bold;">${t}</span>`;   // vrai problème uniquement
+  const noteP = t => `<span style="font-size:8px; font-weight:bold;">${t}</span>`;                       // texte écrit à la place du prix : en noir
   if (estLigneUberImp(l)) {
     const m = montantUberImp(l);
     const lib = { uber_cash: "UBER CASH", uber_carte: "UBER CARTE" }[l.mode_paiement] || "UBER";
@@ -11369,13 +11511,13 @@ function cellulePrixImpression(l) {
     if (m === null) return lib === "UBER" ? `<b style="white-space:nowrap;">UBER APP</b>` : rougeP("Prix Uber manquant");
     return `<span style="white-space:nowrap;">${Number(m).toFixed(2).replace(".", ",")}</span><br><span style="font-size:7px; font-weight:bold; letter-spacing:.3px; white-space:nowrap;">${lib}</span>`;
   }
-  if (l.motif_sans_prix) return rougeP(esc(texteMotifImp(l)));
+  if (l.motif_sans_prix) return noteP(esc(texteMotifImp(l)));
   if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
   if (l.mode_paiement === "annulee") return `<span style="font-size:8px; font-weight:bold;">ANNULÉE</span>`;
   if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-  if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? rougeP(esc(l.type_course)) : ""));
+  if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? noteP(esc(l.type_course)) : ""));
   const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
-  const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br>${rougeP(esc(l.type_course))}` : "";
+  const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br>${noteP(esc(l.type_course))}` : "";
   return esc(l.prix_taximetre) + typeLibre;
 }
 // Ligne sous les totaux : « Courses Uber (hors recette, TVA par Uber) : N courses · dont X,XX € reçus en cash par le chauffeur »
