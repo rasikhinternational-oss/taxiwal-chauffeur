@@ -1163,6 +1163,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="messages">💬 Messages</button>
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules-jour">🚗 Véhicules du jour</button>
+    <button data-onglet="photos-vehicules">📸 Photos véhicules</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
     <button data-onglet="partenaires">🤝 Sous-traitants</button>
@@ -1432,6 +1433,43 @@ window.onerror = function(msg, url, line, col, err) {
     <button type="button" id="vj-aujourdhui">Aujourd'hui</button>
   </div>
   <div id="vj-liste"></div>
+</section>
+
+<section id="section-photos-vehicules">
+  <style>
+    #section-photos-vehicules .pva-intro{ color:var(--gris); font-size:.88rem; margin:0 0 12px; }
+    #pva-filtres{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    #pva-filtres select, #pva-filtres input{ flex:1 1 150px; padding:11px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-size:.95rem; color:#1c1c1c; }
+    #pva-filtres button{ flex:0 0 auto; padding:11px 14px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-weight:600; cursor:pointer; color:#1c1c1c; }
+    #pva-message{ font-size:.9rem; color:var(--gris); margin:6px 0 12px; }
+    .pva-groupe{ background:#fff; border:1px solid #dcdcda; border-radius:12px; padding:12px; margin-bottom:14px; }
+    .pva-groupe h3{ margin:0 0 4px; font-size:1rem; }
+    .pva-groupe .pva-sous{ color:var(--gris); font-size:.82rem; margin-bottom:10px; }
+    .pva-grille{ display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; }
+    .pva-photo{ border:1px solid #e3e3e1; border-radius:10px; overflow:hidden; background:#fafaf9; display:flex; flex-direction:column; }
+    .pva-photo.conservee{ border:2px solid #d4a017; }
+    .pva-photo img{ width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; background:#e7e7e5; }
+    .pva-infos{ font-size:.75rem; color:var(--gris); padding:6px 8px 0; }
+    .pva-note-ch{ font-size:.78rem; padding:2px 8px 0; color:#1c1c1c; }
+    .pva-actions{ padding:6px 8px 8px; display:flex; flex-direction:column; gap:6px; }
+    .pva-actions button{ width:100%; padding:8px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-weight:700; font-size:.8rem; cursor:pointer; color:#1c1c1c; }
+    .pva-actions button.actif{ background:#d4a017; border-color:#d4a017; color:#fff; }
+    .pva-actions input{ width:100%; box-sizing:border-box; padding:7px; border-radius:8px; border:1px solid #cfcfcd; font-size:.8rem; }
+    #pva-agrandi{ position:fixed; inset:0; z-index:100002; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
+    #pva-agrandi.ouvert{ display:flex; }
+    #pva-agrandi img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; }
+    #pva-agrandi span{ position:absolute; top:calc(12px + env(safe-area-inset-top)); right:16px; color:#fff; font-size:1.8rem; font-weight:700; }
+  </style>
+  <p class="pva-intro">Photos de l'état des voitures prises par les chauffeurs (facultatif pour eux). Elles sont supprimées automatiquement après <b>30 jours</b>, sauf celles marquées <b>⭐ Conserver (dégât)</b>.</p>
+  <div id="pva-filtres">
+    <select id="pva-vehicule"><option value="">Tous les véhicules</option></select>
+    <input type="date" id="pva-date">
+    <button type="button" id="pva-aujourdhui">Aujourd'hui</button>
+    <button type="button" id="pva-conservees">⭐ Conservées</button>
+  </div>
+  <div id="pva-message"></div>
+  <div id="pva-liste"></div>
+  <div id="pva-agrandi" role="dialog" aria-label="Photo agrandie"><span>✕</span><img alt="Photo du véhicule"></div>
 </section>
 
 <section id="section-vehicules">
@@ -12781,6 +12819,136 @@ document.getElementById("btn-installer-app").addEventListener("click", async () 
 });
 
 rendreLignesVehiculesModale([{}]);
+</script>
+<script>
+// ================== 📸 PHOTOS VÉHICULES (état des voitures) ==================
+// Photos envoyées par les chauffeurs (table photos_vehicule + bucket privé photos-vehicules).
+// Suppression automatique après 30 jours (job « purge-photos-vehicules »), sauf « conserver ».
+(function () {
+  var BUCKET = "photos-vehicules";
+  var vehiculesPva = [], modeConservees = false, initialise = false;
+  function $(id) { return document.getElementById(id); }
+  function msg(t) { var m = $("pva-message"); if (m) m.textContent = t || ""; }
+  function libVehicule(id) {
+    var v = vehiculesPva.find(function (x) { return x.id === id; });
+    return v ? (v.nom || "Véhicule") + (v.plaque ? " " + v.plaque : "") : "Véhicule inconnu";
+  }
+  function dateFr(iso) { try { var p = iso.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; } catch (e) { return iso; } }
+  function heure(ts) { try { return new Date(ts).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" }); } catch (e) { return ""; } }
+  var MOMENTS = { debut: "début de service", fin: "fin de service", autre: "" };
+
+  async function initialiser() {
+    if (initialise) return;
+    initialise = true;
+    $("pva-date").value = dateBruxellesISO();
+    $("pva-date").addEventListener("change", function () { modeConservees = false; majBoutonConservees(); charger(); });
+    $("pva-vehicule").addEventListener("change", charger);
+    $("pva-aujourdhui").addEventListener("click", function () { $("pva-date").value = dateBruxellesISO(); modeConservees = false; majBoutonConservees(); charger(); });
+    $("pva-conservees").addEventListener("click", function () { modeConservees = !modeConservees; majBoutonConservees(); charger(); });
+    var ag = $("pva-agrandi");
+    ag.addEventListener("click", function () { ag.classList.remove("ouvert"); ag.querySelector("img").removeAttribute("src"); });
+    window.addEventListener("popstate", function () { ag.classList.remove("ouvert"); });
+    try {
+      var r = await supabase.from("vehicules").select("id, nom, plaque").order("nom");
+      vehiculesPva = r.data || [];
+      var sel = $("pva-vehicule");
+      vehiculesPva.forEach(function (v) { var o = document.createElement("option"); o.value = v.id; o.textContent = (v.nom || "Véhicule") + (v.plaque ? " — " + v.plaque : ""); sel.appendChild(o); });
+    } catch (e) { console.warn("véhicules :", e); }
+  }
+  function majBoutonConservees() {
+    var b = $("pva-conservees");
+    b.style.background = modeConservees ? "#d4a017" : "#fff";
+    b.style.color = modeConservees ? "#fff" : "#1c1c1c";
+  }
+
+  async function charger() {
+    var liste = $("pva-liste");
+    msg("⏳ Chargement des photos…");
+    try {
+      var q = supabase.from("photos_vehicule").select("id, chauffeur_id, vehicule_id, date_service, moment, chemin, note, note_admin, created_at, conserver");
+      if (modeConservees) q = q.eq("conserver", true);
+      else q = q.eq("date_service", $("pva-date").value || dateBruxellesISO());
+      var veh = $("pva-vehicule").value;
+      if (veh) q = q.eq("vehicule_id", veh);
+      var r = await q.order("date_service", { ascending: false }).order("created_at", { ascending: true }).limit(500);
+      if (r.error) throw r.error;
+      var photos = r.data || [];
+      if (!photos.length) {
+        liste.innerHTML = "";
+        msg(modeConservees ? "Aucune photo conservée." : "Aucune photo pour ce jour" + (veh ? " et ce véhicule" : "") + ".");
+        return;
+      }
+      // noms des chauffeurs
+      var ids = Array.from(new Set(photos.map(function (p) { return p.chauffeur_id; })));
+      var noms = {};
+      try { var pr = await supabase.from("profils").select("id, nom").in("id", ids); (pr.data || []).forEach(function (p) { noms[p.id] = p.nom; }); } catch (e) {}
+      // liens temporaires vers les photos (bucket privé)
+      var urls = {};
+      try {
+        var s = await supabase.storage.from(BUCKET).createSignedUrls(photos.map(function (p) { return p.chemin; }), 3600);
+        (s.data || []).forEach(function (d) { if (d && d.signedUrl) urls[d.path] = d.signedUrl; });
+      } catch (e) { console.warn("liens photos :", e); }
+      // regroupement par chauffeur + date
+      var groupes = {}, ordre = [];
+      photos.forEach(function (p) {
+        var k = p.chauffeur_id + "|" + p.date_service;
+        if (!groupes[k]) { groupes[k] = []; ordre.push(k); }
+        groupes[k].push(p);
+      });
+      liste.innerHTML = ordre.map(function (k) {
+        var g = groupes[k], p0 = g[0];
+        var vehs = Array.from(new Set(g.map(function (p) { return libVehicule(p.vehicule_id); }))).join(", ");
+        return '<div class="pva-groupe"><h3>👤 ' + esc(noms[p0.chauffeur_id] || "Chauffeur") + " — " + esc(dateFr(p0.date_service)) + "</h3>" +
+          '<div class="pva-sous">🚗 ' + esc(vehs) + " · " + g.length + " photo(s)</div>" +
+          '<div class="pva-grille">' + g.map(function (p) {
+            var u = urls[p.chemin] || "";
+            return '<div class="pva-photo' + (p.conserver ? " conservee" : "") + '" data-id="' + esc(p.id) + '">' +
+              (u ? '<img loading="lazy" alt="Photo du véhicule" src="' + esc(u) + '" data-grand="' + esc(u) + '">' : '<img alt="Photo indisponible">') +
+              '<div class="pva-infos">' + esc(heure(p.created_at)) + (MOMENTS[p.moment] ? " · " + esc(MOMENTS[p.moment]) : "") + "</div>" +
+              (p.note ? '<div class="pva-note-ch">💬 ' + esc(p.note) + "</div>" : "") +
+              '<div class="pva-actions">' +
+                '<button type="button" class="pva-conserver' + (p.conserver ? " actif" : "") + '">' + (p.conserver ? "⭐ Conservée (dégât)" : "⭐ Conserver (dégât)") + "</button>" +
+                '<input type="text" class="pva-note" maxlength="300" placeholder="Note (ex : rayure portière)" value="' + esc(p.note_admin || "") + '">' +
+              "</div></div>";
+          }).join("") + "</div></div>";
+      }).join("");
+      msg(photos.length + " photo(s)." + (modeConservees ? " (toutes les photos conservées)" : ""));
+    } catch (e) {
+      liste.innerHTML = "";
+      msg("Impossible de charger les photos : " + (e.message || e));
+    }
+  }
+
+  async function basculerConserver(carte, bouton) {
+    var id = carte.dataset.id, nouveau = !bouton.classList.contains("actif");
+    bouton.disabled = true;
+    var r = await supabase.from("photos_vehicule").update({ conserver: nouveau }).eq("id", id).select("id, conserver");
+    bouton.disabled = false;
+    if (r.error || !r.data || !r.data.length) { msg("❌ Modification impossible : " + ((r.error && r.error.message) || "droits insuffisants")); return; }
+    bouton.classList.toggle("actif", nouveau);
+    bouton.textContent = nouveau ? "⭐ Conservée (dégât)" : "⭐ Conserver (dégât)";
+    carte.classList.toggle("conservee", nouveau);
+    msg(nouveau ? "⭐ Photo conservée : elle ne sera pas supprimée après 30 jours." : "Photo remise en suppression automatique après 30 jours.");
+  }
+  async function enregistrerNote(carte, input) {
+    var r = await supabase.from("photos_vehicule").update({ note_admin: input.value.trim() || null }).eq("id", carte.dataset.id).select("id");
+    msg(r.error ? "❌ Note non enregistrée : " + r.error.message : "✅ Note enregistrée.");
+  }
+
+  var liste = $("pva-liste");
+  liste.addEventListener("click", function (ev) {
+    var img = ev.target.closest("img[data-grand]");
+    if (img) { var ag = $("pva-agrandi"); ag.querySelector("img").src = img.dataset.grand; ag.classList.add("ouvert"); return; }
+    var b = ev.target.closest(".pva-conserver");
+    if (b) basculerConserver(b.closest(".pva-photo"), b);
+  });
+  liste.addEventListener("change", function (ev) {
+    if (ev.target.classList.contains("pva-note")) enregistrerNote(ev.target.closest(".pva-photo"), ev.target);
+  });
+  var nav = document.querySelector('nav button[data-onglet="photos-vehicules"]');
+  if (nav) nav.addEventListener("click", async function () { await initialiser(); charger(); });
+  window.chargerPhotosVehicules = async function () { await initialiser(); charger(); };
+})();
 </script>
 </body>
 </html>

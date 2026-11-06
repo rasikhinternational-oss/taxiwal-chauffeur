@@ -256,6 +256,21 @@ window.onerror = function(msg, url, line, col, err) {
     display:block; width:calc(100% - 40px); margin:16px 20px 0; padding:14px;
     border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600;
   }
+  /* ---- 📸 Photos du véhicule (état de la voiture, facultatif) ---- */
+  #bloc-photos-vehicule{ margin:14px 20px 0; background:var(--noir-2); border:1px solid #dcdcda; border-radius:12px; padding:12px 14px; }
+  #bloc-photos-vehicule .pv-titre{ font-weight:700; font-size:.95rem; }
+  #bloc-photos-vehicule .pv-aide{ color:var(--gris); font-size:.82rem; margin:4px 0 10px; }
+  #pv-bouton{ display:block; width:100%; text-align:center; padding:15px; border-radius:10px; background:#1d4f86; color:#fff; font-weight:700; font-size:1.02rem; cursor:pointer; }
+  #pv-input{ position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+  #pv-message{ font-size:.85rem; margin-top:8px; }
+  #pv-message:empty{ display:none; }
+  #pv-message.ok{ color:var(--vert); } #pv-message.attente{ color:#9a6200; } #pv-message.erreur{ color:var(--rouge); }
+  #pv-miniatures{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:10px; }
+  #pv-miniatures:empty{ display:none; }
+  .pv-mini{ position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden; background:#e7e7e5; }
+  .pv-mini img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .pv-mini span{ position:absolute; left:0; right:0; bottom:0; font-size:.66rem; font-weight:700; text-align:center; padding:2px 0; background:rgba(0,0,0,.6); color:#fff; }
+  .pv-mini.attente span{ background:rgba(154,98,0,.9); }
   #liste-courses{ padding:0 20px; }
 
   nav.onglets{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; padding:14px 20px; }
@@ -488,6 +503,14 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="bandeau-suivi-direct" style="display:none; margin:10px 20px 0; background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; border-radius:12px; padding:10px 14px; font-weight:700; font-size:.88rem;">📍 Course en cours : la centrale te suit en direct. <span style="font-weight:400;">Garde l'app Taxi Wal ouverte à l'écran (l'écran reste allumé).</span></div>
   <div id="horaire-du-jour" style="display:none; margin:10px 20px 0; background:#eef4fb; border:1px solid #bcd3ee; color:#1d4f86; border-radius:12px; padding:11px 14px; font-weight:700; font-size:.92rem;"></div>
   <a href="feuille-de-route.html" id="btn-feuille-route" style="text-decoration:none; display:block; text-align:center;">📋 Ma feuille de route du jour</a>
+  <div id="bloc-photos-vehicule">
+    <div class="pv-titre">📸 Photos du véhicule (facultatif)</div>
+    <div class="pv-aide">Fais le tour : avant, arrière, côté gauche, côté droit, intérieur.</div>
+    <label id="pv-bouton" for="pv-input">📷 Prendre des photos</label>
+    <input type="file" id="pv-input" accept="image/*" capture="environment" multiple>
+    <div id="pv-message"></div>
+    <div id="pv-miniatures"></div>
+  </div>
 
   <nav class="onglets">
     <button class="actif" data-onglet="mes-courses">Mes courses</button>
@@ -1875,6 +1898,7 @@ async function demarrerEspaceChauffeur() {
   chargerHoraireDuJour();
   chargerVehiculeDuJourChauffeur();
   activerTempsReelVehiculeDuJour();
+  try { if (window.photosVehiculeDemarrer) window.photosVehiculeDemarrer(); } catch (e) { console.warn("photos véhicule :", e); }
   setInterval(() => { if (document.visibilityState === "visible") chargerVehiculeDuJourChauffeur(); }, 120000);
 
   // (plus de feuille créée automatiquement à l'ouverture de l'app : elle est créée quand le
@@ -3528,6 +3552,208 @@ async function chargerMesPleins() {
     ${Number(p.km_compteur).toLocaleString("fr-BE")} km${p.litres ? " · " + String(p.litres).replace(".", ",") + " L" : ""}${p.montant ? " · " + String(p.montant).replace(".", ",") + " €" : ""}${p.plein_complet ? "" : " · plein partiel"}</div>`).join("")
     : '<p style="color:var(--gris);">Aucun plein enregistré.</p>';
 }
+</script>
+<script>
+// ================== 📸 PHOTOS DU VÉHICULE (facultatif) ==================
+// Le chauffeur fait le tour de la voiture et envoie des photos (preuve de l'état du véhicule).
+// Photos compressées sur le téléphone, gardées en attente (IndexedDB) sans réseau et renvoyées
+// automatiquement. Ne bloque jamais le reste de l'application.
+(function () {
+  var BUCKET = "photos-vehicules";
+  var demarre = false, enCours = false, uid = null;
+  var urlsLocales = {};        // id -> blob URL (miniatures des photos prises sur ce téléphone)
+  var envoyees = [];           // [{id, chemin, url}] photos du jour déjà en base
+  var memoire = [];            // repli si IndexedDB indisponible
+
+  function $(id) { return document.getElementById(id); }
+  function aujourdhui() { try { return dateLocaleISO(); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+  function nouvelId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); });
+  }
+  function message(texte, type) { var m = $("pv-message"); if (!m) return; m.textContent = texte || ""; m.className = type || ""; }
+
+  // ---- file d'attente (IndexedDB) ----
+  var dbPromesse = null;
+  function db() {
+    if (dbPromesse) return dbPromesse;
+    dbPromesse = new Promise(function (ok) {
+      try {
+        var r = indexedDB.open("taxiwal_photos_vehicule", 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore("attente", { keyPath: "id" }); };
+        r.onsuccess = function () { ok(r.result); };
+        r.onerror = function () { ok(null); };
+        r.onblocked = function () { ok(null); };
+      } catch (e) { ok(null); }
+    });
+    return dbPromesse;
+  }
+  async function fileLire() {
+    var d = await db();
+    if (!d) return memoire.slice();
+    return new Promise(function (ok) {
+      try { var q = d.transaction("attente").objectStore("attente").getAll(); q.onsuccess = function () { ok(q.result || []); }; q.onerror = function () { ok([]); }; }
+      catch (e) { ok(memoire.slice()); }
+    });
+  }
+  async function fileAjouter(item) {
+    var d = await db();
+    if (!d) { memoire.push(item); return; }
+    return new Promise(function (ok) {
+      try { var t = d.transaction("attente", "readwrite"); t.objectStore("attente").put(item); t.oncomplete = ok; t.onerror = function () { memoire.push(item); ok(); }; }
+      catch (e) { memoire.push(item); ok(); }
+    });
+  }
+  async function fileRetirer(id) {
+    memoire = memoire.filter(function (x) { return x.id !== id; });
+    var d = await db();
+    if (!d) return;
+    return new Promise(function (ok) {
+      try { var t = d.transaction("attente", "readwrite"); t.objectStore("attente").delete(id); t.oncomplete = ok; t.onerror = ok; } catch (e) { ok(); }
+    });
+  }
+
+  // ---- compression (max 1600 px, JPEG 0.7) ----
+  function chargerImage(fichier) {
+    return new Promise(function (ok, ko) {
+      var url = URL.createObjectURL(fichier), img = new Image();
+      img.onload = function () { ok({ img: img, url: url }); };
+      img.onerror = function () { URL.revokeObjectURL(url); ko(new Error("image illisible")); };
+      img.src = url;
+    });
+  }
+  async function compresser(fichier) {
+    var MAX = 1600;
+    try {
+      var r = await chargerImage(fichier), img = r.img;
+      var w = img.naturalWidth, h = img.naturalHeight, f = Math.min(1, MAX / Math.max(w, h));
+      var c = document.createElement("canvas");
+      c.width = Math.round(w * f); c.height = Math.round(h * f);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(r.url);
+      var blob = await new Promise(function (ok) { c.toBlob(ok, "image/jpeg", 0.7); });
+      if (blob) return blob;
+    } catch (e) { console.warn("compression photo :", e); }
+    return fichier; // repli : photo d'origine
+  }
+
+  // ---- affichage ----
+  function afficher(attente) {
+    var z = $("pv-miniatures"); if (!z) return;
+    var html = "";
+    envoyees.forEach(function (p) {
+      var src = urlsLocales[p.id] || p.url || "";
+      html += '<div class="pv-mini">' + (src ? '<img alt="" src="' + src + '">' : "") + "<span>✅ envoyée</span></div>";
+    });
+    (attente || []).forEach(function (p) {
+      if (!urlsLocales[p.id] && p.blob) { try { urlsLocales[p.id] = URL.createObjectURL(p.blob); } catch (e) {} }
+      html += '<div class="pv-mini attente"><img alt="" src="' + (urlsLocales[p.id] || "") + '"><span>⏳ en attente</span></div>';
+    });
+    z.innerHTML = html;
+  }
+
+  async function chargerEnvoyeesDuJour() {
+    if (!uid) return;
+    try {
+      var r = await supabase.from("photos_vehicule").select("id, chemin, created_at")
+        .eq("chauffeur_id", uid).eq("date_service", aujourdhui()).order("created_at", { ascending: true });
+      if (r.error || !Array.isArray(r.data)) return;
+      var anciennes = {}; envoyees.forEach(function (p) { anciennes[p.id] = p.url; });
+      envoyees = r.data.map(function (p) { return { id: p.id, chemin: p.chemin, url: anciennes[p.id] || null }; });
+      var sansUrl = envoyees.filter(function (p) { return !p.url && !urlsLocales[p.id]; });
+      if (sansUrl.length) {
+        var s = await supabase.storage.from(BUCKET).createSignedUrls(sansUrl.map(function (p) { return p.chemin; }), 3600);
+        if (!s.error && Array.isArray(s.data)) s.data.forEach(function (d, i) { if (d && d.signedUrl) sansUrl[i].url = d.signedUrl; });
+      }
+    } catch (e) { console.warn("photos du jour :", e); }
+  }
+
+  function erreurDejaPresente(err) {
+    var t = String((err && (err.message || err.error || err.statusCode)) || "");
+    return /exist|duplicate|409/i.test(t) || (err && (err.statusCode === "409" || err.status === 409));
+  }
+
+  // ---- envoi (et renvoi automatique) ----
+  async function envoyerAttente() {
+    if (enCours || !uid) return;
+    enCours = true;
+    try {
+      var file = (await fileLire()).filter(function (p) { return p.uid === uid; });
+      if (!file.length) { afficher([]); return; }
+      afficher(file);
+      if (navigator.onLine === false) {
+        message("📶 Pas de réseau : " + file.length + " photo(s) en attente. Elles partiront toutes seules dès que le réseau revient.", "attente");
+        return;
+      }
+      message("⏳ Envoi de " + file.length + " photo(s)…", "attente");
+      var reussies = 0, echec = null;
+      for (var i = 0; i < file.length; i++) {
+        var p = file[i];
+        try {
+          var up = await supabase.storage.from(BUCKET).upload(p.chemin, p.blob, { contentType: "image/jpeg", upsert: false, cacheControl: "3600" });
+          if (up.error && !erreurDejaPresente(up.error)) { echec = up.error; break; }
+          var ligne = { id: p.id, chauffeur_id: uid, chemin: p.chemin, date_service: p.date };
+          if (p.vehicule_id) ligne.vehicule_id = p.vehicule_id;
+          var ins = await supabase.from("photos_vehicule").insert(ligne);
+          if (ins.error && ins.error.code !== "23505") { echec = ins.error; break; }
+          await fileRetirer(p.id);
+          if (p.date === aujourdhui()) envoyees.push({ id: p.id, chemin: p.chemin, url: null });
+          reussies++;
+        } catch (e) { echec = e; break; }
+      }
+      var reste = (await fileLire()).filter(function (p) { return p.uid === uid; });
+      afficher(reste);
+      if (!reste.length) message("✅ " + (reussies > 1 ? reussies + " photos envoyées." : "Photo envoyée."), "ok");
+      else if (echec) message("📶 Envoi impossible pour le moment (" + reste.length + " photo(s) en attente). Nouvel essai automatique dans 30 s.", "attente");
+    } catch (e) {
+      console.warn("envoi photos :", e);
+      message("📶 Photos en attente : nouvel essai automatique bientôt.", "attente");
+    } finally { enCours = false; }
+  }
+
+  async function surChoixPhotos(ev) {
+    var input = ev.target, fichiers = Array.prototype.slice.call(input.files || []);
+    input.value = "";
+    if (!fichiers.length) return;
+    try {
+      if (!uid) { var u = await supabase.auth.getUser(); uid = u && u.data && u.data.user ? u.data.user.id : null; }
+      if (!uid) { message("Connecte-toi d'abord pour envoyer des photos.", "erreur"); return; }
+      message("⏳ Préparation de " + fichiers.length + " photo(s)…", "attente");
+      var date = aujourdhui();
+      var veh = (typeof vehiculeDuJourChauffeur !== "undefined" && vehiculeDuJourChauffeur && vehiculeDuJourChauffeur.vehicule_id) || null;
+      for (var i = 0; i < fichiers.length; i++) {
+        var blob = await compresser(fichiers[i]);
+        var id = nouvelId();
+        await fileAjouter({ id: id, uid: uid, date: date, vehicule_id: veh, chemin: uid + "/" + date + "/" + id + ".jpg", blob: blob, cree: Date.now() });
+      }
+    } catch (e) {
+      console.warn("photos :", e);
+      message("Impossible de préparer une photo. Réessaie.", "erreur");
+    }
+    envoyerAttente();
+  }
+
+  window.photosVehiculeDemarrer = async function () {
+    if (demarre) return;
+    demarre = true;
+    try {
+      var input = $("pv-input");
+      if (input) input.addEventListener("change", surChoixPhotos);
+      var u = await supabase.auth.getUser();
+      uid = u && u.data && u.data.user ? u.data.user.id : null;
+      if (!uid) return;
+      await chargerEnvoyeesDuJour();
+      var file = (await fileLire()).filter(function (p) { return p.uid === uid; });
+      afficher(file);
+      if (file.length) envoyerAttente();
+      window.addEventListener("online", function () { setTimeout(envoyerAttente, 1500); });
+      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") envoyerAttente(); });
+      setInterval(envoyerAttente, 30000);
+    } catch (e) { console.warn("photos véhicule :", e); }
+  };
+  // si l'écran principal est déjà affiché quand ce script arrive
+  try { var ep = $("ecran-principal"); if (ep && ep.style.display === "block" && window.supabase && typeof supabase !== "undefined") window.photosVehiculeDemarrer(); } catch (e) {}
+})();
 </script>
 </body>
 </html>
