@@ -1755,6 +1755,10 @@ if ("serviceWorker" in navigator) {
     if (event.data && event.data.type === "nouvelle-course") {
       chargerCourses();
     }
+    // 🔔 La centrale fait sonner (push reçu app ouverte en arrière-plan, ou clic sur la notification)
+    if (event.data && (event.data.type === "sonner-chauffeur" || event.data.type === "sonner-ouvrir") && event.data.courseId) {
+      try { afficherSonnerieCentrale(event.data.courseId); } catch (e) {}
+    }
     // toute notification (ex. « 🚗 Véhicule du jour » envoyée par la centrale) : on rafraîchit la voiture du jour
     if (event.data && document.getElementById("ecran-principal").style.display !== "none") chargerVehiculeDuJourChauffeur();
   });
@@ -1907,6 +1911,7 @@ async function demarrerEspaceChauffeur() {
   setInterval(chargerCourses, 30000);
   activerTempsReelCourses();
   activerTempsReelFeuilles();
+  try { activerSonnerieCentrale(); } catch (e) { console.warn("sonnerie centrale :", e); }
   try { chmDemarrer(); } catch (e) { console.warn("messages centrale :", e); }
 
   activerLocalisationAutomatique();
@@ -1922,6 +1927,148 @@ async function activerTempsReelCourses() {
       () => chargerCourses()
     )
     .subscribe();
+}
+
+// ================== 🔔 LA CENTRALE FAIT SONNER (« Accepte ta course ») ==================
+// La centrale appuie sur « 🔔 Sonner le chauffeur » (table sonneries_chauffeur, temps réel) :
+// sonnerie FORTE et répétée (max 60 s) + vibrations + grand bandeau rouge plein écran,
+// jusqu'à ce que le chauffeur touche l'écran ou accepte.
+let ctxAudioSonnerie = null;
+function audioSonnerieCtx() {
+  try {
+    if (!ctxAudioSonnerie) ctxAudioSonnerie = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctxAudioSonnerie.state === "suspended") ctxAudioSonnerie.resume().catch(() => {});
+  } catch (e) { ctxAudioSonnerie = null; }
+  return ctxAudioSonnerie;
+}
+// Le navigateur n'autorise le son qu'après un premier toucher : on « débloque » l'audio dès le premier geste.
+(function debloquerAudioSonnerie() {
+  const deb = () => {
+    const ctx = audioSonnerieCtx();
+    if (!ctx) return;
+    try { const b = ctx.createBuffer(1, 1, 22050), src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(0); } catch (e) {}
+    if (ctx.state === "running") ["pointerdown", "touchend", "keydown"].forEach(t => document.removeEventListener(t, deb, true));
+  };
+  ["pointerdown", "touchend", "keydown"].forEach(t => document.addEventListener(t, deb, true));
+})();
+
+let sonnerieCentrale = null; // { courseId, minuterie, vibration, fin }
+const sonneriesTraitees = new Set();
+function arreterSonSonnerieCentrale() {
+  if (!sonnerieCentrale) return;
+  clearInterval(sonnerieCentrale.minuterie); clearInterval(sonnerieCentrale.vibration); clearTimeout(sonnerieCentrale.fin);
+  sonnerieCentrale.minuterie = sonnerieCentrale.vibration = sonnerieCentrale.fin = null;
+  try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
+}
+function fermerSonnerieCentrale() {
+  arreterSonSonnerieCentrale();
+  sonnerieCentrale = null;
+  const b = document.getElementById("bandeau-sonnerie-centrale");
+  if (b) b.remove();
+}
+// Une « salve » d'alarme forte (2 tons aigus alternés, volume maximum)
+function salveSonnerieCentrale() {
+  const ctx = audioSonnerieCtx();
+  if (!ctx) return;
+  try {
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -6; comp.ratio.value = 4;
+    const vol = ctx.createGain(); vol.gain.value = 1.0;
+    comp.connect(vol).connect(ctx.destination);
+    const t0 = ctx.currentTime + 0.02;
+    for (let i = 0; i < 6; i++) {
+      const t = t0 + i * 0.22, f = i % 2 ? 1568 : 1175;
+      [["square", 0.55], ["sawtooth", 0.35]].forEach(([type, v]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(v, t + 0.01);
+        g.gain.setValueAtTime(v, t + 0.17);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+        o.connect(g).connect(comp); o.start(t); o.stop(t + 0.21);
+      });
+    }
+  } catch (e) { console.warn("sonnerie :", e); }
+}
+async function afficherSonnerieCentrale(courseId, sonnerieId) {
+  if (sonnerieId) { if (sonneriesTraitees.has(sonnerieId)) return; sonneriesTraitees.add(sonnerieId); }
+  if (sonnerieCentrale && sonnerieCentrale.courseId === courseId && document.getElementById("bandeau-sonnerie-centrale")) {
+    if (!sonnerieCentrale.minuterie) demarrerSonSonnerieCentrale();   // nouvelle demande : on refait sonner
+    return;
+  }
+  const { data: c } = await supabase.from("courses")
+    .select("id, adresse_depart, adresse_arrivee, date_heure, statut, accepte_chauffeur").eq("id", courseId).maybeSingle();
+  if (!c || c.accepte_chauffeur || c.statut !== "assignee") return;
+  fermerSonnerieCentrale();
+  sonnerieCentrale = { courseId };
+  const heure = new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const b = document.createElement("div");
+  b.id = "bandeau-sonnerie-centrale";
+  b.setAttribute("role", "alertdialog");
+  b.style.cssText = "position:fixed; inset:0; z-index:100000; background:#c81e2c; color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:18px; padding:calc(env(safe-area-inset-top,0px) + 24px) 20px calc(env(safe-area-inset-bottom,0px) + 24px); font-family:inherit; text-align:center;";
+  b.innerHTML = `
+    <div style="font-size:3.4rem; line-height:1;">📢</div>
+    <div style="font-size:1.6rem; font-weight:900; line-height:1.25;">La centrale te demande d'accepter la course</div>
+    <div style="font-size:1.15rem; font-weight:700; background:rgba(0,0,0,.18); border-radius:12px; padding:12px 14px; line-height:1.4;">
+      📍 ${esc(c.adresse_depart || "?")}<br>🕐 ${esc(heure)}${c.adresse_arrivee ? `<br><span style="font-weight:600; opacity:.9;">→ ${esc(c.adresse_arrivee)}</span>` : ""}
+    </div>
+    <button type="button" class="sc-accepter" style="padding:20px; border:none; border-radius:16px; background:#1f8a4c; color:#fff; font-size:1.45rem; font-weight:900; box-shadow:0 4px 14px rgba(0,0,0,.3); cursor:pointer;">✅ Accepter la course</button>
+    <button type="button" class="sc-voir" style="padding:14px; border:2px solid #fff; border-radius:14px; background:transparent; color:#fff; font-size:1.1rem; font-weight:800; cursor:pointer;">Voir</button>
+    <div class="sc-info" style="font-size:.85rem; opacity:.9;">Touche l'écran pour arrêter la sonnerie</div>`;
+  // Toucher n'importe où arrête le son (le bandeau reste jusqu'à « Accepter » ou « Voir »)
+  b.addEventListener("pointerdown", () => { arreterSonSonnerieCentrale(); const i = b.querySelector(".sc-info"); if (i) i.textContent = "🔕 Sonnerie arrêtée"; });
+  b.querySelector(".sc-accepter").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget; btn.disabled = true; btn.textContent = "…";
+    fermerSonnerieCentrale();
+    await accepterCourse(courseId);
+  });
+  b.querySelector(".sc-voir").addEventListener("click", (e) => {
+    e.stopPropagation();
+    fermerSonnerieCentrale();
+    const ong = document.querySelector('nav.onglets button[data-onglet="mes-courses"]');
+    if (ong && !ong.classList.contains("actif")) ong.click();
+    setTimeout(() => {
+      const carte = document.querySelector(`#liste-courses [data-course-id="${courseId}"]`);
+      if (!carte) return;
+      try { carte.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {}
+      const g = carte.querySelector(".btn-carte-grand");
+      if (g && !carte.classList.contains("carte-en-grand")) g.click();
+    }, 150);
+  });
+  document.body.appendChild(b);
+  demarrerSonSonnerieCentrale();
+}
+function demarrerSonSonnerieCentrale() {
+  if (!sonnerieCentrale) return;
+  arreterSonSonnerieCentrale();
+  salveSonnerieCentrale();
+  sonnerieCentrale.minuterie = setInterval(salveSonnerieCentrale, 1800);
+  const vib = () => { try { if (navigator.vibrate) navigator.vibrate([1000, 300, 1000, 300]); } catch (e) {} };
+  vib();
+  sonnerieCentrale.vibration = setInterval(vib, 2600);
+  sonnerieCentrale.fin = setTimeout(arreterSonSonnerieCentrale, 60000);   // maximum 60 secondes
+}
+// Au démarrage / retour dans l'app (ex. après un clic sur la notification) : une demande de moins de 2 min ?
+async function verifierSonnerieRecente() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("sonneries_chauffeur").select("id, course_id, created_at")
+      .eq("chauffeur_id", user.id).gte("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
+      .order("created_at", { ascending: false }).limit(1);
+    if (data && data[0]) afficherSonnerieCentrale(data[0].course_id, data[0].id);
+  } catch (e) {}
+}
+async function activerSonnerieCentrale() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  supabase.channel("sonneries-chauffeur-" + user.id)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "sonneries_chauffeur", filter: `chauffeur_id=eq.${user.id}` },
+      (payload) => { const n = payload && payload.new; if (n && n.course_id) afficherSonnerieCentrale(n.course_id, n.id); })
+    .subscribe();
+  verifierSonnerieRecente();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") verifierSonnerieRecente(); });
 }
 
 let minuterieRechargementHisto = null;
@@ -2129,6 +2276,8 @@ async function chargerCourses() {
 
   if (error) { console.error(error); return; }
   gererCoursesRetirees(courses);
+  // Bandeau « la centrale te demande d'accepter » : fermé si la course est acceptée / retirée entre-temps
+  if (sonnerieCentrale && !(courses || []).some(c => c.id === sonnerieCentrale.courseId && c.statut === "assignee" && !c.accepte_chauffeur)) fermerSonnerieCentrale();
   // Une course est ouverte en grand : on ne redessine pas la liste (sinon elle se fermerait)
   if (document.querySelector(".carte-en-grand")) { rechargeCartesEnAttente = true; return; }
 
@@ -3656,7 +3805,7 @@ async function chargerMesPleins() {
     if (!uid) return;
     try {
       var r = await supabase.from("photos_vehicule").select("id, chemin, created_at")
-        .eq("chauffeur_id", uid).eq("date_service", aujourdhui()).order("created_at", { ascending: true });
+        .eq("chauffeur_id", uid).eq("date_service", aujourdhui()).neq("type", "ticket").order("created_at", { ascending: true });
       if (r.error || !Array.isArray(r.data)) return;
       var anciennes = {}; envoyees.forEach(function (p) { anciennes[p.id] = p.url; });
       envoyees = r.data.map(function (p) { return { id: p.id, chemin: p.chemin, url: anciennes[p.id] || null }; });

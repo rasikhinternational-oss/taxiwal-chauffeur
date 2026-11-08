@@ -281,6 +281,42 @@ function indexDepartSuggere(triees, ligne, feuille) {
   }
   return indexDebutFeuille(feuille);
 }
+// Index « collé » : le chiffre pré-rempli n'a pas été effacé avant de taper (982 puis 988 → 982988).
+// Simple avertissement (jamais bloquant). precedents = index qui était proposé / précédent ; autres = index de la feuille.
+function indexColleSuspect(v, precedents, autres, feuille) {
+  const s = String(v ?? "").trim();
+  if (!/^\d{4,}$/.test(s)) return false;
+  const km = frNum(feuille && feuille.index_km_debut);
+  if (km !== null && km >= 1000 && Math.abs(Number(s) - km) <= 3000) return false; // index complet du compteur (ex. 54078)
+  for (const p of precedents || []) {
+    const q = frNum(p);
+    if (q === null || !Number.isInteger(q) || q < 0) continue;
+    for (const c of new Set([String(q), String(q % 1000).padStart(3, "0")]))
+      if (s.startsWith(c) && s.length - c.length >= (c.length >= 3 ? 1 : 3)) return true;
+  }
+  const longueurs = (autres || []).map(x => { const q = frNum(x); return q === null ? 0 : String(Math.round(Math.abs(q))).length; }).filter(Boolean);
+  return longueurs.length > 0 && s.length >= Math.max(...longueurs) + 2;
+}
+// Heure d'embarquement plus tôt que celle de la course saisie juste avant (ordre de saisie :
+// heure prévue pour une course de la centrale, sinon date de création de la ligne). Simple avertissement.
+function heurePlusTotQuePrecedente(lignes, ligne, feuille) {
+  if (!ligne || estLigneRelais(ligne) || (feuille && feuille.ordre_manuel)) return false;
+  const m = frMinutes(ligne.embarquement_heure);
+  if (m === null) return false;
+  const moment = l => { const t = new Date((l.course_id && l.courses && l.courses.date_heure) || l.created_at || "").getTime(); return isNaN(t) ? null : t; };
+  const t0 = moment(ligne);
+  if (t0 === null) return false;
+  let prec = null, tp = null;
+  (lignes || []).forEach(l => {
+    if (l.id === ligne.id || estLigneRelais(l) || frMinutes(l.embarquement_heure) === null) return;
+    const t = moment(l);
+    if (t !== null && t < t0 && (tp === null || t > tp)) { prec = l; tp = t; }
+  });
+  if (!prec) return false;
+  const debut = frMinutes(feuille && feuille.heure_debut);
+  const ajuste = x => x + (debut !== null && x < debut - 120 ? 1440 : 0);
+  return ajuste(m) < ajuste(frMinutes(prec.embarquement_heure));
+}
 // Problèmes d'une ligne (triees = lignes déjà dans l'ordre chronologique).
 // opts.heures : contrôle aussi les heures manquantes ; opts.suivante : contrôle aussi la course suivante.
 function problemesLigne(triees, idx, feuille, opts) {
@@ -698,7 +734,9 @@ window.onerror = function(msg, url, line, col, err) {
   .btn-decaler{ width:56px; flex-shrink:0; padding:9px 0; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-weight:700; font-size:.9rem; color:var(--blanc); }
   .btn-supprimer-course{ width:100%; margin-top:10px; padding:12px; border-radius:10px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700; font-size:.95rem; }
   .btn-position{ width:100%; padding:10px; margin:-4px 0 10px; border-radius:8px; border:1px solid #2f6fb5; background:#eaf1fa; color:#2f6fb5; font-weight:700; font-size:.9rem; }
-  .champ-heure-invalide{ border-color:var(--rouge) !important; background:#fdecee !important; }
+  .champ-heure-invalide, .champ-avert-index{ border-color:var(--rouge) !important; background:#fdecee !important; }
+  .avert-index{ color:var(--rouge); font-size:.74rem; font-weight:700; line-height:1.25; margin:3px 0 0; }
+  .avert-index:empty{ display:none; }
   .suggestions-adresse{ display:none; position:absolute; left:0; right:0; top:100%; margin-top:-8px; z-index:30; background:#fff; border:1px solid #cfcfcd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); overflow:hidden; }
   .suggestion-adresse{ padding:12px; border-bottom:1px solid #eee; font-size:.92rem; cursor:pointer; }
   .suggestion-adresse:last-child{ border-bottom:none; }
@@ -918,12 +956,12 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
     </div>
 
-    <div class="titre-ticket">🧾 Ticket du taximètre « TOTALISATEURS »</div>
-    <div class="sous-ticket">Début = ticket imprimé en début de service · Fin = ticket imprimé en fin de service</div>
+    <div class="titre-ticket">🧾 Ticket du taximètre « TOTALISATEURS TOTAUX »</div>
+    <div class="sous-ticket">Début = ticket imprimé en début de service · Fin = ticket imprimé en fin de service · pas le ticket «&nbsp;JOURNALIERS&nbsp;»</div>
     <details class="aide-ticket" id="aide-ticket">
       <summary>📄 Où trouver ces chiffres ?</summary>
       <div class="mini-ticket" aria-label="Ordre des lignes sur le ticket">
-        <div class="mt-titre">TOTALISATEURS</div>
+        <div class="mt-titre">TOTALISATEURS TOTAUX</div>
         <div class="mt-l"><span>Courses</span><i>→ Courses</i></div>
         <div class="mt-l"><span>Nbre chutes</span><i>→ Nbre chutes</i></div>
         <div class="mt-l"><span>Dernière course</span><i class="mt-non">pas à noter</i></div>
@@ -1960,6 +1998,7 @@ function calculerTotaux() {
     document.getElementById(idTotal).value =
       (debut !== null && fin !== null) ? (entier ? String(Math.round(fin - debut)) : (fin - debut).toFixed(2)) : "";
   });
+  try { if (window.verifierCompteursTicket) window.verifierCompteursTicket(); } catch (e) {}
   mettreAJourResumeServiceReplie();
 }
 
@@ -3340,6 +3379,7 @@ function remplirEntete() {
   badge.classList.toggle("verrouillee", feuilleActuelle.verrouillee);
   mettreAJourResumeServiceReplie();
   afficherPauses();
+  try { if (window.compteursApresRemplissage) window.compteursApresRemplissage(); } catch (e) { console.warn(e); }
 }
 
 ["heure-debut", "heure-fin"].forEach(id => {
@@ -3816,6 +3856,7 @@ function afficherLignes() {
   });
   try { majTotauxFeuilleLocale(); } catch (e) { console.warn(e); }
   try { majControleVoitureFeuille(); } catch (e) {}
+  nouveaux.forEach(el => { try { if (el._majAvertIndex) el._majAvertIndex(); } catch (e) {} });
   window.scrollTo(0, positionPage);
 }
 
@@ -4075,7 +4116,25 @@ function construireLigneHtml(ligne, numeroAffiche) {
       const base = ligne.index_depart != null ? ligne.index_depart : indexDepartSuggere(lignesActuelles, ligne, feuilleActuelle);
       if (base !== null && base !== undefined) input.placeholder = "≥ " + formatIndex(base);
     }
+    // Index pré-rempli : en touchant le champ, tout le chiffre est sélectionné → ce qu'on tape REMPLACE
+    // l'ancien index au lieu de s'y coller (982 + 988 donnait 982988). Relancé après le tap (Android / iPhone).
+    if (CHAMPS_INDEX.includes(champ) && !ligneVerrouillee) {
+      const toutSelectionner = () => {
+        if (document.activeElement !== input || !input.value || input._tapeDepuisFocus) return;
+        try { input.setSelectionRange(0, input.value.length); } catch (_) { try { input.select(); } catch (__) {} }
+      };
+      input.addEventListener("focus", () => {
+        input._tapeDepuisFocus = false;
+        input._valeurAuFocus = input.value;
+        input._mouseupApresFocus = true;
+        toutSelectionner(); [0, 80, 250].forEach(ms => setTimeout(toutSelectionner, ms));
+      });
+      input.addEventListener("mouseup", (ev) => { if (input._mouseupApresFocus) { input._mouseupApresFocus = false; ev.preventDefault(); toutSelectionner(); } });
+      input.addEventListener("input", () => { input._tapeDepuisFocus = true; input._mouseupApresFocus = false; });
+      input.addEventListener("blur", () => { input._mouseupApresFocus = false; });
+    }
     input.addEventListener("change", async (e) => {
+      const valeurEnvoyee = e.target.value;
       if (estTypeCourse && e.target.value === "prive") {
         if (!(await confirmerDansPage("Confirmer qu'il s'agit bien d'un trajet privé, non facturé au client (ex : carwash, déplacement pour la société) ?\n\nN'oublie pas d'indiquer l'adresse et d'écrire une note expliquant le motif.", "Oui, trajet privé", "Annuler"))) {
           e.target.value = ligne.type_course || "normale";
@@ -4110,7 +4169,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         majEtatPrix();
         majInfoCompletude();
         if (!ligne.cloturee) { lignesAClotureAuto.add(String(ligne.id)); planifierClotureAuto(ligne.id); }
-        if (CHAMPS_INDEX.includes(champ)) e.target.value = formatIndex(ligne[champ]);
+        if (CHAMPS_INDEX.includes(champ) && e.target.value === valeurEnvoyee) e.target.value = formatIndex(ligne[champ]);
         if (champ === "index_depart" && inputsParChamp["embarquement_index"] && ligne.index_depart != null) inputsParChamp["embarquement_index"].placeholder = "≥ " + formatIndex(ligne.index_depart);
         if (champ === "embarquement_heure") planifierRechargement(); // nouvelle place dans l'ordre chronologique
         synchroniserChampsUber();
@@ -4121,7 +4180,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (nonEnregistre) {
         // Rien n'a été enregistré : on remet l'écran sur la valeur réellement en base
         if (estCheckbox) e.target.checked = !!ligne[champ];
-        else if (CHAMPS_INDEX.includes(champ)) e.target.value = formatIndex(ligne[champ]);
+        else if (CHAMPS_INDEX.includes(champ)) { if (e.target.value === valeurEnvoyee) e.target.value = formatIndex(ligne[champ]); }
         else if (type === "time") e.target.value = ligne[champ] ? String(ligne[champ]).slice(0, 5) : "";
         else e.target.value = ligne[champ] ?? (estTypeCourse ? "normale" : "");
         if (estPaiement || estTypeCourse || estSansPrix) appliquerVisibilitePaiement();
@@ -4145,6 +4204,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (estPaiement || estTypeCourse || estSansPrix) appliquerVisibilitePaiement();
       rafraichirPuces();
       majInfoCompletude();
+      try { if (div._majAvertIndex) div._majAvertIndex(); } catch (_) {}
       if (estPaiement && valeur === "qr" && !error) afficherQrDeLaLigne();
       if (estPaiement && valeur === "annulee" && !error && inputsParChamp["sommes_percues"].value !== "") {
         inputsParChamp["sommes_percues"].value = "";
@@ -4168,6 +4228,39 @@ function construireLigneHtml(ligne, numeroAffiche) {
     }
     corps.appendChild(wrap);
   });
+
+  // Avertissements rouges NON bloquants (on enregistre toujours) : index collé, heure plus tôt que la course précédente
+  const avertParChamp = {};
+  [...CHAMPS_INDEX, "embarquement_heure"].forEach(c => {
+    if (!inputsParChamp[c]) return;
+    const a = document.createElement("div");
+    a.className = "avert-index";
+    inputsParChamp[c].insertAdjacentElement("afterend", a);
+    avertParChamp[c] = a;
+  });
+  div._majAvertIndex = () => {
+    const tous = [];
+    (lignesActuelles || []).forEach(l => CHAMPS_INDEX.forEach(c => tous.push([l, c])));
+    CHAMPS_INDEX.forEach(c => {
+      const inp = inputsParChamp[c], a = avertParChamp[c];
+      if (!inp || !a) return;
+      const precedents = [inp._valeurAuFocus];
+      if (c === "index_depart") precedents.push(indexDepartSuggere(lignesActuelles, ligne, feuilleActuelle));
+      if (c === "embarquement_index") precedents.push(ligne.index_depart);
+      if (c === "debarquement_index") precedents.push(ligne.embarquement_index, ligne.index_depart);
+      const autres = tous.filter(([l, cc]) => !(l.id === ligne.id && cc === c)).map(([l, cc]) => l[cc]);
+      const colle = indexColleSuspect(ligne[c], precedents.filter(p => p !== undefined && p !== ""), autres, feuilleActuelle);
+      a.textContent = colle ? "Index collé ? (" + String(ligne[c]) + ")" : "";
+      inp.classList.toggle("champ-avert-index", colle);
+    });
+    const ih = inputsParChamp["embarquement_heure"], ah = avertParChamp["embarquement_heure"];
+    if (ih && ah) {
+      const tot = heurePlusTotQuePrecedente(lignesActuelles, ligne, feuilleActuelle);
+      ah.textContent = tot ? "Heure plus tôt que la course précédente — vérifie" : "";
+      ih.classList.toggle("champ-avert-index", tot);
+    }
+  };
+  try { div._majAvertIndex(); } catch (e) { console.warn(e); }
 
   const mentionUber = document.createElement("div");
   mentionUber.className = "mention-uber";
@@ -5587,6 +5680,333 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
 
   afficherImpression(fenetre, html);
 });
+</script>
+<style>
+  .nom-ticket{ font-weight:400; color:var(--gris); font-size:.6rem; margin-left:2px; letter-spacing:-.01em; }
+  label.avec-nom-ticket{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .champ-compteur.compteur-avert{ border:2px solid var(--rouge) !important; }
+  .avert-compteur{ color:var(--rouge); font-size:.74rem; line-height:1.25; margin:3px 0 0; }
+  .avert-compteur:empty{ display:none; }
+  .note-prerempli{ color:var(--gris); font-size:.74rem; margin:8px 0 2px; }
+  .photos-ticket{ margin:8px 0 2px; align-items:start; }
+  .btn-photo-ticket{ width:100%; padding:7px 4px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; color:#1c1c1c; font-size:.76rem; font-weight:700; cursor:pointer; line-height:1.15; }
+  .btn-photo-ticket small{ display:block; font-weight:400; color:var(--gris); font-size:.68rem; }
+  .pt-minis{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .pt-mini{ position:relative; width:48px; height:48px; border-radius:6px; overflow:hidden; background:#e7e7e5; }
+  .pt-mini img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .pt-mini span{ position:absolute; left:0; right:0; bottom:0; font-size:.55rem; font-weight:700; text-align:center; background:rgba(0,0,0,.6); color:#fff; }
+  .pt-mini.attente span{ background:rgba(154,98,0,.9); }
+  .pt-aide{ font-size:.7rem; color:var(--gris); padding-top:6px; }
+  #pt-message{ font-size:.74rem; color:var(--gris); margin:2px 0 0; }
+  #pt-message:empty{ display:none; }
+</style>
+<script>
+// ================== COMPTEURS DU TICKET « TOTALISATEURS TOTAUX » ==================
+// 1) Début pré-rempli avec la FIN de la feuille précédente de la même voiture (fonction
+//    derniers_compteurs_vehicule). Jamais d'écrasement d'une valeur déjà tapée.
+// 2) Avertissements rouges NON bloquants (rien n'empêche l'enregistrement).
+// 3) Photo du ticket (preuve, pas de lecture automatique), file d'attente hors ligne.
+(function () {
+  var LIGNES = [
+    { d: "km-debut", f: "km-fin", cd: "index_km_debut", cf: "index_km_fin", pf: "index_km_fin", nom: "", seuil: 1000, unite: " km" },
+    { d: "prise-debut", f: "prise-fin", cd: "prise_en_charge_debut", cf: "prise_en_charge_fin", pf: "prise_en_charge_fin", nom: "Courses", seuil: 60, unite: "" },
+    { d: "chutes-debut", f: "chutes-fin", cd: "chutes_debut", cf: "chutes_fin", pf: "chutes_fin", nom: "Nbre chutes", seuil: 5000, unite: "" },
+    { d: "taxi-debut", f: "taxi-fin", cd: "taximetre_debut", cf: "taximetre_fin", pf: "taximetre_fin", nom: "Rec. globale", seuil: 1500, unite: " €" },
+    { d: "kmcharge-debut", f: "kmcharge-fin", cd: "km_en_charge_debut", cf: "km_en_charge_fin", pf: "km_en_charge_fin", nom: "Dist. charge", seuil: 1000, unite: " km" },
+    { d: "kmtotaux-debut", f: "kmtotaux-fin", cd: "index_km_totaux_debut", cf: "index_km_totaux_fin", pf: "index_km_totaux_fin", nom: "Dist. totale", seuil: 1000, unite: " km" }
+  ];
+  var TEXTE_PREREMPLI = "Rempli avec la fin de la feuille précédente — vérifie avec ton ticket TOTALISATEURS TOTAUX";
+  function $(id) { return document.getElementById(id); }
+  function vide(v) { return v === null || v === undefined || String(v).trim() === ""; }
+  function num(v) { if (vide(v)) return null; var n = Number(String(v).replace(",", ".")); return isFinite(n) ? n : null; }
+  function texteNombre(v) { var n = num(v); return n === null ? "" : String(n); }
+  function lsLire(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+  function lsEcrire(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  // ---- mise en place discrète (libellés, zones d'avertissement, note grise, boutons photo) ----
+  var avertParLigne = {};
+  LIGNES.forEach(function (l) {
+    var inD = $(l.d), inF = $(l.f);
+    if (!inD || !inF) return;
+    if (l.nom) [inD, inF].forEach(function (inp) {
+      var lab = inp.parentElement && inp.parentElement.querySelector("label");
+      if (lab && !lab.querySelector(".nom-ticket")) { lab.classList.add("avec-nom-ticket"); var s = document.createElement("span"); s.className = "nom-ticket"; s.textContent = "(" + l.nom + ")"; lab.appendChild(s); }
+    });
+    var grille = inD.closest(".grille3");
+    var a = document.createElement("div"); a.className = "avert-compteur"; a.id = "avert-" + l.d;
+    grille.insertAdjacentElement("afterend", a);
+    avertParLigne[l.d] = a;
+    [inD, inF].forEach(function (inp) { inp.addEventListener("input", function () { verifier(); }); });
+  });
+  var note = document.createElement("div");
+  note.className = "note-prerempli"; note.id = "note-prerempli"; note.textContent = TEXTE_PREREMPLI; note.style.display = "none";
+  avertParLigne["kmtotaux-debut"].insertAdjacentElement("afterend", note);
+
+  var aide = $("aide-ticket");
+  var zonePhotos = document.createElement("div");
+  zonePhotos.innerHTML =
+    '<div class="grille3 photos-ticket">' +
+      '<div><button type="button" class="btn-photo-ticket" data-moment="debut">📷 Photo du ticket<small>début</small></button><div class="pt-minis" id="pt-minis-debut"></div></div>' +
+      '<div><button type="button" class="btn-photo-ticket" data-moment="fin">📷 Photo du ticket<small>fin</small></button><div class="pt-minis" id="pt-minis-fin"></div></div>' +
+      '<div class="pt-aide">Facultatif · preuve</div>' +
+    '</div><div id="pt-message"></div>' +
+    '<input type="file" accept="image/*" capture="environment" id="pt-input" style="display:none">';
+  aide.insertAdjacentElement("afterend", zonePhotos);
+
+  // ---- valeurs de fin de la feuille précédente de la voiture ----
+  var precedent = { feuille: null, v: null };   // v = {prise_en_charge_fin, …} ou null
+  var enCours = {};
+  function clePrec(id) { return "taxiwal_compteurs_prec_" + id; }
+  function clePrerempli(id) { return "taxiwal_compteurs_prerempli_" + id; }
+
+  async function chargerPrecedent(f) {
+    var cache = lsLire(clePrec(f.id));
+    if (cache && cache.vehicule === f.vehicule_id) { precedent = { feuille: f.id, v: cache.v }; }
+    else if (precedent.feuille !== f.id) precedent = { feuille: f.id, v: null };
+    if (cache && cache.vehicule === f.vehicule_id && cache.quand > Date.now() - 10 * 60 * 1000) return;
+    if (navigator.onLine === false) return;
+    try {
+      var r = await supabase.rpc("derniers_compteurs_vehicule", { p_vehicule: f.vehicule_id, p_feuille: f.id });
+      if (r.error) { console.warn("compteurs précédents :", r.error.message); return; }
+      var v = Array.isArray(r.data) ? (r.data[0] || null) : (r.data || null);
+      lsEcrire(clePrec(f.id), { vehicule: f.vehicule_id, v: v, quand: Date.now() });
+      if (feuilleActuelle && feuilleActuelle.id === f.id) precedent = { feuille: f.id, v: v };
+    } catch (e) { console.warn("compteurs précédents :", e); }
+  }
+
+  async function preremplir() {
+    var f = feuilleActuelle;
+    if (!f || !f.id || !f.vehicule_id || f.verrouillee || f.signee) { afficherNote(); return; }
+    if (enCours[f.id]) return;
+    enCours[f.id] = true;
+    try {
+      await chargerPrecedent(f);
+      verifier();
+      if (!feuilleActuelle || feuilleActuelle.id !== f.id || !precedent.v) return;
+      var deja = lsLire(clePrerempli(f.id)) || [];
+      var payload = {}, remplis = [];
+      LIGNES.forEach(function (l) {
+        var inp = $(l.d), val = precedent.v[l.pf];
+        if (vide(val) || deja.indexOf(l.cd) >= 0) return;                 // fin précédente vide → on laisse vide
+        if (!vide(f[l.cd]) || !inp || inp.disabled || !vide(inp.value) || document.activeElement === inp) return; // jamais écraser
+        payload[l.cd] = texteNombre(val); remplis.push(l);
+      });
+      if (!remplis.length) return;
+      remplis.forEach(function (l) { $(l.d).value = payload[l.cd]; });
+      var res = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: f.id }, payload: payload, label: "Compteurs début (feuille précédente)" });
+      if (res && res.error) {
+        remplis.forEach(function (l) { if ($(l.d).value === payload[l.cd]) $(l.d).value = ""; });
+        console.warn("pré-remplissage :", res.error.message);
+        return;
+      }
+      if (feuilleActuelle && feuilleActuelle.id === f.id) Object.assign(feuilleActuelle, payload);
+      lsEcrire(clePrerempli(f.id), deja.concat(remplis.map(function (l) { return l.cd; })));
+      try { sauverInstantaneFeuille(); } catch (e) {}
+      calculerTotaux();
+    } catch (e) { console.warn("pré-remplissage :", e); }
+    finally { enCours[f.id] = false; afficherNote(); verifier(); }
+  }
+  function afficherNote() {
+    var f = feuilleActuelle;
+    var ok = !!(f && !f.verrouillee && (lsLire(clePrerempli(f.id)) || []).length);
+    note.style.display = ok ? "block" : "none";
+  }
+
+  // ---- avertissements rouges (jamais bloquants) ----
+  function verifier() {
+    var f = feuilleActuelle;
+    var prec = (f && precedent.feuille === f.id) ? precedent.v : null;
+    var msgs = {}, rouges = {};
+    function signaler(idInput, idLigne, texte) { rouges[idInput] = true; (msgs[idLigne] = msgs[idLigne] || []).push(texte); }
+    LIGNES.forEach(function (l) {
+      var d = num($(l.d).value), fi = num($(l.f).value);
+      if (prec && !vide(prec[l.pf]) && d !== null && Math.abs(d - Number(prec[l.pf])) > 0.001)
+        signaler(l.d, l.d, "Différent de la feuille précédente (" + texteNombre(prec[l.pf]) + ") — bon ticket ?");
+      if (d !== null && fi !== null) {
+        if (fi < d - 0.001) signaler(l.f, l.d, "Fin plus petite que le début");
+        else if (fi - d > l.seuil) signaler(l.f, l.d, "Saut anormal (+" + texteNombre(Math.round((fi - d) * 100) / 100) + l.unite + ") — vérifie le ticket");
+      }
+    });
+    [["kmtotaux-debut", "kmcharge-debut", "début"], ["kmtotaux-fin", "kmcharge-fin", "fin"]].forEach(function (p) {
+      var tot = num($(p[0]).value), ch = num($(p[1]).value);
+      if (tot !== null && ch !== null && tot < ch - 0.001) signaler(p[0], "kmtotaux-debut", "Dist. totale plus petite que Dist. charge (" + p[2] + ") — chiffres inversés ?");
+    });
+    LIGNES.forEach(function (l) {
+      [l.d, l.f].forEach(function (id) { $(id).classList.toggle("compteur-avert", !!rouges[id]); });
+      avertParLigne[l.d].textContent = (msgs[l.d] || []).map(function (t) { return "⚠️ " + t; }).join(" · ");
+    });
+  }
+  window.verifierCompteursTicket = verifier;
+  window.compteursApresRemplissage = function () {
+    verifier(); afficherNote();
+    preremplir();
+    photos.surFeuille();
+  };
+
+  // ================== 📷 PHOTO DU TICKET ==================
+  var BUCKET = "photos-vehicules";
+  var photos = (function () {
+    var urlsLocales = {}, envoyees = [], memoire = [], envoiEnCours = false, dernierChargement = 0, momentChoisi = "debut", feuilleAffichee = null, demarre = false;
+    function uid() { try { return uidFeuille || (TWHL.utilisateurLocal() || {}).id || null; } catch (e) { return null; } }
+    function message(t) { $("pt-message").textContent = t || ""; }
+    function nouvelId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); });
+    }
+    var dbP = null;
+    function db() {
+      if (dbP) return dbP;
+      dbP = new Promise(function (ok) {
+        try {
+          var r = indexedDB.open("taxiwal_photos_ticket", 1);
+          r.onupgradeneeded = function () { r.result.createObjectStore("attente", { keyPath: "id" }); };
+          r.onsuccess = function () { ok(r.result); }; r.onerror = function () { ok(null); }; r.onblocked = function () { ok(null); };
+        } catch (e) { ok(null); }
+      });
+      return dbP;
+    }
+    async function fileLire() {
+      var d = await db(); if (!d) return memoire.slice();
+      return new Promise(function (ok) {
+        try { var q = d.transaction("attente").objectStore("attente").getAll(); q.onsuccess = function () { ok(q.result || []); }; q.onerror = function () { ok([]); }; }
+        catch (e) { ok(memoire.slice()); }
+      });
+    }
+    async function fileAjouter(item) {
+      var d = await db(); if (!d) { memoire.push(item); return; }
+      return new Promise(function (ok) {
+        try { var t = d.transaction("attente", "readwrite"); t.objectStore("attente").put(item); t.oncomplete = ok; t.onerror = function () { memoire.push(item); ok(); }; }
+        catch (e) { memoire.push(item); ok(); }
+      });
+    }
+    async function fileRetirer(id) {
+      memoire = memoire.filter(function (x) { return x.id !== id; });
+      var d = await db(); if (!d) return;
+      return new Promise(function (ok) { try { var t = d.transaction("attente", "readwrite"); t.objectStore("attente").delete(id); t.oncomplete = ok; t.onerror = ok; } catch (e) { ok(); } });
+    }
+    function chargerImage(fichier) {
+      return new Promise(function (ok, ko) {
+        var url = URL.createObjectURL(fichier), img = new Image();
+        img.onload = function () { ok({ img: img, url: url }); };
+        img.onerror = function () { URL.revokeObjectURL(url); ko(new Error("image illisible")); };
+        img.src = url;
+      });
+    }
+    async function compresser(fichier) {
+      var MAX = 1600;
+      try {
+        var r = await chargerImage(fichier), img = r.img;
+        var w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, MAX / Math.max(w, h));
+        var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(r.url);
+        var blob = await new Promise(function (ok) { c.toBlob(ok, "image/jpeg", 0.7); });
+        if (blob) return blob;
+      } catch (e) { console.warn("compression ticket :", e); }
+      return fichier;
+    }
+    function afficher(attente) {
+      var f = feuilleActuelle;
+      ["debut", "fin"].forEach(function (m) {
+        var z = $("pt-minis-" + m), html = "";
+        envoyees.filter(function (p) { return p.moment === m; }).forEach(function (p) {
+          var src = urlsLocales[p.id] || p.url || "";
+          html += '<div class="pt-mini">' + (src ? '<img alt="Ticket" src="' + src + '">' : "") + "<span>✅ envoyée</span></div>";
+        });
+        (attente || []).filter(function (p) { return p.moment === m && f && p.feuille_id === f.id; }).forEach(function (p) {
+          if (!urlsLocales[p.id] && p.blob) { try { urlsLocales[p.id] = URL.createObjectURL(p.blob); } catch (e) {} }
+          html += '<div class="pt-mini attente"><img alt="Ticket" src="' + (urlsLocales[p.id] || "") + '"><span>⏳ attente</span></div>';
+        });
+        z.innerHTML = html;
+      });
+    }
+    async function chargerEnvoyees(f) {
+      try {
+        var r = await supabase.from("photos_vehicule").select("id, chemin, moment")
+          .eq("feuille_route_id", f.id).eq("type", "ticket").order("created_at", { ascending: true });
+        if (r.error || !Array.isArray(r.data) || !feuilleActuelle || feuilleActuelle.id !== f.id) return;
+        var anciennes = {}; envoyees.forEach(function (p) { anciennes[p.id] = p.url; });
+        envoyees = r.data.map(function (p) { return { id: p.id, chemin: p.chemin, moment: p.moment, url: anciennes[p.id] || null }; });
+        var sansUrl = envoyees.filter(function (p) { return !p.url && !urlsLocales[p.id]; });
+        if (sansUrl.length) {
+          var s = await supabase.storage.from(BUCKET).createSignedUrls(sansUrl.map(function (p) { return p.chemin; }), 3600);
+          if (!s.error && Array.isArray(s.data)) s.data.forEach(function (d, i) { if (d && d.signedUrl) sansUrl[i].url = d.signedUrl; });
+        }
+      } catch (e) { console.warn("photos ticket :", e); }
+    }
+    function dejaPresente(err) {
+      var t = String((err && (err.message || err.error || err.statusCode)) || "");
+      return /exist|duplicate|409/i.test(t) || (err && (err.statusCode === "409" || err.status === 409));
+    }
+    async function envoyer() {
+      var u = uid(); if (envoiEnCours || !u) return;
+      envoiEnCours = true;
+      try {
+        var file = (await fileLire()).filter(function (p) { return p.uid === u; });
+        afficher(file);
+        if (!file.length) return;
+        if (navigator.onLine === false) { message("📶 Pas de réseau : photo(s) du ticket en attente, envoi automatique au retour du réseau."); return; }
+        var echec = null, reussies = 0;
+        for (var i = 0; i < file.length; i++) {
+          var p = file[i];
+          try {
+            var up = await supabase.storage.from(BUCKET).upload(p.chemin, p.blob, { contentType: "image/jpeg", upsert: false, cacheControl: "3600" });
+            if (up.error && !dejaPresente(up.error)) { echec = up.error; break; }
+            var ligne = { id: p.id, chauffeur_id: u, chemin: p.chemin, date_service: p.date, feuille_route_id: p.feuille_id, type: "ticket", moment: p.moment };
+            if (p.vehicule_id) ligne.vehicule_id = p.vehicule_id;
+            var ins = await supabase.from("photos_vehicule").insert(ligne);
+            if (ins.error && ins.error.code !== "23505") { echec = ins.error; break; }
+            await fileRetirer(p.id);
+            if (feuilleActuelle && p.feuille_id === feuilleActuelle.id) envoyees.push({ id: p.id, chemin: p.chemin, moment: p.moment, url: null });
+            reussies++;
+          } catch (e) { echec = e; break; }
+        }
+        var reste = (await fileLire()).filter(function (p) { return p.uid === u; });
+        afficher(reste);
+        if (!reste.length) message(reussies ? "✅ Photo du ticket envoyée." : "");
+        else if (echec) message("📶 Photo du ticket en attente : nouvel essai automatique dans 30 s.");
+      } catch (e) { console.warn("envoi ticket :", e); }
+      finally { envoiEnCours = false; }
+    }
+    async function surChoix(ev) {
+      var input = ev.target, fichier = input.files && input.files[0];
+      input.value = "";
+      var f = feuilleActuelle, u = uid();
+      if (!fichier || !f || !u) return;
+      try {
+        message("⏳ Préparation de la photo…");
+        var blob = await compresser(fichier), id = nouvelId(), date = f.date_service || dateLocaleISO();
+        await fileAjouter({ id: id, uid: u, feuille_id: f.id, vehicule_id: f.vehicule_id || null, date: date, moment: momentChoisi,
+          chemin: u + "/" + date + "/ticket-" + momentChoisi + "-" + id + ".jpg", blob: blob, cree: Date.now() });
+      } catch (e) { console.warn("photo ticket :", e); message("Impossible de préparer la photo. Réessaie."); }
+      envoyer();
+    }
+    zonePhotos.addEventListener("click", function (ev) {
+      var b = ev.target.closest(".btn-photo-ticket"); if (!b) return;
+      momentChoisi = b.dataset.moment === "fin" ? "fin" : "debut";
+      $("pt-input").click();
+    });
+    $("pt-input").addEventListener("change", surChoix);
+    return {
+      surFeuille: async function () {
+        var f = feuilleActuelle; if (!f) return;
+        if (!demarre) {
+          demarre = true;
+          window.addEventListener("online", function () { setTimeout(envoyer, 1500); });
+          document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") envoyer(); });
+          setInterval(envoyer, 30000);
+        }
+        var nouvelle = feuilleAffichee !== f.id;
+        if (nouvelle) { feuilleAffichee = f.id; envoyees = []; dernierChargement = 0; }
+        afficher((await fileLire()).filter(function (p) { return p.uid === uid(); }));
+        if (navigator.onLine !== false && Date.now() - dernierChargement > 60000) { dernierChargement = Date.now(); await chargerEnvoyees(f); }
+        afficher((await fileLire()).filter(function (p) { return p.uid === uid(); }));
+        envoyer();
+      }
+    };
+  })();
+  try { if (feuilleActuelle) window.compteursApresRemplissage(); } catch (e) {}
+})();
 </script>
 </body>
 </html>

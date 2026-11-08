@@ -757,6 +757,14 @@ window.onerror = function(msg, url, line, col, err) {
   .badges-session-fa{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:6px; flex-basis:100%; font-size:.8rem; }
   .badge-session-fa{ background:#e8f3ec; color:#1f6b3f; border:1px solid #b9dcc6; border-radius:999px; padding:3px 9px; font-weight:700; }
   .annuler-session-fa{ color:#b86e00; font-weight:700; text-decoration:underline; cursor:pointer; }
+  #classees-fa{ margin-bottom:12px; }
+  #classees-fa details{ background:#f1f7f3; border:1px solid #b9dcc6; border-radius:10px; padding:8px 10px; color:#1f4f33; }
+  #classees-fa summary{ cursor:pointer; font-weight:700; }
+  #classees-fa .ligne-classee-fa{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 0; border-top:1px solid #b9dcc6; }
+  #classees-fa .lai-txt{ flex:1 1 160px; }
+  #classees-fa .supp-fa{ color:#8a5a00; font-size:.8rem; }
+  #classees-fa button{ width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--bleu); background:#fff; color:var(--bleu); font-size:.8rem; cursor:pointer; }
+  #classees-fa button.btn-remettre-fa{ border-color:#b86e00; color:#b86e00; }
   #a-imprimer-fa button{ width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--bleu); background:#fff; color:var(--bleu); font-size:.8rem; cursor:pointer; }
   .feuille-admin .btn-ouvrir-grand-fa{ display:block; width:100%; margin-top:10px; padding:12px; border:none; border-radius:10px; background:#3b82c4; color:#fff; font-weight:800; font-size:.95rem; }
   .feuille-admin.feuille-en-grand{ position:fixed; inset:0; z-index:640; margin:0; border-radius:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 90px); }
@@ -792,6 +800,12 @@ window.onerror = function(msg, url, line, col, err) {
   .feuille-admin .lib-compteur-fa{ font-size:.86rem; margin:8px 0 4px; line-height:1.25; }
   .feuille-admin .lib-compteur-fa small{ display:block; font-size:.68rem; color:var(--gris); font-weight:400; }
   .feuille-admin .titre-ticket-fa{ margin:12px 0 4px; font-size:.74rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; }
+  .feuille-admin .pt-zone-fa{ display:flex; flex-wrap:wrap; gap:12px; margin:2px 0 6px; }
+  .feuille-admin .pt-groupe-fa{ display:flex; align-items:center; gap:6px; font-size:.78rem; color:var(--gris); }
+  .feuille-admin .pt-groupe-fa img{ width:54px; height:54px; object-fit:cover; border-radius:6px; border:1px solid #dcdcda; cursor:zoom-in; background:#e7e7e5; }
+  .pt-agrandi-fa{ position:fixed; inset:0; z-index:100003; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
+  .pt-agrandi-fa img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; }
+  .pt-agrandi-fa span{ position:absolute; top:calc(12px + env(safe-area-inset-top)); right:16px; color:#fff; font-size:1.8rem; font-weight:700; }
   .feuille-admin .aide-ticket-fa{ text-transform:none; letter-spacing:0; font-weight:400; font-size:.82rem; margin-top:4px; }
   .feuille-admin .aide-ticket-fa summary{ cursor:pointer; color:#1d4f86; font-weight:700; padding:4px 0; }
   .feuille-admin .mini-ticket-fa{ font-family:ui-monospace,Menlo,Consolas,monospace; background:#fffef6; color:#222; border:1px dashed #b9b6a6; border-radius:6px; padding:8px 10px; max-width:320px; font-size:.78rem; }
@@ -1258,6 +1272,7 @@ window.onerror = function(msg, url, line, col, err) {
       <button id="fa-aujourdhui">Aujourd'hui</button>
     </div>
     <div id="a-imprimer-fa" style="display:none;"></div>
+    <div id="classees-fa" style="display:none;"></div>
     <div id="liste-feuilles-admin"></div>
   </div>
 
@@ -1448,6 +1463,7 @@ window.onerror = function(msg, url, line, col, err) {
     .pva-grille{ display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; }
     .pva-photo{ border:1px solid #e3e3e1; border-radius:10px; overflow:hidden; background:#fafaf9; display:flex; flex-direction:column; }
     .pva-photo.conservee{ border:2px solid #d4a017; }
+    .pva-tag-ticket{ color:#1c1c1c; background:#eef1f6; border-radius:5px; padding:0 4px; }
     .pva-photo img{ width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; background:#e7e7e5; }
     .pva-infos{ font-size:.75rem; color:var(--gris); padding:6px 8px 0; }
     .pva-note-ch{ font-size:.78rem; padding:2px 8px 0; color:#1c1c1c; }
@@ -1460,7 +1476,7 @@ window.onerror = function(msg, url, line, col, err) {
     #pva-agrandi img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; }
     #pva-agrandi span{ position:absolute; top:calc(12px + env(safe-area-inset-top)); right:16px; color:#fff; font-size:1.8rem; font-weight:700; }
   </style>
-  <p class="pva-intro">Photos de l'état des voitures prises par les chauffeurs (facultatif pour eux). Elles sont supprimées automatiquement après <b>30 jours</b>, sauf celles marquées <b>⭐ Conserver (dégât)</b>.</p>
+  <p class="pva-intro">Photos de l'état des voitures prises par les chauffeurs (facultatif pour eux) — les photos du ticket taximètre sont marquées <b>🧾 Ticket</b>. Elles sont supprimées automatiquement après <b>30 jours</b>, sauf celles marquées <b>⭐ Conserver (dégât)</b>.</p>
   <div id="pva-filtres">
     <select id="pva-vehicule"><option value="">Tous les véhicules</option></select>
     <input type="date" id="pva-date">
@@ -5998,6 +6014,52 @@ function blocAnnulationAdmin(course) {
   return bloc;
 }
 
+// ================== 🔔 SONNER LE CHAUFFEUR (course attribuée mais pas encore acceptée) ==================
+// Fait sonner fort le téléphone du chauffeur (app ouverte : sonnerie + bandeau ; app fermée : notification haute priorité).
+const etatSonnerieAdmin = new Map(); // courseId → { texte, bloqueJusqua }
+function blocSonnerChauffeurAdmin(course, nomChauffeur) {
+  if (!course.chauffeur_id || course.statut !== "assignee" || course.accepte_chauffeur) return null;
+  const zone = document.createElement("div");
+  zone.className = "zone-sonner-admin";
+  zone.style.cssText = "margin:8px 0 2px; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px;";
+  zone.addEventListener("click", e => e.stopPropagation());
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn-sonner-chauffeur";
+  btn.style.cssText = "width:auto; padding:10px 16px; border-radius:10px; border:none; background:#c81e2c; color:#fff; font-weight:900; font-size:1rem; cursor:pointer; box-shadow:0 2px 6px rgba(200,30,44,.35);";
+  btn.textContent = "🔔 Sonner le chauffeur";
+  const info = document.createElement("span");
+  info.className = "info-sonner-admin";
+  info.style.cssText = "font-size:.85rem; font-weight:700; color:#7a0f14;";
+  zone.appendChild(btn); zone.appendChild(info);
+  const etat = etatSonnerieAdmin.get(course.id);
+  if (etat && etat.texte) info.textContent = etat.texte;
+  const griser = (ms) => {
+    btn.disabled = true; btn.style.opacity = ".45"; btn.style.cursor = "default";
+    setTimeout(() => { btn.disabled = false; btn.style.opacity = ""; btn.style.cursor = "pointer"; }, Math.max(0, ms));
+  };
+  if (etat && etat.bloqueJusqua > Date.now()) griser(etat.bloqueJusqua - Date.now());
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    if (btn.disabled) return;
+    griser(15000);
+    etatSonnerieAdmin.set(course.id, { texte: (etat && etat.texte) || "", bloqueJusqua: Date.now() + 15000 });
+    info.style.color = "#555"; info.textContent = "Envoi…";
+    const { data, error } = await supabase.rpc("admin_sonner_chauffeur", { p_course: course.id });
+    if (error) {
+      info.style.color = "#b3141b"; info.textContent = "❌ " + error.message;
+      return;
+    }
+    const prenom = String((data && data.chauffeur_nom) || nomChauffeur || "le chauffeur").trim().split(/\s+/)[0];
+    const hhmm = new Date((data && data.created_at) || Date.now()).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
+    const texte = `🔔 Sonnerie envoyée à ${prenom} à ${hhmm}`;
+    etatSonnerieAdmin.set(course.id, { texte, bloqueJusqua: Date.now() + 15000 });
+    info.style.color = "#7a0f14"; info.textContent = texte;
+    try { toastAdmin(texte); } catch (_) {}
+  });
+  return zone;
+}
+
 function construireCarteAdmin(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -6097,6 +6159,7 @@ function construireCarteAdmin(course) {
   div.appendChild(entete);
   { const bp = blocPayeEnLigneAdmin(course, false); if (bp) entete.firstElementChild.appendChild(bp); }
   { const ba = blocAnnulationAdmin(course); if (ba) { const h = entete.firstElementChild.querySelector("h3"); entete.firstElementChild.insertBefore(ba, h || null); } }
+  { const bs = blocSonnerChauffeurAdmin(course, nomChauffeur); if (bs) entete.firstElementChild.appendChild(bs); }
 
   const corps = document.createElement("div");
   corps.className = "corps-course-admin";
@@ -8266,6 +8329,55 @@ const AIDE_TICKET_FA = `<details class="aide-ticket-fa"><summary>📄 Où trouve
   <div class="mt-note">Début = ticket du début de service · Fin = ticket de fin de service. Le compteur de la voiture n'est pas sur le ticket (tableau de bord). Les recettes se calculent avec les courses.</div>
 </details>`;
 
+
+// ---- 🧾 Photos du ticket (début / fin) d'une feuille — miniatures cliquables (bucket privé photos-vehicules) ----
+const cachePhotosTicketFA = new Map();   // feuille_id -> { quand, photos: [{moment, url}] }
+let overlayTicketFA = null;
+function agrandirPhotoTicketFA(url) {
+  if (!overlayTicketFA) {
+    overlayTicketFA = document.createElement("div");
+    overlayTicketFA.className = "pt-agrandi-fa";
+    overlayTicketFA.innerHTML = '<span>✕</span><img alt="Photo du ticket">';
+    overlayTicketFA.addEventListener("click", () => { overlayTicketFA.style.display = "none"; overlayTicketFA.querySelector("img").removeAttribute("src"); });
+    document.body.appendChild(overlayTicketFA);
+  }
+  overlayTicketFA.querySelector("img").src = url;
+  overlayTicketFA.style.display = "flex";
+}
+function photosTicketFA(feuilleId) {
+  const zone = document.createElement("div");
+  zone.className = "pt-zone-fa";
+  const rendre = (photos) => {
+    if (!photos.length) { zone.style.display = "none"; zone.innerHTML = ""; return; }
+    zone.style.display = "flex";
+    zone.innerHTML = ["debut", "fin"].map(m => {
+      const ps = photos.filter(p => p.moment === m);
+      if (!ps.length) return "";
+      return `<div class="pt-groupe-fa"><span>📷 Ticket ${m === "fin" ? "fin" : "début"}</span>` +
+        ps.map(p => `<img src="${esc(p.url)}" alt="Ticket ${m === "fin" ? "fin" : "début"}" data-grand="${esc(p.url)}">`).join("") + "</div>";
+    }).join("");
+  };
+  zone.addEventListener("click", (e) => { const img = e.target.closest("img[data-grand]"); if (img) { e.stopPropagation(); agrandirPhotoTicketFA(img.dataset.grand); } });
+  const c = cachePhotosTicketFA.get(feuilleId);
+  if (c) rendre(c.photos); else zone.style.display = "none";
+  if (!c || Date.now() - c.quand > 5 * 60 * 1000) (async () => {
+    try {
+      const r = await supabase.from("photos_vehicule").select("id, moment, chemin, created_at")
+        .eq("feuille_route_id", feuilleId).eq("type", "ticket").order("created_at", { ascending: true });
+      if (r.error || !r.data) return;
+      let photos = [];
+      if (r.data.length) {
+        const s = await supabase.storage.from("photos-vehicules").createSignedUrls(r.data.map(p => p.chemin), 3600);
+        const urls = {}; (s.data || []).forEach(d => { if (d && d.signedUrl) urls[d.path] = d.signedUrl; });
+        photos = r.data.filter(p => urls[p.chemin]).map(p => ({ moment: p.moment, url: urls[p.chemin] }));
+      }
+      cachePhotosTicketFA.set(feuilleId, { quand: Date.now(), photos });
+      rendre(photos);
+    } catch (e) { console.warn("photos ticket :", e); }
+  })();
+  return zone;
+}
+
 const champsLigneFA = [
   ["index_depart", "Index départ", "number"],
   ["embarquement_index", "Embarq. — Index", "number"],
@@ -10345,7 +10457,7 @@ function rangeeRelaisArchiveFA(feuille, lignes, apres) {
   return rangee;
 }
 function texteSuppressionArchiveFA(iso) {
-  const d = new Date(new Date(iso).getTime() + 7 * 86400000);
+  const d = new Date(new Date(iso).getTime() + 15 * 86400000);
   return "suppression automatique après le " + d.toLocaleDateString("fr-BE");
 }
 function descFeuilleFA(f) {
@@ -10460,6 +10572,7 @@ async function chargerAImprimerFA() {
   const zone = document.getElementById("a-imprimer-fa");
   if (!zone) return;
   const seq = ++chargementAImprimerFA;
+  chargerClasseesFA();
   const { data, error } = await supabase.from("feuilles_route")
     .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
     .eq("verrouillee", true).is("archivee_papier_at", null)
@@ -10505,6 +10618,46 @@ async function chargerAImprimerFA() {
     cont.appendChild(row);
   });
 }
+// « 📁 Imprimées et classées — gardées 15 jours » : feuilles signées + classées depuis moins de 15 jours
+let chargementClasseesFA = 0;
+async function chargerClasseesFA() {
+  const zone = document.getElementById("classees-fa");
+  if (!zone) return;
+  const seq = ++chargementClasseesFA;
+  const depuis = new Date(Date.now() - 15 * 86400000).toISOString();
+  const { data, error } = await supabase.from("feuilles_route")
+    .select("*, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque, numero_identification, identite_exploitant)")
+    .eq("verrouillee", true).not("archivee_papier_at", "is", null).gte("archivee_papier_at", depuis)
+    .order("archivee_papier_at", { ascending: false }).limit(500);
+  if (seq !== chargementClasseesFA) return;
+  const liste = error ? [] : (data || []);
+  if (!liste.length) { zone.innerHTML = ""; zone.style.display = "none"; return; }
+  zone.style.display = "";
+  const ouvert = zone.querySelector("details")?.open || false;
+  zone.innerHTML = `<details ${ouvert ? "open" : ""}><summary>📁 Imprimées et classées — gardées 15 jours (${liste.length})</summary><div class="liste-classees-fa"></div></details>`;
+  const cont = zone.querySelector(".liste-classees-fa");
+  liste.forEach(f => {
+    const row = document.createElement("div");
+    row.className = "ligne-classee-fa";
+    row.dataset.feuilleId = f.id;
+    const nom = f.nom_chauffeur_affiche || f.profils?.nom || "Chauffeur";
+    const vehA = ((f.vehicules?.nom || "") + " " + (f.plaque || f.vehicules?.plaque || "")).trim();
+    let base = new Date(f.archivee_papier_at).getTime();
+    if (f.verifiee_admin && f.verifiee_admin_a) base = Math.max(base, new Date(f.verifiee_admin_a).getTime());
+    const supp = new Date(base + 15 * 86400000).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" });
+    row.innerHTML = `<span class="lai-txt">${esc(new Date(f.date_service + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }))} · <b>${esc(nom)}</b>${vehA ? " · 🚗 " + esc(vehA) : ""} <span class="supp-fa">· supprimée le ${supp}</span></span>`;
+    const bImp = document.createElement("button");
+    bImp.type = "button"; bImp.textContent = "🖨️ Imprimer / PDF";
+    bImp.addEventListener("click", () => ouvrirApercuHistoriqueFeuille(f, { nom }));
+    const bRem = document.createElement("button");
+    bRem.type = "button"; bRem.className = "btn-remettre-fa"; bRem.textContent = "↩️ Remettre à imprimer";
+    bRem.addEventListener("click", async () => {
+      if (await basculerArchiveFA(f, false)) { if (document.getElementById("liste-feuilles-admin")) rafraichirFeuillesSiPossible(); }
+    });
+    row.appendChild(bImp); row.appendChild(bRem);
+    cont.appendChild(row);
+  });
+}
 
 function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroFeuille, totalFeuillesChauffeur) {
   const div = document.createElement("div");
@@ -10529,7 +10682,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
             ${optionsVehiculesAdmin(feuille.vehicule_id, feuille.date_service || dateChoisie)}
           </select>
           <span>· 🕐 ${feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "--:--"} → ${feuille.heure_fin ? String(feuille.heure_fin).slice(0, 5) : (feuille.heure_debut ? "en service" : "--:--")}${feuille.heure_debut && feuille.heure_fin ? (() => { const d = minutesDepuisHeure(String(feuille.heure_debut).slice(0, 5)), f = minutesDepuisHeure(String(feuille.heure_fin).slice(0, 5)); return (d !== null && f !== null) ? " (" + formatDureeMinutes((f - d + 1440) % 1440) + ")" : ""; })() : ""}</span>
-          <span>· ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}<span class="recette-entete-fa">${texteRecetteEnteteFA(feuille, lignes)}</span>${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (auto-suppression 30 j après)" : ""}</span>
+          <span>· ${feuille.verrouillee ? "🔒 Signée / clôturée" : "En cours"}<span class="recette-entete-fa">${texteRecetteEnteteFA(feuille, lignes)}</span>${feuille.verifiee_admin ? " · ✅ vérifiée le " + new Date(feuille.verifiee_admin_a).toLocaleDateString("fr-BE") + " (gardée 15 jours après « imprimée et classée »)" : ""}</span>
         </div>
       </div>
       <div class="entete-fa-actions">
@@ -10693,6 +10846,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       t.className = "titre-ticket-fa";
       t.innerHTML = "🧾 Ticket du taximètre « TOTALISATEURS »" + AIDE_TICKET_FA;
       corps.appendChild(t);
+      corps.appendChild(photosTicketFA(feuille.id));
     }
     const wrapBloc = document.createElement("div");
     wrapBloc.className = "bloc-service-fa";
@@ -12865,7 +13019,7 @@ rendreLignesVehiculesModale([{}]);
     var liste = $("pva-liste");
     msg("⏳ Chargement des photos…");
     try {
-      var q = supabase.from("photos_vehicule").select("id, chauffeur_id, vehicule_id, date_service, moment, chemin, note, note_admin, created_at, conserver");
+      var q = supabase.from("photos_vehicule").select("id, chauffeur_id, vehicule_id, date_service, moment, chemin, note, note_admin, created_at, conserver, type");
       if (modeConservees) q = q.eq("conserver", true);
       else q = q.eq("date_service", $("pva-date").value || dateBruxellesISO());
       var veh = $("pva-vehicule").value;
@@ -12901,13 +13055,13 @@ rendreLignesVehiculesModale([{}]);
         return '<div class="pva-groupe"><h3>👤 ' + esc(noms[p0.chauffeur_id] || "Chauffeur") + " — " + esc(dateFr(p0.date_service)) + "</h3>" +
           '<div class="pva-sous">🚗 ' + esc(vehs) + " · " + g.length + " photo(s)</div>" +
           '<div class="pva-grille">' + g.map(function (p) {
-            var u = urls[p.chemin] || "";
-            return '<div class="pva-photo' + (p.conserver ? " conservee" : "") + '" data-id="' + esc(p.id) + '">' +
+            var u = urls[p.chemin] || "", tk = p.type === "ticket";
+            return '<div class="pva-photo' + (p.conserver ? " conservee" : "") + (tk ? " ticket" : "") + '" data-id="' + esc(p.id) + '">' +
               (u ? '<img loading="lazy" alt="Photo du véhicule" src="' + esc(u) + '" data-grand="' + esc(u) + '">' : '<img alt="Photo indisponible">') +
-              '<div class="pva-infos">' + esc(heure(p.created_at)) + (MOMENTS[p.moment] ? " · " + esc(MOMENTS[p.moment]) : "") + "</div>" +
+              '<div class="pva-infos">' + (tk ? '<b class="pva-tag-ticket">🧾 Ticket</b> ' : "") + esc(heure(p.created_at)) + (MOMENTS[p.moment] ? " · " + esc(MOMENTS[p.moment]) : "") + "</div>" +
               (p.note ? '<div class="pva-note-ch">💬 ' + esc(p.note) + "</div>" : "") +
               '<div class="pva-actions">' +
-                '<button type="button" class="pva-conserver' + (p.conserver ? " actif" : "") + '">' + (p.conserver ? "⭐ Conservée (dégât)" : "⭐ Conserver (dégât)") + "</button>" +
+                '<button type="button" class="pva-conserver' + (p.conserver ? " actif" : "") + '">' + (p.conserver ? "⭐ Conservée" : "⭐ Conserver") + (tk ? "" : " (dégât)") + "</button>" +
                 '<input type="text" class="pva-note" maxlength="300" placeholder="Note (ex : rayure portière)" value="' + esc(p.note_admin || "") + '">' +
               "</div></div>";
           }).join("") + "</div></div>";
@@ -12926,7 +13080,7 @@ rendreLignesVehiculesModale([{}]);
     bouton.disabled = false;
     if (r.error || !r.data || !r.data.length) { msg("❌ Modification impossible : " + ((r.error && r.error.message) || "droits insuffisants")); return; }
     bouton.classList.toggle("actif", nouveau);
-    bouton.textContent = nouveau ? "⭐ Conservée (dégât)" : "⭐ Conserver (dégât)";
+    bouton.textContent = (nouveau ? "⭐ Conservée" : "⭐ Conserver") + (carte.classList.contains("ticket") ? "" : " (dégât)");
     carte.classList.toggle("conservee", nouveau);
     msg(nouveau ? "⭐ Photo conservée : elle ne sera pas supprimée après 30 jours." : "Photo remise en suppression automatique après 30 jours.");
   }

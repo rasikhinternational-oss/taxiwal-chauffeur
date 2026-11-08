@@ -7,7 +7,7 @@
 // n'est utilisée que s'il n'y a pas de réseau. Une mise à jour sur GitHub arrive donc tout de suite.
 // Les données (Supabase) ne passent JAMAIS par ce cache : c'est la page qui les gère.
 // Changer VERSION à chaque modification de ce fichier (les anciennes copies sont effacées).
-const VERSION = "taxiwal-v5";
+const VERSION = "taxiwal-v6";
 const ATTENTE_RESEAU_PAGE_MS = 4000; // page : au-delà, la copie du téléphone est affichée (si elle existe)
 const CACHE_PAGES = VERSION + "-pages";
 const CACHE_FICHIERS = VERSION + "-fichiers";
@@ -146,7 +146,19 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
-      await self.registration.showNotification(donnees.titre || "Taxi Wal", {
+      // 🔔 « Sonner le chauffeur » (la centrale demande d'accepter une course) : alerte haute priorité
+      const sonnerie = donnees.type === "sonner-chauffeur";
+      await self.registration.showNotification(donnees.titre || "Taxi Wal", sonnerie ? {
+        body: donnees.corps || "",
+        icon: "icon-192.png",
+        badge: "icon-192.png",
+        requireInteraction: true,
+        renotify: true,
+        silent: false,
+        vibrate: [1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000],
+        tag: "sonner-" + (donnees.courseId || ""),
+        data: { courseId: donnees.courseId || null, type: "sonner-chauffeur" }
+      } : {
         body: donnees.corps || "",
         icon: "icon-192.png",
         badge: "icon-192.png",
@@ -157,7 +169,7 @@ self.addEventListener("push", (event) => {
       // recharger les courses tout de suite, sans attendre le prochain cycle automatique.
       const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const client of clientList) {
-        client.postMessage({ type: donnees.type || "nouvelle-course" });
+        client.postMessage(sonnerie ? { type: "sonner-chauffeur", courseId: donnees.courseId || null } : { type: donnees.type || "nouvelle-course" });
       }
     })()
   );
@@ -166,6 +178,18 @@ self.addEventListener("push", (event) => {
 // Au clic sur la notification, ramène au premier plan un onglet déjà ouvert, sinon en ouvre un nouveau.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const d = event.notification.data || {};
+  if (d.type === "sonner-chauffeur" && d.courseId) {
+    // « 📢 ACCEPTE TA COURSE » : ouvre l'app chauffeur sur le bandeau de cette course
+    event.waitUntil(
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+        const ch = clientList.find((c) => /chauffeur\.html|driver\.html/.test(c.url)) || clientList[0];
+        if (ch && "focus" in ch) { ch.postMessage({ type: "sonner-ouvrir", courseId: d.courseId }); return ch.focus(); }
+        if (self.clients.openWindow) return self.clients.openWindow("./chauffeur.html?sonnerie=" + encodeURIComponent(d.courseId));
+      })
+    );
+    return;
+  }
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
