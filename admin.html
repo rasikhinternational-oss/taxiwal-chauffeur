@@ -827,6 +827,11 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-admin.plein-ecran-ligne .grille3-fa{ grid-template-columns:1fr; border:none; background:#fff; border-radius:10px; }
   .ligne-admin.plein-ecran-ligne .grille3-fa > div{ border-right:none; border-bottom:1px solid #eee; padding:10px 12px; }
   .ligne-admin.plein-ecran-ligne label{ font-size:.85rem; }
+  .grille-paiement-fa{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-top:4px; }
+  .grille-paiement-fa button.puce-paiement-fa{ width:100%; min-width:0; min-height:46px; margin:0; padding:6px 2px; border-radius:12px; border:2px solid #cfd6d0; background:#fff; color:#1d2b22; font-weight:700; font-size:clamp(.72rem, 3.4vw, .9rem); line-height:1.15; white-space:normal; overflow-wrap:break-word; text-align:center; font-family:inherit; }
+  .grille-paiement-fa button.puce-paiement-fa.choisie{ background:#1f8a4c; border-color:#1f8a4c; color:#fff; }
+  .grille-paiement-fa button.puce-paiement-fa:disabled{ opacity:.6; }
+  .grille-paiement-fa button.puce-paiement-fa.bouton-autre{ grid-column:1 / -1; }
   .ligne-admin.plein-ecran-ligne input, .ligne-admin.plein-ecran-ligne select, .ligne-admin.plein-ecran-ligne textarea{ font-size:1.05rem !important; padding:12px !important; width:100%; box-sizing:border-box; }
   .ligne-admin .num-ligne button.btn-grand-ligne{ background:#3b82c4; color:#fff; border-color:#3b82c4; }
   body.ligne-en-grand{ overflow:hidden; }
@@ -8226,9 +8231,11 @@ async function chargerCaisse() {
       const especes = Math.round(lf.filter(l => !estLigneRelais(l) && (l.mode_paiement === "cash" || l.mode_paiement === "uber_cash"))
         .reduce((s, l) => s + (l.mode_paiement === "uber_cash" ? (montantUberImp(l) || 0) : (parseFloat(l.sommes_percues) > 0 ? parseFloat(l.sommes_percues) : 0)), 0) * 100) / 100;
       const pb = pourboiresLignesFA(lf);
+      // 🚕💵 Uber reçu en cash (hors recette) : montant noté dans « Prix taximètre »
+      const uberCash = Math.round(lf.filter(l => !estLigneRelais(l) && l.mode_paiement === "uber_cash").reduce((s, l) => s + (montantUberImp(l) || 0), 0) * 100) / 100;
       const nomV = (f.vehicules && f.vehicules.nom) || "Sans véhicule";
       const plaque = f.plaque || (f.vehicules && f.vehicules.plaque) || "";
-      return { f, recette, especes, pb, nb: lf.filter(l => !estLigneRelais(l)).length,
+      return { f, recette, especes, pb, uberCash, nb: lf.filter(l => !estLigneRelais(l)).length,
         libelle: `${/trafic|vito|transit|vivaro|space|van|sprinter/i.test(nomV) ? "🚐" : "🚗"} ${nomV}${plaque ? " " + plaque : ""}`,
         heures: `${f.heure_debut ? String(f.heure_debut).slice(0, 5) : "--:--"} → ${f.heure_fin ? String(f.heure_fin).slice(0, 5) : "en cours"}` };
     });
@@ -8236,7 +8243,7 @@ async function chargerCaisse() {
     const blocParFeuille = detailFeuilles.length ? `
       <div class="caisse-par-feuille" style="margin:6px 0 10px; border:1px solid #dcdcda; border-radius:10px; padding:8px 10px; background:#fafaf8;">
         <div style="font-weight:800; font-size:.85rem; margin-bottom:4px;">🧾 Par feuille de route (une voiture = une feuille)</div>
-        ${detailFeuilles.map(d => `<div class="caisse-ligne caisse-feuille-vehicule" data-feuille-id="${esc(d.f.id)}"><span style="flex:1; min-width:0;"><b>${esc(d.libelle)}</b> · ${esc(d.heures)} · ${d.f.verrouillee || d.f.signee ? "✅ signée" : "📝 à compléter"}<br><small>${d.nb} course(s) · espèces ${d.especes.toFixed(2)} € · 💶 pourboires ${d.pb.toFixed(2)} €</small></span><b style="white-space:nowrap; margin-left:8px;">${d.recette.toFixed(2)} €</b></div>`).join("")}
+        ${detailFeuilles.map(d => `<div class="caisse-ligne caisse-feuille-vehicule" data-feuille-id="${esc(d.f.id)}"><span style="flex:1; min-width:0;"><b>${esc(d.libelle)}</b> · ${esc(d.heures)} · ${d.f.verrouillee || d.f.signee ? "✅ signée" : "📝 à compléter"}<br><small>${d.nb} course(s) · espèces ${d.especes.toFixed(2)} € · 💶 pourboires ${d.pb.toFixed(2)} €</small><br><small class="uber-cash-feuille-fa" style="font-weight:800; color:#5c4500;">🚕💵 Uber reçu en cash (hors recette) : ${d.uberCash.toFixed(2)} €</small></span><b style="white-space:nowrap; margin-left:8px;">${d.recette.toFixed(2)} €</b></div>`).join("")}
         ${detailFeuilles.length > 1 ? `<div class="caisse-ligne caisse-total-chauffeur" style="border-top:2px solid #cfcfcd; font-weight:800;"><span style="flex:1; min-width:0;">Total ${esc(ch.nom || "chauffeur")} (${detailFeuilles.length} feuilles)<br><small>espèces ${totD.especes.toFixed(2)} € · 💶 pourboires ${totD.pb.toFixed(2)} €</small></span><b style="white-space:nowrap; margin-left:8px;">${totD.recette.toFixed(2)} €</b></div>` : ""}
       </div>` : "";
 
@@ -11600,6 +11607,11 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   mentionPrive.className = "mention-uber";
   mentionPrive.textContent = "🔒 Trajet privé : non facturé, juste comptabilisé pour le kilométrage.";
   grille.insertBefore(mentionPrive, wrapsParChampAdmin["mode_paiement"]);
+  // Uber payé cash : « Sommes perçues » sans montant, juste la mention
+  const mentionSommesUberCashFA = document.createElement("div");
+  mentionSommesUberCashFA.className = "mention-uber";
+  mentionSommesUberCashFA.textContent = "Sommes perçues : Uber payé cash — ne compte pas dans la recette";
+  wrapsParChampAdmin["sommes_percues"].insertAdjacentElement("afterend", mentionSommesUberCashFA);
   div.appendChild(grille);
 
   function appliquerVisibilitePaiementAdmin() {
@@ -11614,7 +11626,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     wrapsParChampAdmin["motif_forfait"].style.display = estForfait ? "" : "none";
     // Uber : une case « Prix de la course Uber (€) » ; « Sommes perçues » reste vide (hors recette)
     wrapsParChampAdmin["prix_taximetre"].style.display = (estPrive || estAnnulee || estForfait) ? "none" : "";
-    if (labelPrixFA) labelPrixFA.textContent = famUber ? "Prix de la course Uber (€)" : textePrixFA;
+    if (labelPrixFA) labelPrixFA.textContent = mode === "uber_cash" ? "💵 Montant reçu en cash (Uber)" : famUber ? "Prix de la course Uber (€)" : textePrixFA;
     wrapsParChampAdmin["motif_sans_prix"].style.display = (famUber || estAnnulee || estForfait) ? "none" : "";
     wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || famUber || estPrive || estAnnulee) ? "none" : "";
     // Pourboire : visible pour toute course encaissée (même sur facture) ; masqué pour Uber / privé / annulée sauf s'il y en a déjà un
@@ -11623,8 +11635,95 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     wrapsParChampAdmin["mode_paiement"].style.display = estPrive ? "none" : "";
     mentionUber.style.display = estUber ? "" : "none";
     mentionPrive.style.display = estPrive ? "" : "none";
+    mentionSommesUberCashFA.style.display = mode === "uber_cash" ? "" : "none";
   }
   appliquerVisibilitePaiementAdmin();
+
+  // ---- Mode de paiement : GRILLE de boutons (même grille que l'app chauffeur) ----
+  // Le <select> caché reste la source de vérité : un bouton met sa valeur et déclenche le même « change » qu'avant.
+  (function creerGrillePaiementAdmin() {
+    const select = inputsParChampAdmin["mode_paiement"];
+    const inputDossier = inputsParChampAdmin["numero_dossier"];
+    if (!select || !inputDossier) return;
+    const zone = document.createElement("div");
+    zone.className = "grille-paiement-fa";
+    const BOUTONS = [
+      { cle: "cash", texte: "💵 Cash" }, { cle: "carte", texte: "💳 Carte" }, { cle: "qr", texte: "📱 Bancontact / QR" },
+      { cle: "uber", texte: "🚕 Uber (app)" }, { cle: "uber_cash", texte: "🚕💵 Uber cash" }, { cle: "facture", texte: "🧾 Facture" },
+      { cle: "facture_assurance", texte: "🛡️ Facture assurance" }, { cle: "cheque_social", texte: "🎫 Chèque social" }, { cle: "annulee", texte: "❌ Annulée / absent" },
+      { cle: "autre", texte: "✏️ Autre…" }
+    ];
+    const MODES_GRILLE = ["cash", "carte", "qr", "uber", "uber_cash", "facture", "cheque_social", "annulee"];
+    const LIBELLES_ANCIENS = { uber_carte: "🚕💳 Uber carte" };
+    let assuranceEnCours = false;
+    const modeAffiche = () => select.value === "__ecrire__" ? (ligne.mode_paiement || "") : select.value;
+    const cleChoisie = () => {
+      const m = modeAffiche();
+      if (!m) return "";
+      if (m === "facture") return (assuranceEnCours || lirePayeurFacture(inputDossier.value).payeur === "Assurance") ? "facture_assurance" : "facture";
+      return MODES_GRILLE.includes(m) ? m : "autre";
+    };
+    const ecrireDossier = (payeur, numero) => {
+      numero = String(numero || "").trim().replace(/^n°\s*/i, "");
+      const v = payeur ? payeur + (numero ? " n° " + numero : "") : (numero ? "n° " + numero : "");
+      if ((inputDossier.value || "") === v) return;
+      inputDossier.value = v;
+      inputDossier.dispatchEvent(new Event("change"));
+    };
+    const choisirMode = (v) => {
+      if (select.value === v) return;
+      select.value = v;
+      select.dispatchEvent(new Event("change"));
+    };
+    function rendre() {
+      const choisie = cleChoisie();
+      const m = modeAffiche();
+      zone.replaceChildren(...BOUTONS.map(b => {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "puce-paiement-fa" + (b.cle === choisie ? " choisie" : "") + (b.cle === "autre" ? " bouton-autre" : "");
+        bouton.dataset.mode = b.cle;
+        bouton.textContent = (b.cle === "autre" && choisie === "autre") ? (LIBELLES_ANCIENS[m] || ("✏️ " + m)) : b.texte;
+        bouton.disabled = select.disabled;
+        bouton.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if (select.disabled) return;
+          if (b.cle === "autre") { select.value = "__ecrire__"; select.dispatchEvent(new Event("change")); return; }
+          if (b.cle === "facture_assurance") {
+            const numero = lirePayeurFacture(inputDossier.value).numero;
+            if (select.value === "facture") { ecrireDossier("Assurance", numero); rendre(); return; }
+            // On attend que « facture » soit enregistré avant d'écrire le payeur (deux écritures, jamais en même temps)
+            assuranceEnCours = true;
+            choisirMode("facture");
+            rendre();
+            const debut = Date.now();
+            (function attendre() {
+              if (ligne.mode_paiement === "facture") { assuranceEnCours = false; ecrireDossier("Assurance", numero); rendre(); return; }
+              if (Date.now() - debut > 20000) { assuranceEnCours = false; rendre(); return; }
+              setTimeout(attendre, 120);
+            })();
+            return;
+          }
+          if (b.cle === "facture" && choisie === "facture_assurance") {
+            ecrireDossier("", lirePayeurFacture(inputDossier.value).numero);
+            rendre();
+            return;
+          }
+          choisirMode(b.cle);
+          rendre();
+        });
+        return bouton;
+      }));
+    }
+    select.addEventListener("change", () => { rendre(); [400, 1500].forEach(ms => setTimeout(rendre, ms)); });
+    inputDossier.addEventListener("input", rendre);
+    inputDossier.addEventListener("change", rendre);
+    if (inputsParChampAdmin["type_course"]) inputsParChampAdmin["type_course"].addEventListener("change", () => [400, 1500].forEach(ms => setTimeout(rendre, ms)));
+    wrapsParChampAdmin["mode_paiement"].style.gridColumn = "1 / -1";
+    select.style.display = "none";
+    select.insertAdjacentElement("afterend", zone);
+    rendre();
+  })();
 
   entete.addEventListener("click", () => {
     const ouvert = grille.style.display !== "none";
@@ -11689,7 +11788,8 @@ function estLigneUberImp(l) { return !!l && (l.type_course === "uber" || ["uber"
 function montantUberImp(l) {
   const v = x => (x === null || x === undefined || x === "" || isNaN(Number(x))) ? null : Number(x);
   const s = v(l.sommes_percues), p = v(l.prix_taximetre);
-  return (s !== null && s > 0) ? s : (p !== null && p > 0) ? p : null;
+  // Montant Uber = « Prix taximètre » ; ancien montant noté par erreur dans « Sommes perçues » en secours
+  return (p !== null && p > 0) ? p : (s !== null && s > 0) ? s : null;
 }
 function texteMotifImp(l) { return /^Autre/.test(l.motif_sans_prix || "") && l.note_chauffeur ? l.note_chauffeur : (l.motif_sans_prix || ""); }
 // Colonne « Prix taximètre » à l'impression : jamais vide ni « — » quand on sait quelque chose
