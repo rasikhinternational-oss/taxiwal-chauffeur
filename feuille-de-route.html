@@ -394,6 +394,11 @@ function montantUberCash(l) {
 const MOTIFS_AVEC_PAIEMENT = { "Forfait école": "facture", "Contrat / sur facture": "facture", "Uber (prix dans l'app)": "uber", "Course annulée / client absent": "annulee" };
 const PAYEURS_PAR_DEFAUT = ["Taxi Vert", "Assurance", "École", "Mutuelle", "CPAS", "Entreprise"];
 function ligneEnFacture(l) { return l.mode_paiement === "facture" || l.motif_sans_prix === "Contrat / sur facture"; }
+// Facture : « Sommes perçues » n'a jamais de montant (déclarée à part sur la facture, hors recette, comme Uber).
+// Texte automatique « FACTURE — TAXI VERT » (payeur sans le n°), écrit dans sommes_texte.
+function payeurFactureMaj(v) { const p = lirePayeurFacture(v).payeur; return p ? p.toUpperCase() : ""; }
+function texteSommesFacture(l) { const p = payeurFactureMaj(l && l.numero_dossier); return "FACTURE" + (p ? " — " + p : ""); }
+function estTexteFactureAuto(t) { return /^FACTURE —/.test(String(t || "")); }
 // Règle « course complète » (AUCUNE case vide) : index, heures et lieux d'embarquement et de débarquement,
 // un prix OU un motif « pas de prix », des sommes perçues OU un motif/texte qui explique l'absence d'argent,
 // le mode de paiement et, pour une facture, le payeur (« pour qui »).
@@ -431,7 +436,8 @@ function etatCompletude(l, triees, feuille) {
     exiger(!!l.motif_forfait, "motif_forfait", "motif du forfait");
     exiger((somme !== null && somme > 0) || sansArgentExplique(l), "sommes_percues", "sommes perçues (ou motif sans argent)");
   } else if (!typeSansPrix) {
-    exiger((prix !== null && prix > 0) || !!l.motif_sans_prix, "prix_taximetre", "prix taximètre (ou motif « pas de prix »)", ["motif_sans_prix"]);
+    // Facture : le prix n'est pas obligatoire (la société sera facturée plus tard) — seul le payeur l'est
+    exiger((prix !== null && prix > 0) || !!l.motif_sans_prix || l.mode_paiement === "facture", "prix_taximetre", "prix taximètre (ou motif « pas de prix »)", ["motif_sans_prix"]);
     exiger((somme !== null && somme > 0) || sansArgentExplique(l) || enLigneTout, "sommes_percues", "sommes perçues (ou motif sans argent)");
   }
   // Mode de paiement : obligatoire, sauf trajet privé ou motif sans aucun paiement (carwash, à vide, gratuit…)
@@ -448,6 +454,9 @@ function lieuCourt(v) {
   const s = String(v || "").replace(/\s*Notes?\s*:.*$/i, "").split(",").map(x => x.trim()).filter(Boolean);
   return s.slice(0, 2).join(", ") || "—";
 }
+// Types de course ajoutés (se comportent exactement comme « normale ») : libellé lisible pour l'impression / le résumé
+const LIBELLES_TYPES_COURSE = { a_l_heure: "À l'heure", medical: "Médical", scolaire: "Scolaire" };
+function libelleTypeCourse(t) { return LIBELLES_TYPES_COURSE[t] || t; }
 // Résumé compact d'une course clôturée : « N° · HH:MM → HH:MM · 45,00 € CARTE » + « départ → arrivée »
 function resumeLigneFermee(l, numero) {
   const somme = frNum(l.sommes_percues);
@@ -456,6 +465,10 @@ function resumeLigneFermee(l, numero) {
   let argent;
   if (l.mode_paiement === "annulee") argent = "❌ ANNULÉE";
   else if (l.type_course === "prive") argent = "PRIVÉ";
+  else if (l.mode_paiement === "facture" && !(somme !== null && somme > 0)) {
+    const prixF = frNum(l.prix_taximetre), numF = lirePayeurFacture(l.numero_dossier).numero;
+    argent = (prixF !== null && prixF > 0 ? formatEuro(prixF) : "FACTURE") + " · 🧾 " + texteSommesFacture(l) + (numF ? " n° " + numF : "");
+  }
   else if (l.mode_paiement === "uber_cash") argent = (montantUberCash(l) !== null ? formatEuro(montantUberCash(l)) + " " : "") + "UBER CASH";
   else if (somme !== null && somme > 0) argent = formatEuro(somme) + (mode ? " " + mode : "");
   else if (l.type_course === "uber" || l.mode_paiement === "uber") argent = "UBER";
@@ -465,8 +478,8 @@ function resumeLigneFermee(l, numero) {
   else if (mode) argent = mode;
   else argent = "—";
   return {
-    ligne1: `N° ${numero} · ${frHHMM(l.embarquement_heure)} → ${frHHMM(l.debarquement_heure)} · ${argent}${Number(l.pourboire) > 0 ? " · +" + formatEuro(Number(l.pourboire)) + " pourboire" : ""}${l.conducteur ? " · 🔁 conduit par " + libConducteur(l.conducteur) : ""}`,
-    ligne2: `${lieuCourt(l.embarquement_lieu)} → ${lieuCourt(l.debarquement_lieu)}`
+    ligne1: `N° ${numero} · ${frHHMM(l.embarquement_heure)} → ${frHHMM(l.debarquement_heure)} · ${argent}${Number(l.pourboire) > 0 ? " · +" + formatEuro(Number(l.pourboire)) + " pourboire" : ""}${l.conducteur ? " · 🔁 conduit par " + libConducteur(l.conducteur) : ""}${l.recu_demande && l.mode_paiement !== "facture" ? " · 🧾 reçu demandé" : ""}`,
+    ligne2: `${LIBELLES_TYPES_COURSE[l.type_course] ? LIBELLES_TYPES_COURSE[l.type_course] + " · " : ""}${lieuCourt(l.embarquement_lieu)} → ${lieuCourt(l.debarquement_lieu)}`
   };
 }
 function afficherToast(texte) {
@@ -739,10 +752,22 @@ window.onerror = function(msg, url, line, col, err) {
   .grille-payeurs{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; padding:4px 0 8px; margin-top:4px; }
   .grille-payeurs .puce{ width:100%; min-width:0; min-height:46px; padding:6px 2px; border-radius:12px; white-space:normal; overflow-wrap:break-word; line-height:1.15; font-size:clamp(.72rem, 3.4vw, .92rem); text-align:center; }
   .obligatoire:not(.bloc-payeur) > .grille-paiement{ outline:2px solid #c81e2c; outline-offset:1px; border-radius:8px; }
+  .grille-type{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px; padding:4px 0 6px; margin-top:4px; }
+  .grille-type .puce{ width:100%; min-width:0; min-height:50px; padding:6px 2px; border-radius:12px; white-space:normal; overflow-wrap:break-word; line-height:1.15; font-size:clamp(.74rem, 3.5vw, .95rem); text-align:center; }
+  .type-secondaire{ display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 6px; }
+  .type-secondaire .puce{ flex:1 1 auto; min-height:40px; padding:6px 10px; border-radius:10px; font-size:.8rem; font-weight:600; white-space:normal; border-width:1px; }
+  .grille-motifs{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px; padding:4px 0 8px; margin-top:4px; border-radius:10px; }
+  .grille-motifs .puce{ width:100%; min-width:0; min-height:48px; padding:6px 4px; border-radius:12px; white-space:normal; overflow-wrap:break-word; line-height:1.15; font-size:clamp(.72rem, 3.4vw, .9rem); text-align:center; }
+  .obligatoire:not(.bloc-payeur) > .grille-motifs{ outline:2px solid #c81e2c; outline-offset:1px; border-radius:8px; }
   .bloc-payeur{ background:#fff; border:1px solid #dcdcda; border-radius:10px; padding:10px; margin:6px 0 10px; }
   .obligatoire:not(.bloc-payeur) > label::after, .bloc-payeur.obligatoire > label:first-child::after{ content:" · Obligatoire"; color:#c81e2c; font-weight:800; }
   .obligatoire:not(.bloc-payeur) > input, .obligatoire:not(.bloc-payeur) > select, .obligatoire:not(.bloc-payeur) > textarea, .obligatoire:not(.bloc-payeur) > .puces, .bloc-payeur.obligatoire{ outline:2px solid #c81e2c; outline-offset:1px; border-radius:8px; }
   .libelle-pas-de-prix{ font-size:.78rem; color:#111; font-weight:700; margin-top:4px; }
+  .prix-facture input::placeholder{ color:#333; font-weight:800; opacity:1; letter-spacing:.5px; }
+  .prix-facture .libelle-pas-de-prix{ color:#333; }
+  .ligne-course .mention-sommes-facture{ font-size:.85rem; font-weight:800; color:#1f3d5c; background:#eaf1f8; border:1px solid #9bb7d4; border-radius:8px; padding:9px 10px; }
+  .ligne-course .wrap-recu{ display:flex; align-items:center; gap:8px; font-size:.85rem; font-weight:600; color:#333; margin:2px 0 4px; cursor:pointer; }
+  .ligne-course .wrap-recu input{ width:20px; height:20px; margin:0; flex:none; }
   #toast-feuille{ position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 24px); transform:translate(-50%, 20px); background:#1f8a4c; color:#fff; padding:11px 18px; border-radius:22px; font-weight:700; font-size:.95rem; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:2000; }
   #toast-feuille.visible{ opacity:1; transform:translate(-50%, 0); }
   .btn-maintenant{ width:100%; padding:9px 6px; margin:-4px 0 10px; border-radius:8px; border:1px solid var(--vert); background:#eaf5ee; color:var(--vert); font-weight:700; font-size:.85rem; }
@@ -784,6 +809,7 @@ window.onerror = function(msg, url, line, col, err) {
   #bloc-caisse .caisse-ligne{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid #eee; font-size:.9rem; }
   #bloc-caisse .caisse-ligne b{ white-space:nowrap; }
   #bloc-caisse .caisse-total{ font-weight:800; border-bottom:none; }
+  #bloc-caisse .caisse-factures{ background:#eaf1f8; border:2px solid #9bb7d4; border-radius:8px; padding:10px 12px; font-weight:800; color:#1f3d5c; margin-bottom:8px; }
   #bloc-caisse .caisse-uber-cash{ background:#fff7e0; border:2px solid #e0b400; border-radius:8px; padding:10px 12px; font-weight:800; color:#5c4500; margin-bottom:8px; }
   .ligne-course .mention-sommes-uber-cash{ font-size:.8rem; font-weight:700; color:#5c4500; background:#fff7e0; border:1px solid #e0b400; border-radius:8px; padding:8px 10px; }
   #bloc-caisse .caisse-alerte{ background:#fdecee; color:var(--rouge); border-radius:8px; padding:9px 11px; font-size:.85rem; margin-top:8px; font-weight:600; }
@@ -3834,7 +3860,8 @@ let minuterieCaisse = null;
 function recetteDesLignes(lignes) {
   return (lignes || []).reduce((s, l) => {
     const somme = nombreOuNull(l.sommes_percues);
-    if (l.type_course === "uber" || l.type_course === "prive" || estLigneRelais(l) || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash") return s;
+    // Facture : jamais dans la recette (déclarée à part sur la facture), comme Uber
+    if (l.type_course === "uber" || l.type_course === "prive" || estLigneRelais(l) || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.mode_paiement === "facture") return s;
     if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
     return s + (somme !== null ? somme : 0);
   }, 0);
@@ -3874,6 +3901,8 @@ async function afficherCaisse() {
     uber_cash: { nom: "🚕💵 Uber reçu en cash (hors recette)", total: 0, nb: 0 }
   };
   let sansMode = 0, sansMontant = 0, nbForfaits = 0, totalForfaits = 0, nbAnnulees = 0;
+  // 🧾 Factures : hors recette (déclarées à part) — total des prix connus + nombre sans prix
+  let totalFactures = 0, nbFacturesSansPrix = 0;
   (lignes || []).forEach(l => {
     const vide = !l.embarquement_lieu && !l.debarquement_lieu && l.sommes_percues == null && l.prix_taximetre == null && !l.mode_paiement;
     if (vide) return;
@@ -3882,6 +3911,12 @@ async function afficherCaisse() {
       : (somme !== null && somme > 0) ? somme : (nombreOuNull(l.prix_taximetre) ?? 0);
     if (l.type_course === "prive") return;
     if (l.mode_paiement === "annulee") { nbAnnulees++; return; }
+    if (l.mode_paiement === "facture") {
+      const pf = nombreOuNull(l.prix_taximetre);
+      const mf = (pf !== null && pf > 0) ? pf : (somme !== null && somme > 0 ? somme : null);
+      if (mf !== null) totalFactures += mf; else nbFacturesSansPrix++;
+      return;
+    }
     const mode = (l.mode_paiement === "uber_cash") ? "uber_cash" : (l.type_course === "uber") ? "uber" : l.mode_paiement;
     if (!mode || !modes[mode]) { sansMode++; return; }
     modes[mode].nb++;
@@ -3905,13 +3940,14 @@ async function afficherCaisse() {
       <div class="cp-montant">${formatEuro(especesDansCaisse)}</div>
       <div class="cp-label">${modes.cash.nb} course(s) payée(s) en espèces${modes.uber_cash.nb ? " + " + modes.uber_cash.nb + " Uber payée(s) en cash" : ""}</div>
     </div>
-    <div class="caisse-ligne caisse-uber-cash"><span>${modes.uber_cash.nom}${modes.uber_cash.nb ? " · " + modes.uber_cash.nb : ""}</span><b>${formatEuro(modes.uber_cash.total)}</b></div>`;
+    <div class="caisse-ligne caisse-uber-cash"><span>${modes.uber_cash.nom}${modes.uber_cash.nb ? " · " + modes.uber_cash.nb : ""}</span><b>${formatEuro(modes.uber_cash.total)}</b></div>
+    <div class="caisse-ligne caisse-factures"><span>🧾 Factures (hors recette, déclarées à part)</span><b>${formatEuro(Math.round(totalFactures * 100) / 100)}${nbFacturesSansPrix ? " + " + nbFacturesSansPrix + " sans prix" : ""}</b></div>`;
   Object.values(modes).forEach(m => {
     if (!m.nb || m === modes.uber_cash) return;
     html += `<div class="caisse-ligne"><span>${m.nom} · ${m.nb}</span><b>${m === modes.uber ? "—" : formatEuro(m.total)}</b></div>`;
   });
   if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
-  html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber)</span><b>${formatEuro(totalGeneral)}</b></div>`;
+  html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber et factures)</span><b>${formatEuro(totalGeneral)}</b></div>`;
   if (totalPourboiresJour > 0) html += `<div class="caisse-ligne caisse-pourboires"><span>💶 Pourboires de cette feuille (non compris dans la recette)</span><b>${formatEuro(totalPourboiresJour)}</b></div>`;
   if (nbAnnulees) html += `<div class="caisse-ligne"><span>❌ Courses annulées (rien encaissé)</span><b>${nbAnnulees}</b></div>`;
   if (sansMode) html += `<div class="caisse-alerte">⚠️ ${sansMode} course(s) sans mode de paiement : choisis Cash, Carte… sinon elles ne comptent pas dans la caisse.</div>`;
@@ -4128,6 +4164,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         });
       };
       rendreTexte();
+      wrap._rendreTexte = rendreTexte;
       wrap.appendChild(zoneTexte);
     }
 
@@ -4175,6 +4212,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="Prix convenu à la réservation">Prix convenu à la réservation</option>
         <option value="Aéroport / longue distance">Aéroport / longue distance</option>
         <option value="Convention entreprise / école">Convention entreprise / école</option>
+        <option value="Tarif de nuit convenu">Tarif de nuit convenu</option>
+        <option value="Événement / mariage">Événement / mariage</option>
+        <option value="Livraison / colis">Livraison / colis</option>
         <option value="Autre">Autre</option>
       `;
       ajouterTexteLibre(input, ligne.motif_forfait);
@@ -4183,6 +4223,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="normale">Course normale (taximètre)</option>
         <option value="forfait">Forfait</option>
         <option value="navette_aeroport">Navette aéroport</option>
+        <option value="a_l_heure">⏱️ À l'heure (mise à disposition)</option>
+        <option value="medical">🏥 Transport médical / hôpital</option>
+        <option value="scolaire">🏫 Transport scolaire</option>
         <option value="uber">🚕 Course Uber</option>
         <option value="prive">🔒 Trajet privé (non facturé)</option>
       `;
@@ -4260,6 +4303,23 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (champ === "prix_taximetre" && valeur !== null && ligne.motif_sans_prix) maj.motif_sans_prix = null;
       // Motif qui implique un paiement (école / contrat → facture, Uber, annulée) : mode choisi d'office s'il est vide
       if (champ === "motif_sans_prix" && valeur && MOTIFS_AVEC_PAIEMENT[valeur] && !ligne.mode_paiement) maj.mode_paiement = MOTIFS_AVEC_PAIEMENT[valeur];
+      // 🧾 Facture : « Sommes perçues » = « FACTURE — <PAYEUR> » écrit tout seul (sans montant, hors recette).
+      // En quittant la facture, ce texte automatique est effacé (jamais un texte écrit à la main).
+      if ("mode_paiement" in maj || champ === "numero_dossier") {
+        const modeFinal = ("mode_paiement" in maj) ? maj.mode_paiement : ligne.mode_paiement;
+        const dossierFinal = champ === "numero_dossier" ? valeur : ligne.numero_dossier;
+        if (modeFinal === "facture") {
+          const p = payeurFactureMaj(dossierFinal);
+          const auto = p ? "FACTURE — " + p : null;
+          if ((ligne.sommes_texte || null) !== auto && (auto || estTexteFactureAuto(ligne.sommes_texte))) maj.sommes_texte = auto;
+          if ("mode_paiement" in maj && ligne.mode_paiement !== "facture") {
+            // Un montant déjà noté dans « Sommes perçues » passe dans le prix (jamais dans la recette)
+            const s = frNum(ligne.sommes_percues);
+            if (s !== null && s > 0 && frNum(ligne.prix_taximetre) === null && !ligne.motif_sans_prix) maj.prix_taximetre = s;
+            if (ligne.sommes_percues != null) maj.sommes_percues = null;
+          }
+        } else if ("mode_paiement" in maj && estTexteFactureAuto(ligne.sommes_texte)) maj.sommes_texte = null;
+      }
       const { data: ligneServeur, error, enAttente } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update",
         match: { id: ligne.id }, payload: maj, select: "*", single: "maybe",
         optimiste: Object.assign({}, ligne, maj), label: "Course n° " + numeroAffiche + " : " + champ });
@@ -4270,6 +4330,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
           inputsParChamp["prix_taximetre"].value = ligne.prix_taximetre ?? "";
         }
         if ("mode_paiement" in maj) synchroniserChampsUber();
+        if ("sommes_texte" in maj && wrapsParChamp["sommes_percues"]._rendreTexte) wrapsParChamp["sommes_percues"]._rendreTexte();
         majEtatPrix();
         majInfoCompletude();
         if (!ligne.cloturee) { lignesAClotureAuto.add(String(ligne.id)); planifierClotureAuto(ligne.id); }
@@ -4305,7 +4366,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
           setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500);
         }
       }
-      if (estPaiement || estTypeCourse || estSansPrix) appliquerVisibilitePaiement();
+      if (estPaiement || estTypeCourse || estSansPrix || champ === "numero_dossier") appliquerVisibilitePaiement();
       rafraichirPuces();
       majInfoCompletude();
       try { if (div._majAvertIndex) div._majAvertIndex(); } catch (_) {}
@@ -4490,6 +4551,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
   const mentionSommesUberCash = document.createElement("div");
   mentionSommesUberCash.className = "mention-sommes-uber-cash";
   wrapsParChamp["sommes_percues"].insertAdjacentElement("afterend", mentionSommesUberCash);
+  // Facture : « Sommes perçues » remplacée par la mention « 🧾 FACTURE — TAXI VERT — sera facturé, hors recette du jour »
+  const mentionSommesFacture = document.createElement("div");
+  mentionSommesFacture.className = "mention-sommes-facture";
+  wrapsParChamp["sommes_percues"].insertAdjacentElement("afterend", mentionSommesFacture);
 
   // ---- Calculatrice "rendu monnaie" (paiement cash) ----
   // Reste utilisable tant que la feuille n'est pas signée, même si la course est terminée.
@@ -4714,12 +4779,20 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const estAnnulee = mode === "annulee";
     const estForfait = typeCourse === "forfait";
     wrapsParChamp["motif_forfait"].style.display = estForfait ? "" : "none";
-    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estAnnulee || estForfait) ? "none" : "";
+    // Facture : la case prix reste visible (même en forfait) — facultative, « FACTURE » si vide
+    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estAnnulee || (estForfait && !estFacture)) ? "none" : "";
     const labPrix = wrapsParChamp["prix_taximetre"].querySelector("label");
     if (labPrix) labPrix.textContent = estUberCash ? "💵 Montant reçu en cash (Uber)" : "Prix taximètre (€)";
     wrapsParChamp["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
     // Facture : on peut noter le montant facturé (imprimé « 170 » puis « FACTURE Taxi Vert n° 123 »)
-    wrapsParChamp["sommes_percues"].style.display = (estUber || estPrive || estAnnulee || estUberCash) ? "none" : "";
+    const ancienMontantFacture = estFacture && frNum(ligne.sommes_percues) !== null && frNum(ligne.sommes_percues) > 0;
+    const factureSansMontant = estFacture && !estPrive && !ancienMontantFacture;
+    wrapsParChamp["sommes_percues"].style.display = (estUber || estPrive || estAnnulee || estUberCash || factureSansMontant) ? "none" : "";
+    mentionSommesFacture.style.display = factureSansMontant ? "" : "none";
+    const payeurF = payeurFactureMaj(ligne.numero_dossier);
+    mentionSommesFacture.textContent = "Sommes perçues : 🧾 FACTURE — " + (payeurF || "choisis pour qui ci-dessous") + " — sera facturé, hors recette du jour";
+    wrapRecu.style.display = (!estFacture && !estUber && !estUberCash && !estAnnulee && !estPrive) ? "" : "none";
+    if (div._majEtatPrix) div._majEtatPrix();
     mentionSommesUberCash.style.display = estUberCash ? "" : "none";
     const ancienneSomme = frNum(ligne.sommes_percues);
     mentionSommesUberCash.textContent = "Sommes perçues : Uber payé cash — ne compte pas dans la recette"
@@ -4833,6 +4906,31 @@ function construireLigneHtml(ligne, numeroAffiche) {
   inputNumeroFacture.addEventListener("change", () => enregistrerPayeur(lirePayeurFacture(ligne.numero_dossier).payeur, inputNumeroFacture.value));
   wrapsParChamp["mode_paiement"].insertAdjacentElement("afterend", blocPayeur);
   div._rendrePayeurs = rendrePayeurs;
+
+  // ---- 🧾 Le client veut un reçu / une facture (paiement encaissé normalement : ne change rien à la recette) ----
+  const wrapRecu = document.createElement("label");
+  wrapRecu.className = "wrap-recu";
+  wrapRecu.style.gridColumn = "1 / -1";
+  wrapRecu.innerHTML = `<input type="checkbox" class="input-recu" data-champ="recu_demande"> <span>🧾 Le client veut un reçu / une facture</span>`;
+  const inputRecu_ = wrapRecu.querySelector(".input-recu");
+  inputRecu_.checked = !!ligne.recu_demande;
+  inputRecu_.disabled = ligneVerrouillee;
+  inputRecu_.addEventListener("click", ev => ev.stopPropagation());
+  inputRecu_.addEventListener("change", async () => {
+    const val = inputRecu_.checked;
+    const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+    const { data: lsrv, error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id },
+      payload: { recu_demande: val }, select: "*", single: "maybe", optimiste: Object.assign({}, ligne, { recu_demande: val }),
+      label: "Course n° " + numeroAffiche + " : reçu demandé" });
+    if (error || !lsrv) {
+      inputRecu_.checked = !!ligne.recu_demande;
+      if (etatEl) { etatEl.textContent = "⚠️ Non enregistré — réessaie"; etatEl.className = "etat-sauvegarde erreur"; }
+      return;
+    }
+    Object.assign(ligne, lsrv);
+    if (etatEl) { etatEl.textContent = "✓ Enregistré"; etatEl.className = "etat-sauvegarde ok"; setTimeout(() => { if (etatEl.textContent === "✓ Enregistré") etatEl.textContent = ""; }, 2500); }
+  });
+  blocPayeur.insertAdjacentElement("afterend", wrapRecu);
   rendrePayeurs();
 
   // ---- Mode de paiement : GRILLE de boutons (tout visible, sans défilement) ----
@@ -4909,6 +5007,93 @@ function construireLigneHtml(ligne, numeroAffiche) {
     pucesARafraichir.push(rendre);
   })();
 
+  // ---- Type de course et motif du forfait : GRILLES de boutons (même technique que le paiement) ----
+  // Le <select> caché reste la source de vérité : un bouton met sa valeur et déclenche le même « change » qu'avant.
+  // cleAutre = "__ecrire__" : le bouton « Autre » ouvre la saisie libre existante (ajouterTexteLibre).
+  // valeursSysteme : valeurs fixées par l'app (uber, relais…) → aucun bouton coloré, jamais prises pour un texte libre.
+  function creerGrilleSelect(champ, classe, BOUTONS, cleAutre, texteAutre, secondaires, valeursSysteme) {
+    const select = inputsParChamp[champ];
+    const zone = document.createElement("div");
+    zone.className = classe;
+    zone.dataset.grille = champ;
+    const zoneSec = document.createElement("div");
+    zoneSec.className = "type-secondaire";
+    const CLES = BOUTONS.map(b => b.cle);
+    // Valeur touchée en attente (ex. confirmation « trajet privé » dans la page) : le rafraîchissement ne doit pas l'écraser
+    let enAttente = null;
+    function choisir(v) {
+      enAttente = v;
+      if (v === "__ecrire__") { select.value = "__ecrire__"; select.dispatchEvent(new Event("change")); rafraichirPuces(); return; }
+      if ((ligne[champ] != null ? String(ligne[champ]) : "") === v) { select.value = v; rafraichirPuces(); return; }
+      select.value = v;
+      select.dispatchEvent(new Event("change"));
+      rafraichirPuces();
+    }
+    function rendre() {
+      const enBase = ligne[champ] != null ? String(ligne[champ]) : "";
+      if (enAttente === enBase) enAttente = null;
+      if (select.value !== enBase && select.value !== enAttente && [...select.options].some(o => o.value === enBase)) select.value = enBase;
+      const libre = enBase && !CLES.includes(enBase) && !(secondaires || []).some(b => b.cle === enBase) && !(valeursSysteme || []).includes(enBase);
+      const liste = BOUTONS.slice();
+      if (cleAutre) liste.push({ cle: cleAutre, texte: texteAutre });
+      zone.replaceChildren(...liste.map(b => {
+        const estAutre = cleAutre && b.cle === cleAutre;
+        const choisie = b.cle === enBase || (estAutre && libre);
+        const bouton = creerPuce(estAutre && libre ? "✏️ " + enBase : b.texte, choisie, select.disabled, () => choisir(b.cle));
+        bouton.dataset.valeur = b.cle;
+        if (estAutre) bouton.classList.add("bouton-autre");
+        return bouton;
+      }));
+      if (secondaires) {
+        zoneSec.replaceChildren(...secondaires.map(b => {
+          const bouton = creerPuce(b.texte, false, select.disabled, () => choisir(b.cle));
+          bouton.dataset.valeur = b.cle;
+          return bouton;
+        }));
+        const autreChoisi = enBase === cleAutre || libre;
+        zoneSec.style.display = (select.disabled || !autreChoisi) ? "none" : "";
+      }
+    }
+    rendre();
+    select.style.display = "none";
+    select.insertAdjacentElement("afterend", zone);
+    if (secondaires) zone.insertAdjacentElement("afterend", zoneSec);
+    pucesARafraichir.push(rendre);
+  }
+  // Type de course. 'a_l_heure', 'medical', 'scolaire' suivent toutes les règles de « normale ».
+  // Uber se choisit seulement par la grille de paiement : une course Uber (ou relais) garde son type, sans bouton coloré.
+  const TYPES_SYSTEME = ["uber", "relais", "relais_fin"];
+  creerGrilleSelect("type_course", "grille-type", [
+    { cle: "normale", texte: "🚖 Normale (taximètre)" }, { cle: "forfait", texte: "💶 Forfait" },
+    { cle: "navette_aeroport", texte: "✈️ Navette aéroport" }, { cle: "a_l_heure", texte: "⏱️ À l'heure (mise à disposition)" },
+    { cle: "medical", texte: "🏥 Transport médical / hôpital" }, { cle: "scolaire", texte: "🏫 Transport scolaire" },
+    { cle: "prive", texte: "🚗 Trajet privé" }
+  ], "__ecrire__", "✏️ Autre…", null, TYPES_SYSTEME);
+  (function () {
+    const z = wrapsParChamp["type_course"].querySelector(".grille-type");
+    const mention = document.createElement("div");
+    mention.className = "mention-type-autre";
+    mention.style.cssText = "font-size:.8rem; font-weight:700; color:#55605a; margin:2px 0 4px;";
+    z.insertAdjacentElement("afterend", mention);
+    const LIB = { uber: "🚕 Course Uber (choisie par le paiement)", relais: "🔁 Relais", relais_fin: "🔁 Fin de relais" };
+    pucesARafraichir.push(() => {
+      const t = ligne.type_course != null ? String(ligne.type_course) : "";
+      mention.textContent = TYPES_SYSTEME.includes(t) ? "Type actuel : " + LIB[t] : "";
+      mention.style.display = mention.textContent ? "" : "none";
+    });
+  })();
+  creerGrilleSelect("motif_forfait", "grille-motifs", [
+    { cle: "Forfait gare", texte: "🚉 Forfait gare" },
+    { cle: "Client habitué (tarif régulier)", texte: "⭐ Client habitué" },
+    { cle: "Payé à l'avance", texte: "💶 Payé à l'avance" },
+    { cle: "Prix convenu à la réservation", texte: "🤝 Prix convenu à la réservation" },
+    { cle: "Aéroport / longue distance", texte: "✈️ Aéroport / longue distance" },
+    { cle: "Convention entreprise / école", texte: "🏫 Convention entreprise / école" },
+    { cle: "Tarif de nuit convenu", texte: "🌙 Tarif de nuit convenu" },
+    { cle: "Événement / mariage", texte: "🎉 Événement / mariage" },
+    { cle: "Livraison / colis", texte: "📦 Livraison / colis" }
+  ], "Autre", "✏️ Autre", [{ cle: "__ecrire__", texte: "✏️ Écrire mon propre motif…" }]);
+
   function rafraichirPuces() { pucesARafraichir.forEach(f => f()); rendrePayeurs(); }
   requestAnimationFrame(() => pucesARafraichir.forEach(f => f()));
   chargerPayeursRecents();
@@ -4922,11 +5107,16 @@ function construireLigneHtml(ligne, numeroAffiche) {
   function majEtatPrix() {
     const m = inputsParChamp["motif_sans_prix"].value;
     const motif = (m && m !== "__ecrire__") ? m : "";
+    // Facture sans prix : « FACTURE » (gris foncé, jamais rouge) — le chauffeur peut quand même écrire le montant
+    const facture = !motif && inputsParChamp["mode_paiement"].value === "facture";
+    const prixVide = inputsParChamp["prix_taximetre"].value.trim() === "";
     wrapsParChamp["prix_taximetre"].classList.toggle("prix-sans-prix", !!motif);
-    libellePasDePrix.textContent = motif ? "Pas de prix : " + motif : "";
-    libellePasDePrix.style.display = motif ? "" : "none";
-    inputsParChamp["prix_taximetre"].placeholder = motif ? "Pas de prix (" + motif + ")" : "";
+    wrapsParChamp["prix_taximetre"].classList.toggle("prix-facture", facture && prixVide);
+    libellePasDePrix.textContent = motif ? "Pas de prix : " + motif : (facture && prixVide ? "🧾 FACTURE — prix facultatif (écris-le si tu le connais)" : "");
+    libellePasDePrix.style.display = (motif || (facture && prixVide)) ? "" : "none";
+    inputsParChamp["prix_taximetre"].placeholder = motif ? "Pas de prix (" + motif + ")" : (facture ? "FACTURE" : "");
   }
+  div._majEtatPrix = majEtatPrix;
   inputsParChamp["prix_taximetre"].addEventListener("input", () => {
     // Taper un prix remet le motif sur « — (il y a un prix) — » (enregistré au changement du prix)
     if (inputsParChamp["prix_taximetre"].value.trim() !== "" && inputsParChamp["motif_sans_prix"].value !== "") {
@@ -4934,6 +5124,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
       majEtatPrix();
       rafraichirPuces();
     }
+    majEtatPrix();
   });
   majEtatPrix();
 
@@ -5266,18 +5457,25 @@ function celluleSommesImpression(l, fmt) {
   const libMode = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH", facture: libFacture, annulee: "ANNULÉE" }[l.mode_paiement]
     || (l.mode_paiement && l.mode_paiement !== "uber" ? esc(l.mode_paiement).toUpperCase() : null);
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
-  const compte = n !== null && !isNaN(n) && n > 0 && !estUber && l.type_course !== "prive" && l.mode_paiement !== "uber_cash";
+  const recu = (l.recu_demande && l.mode_paiement !== "facture") ? petit("(reçu)") : "";
+  const compte = n !== null && !isNaN(n) && n > 0 && !estUber && l.type_course !== "prive" && l.mode_paiement !== "uber_cash" && l.mode_paiement !== "facture";
   if (l.mode_paiement === "uber_cash") return `<span style="font-weight:bold; font-size:8px;">UBER CASH</span>`;
+  // 🧾 Facture : « FACTURE — TAXI VERT » (jamais de montant ici, hors recette) ; ancien montant noté → rappelé en petit
+  if (l.mode_paiement === "facture" && l.type_course !== "prive") {
+    const numF = lirePayeurFacture(l.numero_dossier).numero;
+    const ancien = (n !== null && !isNaN(n) && n > 0) ? petit((Number.isInteger(n) ? String(n) : n.toFixed(2)) + " €") : "";
+    return `<span style="font-weight:bold; font-size:8px;">${esc(texteSommesFacture(l))}</span>` + (numF ? petit("n° " + esc(numF)) : "") + ancien;
+  }
   if (compte) {
     const montant = Number.isInteger(n) ? String(n) : n.toFixed(2);
-    return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "");
+    return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "") + recu;
   }
   if (l.sommes_texte) return `<span style="font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
   if (l.mode_paiement === "facture") return libFacture;
   if (l.motif_sans_prix && n === null) return "—";
   if (l.mode_paiement === "annulee") return "ANNULÉE";
   if (estUber) return "Payé sur Uber";
-  return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "");
+  return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "") + recu;
 }
 // ================== IMPRESSION COMPATIBLE IPHONE ==================
 // Safari (iPhone) bloque window.open s'il n'est pas appelé tout de suite dans le clic (pas après un
@@ -5667,10 +5865,16 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
           if (estUber) return "Uber";
           if (l.motif_sans_prix) return `<span style="font-size:8px; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
           if (l.mode_paiement === "annulee") return "—";
+          if (l.mode_paiement === "facture") {
+            // 🧾 Facture : le montant s'il est connu, sinon « FACTURE »
+            const pF = frNum(l.prix_taximetre);
+            if (pF === null) return `<b style="font-size:8px;">FACTURE</b>`;
+            return esc(l.prix_taximetre) + (l.type_course === "forfait" ? `<br><span style="font-size:8px;">Forfait${l.motif_forfait ? " — " + esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait) : ""}</span>` : "");
+          }
           if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? `<span style="font-size:8px; font-weight:bold;">${esc(l.type_course)}</span>` : ""));
+          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? `<span style="font-size:8px; font-weight:bold;">${esc(libelleTypeCourse(l.type_course))}</span>` : ""));
           const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
-          const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; font-weight:bold;">${esc(l.type_course)}</span>` : "";
+          const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; font-weight:bold;">${esc(libelleTypeCourse(l.type_course))}</span>` : "";
           return esc(l.prix_taximetre) + typeLibre;
         })()}</td>
         <td>${celluleSommesImpression(l, fmtVal)}</td>

@@ -705,6 +705,9 @@ window.onerror = function(msg, url, line, col, err) {
   .pb-jours-fa td:nth-child(2){ color:var(--gris); text-align:center; }
   .pb-jours-fa td:last-child{ text-align:right; font-weight:700; white-space:nowrap; }
   .pb-vide-fa{ color:var(--gris); text-align:center; padding:20px 0; }
+  .table-recus-fa{ width:100%; border-collapse:collapse; font-size:.8rem; margin-top:6px; background:#fff; border:1px solid #dcdcda; border-radius:8px; }
+  .table-recus-fa td{ padding:6px; border-bottom:1px solid #eee; vertical-align:top; color:#222; cursor:pointer; }
+  .table-recus-fa small{ color:#666; }
   .totaux-recette-fa{ display:flex; flex-wrap:wrap; gap:4px 14px; font-weight:700; font-size:.85rem; margin-bottom:8px; }
   .totaux-recette-fa .tr-recette{ color:var(--vert); }
   .totaux-recette-fa .tr-pourboires{ color:#8a5a00; }
@@ -1259,6 +1262,7 @@ window.onerror = function(msg, url, line, col, err) {
   <button type="button" id="btn-vehicules-du-jour-fa">🚗 Véhicules du jour — quelle voiture pour quel chauffeur</button>
   <div id="demandes-chauffeurs-fa"></div>
   <div id="corbeille-fa" style="margin:0 0 12px;"><button type="button" id="btn-corbeille-fa" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cfcfcd; background:#f7f7f5; color:#333; font-weight:700; font-size:.9rem; cursor:pointer;">🗑️ Corbeille (courses retirées, 30 jours)</button><div id="liste-corbeille-fa" style="display:none;"></div></div>
+  <div id="recus-fa" style="margin:0 0 12px;"><button type="button" id="btn-recus-fa" style="width:100%; padding:10px; border-radius:10px; border:1px solid #9bb7d4; background:#eaf1f8; color:#1f3d5c; font-weight:700; font-size:.9rem; cursor:pointer;">🧾 Reçus / factures à faire (30 jours)</button><div id="liste-recus-fa" style="display:none;"></div></div>
   <div id="feuilles-sous-onglets">
     <button class="actif" id="btn-vue-jour-fa">📅 Vue du jour</button>
     <button id="btn-vue-historique-fa">📁 Historique par chauffeur</button>
@@ -8164,7 +8168,7 @@ async function chargerCaisse() {
   // Lignes de ces feuilles : détail de la caisse PAR FEUILLE (une voiture = une feuille)
   const idsFeuillesJour = (feuillesJour || []).map(f => f.id).filter(Boolean);
   const { data: lignesCaisseJour } = idsFeuillesJour.length
-    ? await supabase.from("lignes_feuille_route").select("feuille_route_id, sommes_percues, prix_taximetre, mode_paiement, type_course, pourboire").in("feuille_route_id", idsFeuillesJour)
+    ? await supabase.from("lignes_feuille_route").select("feuille_route_id, sommes_percues, prix_taximetre, mode_paiement, type_course, pourboire, motif_sans_prix").in("feuille_route_id", idsFeuillesJour)
     : { data: [] };
   const feuillesParChauffeur = {};
   (feuillesJour || []).forEach(f => {
@@ -8216,7 +8220,8 @@ async function chargerCaisse() {
       }, 0);
     }
     const totalEncaisseApp = totalCash + somme(coursesCarte) + somme(coursesFacture) + somme(coursesCheque) + somme(coursesQr) + totalUber + totalUberCash + totalUberCarte;
-    const recetteHorsUber = totalCash + somme(coursesCarte) + somme(coursesFacture) + somme(coursesCheque) + somme(coursesQr);
+    // 🧾 Factures : hors recette (déclarées à part sur la facture), comme Uber
+    const recetteHorsUber = totalCash + somme(coursesCarte) + somme(coursesCheque) + somme(coursesQr);
     const ecart = recetteTaximetre !== null ? (recetteTaximetre - totalEncaisseApp) : null;
     // Pourboires : toujours à part, jamais dans la recette (feuilles de route, sinon courses de l'app)
     const pourboiresJour = feuillesChauffeur.length
@@ -8233,17 +8238,22 @@ async function chargerCaisse() {
       const pb = pourboiresLignesFA(lf);
       // 🚕💵 Uber reçu en cash (hors recette) : montant noté dans « Prix taximètre »
       const uberCash = Math.round(lf.filter(l => !estLigneRelais(l) && l.mode_paiement === "uber_cash").reduce((s, l) => s + (montantUberImp(l) || 0), 0) * 100) / 100;
+      const fact = totalFacturesFA(lf);
       const nomV = (f.vehicules && f.vehicules.nom) || "Sans véhicule";
       const plaque = f.plaque || (f.vehicules && f.vehicules.plaque) || "";
-      return { f, recette, especes, pb, uberCash, nb: lf.filter(l => !estLigneRelais(l)).length,
+      return { f, recette, especes, pb, uberCash, fact, nb: lf.filter(l => !estLigneRelais(l)).length,
         libelle: `${/trafic|vito|transit|vivaro|space|van|sprinter/i.test(nomV) ? "🚐" : "🚗"} ${nomV}${plaque ? " " + plaque : ""}`,
         heures: `${f.heure_debut ? String(f.heure_debut).slice(0, 5) : "--:--"} → ${f.heure_fin ? String(f.heure_fin).slice(0, 5) : "en cours"}` };
     });
+    // Factures du jour : prix connus des lignes des feuilles (sinon prix des courses de l'app)
+    const factJour = detailFeuilles.length
+      ? detailFeuilles.reduce((t, d) => ({ total: Math.round((t.total + d.fact.total) * 100) / 100, sansPrix: t.sansPrix + d.fact.sansPrix, nb: t.nb + d.fact.nb }), { total: 0, sansPrix: 0, nb: 0 })
+      : { total: Math.round(somme(coursesFacture) * 100) / 100, sansPrix: coursesFacture.filter(c => !(parseFloat(c.prix) > 0)).length, nb: coursesFacture.length };
     const totD = detailFeuilles.reduce((t, d) => ({ recette: t.recette + d.recette, especes: t.especes + d.especes, pb: t.pb + d.pb, nb: t.nb + d.nb }), { recette: 0, especes: 0, pb: 0, nb: 0 });
     const blocParFeuille = detailFeuilles.length ? `
       <div class="caisse-par-feuille" style="margin:6px 0 10px; border:1px solid #dcdcda; border-radius:10px; padding:8px 10px; background:#fafaf8;">
         <div style="font-weight:800; font-size:.85rem; margin-bottom:4px;">🧾 Par feuille de route (une voiture = une feuille)</div>
-        ${detailFeuilles.map(d => `<div class="caisse-ligne caisse-feuille-vehicule" data-feuille-id="${esc(d.f.id)}"><span style="flex:1; min-width:0;"><b>${esc(d.libelle)}</b> · ${esc(d.heures)} · ${d.f.verrouillee || d.f.signee ? "✅ signée" : "📝 à compléter"}<br><small>${d.nb} course(s) · espèces ${d.especes.toFixed(2)} € · 💶 pourboires ${d.pb.toFixed(2)} €</small><br><small class="uber-cash-feuille-fa" style="font-weight:800; color:#5c4500;">🚕💵 Uber reçu en cash (hors recette) : ${d.uberCash.toFixed(2)} €</small></span><b style="white-space:nowrap; margin-left:8px;">${d.recette.toFixed(2)} €</b></div>`).join("")}
+        ${detailFeuilles.map(d => `<div class="caisse-ligne caisse-feuille-vehicule" data-feuille-id="${esc(d.f.id)}"><span style="flex:1; min-width:0;"><b>${esc(d.libelle)}</b> · ${esc(d.heures)} · ${d.f.verrouillee || d.f.signee ? "✅ signée" : "📝 à compléter"}<br><small>${d.nb} course(s) · espèces ${d.especes.toFixed(2)} € · 💶 pourboires ${d.pb.toFixed(2)} €</small><br><small class="uber-cash-feuille-fa" style="font-weight:800; color:#5c4500;">🚕💵 Uber reçu en cash (hors recette) : ${d.uberCash.toFixed(2)} €</small><br><small class="factures-feuille-fa" style="font-weight:800; color:#1f3d5c;">🧾 Factures (hors recette, déclarées à part) : ${texteTotalFacturesFA(d.fact)}</small></span><b style="white-space:nowrap; margin-left:8px;">${d.recette.toFixed(2)} €</b></div>`).join("")}
         ${detailFeuilles.length > 1 ? `<div class="caisse-ligne caisse-total-chauffeur" style="border-top:2px solid #cfcfcd; font-weight:800;"><span style="flex:1; min-width:0;">Total ${esc(ch.nom || "chauffeur")} (${detailFeuilles.length} feuilles)<br><small>espèces ${totD.especes.toFixed(2)} € · 💶 pourboires ${totD.pb.toFixed(2)} €</small></span><b style="white-space:nowrap; margin-left:8px;">${totD.recette.toFixed(2)} €</b></div>` : ""}
       </div>` : "";
 
@@ -8255,13 +8265,13 @@ async function chargerCaisse() {
       <div class="caisse-ligne"><span>Fond de caisse du matin</span><b>${montantFond.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>💵 Cash — ${coursesCash.length} course(s)</span><b>${totalCash.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>💳 Carte — ${coursesCarte.length} course(s)</span><b>${somme(coursesCarte).toFixed(2)} €</b></div>
-      <div class="caisse-ligne"><span>🧾 Facture — ${coursesFacture.length} course(s)</span><b>${somme(coursesFacture).toFixed(2)} €</b></div>
+      <div class="caisse-ligne caisse-factures-fa" style="font-weight:800; color:#1f3d5c;"><span>🧾 Factures (hors recette, déclarées à part) — ${factJour.nb} course(s)</span><b>${texteTotalFacturesFA(factJour)}</b></div>
       <div class="caisse-ligne"><span>🎫 Chèque social — ${coursesCheque.length} course(s)</span><b>${somme(coursesCheque).toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>📱 QR / virement — ${coursesQr.length} course(s)</span><b>${somme(coursesQr).toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>🚕 Uber (encaissé par Uber, hors caisse) — ${coursesUber.length} course(s)</span><b>${totalUber.toFixed(2)} €</b></div>
       <div class="caisse-ligne"><span>🚕💵 Uber payé en cash (dans la caisse, hors recette) — ${coursesUberCash.length} course(s)</span><b>${totalUberCash.toFixed(2)} €</b></div>
       ${coursesUberCarte.length ? `<div class="caisse-ligne"><span>🚕💳 Uber payé par carte (hors recette) — ${coursesUberCarte.length} course(s)</span><b>${totalUberCarte.toFixed(2)} €</b></div>` : ""}
-      <div class="caisse-ligne"><span>💰 Recette (hors Uber)</span><b>${recetteHorsUber.toFixed(2)} €</b></div>
+      <div class="caisse-ligne"><span>💰 Recette (hors Uber et factures)</span><b>${recetteHorsUber.toFixed(2)} €</b></div>
       <div class="caisse-ligne caisse-pourboires"><span>💶 Pourboires (hors recette)</span><b style="color:#8a5a00;">${pourboiresJour.toFixed(2)} €</b></div>
       <div class="caisse-total"><span>Caisse actuelle (espèces)</span><span>${caisseActuelle.toFixed(2)} €</span></div>
       ${recetteTaximetre !== null ? `
@@ -8400,7 +8410,8 @@ const champsLigneFA = [
   ["motif_sans_prix", "Pas de prix ? Choisis le motif", "select_sans_prix"],
   ["sommes_percues", "Sommes perçues (€)", "number"],
   ["mode_paiement", "Mode de paiement", "select"],
-  ["numero_dossier", "N° de dossier (assurance)", "text"]
+  ["numero_dossier", "N° de dossier (assurance)", "text"],
+  ["recu_demande", "🧾 Reçu / facture demandé(e) par le client", "checkbox"]
 ];
 
 document.getElementById("fa-date").value = dateLocaleISO();
@@ -9551,6 +9562,46 @@ async function chargerCorbeilleFA() {
     try { chargerFeuillesAdmin(); } catch (_) {}
   }));
 }
+// ================== 🧾 REÇUS / FACTURES À FAIRE (30 derniers jours) ==================
+// Courses en mode « facture » OU avec « reçu demandé » : date, chauffeur, trajet, payeur, prix.
+async function chargerRecusFA() {
+  const zone = document.getElementById("liste-recus-fa");
+  zone.innerHTML = '<p style="color:var(--gris); font-size:.85rem; margin:8px 2px;">Chargement…</p>';
+  const debut = new Date(); debut.setDate(debut.getDate() - 30);
+  const { data, error } = await supabase.from("lignes_feuille_route")
+    .select("id, embarquement_lieu, debarquement_lieu, embarquement_heure, prix_taximetre, sommes_percues, mode_paiement, numero_dossier, recu_demande, type_course, feuille_route_id, feuilles_route!inner(date_service, profils:chauffeur_id(nom))")
+    .or("mode_paiement.eq.facture,recu_demande.eq.true")
+    .gte("feuilles_route.date_service", dateLocaleISO(debut))
+    .order("created_at", { ascending: false }).limit(300);
+  if (error) { zone.innerHTML = `<p style="color:var(--rouge); font-size:.85rem;">Erreur : ${esc(error.message)}</p>`; return; }
+  const liste = (data || []).filter(l => l.type_course !== "prive")
+    .sort((a, b) => String((b.feuilles_route || {}).date_service || "").localeCompare(String((a.feuilles_route || {}).date_service || "")) || String(b.embarquement_heure || "").localeCompare(String(a.embarquement_heure || "")));
+  document.getElementById("btn-recus-fa").textContent = `🧾 Reçus / factures à faire (30 jours)${liste.length ? " · " + liste.length : ""}`;
+  if (!liste.length) { zone.innerHTML = '<p style="color:var(--gris); font-size:.85rem; margin:8px 2px;">Aucune facture ni reçu demandé sur les 30 derniers jours.</p>'; return; }
+  const court = v => String(v || "").split(",")[0].trim() || "—";
+  zone.innerHTML = `<table class="table-recus-fa">${liste.map(l => {
+    const f = l.feuilles_route || {};
+    const estF = l.mode_paiement === "facture";
+    const payeur = estF ? (lirePayeurFacture(l.numero_dossier).payeur || "payeur ?") : "Reçu (" + (({ cash: "cash", carte: "carte", qr: "QR", cheque_social: "chèque" })[l.mode_paiement] || l.mode_paiement || "?") + ")";
+    const p = parseFloat(l.prix_taximetre), s = parseFloat(l.sommes_percues);
+    const prix = p > 0 ? eurosFr(p) : (s > 0 ? eurosFr(s) : (estF ? "FACTURE" : "—"));
+    return `<tr data-id="${esc(l.id)}" data-date="${esc(f.date_service || "")}"><td>${f.date_service ? esc(jjmmFA(f.date_service)) : "?"}${l.embarquement_heure ? "<br><small>" + esc(String(l.embarquement_heure).slice(0, 5)) + "</small>" : ""}</td>
+      <td><b>${esc((f.profils && f.profils.nom) || "Chauffeur")}</b><br><small>${esc(court(l.embarquement_lieu))} → ${esc(court(l.debarquement_lieu))}</small></td>
+      <td>${estF ? "🧾 " : "🧾✓ "}${esc(payeur)}</td><td style="text-align:right; white-space:nowrap;"><b>${esc(prix)}</b></td></tr>`;
+  }).join("")}</table>`;
+  zone.querySelectorAll("tr[data-id]").forEach(tr => tr.addEventListener("click", async () => {
+    if (tr.dataset.date) document.getElementById("fa-date").value = tr.dataset.date;
+    await chargerFeuillesAdmin(true);
+    const el = document.querySelector(`.ligne-admin[data-ligne-id="${tr.dataset.id}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }));
+}
+document.getElementById("btn-recus-fa").addEventListener("click", () => {
+  const zone = document.getElementById("liste-recus-fa");
+  const ouvrir = zone.style.display === "none";
+  zone.style.display = ouvrir ? "block" : "none";
+  if (ouvrir) chargerRecusFA();
+});
 document.getElementById("btn-corbeille-fa").addEventListener("click", () => {
   const zone = document.getElementById("liste-corbeille-fa");
   const ouvrir = zone.style.display === "none";
@@ -9620,11 +9671,27 @@ function recetteLignesFA(listeLignes) {
     const somme = l.sommes_percues == null || l.sommes_percues === "" ? null : parseFloat(l.sommes_percues);
     // Uber / Uber cash / privé : jamais (TVA déclarée par Uber) ; annulée : seulement si une somme est notée
     if (estLigneUberImp(l) || l.type_course === "prive" || l.type_course === "relais" || l.type_course === "relais_fin") return s;
+    // 🧾 Facture : jamais dans la recette (déclarée à part sur la facture), comme Uber
+    if (l.mode_paiement === "facture") return s;
     if (l.mode_paiement === "annulee" && !(somme > 0)) return s;
     // Uniquement les sommes perçues : sans somme notée, la ligne compte 0 € (pas de repli taximètre)
     return s + ((somme !== null && !isNaN(somme)) ? somme : 0);
   }, 0) * 100) / 100;
 }
+// 🧾 Factures d'une liste de lignes : total des prix connus (prix taximètre ; ancien montant noté en secours) + nb sans prix
+function totalFacturesFA(listeLignes) {
+  const r = { total: 0, sansPrix: 0, nb: 0 };
+  (listeLignes || []).forEach(l => {
+    if (!l || l.mode_paiement !== "facture" || l.type_course === "prive" || estLigneRelais(l)) return;
+    r.nb++;
+    const p = parseFloat(l.prix_taximetre), s = parseFloat(l.sommes_percues);
+    const m = p > 0 ? p : (s > 0 ? s : null);
+    if (m !== null) r.total += m; else r.sansPrix++;
+  });
+  r.total = Math.round(r.total * 100) / 100;
+  return r;
+}
+function texteTotalFacturesFA(r) { return r.total.toFixed(2) + " €" + (r.sansPrix ? " + " + r.sansPrix + " sans prix" : ""); }
 function pourboiresLignesFA(listeLignes) {
   return Math.round((listeLignes || []).reduce((s, l) => s + (l && Number(l.pourboire) > 0 ? Number(l.pourboire) : 0), 0) * 100) / 100;
 }
@@ -9775,7 +9842,10 @@ function majProblemesFA(lignes, conteneurLignes, zoneAlertes, ouvrirFx) {
 // Jamais bloquant : « Passer » est toujours possible.
 const FX_MODES = [["cash", "💵 Cash"], ["carte", "💳 Carte"], ["qr", "📱 Bancontact / QR"], ["facture", "🧾 Facture"], ["cheque_social", "🎫 Chèque social"],
   ["uber", "🚕 Uber (payé dans l'app)"], ["uber_cash", "🚕💵 Uber payé cash"], ["uber_carte", "🚕💳 Uber payé carte"], ["annulee", "❌ Annulée / client absent"]];
-const FX_MOTIFS_FORFAIT = ["Forfait gare", "Client habitué (tarif régulier)", "Payé à l'avance", "Prix convenu à la réservation", "Aéroport / longue distance", "Convention entreprise / école", "Autre"];
+// Types de course ajoutés (se comportent exactement comme « normale ») : libellé lisible pour l'impression / le résumé
+const LIBELLES_TYPES_COURSE = { a_l_heure: "À l'heure", medical: "Médical", scolaire: "Scolaire" };
+function libelleTypeCourse(t) { return LIBELLES_TYPES_COURSE[t] || t; }
+const FX_MOTIFS_FORFAIT = ["Forfait gare", "Client habitué (tarif régulier)", "Payé à l'avance", "Prix convenu à la réservation", "Aéroport / longue distance", "Convention entreprise / école", "Tarif de nuit convenu", "Événement / mariage", "Livraison / colis", "Autre"];
 const FX_LIB = {
   index_depart: "Index de départ", embarquement_index: "Index d'embarquement (client à bord)", debarquement_index: "Index d'arrivée (débarquement)",
   embarquement_heure: "Heure d'embarquement", debarquement_heure: "Heure d'arrivée (débarquement)",
@@ -11373,6 +11443,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         });
       };
       rendreTexte();
+      wrap._rendreTexte = rendreTexte;
       wrap.appendChild(zoneTexte);
     }
 
@@ -11415,6 +11486,9 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         <option value="Prix convenu à la réservation">Prix convenu à la réservation</option>
         <option value="Aéroport / longue distance">Aéroport / longue distance</option>
         <option value="Convention entreprise / école">Convention entreprise / école</option>
+        <option value="Tarif de nuit convenu">Tarif de nuit convenu</option>
+        <option value="Événement / mariage">Événement / mariage</option>
+        <option value="Livraison / colis">Livraison / colis</option>
         <option value="Autre">Autre</option>
       `;
       ajouterTexteLibre(input, ligne.motif_forfait);
@@ -11423,6 +11497,9 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         <option value="normale">Course normale (taximètre)</option>
         <option value="forfait">Forfait</option>
         <option value="navette_aeroport">Navette aéroport</option>
+        <option value="a_l_heure">⏱️ À l'heure (mise à disposition)</option>
+        <option value="medical">🏥 Transport médical / hôpital</option>
+        <option value="scolaire">🏫 Transport scolaire</option>
         <option value="uber">🚕 Course Uber</option>
         <option value="prive">🔒 Trajet privé (non facturé)</option>
       `;
@@ -11466,6 +11543,21 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         if (m !== null) majFA.prix_taximetre = m;
         majFA.sommes_percues = null;
       }
+      // 🧾 Facture : « Sommes perçues » sans montant = « FACTURE — <PAYEUR> » (même règle que l'app chauffeur)
+      if (champ === "mode_paiement" || champ === "numero_dossier") {
+        const modeFinal = champ === "mode_paiement" ? valeur : ligne.mode_paiement;
+        const dossierFinal = champ === "numero_dossier" ? valeur : ligne.numero_dossier;
+        if (modeFinal === "facture") {
+          const pF = payeurFactureMaj(dossierFinal);
+          const auto = pF ? "FACTURE — " + pF : null;
+          if ((ligne.sommes_texte || null) !== auto && (auto || estTexteFactureAuto(ligne.sommes_texte))) majFA.sommes_texte = auto;
+          if (champ === "mode_paiement" && ligne.mode_paiement !== "facture") {
+            const sF = parseFloat(ligne.sommes_percues);
+            if (sF > 0 && (ligne.prix_taximetre == null || ligne.prix_taximetre === "") && !ligne.motif_sans_prix) majFA.prix_taximetre = sF;
+            if (ligne.sommes_percues != null) majFA.sommes_percues = null;
+          }
+        } else if (champ === "mode_paiement" && estTexteFactureAuto(ligne.sommes_texte)) majFA.sommes_texte = null;
+      }
       const { data: ligneServeur, error } = await supabase
         .from("lignes_feuille_route").update(majFA).eq("id", ligne.id).select("*").maybeSingle();
       if (error) { alert("Erreur : " + error.message); return; }
@@ -11480,7 +11572,8 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         Object.assign(ligne, majFA);
       }
       if (estLigneUberImp(ligne) && ligne.prix_taximetre == null && montantUberImp(ligne) !== null) inputsParChampAdmin["prix_taximetre"].value = String(montantUberImp(ligne));
-      if (estPaiement || estTypeCourse) appliquerVisibilitePaiementAdmin();
+      if ("sommes_texte" in majFA && wrapsParChampAdmin["sommes_percues"]._rendreTexte) wrapsParChampAdmin["sommes_percues"]._rendreTexte();
+      if (estPaiement || estTypeCourse || champ === "numero_dossier" || champ === "prix_taximetre") appliquerVisibilitePaiementAdmin();
       // Recette / totaux de la feuille remis à jour tout de suite (recalculés aussi dans la base)
       if (ctx.onModif) ctx.onModif();
     });
@@ -11612,6 +11705,11 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   mentionSommesUberCashFA.className = "mention-uber";
   mentionSommesUberCashFA.textContent = "Sommes perçues : Uber payé cash — ne compte pas dans la recette";
   wrapsParChampAdmin["sommes_percues"].insertAdjacentElement("afterend", mentionSommesUberCashFA);
+  // 🧾 Facture : « Sommes perçues » = « FACTURE — <payeur> » (sans montant, hors recette)
+  const mentionSommesFactureFA = document.createElement("div");
+  mentionSommesFactureFA.className = "mention-uber mention-facture-fa";
+  mentionSommesFactureFA.style.cssText = "color:#1f3d5c; background:#eaf1f8; border-color:#9bb7d4; font-weight:800;";
+  wrapsParChampAdmin["sommes_percues"].insertAdjacentElement("afterend", mentionSommesFactureFA);
   div.appendChild(grille);
 
   function appliquerVisibilitePaiementAdmin() {
@@ -11625,7 +11723,9 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     const estForfait = typeCourse === "forfait";
     wrapsParChampAdmin["motif_forfait"].style.display = estForfait ? "" : "none";
     // Uber : une case « Prix de la course Uber (€) » ; « Sommes perçues » reste vide (hors recette)
-    wrapsParChampAdmin["prix_taximetre"].style.display = (estPrive || estAnnulee || estForfait) ? "none" : "";
+    wrapsParChampAdmin["prix_taximetre"].style.display = (estPrive || estAnnulee || (estForfait && !estFacture)) ? "none" : "";
+    // Facture sans prix : « FACTURE » dans la case (le montant reste saisissable)
+    inputsParChampAdmin["prix_taximetre"].placeholder = (estFacture && !famUber) ? "FACTURE" : "";
     if (labelPrixFA) labelPrixFA.textContent = mode === "uber_cash" ? "💵 Montant reçu en cash (Uber)" : famUber ? "Prix de la course Uber (€)" : textePrixFA;
     wrapsParChampAdmin["motif_sans_prix"].style.display = (famUber || estAnnulee || estForfait) ? "none" : "";
     wrapsParChampAdmin["sommes_percues"].style.display = (estFacture || famUber || estPrive || estAnnulee) ? "none" : "";
@@ -11636,6 +11736,11 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     mentionUber.style.display = estUber ? "" : "none";
     mentionPrive.style.display = estPrive ? "" : "none";
     mentionSommesUberCashFA.style.display = mode === "uber_cash" ? "" : "none";
+    mentionSommesFactureFA.style.display = (estFacture && !estPrive) ? "" : "none";
+    const pFA = payeurFactureMaj(inputsParChampAdmin["numero_dossier"].value);
+    mentionSommesFactureFA.textContent = "Sommes perçues : 🧾 FACTURE — " + (pFA || "payeur à indiquer (N° de dossier)") + " — sera facturé, hors recette du jour";
+    // Reçu demandé : pour une course encaissée normalement (pas facture / Uber / privé / annulée)
+    if (wrapsParChampAdmin["recu_demande"]) wrapsParChampAdmin["recu_demande"].style.display = (estFacture || famUber || estPrive || estAnnulee) && !ligne.recu_demande ? "none" : "";
   }
   appliquerVisibilitePaiementAdmin();
 
@@ -11760,6 +11865,10 @@ function texteFacture(v) {
   const p = lirePayeurFacture(v);
   return "FACTURE" + (p.payeur ? " " + p.payeur : "") + (p.numero ? " n° " + p.numero : "");
 }
+// 🧾 Facture : « FACTURE — TAXI VERT » (payeur sans le n°) pour « Sommes perçues »
+function payeurFactureMaj(v) { const p = lirePayeurFacture(v).payeur; return p ? p.toUpperCase() : ""; }
+function texteSommesFacture(l) { const p = payeurFactureMaj(l && l.numero_dossier); return "FACTURE" + (p ? " — " + p : ""); }
+function estTexteFactureAuto(t) { return /^FACTURE —/.test(String(t || "")); }
 // Colonne « Sommes perçues » à l'impression : si la ligne a un montant qui compte dans la recette
 // (même règle que recette_feuille), on imprime TOUJOURS le montant en gros, puis le mode / texte en petit.
 function celluleSommesImpression(l, fmt) {
@@ -11771,16 +11880,22 @@ function celluleSommesImpression(l, fmt) {
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
   // 🚕 Uber : JAMAIS de montant ici (le montant est dans « Prix taximètre ») → « UBER » + APP / CASH / CARTE
   if (estUber) return `<b>UBER</b>` + petit({ uber: "APP", uber_cash: "CASH", uber_carte: "CARTE" }[l.mode_paiement] || "APP");
+  const recu = (l.recu_demande && l.mode_paiement !== "facture") ? petit("(reçu)") : "";
+  // 🧾 Facture : « FACTURE — TAXI VERT » (jamais de montant ici, hors recette) ; ancien montant noté → rappelé en petit
+  if (l.mode_paiement === "facture" && l.type_course !== "prive") {
+    const numF = lirePayeurFacture(l.numero_dossier).numero;
+    return `<span style="font-weight:bold; font-size:8px;">${esc(texteSommesFacture(l))}</span>` + (numF ? petit("n° " + esc(numF)) : "") + (n !== null && !isNaN(n) && n > 0 ? petit(montantImp(n) + " €") : "");
+  }
   const compte = n !== null && !isNaN(n) && n > 0 && l.type_course !== "prive";
   if (compte) {
-    return `<b style="font-size:10pt;">${montantImp(n)}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "");
+    return `<b style="font-size:10pt;">${montantImp(n)}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "") + recu;
   }
   if (l.sommes_texte) return `<span style="font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
   if (l.mode_paiement === "facture") return libFacture;
   if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
   if (l.mode_paiement === "annulee") return "ANNULÉE";
   if (l.motif_sans_prix && n === null) return `<span style="font-size:8px; font-weight:bold;">${esc(texteMotifImp(l))}</span>`;
-  return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "");
+  return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "") + recu;
 }
 // Montant imprimé : 27 → « 27 », 27.5 → « 27,50 »
 function montantImp(n) { n = Number(n); return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(".", ","); }
@@ -11806,10 +11921,15 @@ function cellulePrixImpression(l) {
   if (l.motif_sans_prix) return noteP(esc(texteMotifImp(l)));
   if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
   if (l.mode_paiement === "annulee") return `<span style="font-size:8px; font-weight:bold;">ANNULÉE</span>`;
+  if (l.mode_paiement === "facture") {
+    // 🧾 Facture : le montant s'il est connu, sinon « FACTURE »
+    if (l.prix_taximetre == null || l.prix_taximetre === "") return `<b style="font-size:8px;">FACTURE</b>`;
+    return esc(l.prix_taximetre) + (l.type_course === "forfait" ? `<br><span style="font-size:8px;">Forfait${l.motif_forfait ? " — " + esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait) : ""}</span>` : "");
+  }
   if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-  if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? noteP(esc(l.type_course)) : ""));
+  if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? noteP(esc(libelleTypeCourse(l.type_course))) : ""));
   const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
-  const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br>${noteP(esc(l.type_course))}` : "";
+  const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br>${noteP(esc(libelleTypeCourse(l.type_course)))}` : "";
   return esc(l.prix_taximetre) + typeLibre;
 }
 // Ligne sous les totaux : « Courses Uber (hors recette, TVA par Uber) : N courses · dont X,XX € reçus en cash par le chauffeur »
@@ -12324,6 +12444,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
       <tr><td>Recette (somme des sommes perçues) : <b>${esc(eurosFr(totauxImpression.recette))}</b></td>
           <td>Total pourboires (hors recette) : <b>${esc(eurosFr(totauxImpression.pourboires))}</b></td></tr>
       ${ligneUberImpression(lignes)}
+      ${(() => { const r = totalFacturesFA(lignes); return r.nb ? `<tr><td colspan="2" style="text-align:left;">Factures (hors recette, déclarées à part) : <b>${r.nb} course${r.nb > 1 ? "s" : ""} · ${esc(texteTotalFacturesFA(r).replace(".", ","))}</b></td></tr>` : ""; })()}
     </table>
 
     </div>
