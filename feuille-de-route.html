@@ -1210,6 +1210,67 @@ window.onerror = function(msg, url, line, col, err) {
     lireFileCle(cleRefus()).forEach(function (x) { vus[x.table + ":" + ((x.match && x.match.id) || (x.payload && x.payload.id) || x.id)] = 1; });
     return Object.keys(vus).length;
   }
+  // ---- Modification d'une feuille DÉJÀ SIGNÉE / verrouillée (ou ligne disparue) ----
+  // Le serveur répond 200 mais ne touche aucune ligne (seule la centrale modifie une feuille signée) :
+  // sans ce contrôle, la modification serait réessayée sans fin (bandeau rouge permanent).
+  // On vérifie UNE fois l'état de la feuille ; si elle est signée / verrouillée / disparue, la modification
+  // est retirée de la file mais gardée sur le téléphone (taxiwal_refuses_signee). Dans tous les autres cas
+  // (réseau, feuille ouverte, doute) : comportement inchangé (gardée + réessayée).
+  var statutFermee = {};
+  async function feuilleFermeeOuDisparue(it) {
+    if (!it || it.op !== "update" || !it.match || it.match.id == null) return false;
+    if (it.table !== "lignes_feuille_route" && it.table !== "feuilles_route") return false;
+    var sb = etat.client; if (!sb || navigator.onLine === false) return false;
+    var cle = it.table + ":" + it.match.id, c = statutFermee[cle];
+    if (c && (c.v || Date.now() - c.t < 5 * 60 * 1000)) return c.v;
+    try {
+      var idF = it.match.id;
+      if (it.table === "lignes_feuille_route") {
+        var a = await sb.from("lignes_feuille_route").select("id, feuille_route_id").eq("id", it.match.id).maybeSingle();
+        if (a.error || etat.reseauKO) return false;
+        if (a.data && !a.data.feuille_route_id) return false;
+        if (a.data) idF = a.data.feuille_route_id;
+        else { statutFermee[cle] = { v: true, t: Date.now() }; return true; }        // ligne disparue
+      }
+      var b = await sb.from("feuilles_route").select("id, signee, verrouillee").eq("id", idF).maybeSingle();
+      if (b.error || etat.reseauKO) return false;
+      var v = !b.data || b.data.signee === true || b.data.verrouillee === true;
+      statutFermee[cle] = { v: v, t: Date.now() };
+      return v;
+    } catch (e) { return false; }
+  }
+  function cleRefusSignee() { return cleUtil("taxiwal_refuses_signee"); }
+  function archiverRefusSignee(it) {
+    try {
+      var k = cleRefusSignee(), f = [];
+      try { f = JSON.parse(lsGet(k) || "[]"); if (!Array.isArray(f)) f = []; } catch (e) { f = []; }
+      f.push({ id: it.id, cree: it.cree, quand: Date.now(), table: it.table, match: copie(it.match), payload: copie(it.payload), label: it.label || "", annonce: false });
+      if (f.length > 300) f = f.slice(-300);
+      lsSet(k, JSON.stringify(f));
+    } catch (e) {}
+    planifierInfoSignee();
+  }
+  var minuterieInfoSignee = null;
+  function planifierInfoSignee() { clearTimeout(minuterieInfoSignee); minuterieInfoSignee = setTimeout(afficherInfoSignee, 800); }
+  function afficherInfoSignee() {
+    var k = cleRefusSignee(), f;
+    try { f = JSON.parse(lsGet(k) || "[]"); if (!Array.isArray(f)) return; } catch (e) { return; }
+    var n = f.filter(function (x) { return !x.annonce; }).length;
+    if (!n || !document.body) return;
+    f.forEach(function (x) { x.annonce = true; });
+    try { lsSet(k, JSON.stringify(f)); } catch (e) {}
+    var d = document.getElementById("info-refus-signee");
+    if (!d) {
+      d = document.createElement("div"); d.id = "info-refus-signee"; d.setAttribute("role", "status");
+      d.style.cssText = "position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:99992;border-radius:12px;padding:10px 12px;background:#eef2f6;color:#33404d;border:1px solid #c9d3dd;font:500 14px/1.35 -apple-system,Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.12);display:flex;gap:8px;align-items:flex-start;";
+      document.body.appendChild(d);
+    }
+    d.innerHTML = "<span style=\"flex:1\">ℹ️ " + n + " modification(s) d'une feuille déjà signée n'ont pas été appliquées — seule la centrale peut modifier une feuille signée.</span><button type=\"button\" aria-label=\"Fermer\" style=\"border:none;background:transparent;color:#33404d;font-size:18px;line-height:1;padding:0 2px\">×</button>";
+    d.querySelector("button").onclick = function () { d.style.display = "none"; };
+    d.style.display = "flex";
+    setTimeout(function () { d.style.display = "none"; }, 15000);
+  }
+
   var refusEnCours = false;
   async function reessayerRefusees() {
     if (refusEnCours || !etat.client || navigator.onLine === false) return;
@@ -1222,7 +1283,14 @@ window.onerror = function(msg, url, line, col, err) {
         if (!lireFileCle(cleRefus()).some(function (x) { return x.id === it.id; })) continue;
         var r = await executer(it, false);
         if (r.reseau) break;
-        if (!r.error && aucuneLigneTouchee(it, r.data)) r.error = { message: "course pas trouvée sur le serveur" };
+        if (!r.error && aucuneLigneTouchee(it, r.data)) {
+          if (await feuilleFermeeOuDisparue(it)) {
+            archiverRefusSignee(it);
+            ecrireFile(lireFileCle(cleRefus()).filter(function (x) { return x.id !== it.id; }), cleRefus());
+            continue;
+          }
+          r.error = { message: "course pas trouvée sur le serveur" };
+        }
         var reste = lireFileCle(cleRefus());
         if (!r.error) { reste = reste.filter(function (x) { return x.id !== it.id; }); faits++; }
         else reste.forEach(function (x) { if (x.id === it.id) x.erreur = msgErreur(r.error); });
@@ -1457,6 +1525,14 @@ window.onerror = function(msg, url, line, col, err) {
       var r = await executer(spec, true);
       if (!r.reseau) {
         var vide = !r.error && aucuneLigneTouchee(spec, r.data);
+        if (vide && await feuilleFermeeOuDisparue(spec)) {
+          // Feuille déjà signée / verrouillée (ou ligne disparue) : pas réessayée, copie gardée sur le téléphone
+          archiverRefusSignee(spec);
+          lacherEnVol(spec.id);
+          await signalerSansLigne(spec, r.data);
+          majBandeau();
+          return { data: spec.optimiste === undefined ? null : spec.optimiste, error: null, refuseeSignee: true };
+        }
         if (estCourse(spec) && (r.error || vide)) {
           // Refusée / pas trouvée : gardée sur le téléphone (bandeau rouge « pas encore envoyée »), jamais perdue
           garderRefus(spec, r.error ? msgErreur(r.error) : "course pas trouvée sur le serveur");
@@ -1509,6 +1585,11 @@ window.onerror = function(msg, url, line, col, err) {
         etat.enVol = item.id;
         var r = await executer(item, false);
         etat.enVol = null;
+        if (!r.error && aucuneLigneTouchee(item, r.data) && await feuilleFermeeOuDisparue(item)) {
+          signalerSansLigne(item, r.data);
+          archiverRefusSignee(item); retirer(item.id, kf); lsSet(nomVerrou(kf), String(Date.now()));
+          continue;
+        }
         if (!r.error && item.verifier && Array.isArray(r.data) && !r.data.length)
           r = { error: { message: "La course n'est plus à toi (retirée ou modifiée par la centrale)." }, reseau: false };
         if (!r.error) signalerSansLigne(item, r.data);
@@ -1620,6 +1701,7 @@ window.onerror = function(msg, url, line, col, err) {
     var envol = lireFileCle(cleEnVol());
     if (envol.length) { ecrireFile(envol.concat(lireFile())); lsDel(cleEnVol()); }
     setTimeout(reessayerRefusees, 4000);
+    setTimeout(afficherInfoSignee, 1500);
     var auth = client.auth;
     var getSessionOrig = auth.getSession.bind(auth), getUserOrig = auth.getUser.bind(auth);
     // Sans réseau : la session enregistrée sur le téléphone suffit (pas de renvoi vers la connexion)
@@ -5801,6 +5883,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   .champ-compteur.compteur-avert{ border:2px solid var(--rouge) !important; }
   .avert-compteur{ color:var(--rouge); font-size:.74rem; line-height:1.25; margin:3px 0 0; }
   .avert-compteur:empty{ display:none; }
+  .info-prec-km{ color:var(--gris); font-size:.74rem; margin:4px 0 0; }
   .note-prerempli{ color:var(--gris); font-size:.74rem; margin:8px 0 2px; }
   .photos-ticket{ margin:8px 0 2px; align-items:start; }
   .btn-photo-ticket{ width:100%; padding:7px 4px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; color:#1c1c1c; font-size:.76rem; font-weight:700; cursor:pointer; line-height:1.15; }
@@ -5822,14 +5905,31 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
 // 3) Photo du ticket (preuve, pas de lecture automatique), file d'attente hors ligne.
 (function () {
   var LIGNES = [
-    { d: "km-debut", f: "km-fin", cd: "index_km_debut", cf: "index_km_fin", pf: "index_km_fin", nom: "", seuil: 1000, unite: " km" },
+    { d: "km-debut", f: "km-fin", cd: "index_km_debut", cf: "index_km_fin", pf: "index_km_fin", nom: "", seuil: 1000, unite: " km", prive: true },
     { d: "prise-debut", f: "prise-fin", cd: "prise_en_charge_debut", cf: "prise_en_charge_fin", pf: "prise_en_charge_fin", nom: "Courses", seuil: 60, unite: "" },
     { d: "chutes-debut", f: "chutes-fin", cd: "chutes_debut", cf: "chutes_fin", pf: "chutes_fin", nom: "Nbre chutes", seuil: 5000, unite: "" },
     { d: "taxi-debut", f: "taxi-fin", cd: "taximetre_debut", cf: "taximetre_fin", pf: "taximetre_fin", nom: "Rec. globale", seuil: 1500, unite: " €" },
     { d: "kmcharge-debut", f: "kmcharge-fin", cd: "km_en_charge_debut", cf: "km_en_charge_fin", pf: "km_en_charge_fin", nom: "Dist. charge", seuil: 1000, unite: " km" },
-    { d: "kmtotaux-debut", f: "kmtotaux-fin", cd: "index_km_totaux_debut", cf: "index_km_totaux_fin", pf: "index_km_totaux_fin", nom: "Dist. totale", seuil: 1000, unite: " km" }
+    { d: "kmtotaux-debut", f: "kmtotaux-fin", cd: "index_km_totaux_debut", cf: "index_km_totaux_fin", pf: "index_km_totaux_fin", nom: "Dist. totale", seuil: 1000, unite: " km", prive: true }
   ];
-  var TEXTE_PREREMPLI = "Rempli avec la fin de la feuille précédente — vérifie avec ton ticket TOTALISATEURS TOTAUX";
+  // Km du véhicule (tableau de bord + Dist. totale) : la voiture peut rouler en privé entre deux services,
+  // donc pas de pré-remplissage ni de rouge « écart » avec la feuille précédente (seul fin < début reste signalé).
+  var TEXTE_PREREMPLI = "Rempli avec la fin de la feuille précédente — vérifie avec ton ticket TOTALISATEURS TOTAUX (les km sont à taper toi-même)";
+  function texteMilliers(v) { var n = num(v); if (n === null) return ""; var p = String(Math.round(n * 100) / 100).split("."); return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ") + (p[1] ? "," + p[1] : ""); }
+  function placeholdersKm() {
+    var f = feuilleActuelle;
+    var prec = (f && precedent.feuille === f.id) ? precedent.v : null;
+    LIGNES.forEach(function (l) {
+      if (!l.prive || !$(l.d)) return;
+      var v = prec ? prec[l.pf] : null, t = vide(v) ? "" : "Feuille précédente : " + texteMilliers(v);
+      $(l.d).placeholder = vide(v) ? "" : "Tape le km";
+      // même info en petit gris sous la case (le placeholder est coupé sur un petit écran)
+      var info = $("info-prec-" + l.d);
+      if (!info) { info = document.createElement("div"); info.id = "info-prec-" + l.d; info.className = "info-prec-km"; avertParLigne[l.d].insertAdjacentElement("beforebegin", info); }
+      info.textContent = t ? t + " — tape le chiffre réel" : "";
+      info.style.display = t && vide($(l.d).value) ? "block" : "none";
+    });
+  }
   function $(id) { return document.getElementById(id); }
   function vide(v) { return v === null || v === undefined || String(v).trim() === ""; }
   function num(v) { if (vide(v)) return null; var n = Number(String(v).replace(",", ".")); return isFinite(n) ? n : null; }
@@ -5850,7 +5950,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     var a = document.createElement("div"); a.className = "avert-compteur"; a.id = "avert-" + l.d;
     grille.insertAdjacentElement("afterend", a);
     avertParLigne[l.d] = a;
-    [inD, inF].forEach(function (inp) { inp.addEventListener("input", function () { verifier(); }); });
+    [inD, inF].forEach(function (inp) { inp.addEventListener("input", function () { verifier(); if (l.prive) placeholdersKm(); }); });
   });
   var note = document.createElement("div");
   note.className = "note-prerempli"; note.id = "note-prerempli"; note.textContent = TEXTE_PREREMPLI; note.style.display = "none";
@@ -5895,12 +5995,14 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     enCours[f.id] = true;
     try {
       await chargerPrecedent(f);
+      placeholdersKm();
       verifier();
       if (!feuilleActuelle || feuilleActuelle.id !== f.id || !precedent.v) return;
       var deja = lsLire(clePrerempli(f.id)) || [];
       var payload = {}, remplis = [];
       LIGNES.forEach(function (l) {
         var inp = $(l.d), val = precedent.v[l.pf];
+        if (l.prive) return;                                               // km : seulement un placeholder gris
         if (vide(val) || deja.indexOf(l.cd) >= 0) return;                 // fin précédente vide → on laisse vide
         if (!vide(f[l.cd]) || !inp || inp.disabled || !vide(inp.value) || document.activeElement === inp) return; // jamais écraser
         payload[l.cd] = texteNombre(val); remplis.push(l);
@@ -5934,11 +6036,11 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     function signaler(idInput, idLigne, texte) { rouges[idInput] = true; (msgs[idLigne] = msgs[idLigne] || []).push(texte); }
     LIGNES.forEach(function (l) {
       var d = num($(l.d).value), fi = num($(l.f).value);
-      if (prec && !vide(prec[l.pf]) && d !== null && Math.abs(d - Number(prec[l.pf])) > 0.001)
+      if (!l.prive && prec && !vide(prec[l.pf]) && d !== null && Math.abs(d - Number(prec[l.pf])) > 0.001)
         signaler(l.d, l.d, "Différent de la feuille précédente (" + texteNombre(prec[l.pf]) + ") — bon ticket ?");
       if (d !== null && fi !== null) {
         if (fi < d - 0.001) signaler(l.f, l.d, "Fin plus petite que le début");
-        else if (fi - d > l.seuil) signaler(l.f, l.d, "Saut anormal (+" + texteNombre(Math.round((fi - d) * 100) / 100) + l.unite + ") — vérifie le ticket");
+        else if (!l.prive && fi - d > l.seuil) signaler(l.f, l.d, "Saut anormal (+" + texteNombre(Math.round((fi - d) * 100) / 100) + l.unite + ") — vérifie le ticket");
       }
     });
     [["kmtotaux-debut", "kmcharge-debut", "début"], ["kmtotaux-fin", "kmcharge-fin", "fin"]].forEach(function (p) {
@@ -5950,9 +6052,9 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       avertParLigne[l.d].textContent = (msgs[l.d] || []).map(function (t) { return "⚠️ " + t; }).join(" · ");
     });
   }
-  window.verifierCompteursTicket = verifier;
+  window.verifierCompteursTicket = function () { verifier(); placeholdersKm(); };
   window.compteursApresRemplissage = function () {
-    verifier(); afficherNote();
+    verifier(); afficherNote(); placeholdersKm();
     preremplir();
     photos.surFeuille();
   };
