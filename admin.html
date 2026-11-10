@@ -1203,6 +1203,7 @@ window.onerror = function(msg, url, line, col, err) {
   <button id="btn-nouvelle-course">+ Nouvelle course</button>
   <button type="button" id="btn-nouvelle-course-message">📋 Nouvelle course depuis un message</button>
   <button id="btn-toggle-historique" style="width:100%; padding:12px; border-radius:10px; background:var(--noir-2); color:var(--gris); border:1px solid #cfcfcd; margin-bottom:14px;">📜 Voir l'historique (terminées/annulées, 30 derniers jours)</button>
+  <div id="compteur-courses-admin" style="display:none; background:#fff; border:1px solid #cfcfcd; border-radius:10px; padding:10px 12px; margin-bottom:14px; font-size:.9rem; color:#222;"></div>
   <input type="text" id="recherche-course" placeholder="🔍 Rechercher (client, téléphone, adresse, N° TW-…)">
   <div id="barre-assignation-groupee" style="display:none;">
     <span id="nb-courses-selectionnees">0</span> course(s) sélectionnée(s) —
@@ -1261,7 +1262,7 @@ window.onerror = function(msg, url, line, col, err) {
 <section id="section-feuilles">
   <button type="button" id="btn-vehicules-du-jour-fa">🚗 Véhicules du jour — quelle voiture pour quel chauffeur</button>
   <div id="demandes-chauffeurs-fa"></div>
-  <div id="corbeille-fa" style="margin:0 0 12px;"><button type="button" id="btn-corbeille-fa" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cfcfcd; background:#f7f7f5; color:#333; font-weight:700; font-size:.9rem; cursor:pointer;">🗑️ Corbeille (courses retirées, 30 jours)</button><div id="liste-corbeille-fa" style="display:none;"></div></div>
+  <div id="corbeille-fa" style="display:none;"><button type="button" id="btn-corbeille-fa" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cfcfcd; background:#f7f7f5; color:#333; font-weight:700; font-size:.9rem; cursor:pointer;">🗑️ Corbeille (courses retirées, 30 jours)</button><div id="liste-corbeille-fa" style="display:none;"></div></div>
   <div id="recus-fa" style="margin:0 0 12px;"><button type="button" id="btn-recus-fa" style="width:100%; padding:10px; border-radius:10px; border:1px solid #9bb7d4; background:#eaf1f8; color:#1f3d5c; font-weight:700; font-size:.9rem; cursor:pointer;">🧾 Reçus / factures à faire (30 jours)</button><div id="liste-recus-fa" style="display:none;"></div></div>
   <div id="feuilles-sous-onglets">
     <button class="actif" id="btn-vue-jour-fa">📅 Vue du jour</button>
@@ -3489,11 +3490,50 @@ if ("Notification" in window && Notification.permission === "default") {
 
 let afficherHistoriqueCourses = false;
 
+// Nombre de courses (compteur) : 7 derniers jours par chauffeur, lu dans compteur_courses
+async function chargerCompteurCourses() {
+  const zone = document.getElementById("compteur-courses-admin");
+  if (!zone) return;
+  zone.innerHTML = "⏳ Nombre de courses…";
+  const depuis = new Date(Date.now() - 6 * 864e5).toLocaleDateString("en-CA", { timeZone: "Europe/Brussels" });
+  const { data, error } = await supabase.from("compteur_courses")
+    .select("chauffeur_id, nb_terminees, nb_annulees").gte("date_service", depuis);
+  if (error) { zone.innerHTML = ""; zone.style.display = "none"; return; }
+  const parChauffeur = new Map();
+  (data || []).forEach(l => {
+    const t = parChauffeur.get(l.chauffeur_id) || { term: 0, ann: 0 };
+    t.term += l.nb_terminees || 0; t.ann += l.nb_annulees || 0;
+    parChauffeur.set(l.chauffeur_id, t);
+  });
+  const ids = [...parChauffeur.keys()].filter(id => id !== "00000000-0000-0000-0000-000000000000");
+  const noms = new Map();
+  if (ids.length) {
+    const { data: profs } = await supabase.from("profils").select("id, nom").in("id", ids);
+    (profs || []).forEach(p => noms.set(p.id, p.nom));
+  }
+  let totT = 0, totA = 0;
+  const lignes = [...parChauffeur.entries()].map(([id, t]) => {
+    totT += t.term; totA += t.ann;
+    const nom = id === "00000000-0000-0000-0000-000000000000" ? "Sans chauffeur" : (noms.get(id) || "Chauffeur");
+    return { nom, ...t };
+  }).sort((a, b) => b.term - a.term || a.nom.localeCompare(b.nom));
+  zone.innerHTML = `<div style="font-weight:800; margin-bottom:6px;">🔢 Nombre de courses (compteur) — 7 derniers jours</div>` +
+    (lignes.length ? lignes.map(l => `<div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0; border-bottom:1px solid #e3e3e1;"><span>${esc(l.nom)}</span><span><b>${l.term}</b> terminée(s) · ${l.ann} annulée(s)</span></div>`).join("")
+      : `<div style="color:#666;">Aucune course sur les 7 derniers jours.</div>`) +
+    `<div style="display:flex; justify-content:space-between; gap:8px; padding-top:6px; font-weight:800;"><span>Total</span><span>${totT} terminée(s) · ${totA} annulée(s)</span></div>` +
+    `<div style="font-size:.75rem; color:#666; margin-top:6px;">Les courses annulées sont supprimées tout de suite ; les terminées disparaissent avec leur feuille de route (règle des 15 jours). Seul le nombre est gardé.</div>`;
+}
+
 document.getElementById("btn-toggle-historique").addEventListener("click", () => {
   afficherHistoriqueCourses = !afficherHistoriqueCourses;
   document.getElementById("btn-toggle-historique").textContent = afficherHistoriqueCourses
     ? "🔼 Masquer l'historique"
     : "📜 Voir l'historique (terminées/annulées, 30 derniers jours)";
+  const zoneCompteur = document.getElementById("compteur-courses-admin");
+  if (zoneCompteur) {
+    zoneCompteur.style.display = afficherHistoriqueCourses ? "block" : "none";
+    if (afficherHistoriqueCourses) chargerCompteurCourses();
+  }
   afficherListeCoursesAdmin();
 });
 
