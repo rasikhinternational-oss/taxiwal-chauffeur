@@ -2574,9 +2574,9 @@ function mettreAJourAffichageDate() {
   const nuit = ds && ds < aujourdHui && estServiceEnCours(feuilleActuelle, true);
   const bandeauNuit = document.getElementById("bandeau-service-nuit");
   if (nuit) {
-    const plage = jjmm(ds) + " → " + jjmm(aujourdHui);
-    document.getElementById("sous-titre").textContent = "Feuille du " + plage + " (service de nuit)";
-    document.getElementById("identite-date").textContent = plage;
+    // Une feuille = UNE journée : la date reste toujours celle du DÉBUT du service (même si la nuit finit le lendemain)
+    document.getElementById("sous-titre").textContent = "Feuille du " + jjmm(ds) + " (service de nuit)";
+    document.getElementById("identite-date").textContent = (ds || "").split("-").reverse().join("/");
     if (!feuilleActuelle.verrouillee && !feuilleActuelle.signee) {
       // Début du service = feuille la plus ancienne de la nuit (avant un éventuel changement de voiture)
       const debuts = [feuilleActuelle].map(debutServiceFeuille).filter(t => t !== null);
@@ -4303,6 +4303,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (champ === "prix_taximetre" && valeur !== null && ligne.motif_sans_prix) maj.motif_sans_prix = null;
       // Motif qui implique un paiement (école / contrat → facture, Uber, annulée) : mode choisi d'office s'il est vide
       if (champ === "motif_sans_prix" && valeur && MOTIFS_AVEC_PAIEMENT[valeur] && !ligne.mode_paiement) maj.mode_paiement = MOTIFS_AVEC_PAIEMENT[valeur];
+      // 🚕 Uber (app ou cash) : un motif « pas de prix » qui n'est pas Uber (ex. « Contrat / sur facture ») est effacé → plus de mélange
+      if (champ === "mode_paiement" && (valeur === "uber" || valeur === "uber_cash") && ligne.motif_sans_prix
+          && (valeur === "uber_cash" || ligne.motif_sans_prix !== "Uber (prix dans l'app)")) maj.motif_sans_prix = null;
       // 🧾 Facture : « Sommes perçues » = « FACTURE — <PAYEUR> » écrit tout seul (sans montant, hors recette).
       // En quittant la facture, ce texte automatique est effacé (jamais un texte écrit à la main).
       if ("mode_paiement" in maj || champ === "numero_dossier") {
@@ -5399,7 +5402,7 @@ function appliquerVerrouillage() {
     // Fin d'un service de nuit : simple confirmation, sans pousser vers une nouvelle feuille
     const bandeauFeuille = document.getElementById("bandeau-feuille-oubliee");
     bandeauFeuille.style.background = "#e7f5ec"; bandeauFeuille.style.borderColor = "#b7dfc5"; bandeauFeuille.style.color = "#1f6b3f";
-    bandeauFeuille.innerHTML = `✅ Feuille du service de nuit ${esc(jjmm(feuilleActuelle.date_service) + " → " + jjmm(aujourdHuiIso))} clôturée. Bon repos !`
+    bandeauFeuille.innerHTML = `✅ Feuille du ${esc(jjmm(feuilleActuelle.date_service))} (service de nuit) clôturée. Bon repos !`
       + `<br><button type="button" class="btn-nouvelle-feuille-bandeau" style="display:inline-block; margin-top:8px; padding:10px 14px; background:#1d4f86; color:#fff; border:none; border-radius:10px; font-weight:700;">➕ Nouvelle feuille de route</button>`;
     bandeauFeuille.querySelector(".btn-nouvelle-feuille-bandeau").addEventListener("click", ouvrirNouvelleFeuille);
     bandeauFeuille.style.display = "block";
