@@ -1229,7 +1229,7 @@ window.onerror = function(msg, url, line, col, err) {
   // « refusées » : course que le serveur a refusée / pas trouvée : gardée, réessayée, et ne bloque JAMAIS les autres courses.
   function cleEnVol() { return cleUtil("taxiwal_outbox_envol"); }
   function cleRefus() { return cleUtil("taxiwal_outbox_refusees"); }
-  function itemDe(s) { return { id: s.id, cree: s.cree, op: s.op, table: s.table, payload: copie(s.payload), match: s.match, local: copie(s.local), verifier: !!s.verifier, label: s.label || "" }; }
+  function itemDe(s) { return { id: s.id, cree: s.cree, op: s.op, table: s.table, payload: copie(s.payload), match: s.match, fn: s.fn, args: copie(s.args), local: copie(s.local), verifier: !!s.verifier, label: s.label || "" }; }
   function estCourse(it) { return !!it && (it.table === "lignes_feuille_route" || it.table === "courses") && (it.op === "update" || it.op === "upsert"); }
   function garderEnVol(spec) { if (spec.op !== "update" && spec.op !== "upsert") return; var f = lireFileCle(cleEnVol()); f.push(itemDe(spec)); ecrireFile(f, cleEnVol()); }
   function lacherEnVol(id) { ecrireFile(lireFileCle(cleEnVol()).filter(function (x) { return x.id !== id; }), cleEnVol()); }
