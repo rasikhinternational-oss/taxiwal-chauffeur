@@ -38,6 +38,14 @@
   .info{ color:var(--vert); font-size:.9rem; margin:0 0 12px; }
   .cache{ display:none; }
   .centre{ text-align:center; color:var(--gris); padding:30px 0; }
+  .lien-partenaire{ display:block; text-align:center; margin-top:18px; color:var(--vert); font-weight:600; background:none; border:1px dashed var(--vert); }
+  #ecran-partenaire h2{ font-size:1.05rem; margin:18px 0 8px; }
+  #ecran-partenaire h2:first-child{ margin-top:0; }
+  #ecran-partenaire textarea{ width:100%; padding:12px; border-radius:10px; border:1px solid #cfcfcd; font-size:.95rem; margin-bottom:14px; font-family:inherit; }
+  .ligne-dyn{ border:1px solid #e3e3e0; border-radius:10px; padding:10px; margin-bottom:10px; background:#fafaf8; }
+  .ligne-dyn input{ margin-bottom:8px; padding:10px; }
+  .btn-petit{ padding:10px; font-size:.9rem; background:#fff; color:var(--texte); border:1px solid #cfcfcd; margin-bottom:12px; }
+  .note{ font-size:.8rem; color:var(--gris); margin:-6px 0 12px; }
 </style>
 </head>
 <body>
@@ -76,6 +84,42 @@
       <button id="btn-mdp-retour" type="button" class="secondaire">Changer d'adresse email</button>
     </div>
     <div class="erreur" id="erreur"></div>
+    <button id="btn-devenir-partenaire" type="button" class="lien-partenaire">🤝 Devenir partenaire</button>
+  </div>
+
+  <!-- Demande de partenariat (sociétés de taxi) -->
+  <div id="ecran-partenaire" class="carte cache">
+    <div id="form-partenaire">
+      <h2>Responsable</h2>
+      <label for="p-resp-nom">Nom et prénom *</label><input type="text" id="p-resp-nom" autocomplete="name">
+      <label for="p-resp-tel">Téléphone *</label><input type="tel" id="p-resp-tel" autocomplete="tel">
+      <label for="p-resp-email">Adresse email * (servira à vous connecter)</label><input type="email" id="p-resp-email" autocomplete="email" autocapitalize="off">
+      <h2>Société</h2>
+      <label for="p-soc-nom">Nom de la société *</label><input type="text" id="p-soc-nom">
+      <label for="p-soc-bce">N° BCE / TVA *</label><input type="text" id="p-soc-bce" placeholder="BE0123456789">
+      <label for="p-soc-adresse">Adresse *</label><input type="text" id="p-soc-adresse">
+      <label for="p-soc-iban">IBAN *</label><input type="text" id="p-soc-iban" placeholder="BE00 0000 0000 0000" autocapitalize="characters">
+      <h2>Chauffeurs</h2>
+      <div id="p-chauffeurs"></div>
+      <button type="button" class="btn-petit" id="p-ajout-chauffeur">+ Ajouter un chauffeur</button>
+      <h2>Véhicules</h2>
+      <div id="p-vehicules"></div>
+      <button type="button" class="btn-petit" id="p-ajout-vehicule">+ Ajouter un véhicule</button>
+      <h2>Documents</h2>
+      <p class="note">Photo ou PDF, 10 Mo maximum par fichier.</p>
+      <label for="p-doc-licence">Licence taxi *</label><input type="file" id="p-doc-licence" accept="image/*,application/pdf" multiple>
+      <label for="p-doc-assurance">Assurance *</label><input type="file" id="p-doc-assurance" accept="image/*,application/pdf" multiple>
+      <label for="p-doc-carte-grise">Carte grise *</label><input type="file" id="p-doc-carte-grise" accept="image/*,application/pdf" multiple>
+      <label for="p-doc-permis">Permis de conduire *</label><input type="file" id="p-doc-permis" accept="image/*,application/pdf" multiple>
+      <button id="btn-envoyer-partenaire" type="button">Envoyer ma demande</button>
+      <button id="btn-retour-partenaire" type="button" class="secondaire">Retour à la connexion</button>
+      <div class="erreur" id="erreur-partenaire"></div>
+    </div>
+    <div id="ok-partenaire" class="cache">
+      <p style="margin-top:0; font-weight:600;">✅ Demande envoyée</p>
+      <p>Votre demande est <b>en attente</b> de validation par Taxi Wal. Dès qu'elle sera acceptée, vous pourrez vous connecter avec l'adresse email indiquée.</p>
+      <button id="btn-ok-partenaire" type="button" class="secondaire">Retour à la connexion</button>
+    </div>
   </div>
 
   <!-- Compte sans accès -->
@@ -95,7 +139,7 @@ const $ = (id) => document.getElementById(id);
 const COMPTES_DEMO = ["demo.chauffeur@taxiwal.com"];
 
 function afficher(ecran) {
-  ["ecran-chargement", "ecran-login", "ecran-refus"].forEach((id) => $(id).classList.toggle("cache", id !== ecran));
+  ["ecran-chargement", "ecran-login", "ecran-refus", "ecran-partenaire"].forEach((id) => $(id).classList.toggle("cache", id !== ecran));
 }
 
 if (!window.supabase) {
@@ -251,6 +295,99 @@ $("btn-deconnexion").addEventListener("click", async () => {
   $("etape-mdp").classList.add("cache");
   $("etape-email").classList.remove("cache");
   afficher("ecran-login");
+});
+
+
+// ================== Devenir partenaire ==================
+const BUCKET_DOCS_PARTENAIRES = "documents-partenaires";
+function ajouterLigneDyn(conteneurId, champs) {
+  const div = document.createElement("div");
+  div.className = "ligne-dyn";
+  champs.forEach(([cle, libelle, type]) => {
+    const inp = document.createElement("input");
+    inp.type = type || "text"; inp.placeholder = libelle; inp.dataset.cle = cle;
+    if (type === "number") { inp.min = "1"; inp.max = "60"; inp.inputMode = "numeric"; }
+    div.appendChild(inp);
+  });
+  const suppr = document.createElement("button");
+  suppr.type = "button"; suppr.className = "btn-petit"; suppr.textContent = "Retirer";
+  suppr.style.marginBottom = "0";
+  suppr.addEventListener("click", () => div.remove());
+  div.appendChild(suppr);
+  $(conteneurId).appendChild(div);
+}
+const CHAMPS_CHAUFFEUR = [["nom", "Nom et prénom"], ["telephone", "Téléphone", "tel"]];
+const CHAMPS_VEHICULE = [["marque", "Marque"], ["modele", "Modèle"], ["plaque", "Plaque"], ["places", "Nombre de places", "number"]];
+function lireLignes(conteneurId) {
+  return [...$(conteneurId).querySelectorAll(".ligne-dyn")].map(div => {
+    const o = {};
+    div.querySelectorAll("input").forEach(i => { const v = i.value.trim(); if (v) o[i.dataset.cle] = i.dataset.cle === "places" ? parseInt(v, 10) : v.slice(0, 120); });
+    return o;
+  }).filter(o => Object.keys(o).length);
+}
+$("btn-devenir-partenaire").addEventListener("click", () => {
+  if (!$("p-chauffeurs").children.length) ajouterLigneDyn("p-chauffeurs", CHAMPS_CHAUFFEUR);
+  if (!$("p-vehicules").children.length) ajouterLigneDyn("p-vehicules", CHAMPS_VEHICULE);
+  $("form-partenaire").classList.remove("cache");
+  $("ok-partenaire").classList.add("cache");
+  $("sous-titre").textContent = "Devenir partenaire";
+  afficher("ecran-partenaire");
+  window.scrollTo(0, 0);
+});
+$("p-ajout-chauffeur").addEventListener("click", () => ajouterLigneDyn("p-chauffeurs", CHAMPS_CHAUFFEUR));
+$("p-ajout-vehicule").addEventListener("click", () => ajouterLigneDyn("p-vehicules", CHAMPS_VEHICULE));
+function retourConnexion() { $("sous-titre").textContent = "Connexion"; afficher("ecran-login"); }
+$("btn-retour-partenaire").addEventListener("click", retourConnexion);
+$("btn-ok-partenaire").addEventListener("click", retourConnexion);
+
+$("btn-envoyer-partenaire").addEventListener("click", async () => {
+  const btn = $("btn-envoyer-partenaire");
+  const err = $("erreur-partenaire");
+  err.textContent = "";
+  const v = (id) => $(id).value.trim();
+  const email = v("p-resp-email").toLowerCase();
+  if (!v("p-resp-nom") || !v("p-resp-tel") || !email || !v("p-soc-nom") || !v("p-soc-bce") || !v("p-soc-adresse") || !v("p-soc-iban")) {
+    err.textContent = "Remplissez tous les champs marqués d'une *."; return;
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = "Adresse email invalide."; return; }
+  const chauffeurs = lireLignes("p-chauffeurs"), vehicules = lireLignes("p-vehicules");
+  if (!chauffeurs.length) { err.textContent = "Ajoutez au moins un chauffeur."; return; }
+  if (!vehicules.length) { err.textContent = "Ajoutez au moins un véhicule."; return; }
+  const docs = [["licence", "p-doc-licence"], ["assurance", "p-doc-assurance"], ["carte-grise", "p-doc-carte-grise"], ["permis", "p-doc-permis"]];
+  for (const [, id] of docs) {
+    const fichiers = $(id).files;
+    if (!fichiers || !fichiers.length) { err.textContent = "Ajoutez tous les documents demandés."; return; }
+    for (const f of fichiers) if (f.size > 10 * 1024 * 1024) { err.textContent = "Le fichier « " + f.name + " » dépasse 10 Mo."; return; }
+  }
+  btn.disabled = true; btn.textContent = "Envoi en cours…";
+  try {
+    const { data: idDemande, error } = await supabase.rpc("deposer_demande_partenariat", {
+      p_responsable_nom: v("p-resp-nom"), p_responsable_telephone: v("p-resp-tel"), p_responsable_email: email,
+      p_societe_nom: v("p-soc-nom"), p_bce_tva: v("p-soc-bce"), p_adresse: v("p-soc-adresse"),
+      p_iban: v("p-soc-iban").replace(/\s+/g, " ").toUpperCase(), p_chauffeurs: chauffeurs, p_vehicules: vehicules
+    });
+    if (error || !idDemande) throw new Error((error && error.message) || "Envoi impossible");
+    let echecs = 0;
+    for (const [type, id] of docs) {
+      let n = 0;
+      for (const f of $(id).files) {
+        n++;
+        const ext = ((f.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin").slice(0, 5);
+        const chemin = `demandes/${idDemande}/${type}-${n}-${Date.now()}.${ext}`;
+        btn.textContent = `Envoi des documents (${type})…`;
+        const { error: eUp } = await supabase.storage.from(BUCKET_DOCS_PARTENAIRES).upload(chemin, f, { contentType: f.type || undefined, upsert: false });
+        if (eUp) echecs++;
+      }
+    }
+    $("form-partenaire").classList.add("cache");
+    $("ok-partenaire").classList.remove("cache");
+    if (echecs) $("ok-partenaire").querySelector("p:nth-child(2)").insertAdjacentHTML("afterend",
+      `<p class="erreur">${echecs} document(s) n'ont pas pu être envoyés. Taxi Wal vous les redemandera.</p>`);
+  } catch (e) {
+    err.textContent = "Erreur : " + (e.message || e);
+  } finally {
+    btn.disabled = false; btn.textContent = "Envoyer ma demande";
+  }
 });
 
 // ================== Démarrage : session existante ? ==================

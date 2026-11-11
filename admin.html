@@ -1188,7 +1188,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="photos-vehicules">📸 Photos véhicules</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
-    <button data-onglet="partenaires">🤝 Sous-traitants</button>
+    <button data-onglet="partenaires">🤝 Partenaires</button>
     <button data-onglet="carnet">📇 Carnet clients</button>
     <button data-onglet="clients">👥 Comptes clients app</button>
   </nav>
@@ -1544,6 +1544,9 @@ window.onerror = function(msg, url, line, col, err) {
 
 <section id="section-partenaires">
   <button id="btn-ajouter-partenaire" style="width:100%; padding:14px; border-radius:10px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:16px;">+ Ajouter un sous-traitant</button>
+  <div id="bloc-demandes-partenariat"></div>
+  <div id="bloc-portefeuilles-partenaires"></div>
+  <h3 style="margin:14px 0 8px;">🤝 Sociétés partenaires</h3>
   <div id="liste-partenaires-admin"></div>
 </section>
 
@@ -6223,6 +6226,7 @@ function construireCarteAdmin(course) {
     </div>
   `;
   div.appendChild(corps);
+  if (typeof ajouterBlocPartenairesCourse === "function") ajouterBlocPartenairesCourse(course, corps);
 
   entete.addEventListener("click", () => {
     const ouvert = corps.style.display !== "none";
@@ -12738,6 +12742,8 @@ document.getElementById("btn-ajouter-vehicule").addEventListener("click", async 
 });
 
 async function chargerPartenairesAdmin() {
+  if (typeof chargerDemandesPartenariat === "function") chargerDemandesPartenariat();
+  if (typeof chargerPortefeuillesPartenaires === "function") chargerPortefeuillesPartenaires();
   const conteneur = document.getElementById("liste-partenaires-admin");
   conteneur.innerHTML = "Chargement…";
 
@@ -13372,6 +13378,321 @@ rendreLignesVehiculesModale([{}]);
   if (nav) nav.addEventListener("click", async function () { await initialiser(); charger(); });
   window.chargerPhotosVehicules = async function () { await initialiser(); charger(); };
 })();
+</script>
+<script>
+// ================== Partenaires : demandes, publication de courses, offres, portefeuilles ==================
+const BUCKET_DOCS_PARTENAIRES = "documents-partenaires";
+const MODES_CASH_PARTENAIRE = ["cash", "uber_cash"];
+const LIBELLES_DOCS_PARTENAIRE = { licence: "Licence taxi", assurance: "Assurance", "carte-grise": "Carte grise", permis: "Permis de conduire" };
+const LIBELLES_PAIEMENT_PARTENAIRE = { cash: "Cash", uber_cash: "Cash (Uber)", carte: "Carte", qr: "QR", facture: "Virement / facture", uber: "Uber" };
+
+function eurPart(n) { return (Number(n) || 0).toFixed(2).replace(".", ",") + " €"; }
+function montantPortefeuilleCourse(c) {
+  if (c.partenaire_prix == null) return 0;
+  if (MODES_CASH_PARTENAIRE.includes(c.mode_paiement)) return -Math.round(((Number(c.prix) || 0) - Number(c.partenaire_prix)) * 100) / 100;
+  return Number(c.partenaire_prix);
+}
+function commissionCourse(c) { return Math.round(((Number(c.prix) || 0) - (Number(c.partenaire_prix) || 0)) * 100) / 100; }
+function ouvrirModalePart(titre, contenuHtml) {
+  const fond = document.createElement("div");
+  fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999; display:flex; align-items:flex-end; justify-content:center;";
+  fond.innerHTML = `<div class="mp-boite" style="background:var(--noir-2, #fff); color:inherit; width:100%; max-width:640px; max-height:90vh; overflow-y:auto; border-radius:16px 16px 0 0; padding:18px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><h2 style="margin:0; font-size:1.1rem;">${esc(titre)}</h2>
+    <button type="button" class="mp-fermer" style="width:auto; padding:6px 12px; border-radius:8px; border:1px solid #cfcfcd; background:transparent;">✕</button></div>
+    <div class="mp-contenu" style="margin-top:12px;">${contenuHtml}</div></div>`;
+  fond.addEventListener("click", (e) => { if (e.target === fond) fond.remove(); });
+  fond.querySelector(".mp-fermer").addEventListener("click", () => fond.remove());
+  document.body.appendChild(fond);
+  return fond;
+}
+
+// ---------- 1) Demandes de partenariat ----------
+async function chargerDemandesPartenariat() {
+  const bloc = document.getElementById("bloc-demandes-partenariat");
+  if (!bloc) return;
+  const { data, error } = await supabase.from("demandes_partenariat").select("*").order("created_at", { ascending: false }).limit(100);
+  if (error) { bloc.innerHTML = `<p style="color:var(--gris);">Demandes de partenariat indisponibles : ${esc(error.message)}</p>`; return; }
+  const enAttente = (data || []).filter(d => d.statut === "en_attente");
+  const traitees = (data || []).filter(d => d.statut !== "en_attente").slice(0, 10);
+  bloc.innerHTML = `<h3 style="margin:4px 0 8px;">📥 Demandes de partenariat ${enAttente.length ? `<span class="badge-ar" style="background:var(--rouge); color:#fff;">${enAttente.length} en attente</span>` : ""}</h3>`;
+  if (!data || !data.length) { bloc.insertAdjacentHTML("beforeend", `<p style="color:var(--gris); margin-top:0;">Aucune demande pour l'instant.</p>`); return; }
+  [...enAttente, ...traitees].forEach(d => {
+    const ligne = document.createElement("div");
+    ligne.className = "vehicule-admin";
+    ligne.style.cursor = "pointer";
+    const etat = d.statut === "en_attente" ? "⏳ En attente" : d.statut === "active" ? "✅ Activée" : "⛔ Refusée";
+    ligne.innerHTML = `<b>${esc(d.societe_nom)}</b> — ${esc(d.responsable_nom)} <span style="color:var(--gris); font-size:.85rem;">· ${etat} · ${new Date(d.created_at).toLocaleDateString("fr-BE")}</span>`;
+    ligne.addEventListener("click", () => ouvrirFicheDemandePartenariat(d));
+    bloc.appendChild(ligne);
+  });
+}
+
+async function ouvrirFicheDemandePartenariat(d) {
+  const liste = (arr, f) => (Array.isArray(arr) && arr.length) ? arr.map(f).join("") : "<li>—</li>";
+  const fond = ouvrirModalePart("Demande — " + d.societe_nom, `
+    <p style="margin:0 0 6px;"><b>Responsable :</b> ${esc(d.responsable_nom)} · ${esc(d.responsable_telephone || "")} · ${esc(d.responsable_email)}</p>
+    <p style="margin:0 0 6px;"><b>Société :</b> ${esc(d.societe_nom)} · BCE/TVA ${esc(d.bce_tva || "—")}</p>
+    <p style="margin:0 0 6px;"><b>Adresse :</b> ${esc(d.adresse || "—")}</p>
+    <p style="margin:0 0 6px;"><b>IBAN :</b> ${esc(d.iban || "—")}</p>
+    <p style="margin:8px 0 2px;"><b>Chauffeurs</b></p><ul style="margin:0;">${liste(d.chauffeurs, c => `<li>${esc(c.nom || "")} ${esc(c.telephone || "")}</li>`)}</ul>
+    <p style="margin:8px 0 2px;"><b>Véhicules</b></p><ul style="margin:0;">${liste(d.vehicules, v => `<li>${esc(v.marque || "")} ${esc(v.modele || "")} · ${esc(v.plaque || "")} · ${esc(v.places || "?")} places</li>`)}</ul>
+    <p style="margin:8px 0 2px;"><b>Documents</b></p><div class="mp-docs" style="color:var(--gris);">Chargement…</div>
+    ${d.statut === "refusee" && d.motif_refus ? `<p><b>Motif du refus :</b> ${esc(d.motif_refus)}</p>` : ""}
+    ${d.statut === "en_attente" ? `
+      <label style="display:block; margin-top:12px;">Taux de commission (%)</label>
+      <input type="number" class="mp-taux" value="10" min="0" max="100" step="0.5" style="width:100%; padding:10px; border-radius:8px;">
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button type="button" class="mp-refuser" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--rouge); background:transparent; color:var(--rouge); font-weight:600;">⛔ Refuser</button>
+        <button type="button" class="mp-activer" style="flex:1; padding:12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600;">✅ Activer</button>
+      </div>
+      <p class="mp-msg" style="min-height:1em; color:var(--gris);"></p>` : ""}
+  `);
+  // Documents (bucket privé → liens signés temporaires)
+  const zoneDocs = fond.querySelector(".mp-docs");
+  const { data: fichiers, error } = await supabase.storage.from(BUCKET_DOCS_PARTENAIRES).list(`demandes/${d.id}`, { limit: 100 });
+  if (error || !fichiers || !fichiers.length) { zoneDocs.textContent = error ? "Erreur : " + error.message : "Aucun document."; }
+  else {
+    zoneDocs.innerHTML = "";
+    for (const f of fichiers) {
+      const chemin = `demandes/${d.id}/${f.name}`;
+      const { data: s } = await supabase.storage.from(BUCKET_DOCS_PARTENAIRES).createSignedUrl(chemin, 600);
+      const type = f.name.split("-")[0] === "carte" ? "carte-grise" : f.name.split("-")[0];
+      const a = document.createElement("a");
+      a.href = s?.signedUrl || "#"; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "📄 " + (LIBELLES_DOCS_PARTENAIRE[type] || f.name);
+      a.style.cssText = "display:block; margin:4px 0;";
+      zoneDocs.appendChild(a);
+    }
+  }
+  if (d.statut !== "en_attente") return;
+  const msg = fond.querySelector(".mp-msg");
+  fond.querySelector(".mp-refuser").addEventListener("click", async () => {
+    const motif = prompt("Motif du refus (facultatif) :", "");
+    if (motif === null) return;
+    const { error: e } = await supabase.rpc("admin_refuser_demande_partenariat", { p_demande: d.id, p_motif: motif });
+    if (e) { msg.textContent = "Erreur : " + e.message; return; }
+    fond.remove(); chargerPartenairesAdmin();
+  });
+  fond.querySelector(".mp-activer").addEventListener("click", async () => {
+    const taux = parseFloat(fond.querySelector(".mp-taux").value);
+    const tauxOk = isNaN(taux) ? 10 : Math.min(100, Math.max(0, taux));
+    msg.textContent = "Création du compte…";
+    // Création du compte de connexion via la fonction existante (sans effet si le compte existe déjà)
+    const { data: r, error: eF } = await supabase.functions.invoke("creer-partenaire", {
+      body: { nom: d.responsable_nom, email: d.responsable_email, telephone: d.responsable_telephone || null, societe: d.societe_nom, taux_commission: tauxOk }
+    });
+    if (eF || r?.error) console.warn("creer-partenaire :", (r && r.error) || (eF && eF.message));
+    const { error: eA } = await supabase.rpc("admin_activer_demande_partenariat", { p_demande: d.id, p_taux: tauxOk });
+    if (eA) { msg.textContent = "Erreur : " + eA.message + ((r && r.error) ? " — " + r.error : ""); return; }
+    fond.remove();
+    await chargerChauffeurs();
+    chargerPartenairesAdmin();
+  });
+}
+
+// ---------- 2) Publication d'une course aux partenaires + offres ----------
+function ajouterBlocPartenairesCourse(course, corps) {
+  if (course.chauffeur_id || ["annulee", "terminee", "refusee"].includes(course.statut)) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "🤝 Partenaires : publier / voir les offres";
+  btn.style.cssText = "width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid var(--vert); background:transparent; color:var(--vert); font-weight:600;";
+  btn.addEventListener("click", (e) => { e.stopPropagation(); ouvrirPartenairesCourse(course); });
+  corps.appendChild(btn);
+}
+
+function distanceKmPart(a, b) {
+  const R = 6371, rad = (x) => x * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+async function partenairesTriesParProximite(adresseDepart) {
+  const { data: partenaires } = await supabase.from("profils").select("id, nom, societe").eq("role", "partenaire").eq("actif", true);
+  const liste = (partenaires || []).map(p => ({ ...p, km: null }));
+  if (!liste.length) return liste;
+  let depart = null;
+  try { depart = adresseDepart ? await geocoderAdresse(adresseDepart) : null; } catch (e) { depart = null; }
+  if (!depart) return liste.sort((a, b) => String(a.societe || a.nom).localeCompare(String(b.societe || b.nom)));
+  const ids = liste.map(p => p.id);
+  const [{ data: pos }, { data: dem }] = await Promise.all([
+    supabase.from("positions_chauffeurs").select("chauffeur_id, latitude, longitude, updated_at").in("chauffeur_id", ids),
+    supabase.from("demandes_partenariat").select("partenaire_id, adresse").in("partenaire_id", ids).eq("statut", "active")
+  ]);
+  for (const p of liste) {
+    const gps = (pos || []).find(x => x.chauffeur_id === p.id && x.latitude != null && x.updated_at && Date.now() - new Date(x.updated_at).getTime() < 6 * 3600e3);
+    let point = gps ? { lat: Number(gps.latitude), lon: Number(gps.longitude) } : null;
+    if (!point) {
+      const adr = (dem || []).find(x => x.partenaire_id === p.id)?.adresse;
+      if (adr) { try { point = await geocoderAdresse(adr); } catch (e) { point = null; } }
+    }
+    if (point) p.km = Math.round(distanceKmPart(depart, point) * 10) / 10;
+  }
+  return liste.sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9));
+}
+
+async function ouvrirPartenairesCourse(course) {
+  const fond = ouvrirModalePart("Partenaires — course", `
+    <p style="margin:0 0 8px; color:var(--gris);">${esc(new Date(course.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }))} · ${esc(course.adresse_depart)} → ${esc(course.adresse_arrivee)}</p>
+    <h3 style="margin:10px 0 6px;">📢 Publier aux partenaires</h3>
+    <div class="mp-partenaires">Chargement…</div>
+    <h3 style="margin:16px 0 6px;">💶 Offres reçues</h3>
+    <div class="mp-offres">Chargement…</div>
+    <p class="mp-msg" style="min-height:1em; color:var(--gris);"></p>`);
+  const zoneP = fond.querySelector(".mp-partenaires"), zoneO = fond.querySelector(".mp-offres"), msg = fond.querySelector(".mp-msg");
+
+  const [liste, { data: publis }] = await Promise.all([
+    partenairesTriesParProximite(course.adresse_depart),
+    supabase.from("publications_partenaires").select("partenaire_id").eq("course_id", course.id)
+  ]);
+  const dejaPublie = new Set((publis || []).map(x => x.partenaire_id));
+  if (!liste.length) zoneP.innerHTML = `<p style="color:var(--gris); margin:0;">Aucun partenaire actif.</p>`;
+  else {
+    zoneP.innerHTML = `<button type="button" class="mp-tous" style="width:100%; padding:10px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:8px;">📢 Publier à tous les partenaires actifs (${liste.length})</button>` +
+      liste.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid rgba(128,128,128,.2);">
+        <span>${esc(p.societe || p.nom)}${p.km != null ? ` <span style="color:var(--gris); font-size:.85rem;">· ${String(p.km).replace(".", ",")} km</span>` : ""}</span>
+        ${dejaPublie.has(p.id) ? `<span style="color:var(--vert); font-size:.85rem;">✅ Publiée</span>` : `<button type="button" class="mp-un" data-id="${esc(p.id)}" style="width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--vert); background:transparent; color:var(--vert);">Publier</button>`}
+      </div>`).join("");
+    const publier = async (ids) => {
+      msg.textContent = "Publication…";
+      const { data: n, error } = await supabase.rpc("admin_publier_course_partenaires", { p_course: course.id, p_partenaires: ids });
+      if (error) { msg.textContent = "Erreur : " + error.message; return; }
+      fond.remove(); ouvrirPartenairesCourse(course);
+      setTimeout(() => alert(`Course publiée à ${n} partenaire(s).`), 50);
+    };
+    zoneP.querySelector(".mp-tous").addEventListener("click", () => publier(liste.map(p => p.id)));
+    zoneP.querySelectorAll(".mp-un").forEach(b => b.addEventListener("click", () => publier([b.dataset.id])));
+  }
+
+  const { data: offres, error: eO } = await supabase.from("offres_partenaires")
+    .select("id, partenaire_id, prix_partenaire, prix_client, type_vehicule, message, statut, profils:partenaire_id(nom, societe, taux_commission)")
+    .eq("course_id", course.id).order("prix_partenaire");
+  if (eO) { zoneO.textContent = "Erreur : " + eO.message; return; }
+  if (!offres || !offres.length) { zoneO.innerHTML = `<p style="color:var(--gris); margin:0;">Aucune offre pour l'instant.</p>`; return; }
+  const LIB_ST = { proposee: "Nouvelle", envoyee: "Envoyée au client", ecartee: "Écartée", choisie: "✅ Choisie par le client", refusee: "Non retenue" };
+  zoneO.innerHTML = offres.map(o => {
+    const taux = Number(o.profils?.taux_commission ?? 10);
+    const calcule = Math.round(Number(o.prix_partenaire) * (1 + taux / 100) * 100) / 100;
+    const modifiable = ["proposee", "envoyee"].includes(o.statut);
+    return `<div class="mp-offre" data-id="${esc(o.id)}" style="padding:8px; border:1px solid rgba(128,128,128,.3); border-radius:10px; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; gap:8px;"><b>${esc(o.profils?.societe || o.profils?.nom || "Partenaire")}</b><span>${esc(LIB_ST[o.statut] || o.statut)}</span></div>
+      <div style="font-size:.9rem;">Prix partenaire : <b>${eurPart(o.prix_partenaire)}</b> · commission ${esc(taux)} %${o.type_vehicule ? " · " + esc(o.type_vehicule) : ""}</div>
+      ${o.message ? `<div style="font-size:.85rem; color:var(--gris);">« ${esc(o.message)} »</div>` : ""}
+      ${modifiable ? `<label style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:.9rem;">
+        <input type="checkbox" class="mp-garder" ${o.statut !== "ecartee" ? "checked" : ""} style="width:auto;"> Garder
+        · Prix client : <input type="number" class="mp-prix-client" step="0.5" min="1" value="${esc(o.prix_client ?? calcule)}" style="width:100px; padding:6px; border-radius:6px;"> €</label>`
+        : (o.prix_client != null ? `<div style="font-size:.9rem;">Prix client : <b>${eurPart(o.prix_client)}</b></div>` : "")}
+    </div>`;
+  }).join("") + (offres.some(o => ["proposee", "envoyee"].includes(o.statut))
+    ? `<button type="button" class="mp-envoyer" style="width:100%; padding:12px; border-radius:8px; border:none; background:var(--rouge); color:#fff; font-weight:700;">📤 Envoyer au client</button>` : "");
+  const btnEnv = zoneO.querySelector(".mp-envoyer");
+  if (!btnEnv) return;
+  btnEnv.addEventListener("click", async () => {
+    const choix = [...zoneO.querySelectorAll(".mp-offre")].filter(el => el.querySelector(".mp-garder")?.checked)
+      .map(el => ({ id: el.dataset.id, prix_client: parseFloat(el.querySelector(".mp-prix-client").value) }));
+    if (!choix.length) { msg.textContent = "Garde au moins une offre."; return; }
+    if (choix.some(c => !(c.prix_client > 0))) { msg.textContent = "Prix client invalide."; return; }
+    if (!course.client_id && !confirm("Cette course n'a pas de compte client : le client ne pourra pas choisir dans l'app. Envoyer quand même ?")) return;
+    msg.textContent = "Envoi…";
+    const { error } = await supabase.rpc("admin_envoyer_offres_client", { p_course: course.id, p_offres: choix });
+    if (error) { msg.textContent = "Erreur : " + error.message; return; }
+    fond.remove();
+    alert(`${choix.length} proposition(s) envoyée(s) au client sous le nom Taxi Wal.`);
+  });
+}
+
+// ---------- 3) Portefeuilles par société + relevé mensuel ----------
+let moisPortefeuillePart = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; })();
+function bornesMoisPart(mois) {
+  const [a, m] = mois.split("-").map(Number);
+  return { debut: new Date(a, m - 1, 1).toISOString(), fin: new Date(a, m, 1).toISOString(), premier: `${mois}-01` };
+}
+
+async function chargerPortefeuillesPartenaires() {
+  const bloc = document.getElementById("bloc-portefeuilles-partenaires");
+  if (!bloc) return;
+  bloc.innerHTML = `<h3 style="margin:14px 0 8px;">💼 Portefeuilles des partenaires</h3>
+    <input type="month" id="mois-portefeuille-part" value="${esc(moisPortefeuillePart)}" style="width:100%; padding:10px; border-radius:8px; margin-bottom:10px;">
+    <div id="liste-portefeuilles-part">Chargement…</div>`;
+  document.getElementById("mois-portefeuille-part").addEventListener("change", (e) => { if (e.target.value) { moisPortefeuillePart = e.target.value; chargerPortefeuillesPartenaires(); } });
+  const zone = document.getElementById("liste-portefeuilles-part");
+  const b = bornesMoisPart(moisPortefeuillePart);
+  const [{ data: partenaires }, { data: attributions, error }, { data: reglements }] = await Promise.all([
+    supabase.from("profils").select("id, nom, societe, taux_commission").eq("role", "partenaire").order("societe"),
+    supabase.from("attributions_partenaires")
+      .select("partenaire_id, prix_partenaire, courses:course_id!inner(id, chauffeur_id, date_heure, adresse_depart, adresse_arrivee, mode_paiement, prix, statut)")
+      .eq("courses.statut", "terminee").gte("courses.date_heure", b.debut).lt("courses.date_heure", b.fin),
+    supabase.from("reglements_partenaires").select("*").eq("mois", b.premier)
+  ]);
+  if (error) { zone.textContent = "Erreur : " + error.message; return; }
+  const courses = (attributions || []).filter(a => a.courses && a.courses.chauffeur_id === a.partenaire_id)
+    .map(a => ({ ...a.courses, partenaire_prix: a.prix_partenaire }))
+    .sort((x, y) => new Date(x.date_heure) - new Date(y.date_heure));
+  if (!partenaires || !partenaires.length) { zone.innerHTML = `<p style="color:var(--gris);">Aucun partenaire.</p>`; return; }
+  zone.innerHTML = "";
+  for (const p of partenaires) {
+    const lignes = courses.filter(c => c.chauffeur_id === p.id);
+    const reg = (reglements || []).find(r => r.partenaire_id === p.id);
+    const solde = Math.round(lignes.reduce((s, c) => s + montantPortefeuilleCourse(c), 0) * 100) / 100;
+    const carte = document.createElement("div");
+    carte.className = "vehicule-admin";
+    const texteSolde = solde >= 0
+      ? `<span style="color:var(--vert); font-weight:700;">Taxi Wal doit ${eurPart(solde)} à la société</span>`
+      : `<span style="color:var(--rouge); font-weight:700;">La société doit ${eurPart(-solde)} à Taxi Wal</span>`;
+    carte.innerHTML = `<h3 style="margin:0 0 4px;">${esc(p.societe || p.nom)}</h3>
+      <div style="margin-bottom:6px;">${lignes.length} course(s) · ${texteSolde}${reg ? ` <span class="badge-ar" style="background:var(--vert); color:#fff;">✅ Réglé le ${new Date(reg.regle_at).toLocaleDateString("fr-BE")}</span>` : ""}</div>
+      ${lignes.length ? `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:.8rem;">
+        <tr style="text-align:left;"><th>Date</th><th>Trajet</th><th>Paiement</th><th>Prix client</th><th>Commission</th><th>+/−</th></tr>
+        ${lignes.map(c => { const m = montantPortefeuilleCourse(c); return `<tr style="border-top:1px solid rgba(128,128,128,.2);">
+          <td>${new Date(c.date_heure).toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" })}</td>
+          <td>${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)}</td>
+          <td>${esc(LIBELLES_PAIEMENT_PARTENAIRE[c.mode_paiement] || c.mode_paiement || "—")}</td>
+          <td>${eurPart(c.prix)}</td><td>${eurPart(commissionCourse(c))}</td>
+          <td style="color:${m >= 0 ? "var(--vert)" : "var(--rouge)"}; font-weight:600;">${m >= 0 ? "+" : "−"}${eurPart(Math.abs(m))}</td></tr>`; }).join("")}
+      </table></div>` : ""}
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button type="button" class="pp-releve" style="flex:1; padding:10px; border-radius:8px; border:1px solid #cfcfcd; background:transparent;">🖨️ Relevé du mois</button>
+        <button type="button" class="pp-regle" style="flex:1; padding:10px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600;">${reg ? "✅ Réglé (mettre à jour)" : "✅ Réglé"}</button>
+      </div>`;
+    carte.querySelector(".pp-releve").addEventListener("click", () => imprimerRelevePartenaire(p, lignes, solde, moisPortefeuillePart));
+    carte.querySelector(".pp-regle").addEventListener("click", async () => {
+      if (!confirm(`Clôturer ${moisPortefeuillePart} pour ${p.societe || p.nom} (solde ${eurPart(solde)}) ?`)) return;
+      const { error: e } = await supabase.rpc("admin_regler_mois_partenaire", { p_partenaire: p.id, p_mois: b.premier });
+      if (e) { alert("Erreur : " + e.message); return; }
+      chargerPortefeuillesPartenaires();
+    });
+    zone.appendChild(carte);
+  }
+}
+
+function imprimerRelevePartenaire(p, lignes, solde, mois) {
+  const estCash = (c) => MODES_CASH_PARTENAIRE.includes(c.mode_paiement);
+  const totalCarte = lignes.filter(c => !estCash(c)).reduce((s, c) => s + (Number(c.prix) || 0), 0);
+  const totalCash = lignes.filter(estCash).reduce((s, c) => s + (Number(c.prix) || 0), 0);
+  const totalComm = lignes.reduce((s, c) => s + commissionCourse(c), 0);
+  const [a, m] = mois.split("-").map(Number);
+  const libMois = new Date(a, m - 1, 1).toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+  const w = window.open("", "_blank");
+  if (!w) { alert("Autorise les fenêtres pop-up pour imprimer le relevé."); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Relevé ${esc(p.societe || p.nom)} — ${esc(libMois)}</title>
+    <style>body{font:13px -apple-system,Segoe UI,Roboto,sans-serif; color:#1c1c1c; padding:24px;} h1{font-size:20px; margin:0;} table{width:100%; border-collapse:collapse; margin-top:14px;}
+    th,td{border-bottom:1px solid #ddd; padding:6px 4px; text-align:left;} td.n,th.n{text-align:right;} .tot{margin-top:14px;} .tot div{margin:3px 0;}
+    .solde{font-size:16px; font-weight:700; margin-top:10px;} @media print{button{display:none;}}</style></head><body>
+    <h1>Taxi Wal — Relevé partenaire</h1>
+    <p><b>${esc(p.societe || p.nom)}</b> · ${esc(libMois)}</p>
+    <div class="tot"><div>Nombre de courses : <b>${lignes.length}</b></div>
+      <div>Total payé à Taxi Wal (carte / en ligne / virement / QR) : <b>${eurPart(totalCarte)}</b></div>
+      <div>Total encaissé en cash par la société : <b>${eurPart(totalCash)}</b></div>
+      <div>Commissions Taxi Wal : <b>${eurPart(totalComm)}</b></div>
+      <div class="solde" style="color:${solde >= 0 ? "#1f8a4c" : "#c81e2c"};">${solde >= 0 ? `Taxi Wal doit ${eurPart(solde)} à la société` : `La société doit ${eurPart(-solde)} à Taxi Wal`}</div></div>
+    <table><tr><th>Date</th><th>Trajet</th><th>Paiement</th><th class="n">Prix client</th><th class="n">Commission</th><th class="n">Montant</th></tr>
+    ${lignes.map(c => { const mm = montantPortefeuilleCourse(c); return `<tr><td>${new Date(c.date_heure).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+      <td>${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)}</td><td>${esc(LIBELLES_PAIEMENT_PARTENAIRE[c.mode_paiement] || c.mode_paiement || "—")}</td>
+      <td class="n">${eurPart(c.prix)}</td><td class="n">${eurPart(commissionCourse(c))}</td><td class="n">${mm >= 0 ? "+" : "−"}${eurPart(Math.abs(mm))}</td></tr>`; }).join("")}
+    </table><p style="margin-top:20px;"><button onclick="window.print()">Imprimer / PDF</button></p></body></html>`);
+  w.document.close();
+}
 </script>
 </body>
 </html>

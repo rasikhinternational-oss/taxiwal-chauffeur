@@ -3863,6 +3863,35 @@ async function construireCarteCourseClient(course) {
 
   if (window.TWSoc) window.TWSoc.extrasCourse(div, course);
 
+  // --- Propositions Taxi Wal (prix et type de véhicule uniquement) ---
+  if (course.offres_partenaires_envoyees && !course.chauffeur_id && !["annulee", "terminee"].includes(course.statut)) {
+    const EN = (typeof LANG !== "undefined" && LANG === "en");
+    const { data: offresTW } = await supabase.rpc("client_offres_taxiwal", { p_course: course.id });
+    if (offresTW && offresTW.length) {
+      const blocTW = document.createElement("div");
+      blocTW.className = "bloc-marche";
+      blocTW.innerHTML = `<div class="titre-propositions">${EN ? "Taxi Wal offers — choose your vehicle" : "Propositions Taxi Wal — choisissez votre véhicule"}</div>` +
+        offresTW.map(o => `
+          <div class="ligne-proposition" data-offre="${esc(o.offre_id)}">
+            <div><b>Taxi Wal</b> — ${esc(o.type_vehicule)}</div>
+            <div class="prix-propose">${esc(fmtEurC(o.prix))}</div>
+            <button type="button" class="btn-choisir-offre-tw">${EN ? "Choose" : "Choisir"}</button>
+          </div>`).join("");
+      blocTW.querySelectorAll(".btn-choisir-offre-tw").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const ligne = btn.closest(".ligne-proposition");
+          if (!(await twConfirm(EN ? "Confirm this offer?" : "Confirmer cette proposition ?"))) return;
+          btn.disabled = true;
+          const { error } = await supabase.rpc("client_choisir_offre_taxiwal", { p_offre: ligne.dataset.offre });
+          btn.disabled = false;
+          if (error) { twAlert(t("erreur", { msg: error.message })); return; }
+          chargerMesCourses();
+        });
+      });
+      div.appendChild(blocTW);
+    }
+  }
+
   // --- Demande publiée au marché : afficher les propositions reçues des chauffeurs ---
   if (course.statut === "en_attente" && course.ouverte_marche) {
     const { data: propositions } = await supabase

@@ -3904,5 +3904,157 @@ async function chargerMesPleins() {
   try { var ep = $("ecran-principal"); if (ep && ep.style.display === "block" && window.supabase && typeof supabase !== "undefined") window.photosVehiculeDemarrer(); } catch (e) {}
 })();
 </script>
+<script>
+// ================== Espace partenaire (sociétés sous-traitantes) ==================
+(function () {
+  const MODES_CASH = ["cash", "uber_cash"];
+  const eur = (n) => (Number(n) || 0).toFixed(2).replace(".", ",") + " €";
+
+  const prixPartenaireParCourse = new Map();
+  async function chargerPrixPartenaire() {
+    const { data, error } = await supabase.from("attributions_partenaires").select("course_id, prix_partenaire");
+    if (error) return false;
+    let change = false;
+    (data || []).forEach(a => { if (prixPartenaireParCourse.get(a.course_id) !== Number(a.prix_partenaire)) { prixPartenaireParCourse.set(a.course_id, Number(a.prix_partenaire)); change = true; } });
+    return change;
+  }
+  // Bandeau paiement sur chaque course attribuée à une société partenaire
+  if (typeof construireCarteCourse === "function") {
+    const construireCarteCourseBase = construireCarteCourse;
+    construireCarteCourse = function (course) {
+      const div = construireCarteCourseBase.apply(this, arguments);
+      try {
+        const prixPart = prixPartenaireParCourse.get(course && course.id);
+        if (div && course && prixPart != null && course.statut !== "annulee") {
+          const b = document.createElement("div");
+          b.className = "bandeau-paiement-partenaire";
+          let txt, couleur;
+          if (MODES_CASH.includes(course.mode_paiement)) {
+            const aEncaisser = (Number(course.prix) || 0) + (Number(course.surprime) || 0);
+            const du = Math.max(0, (Number(course.prix) || 0) - Number(prixPart));
+            txt = `💵 À encaisser en cash : ${eur(aEncaisser)} — tu dois ${eur(du)} à Taxi Wal`; couleur = "#b86e00";
+          } else if (course.mode_paiement || Number(course.paye_en_ligne_montant) > 0) {
+            txt = `💳 Payée à Taxi Wal — Taxi Wal te doit ${eur(prixPart)}`; couleur = "#1f8a4c";
+          } else {
+            txt = `ℹ️ Mode de paiement à confirmer par Taxi Wal — ton prix : ${eur(prixPart)}`; couleur = "#555";
+          }
+          b.textContent = txt;
+          b.style.cssText = `margin:8px 0 4px; padding:8px 10px; border-radius:10px; border:2px solid ${couleur}; color:${couleur}; font-weight:700; font-size:.92rem; background:#fff;`;
+          div.appendChild(b);
+        }
+      } catch (e) { console.error(e); }
+      return div;
+    };
+  }
+
+  async function estPartenaire() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const { data } = await supabase.from("profils").select("role").eq("id", user.id).maybeSingle();
+      return !!(data && data.role === "partenaire");
+    } catch (e) { return false; }
+  }
+
+  function installerOnglets() {
+    const nav = document.querySelector("nav.onglets");
+    const principal = document.getElementById("ecran-principal") || document.body;
+    if (!nav || document.getElementById("section-courses-partenaire")) return;
+    const sections = [
+      ["courses-partenaire", "🤝 Courses proposées", `<p class="explication-demandes">Courses proposées par Taxi Wal. Indique ton prix : Taxi Wal te confirme si le client choisit ton offre.</p><div id="liste-courses-partenaire"></div>`],
+      ["portefeuille-partenaire", "💼 Mon portefeuille", `<input type="month" id="mois-portefeuille" style="width:100%; padding:10px; border-radius:8px; margin-bottom:10px;"><div id="contenu-portefeuille"></div>`]
+    ];
+    const ref = document.getElementById("section-mes-courses");
+    sections.forEach(([id, lib, html]) => {
+      const btn = document.createElement("button");
+      btn.dataset.onglet = id; btn.textContent = lib;
+      nav.insertBefore(btn, nav.children[1] || null);
+      const sec = document.createElement("section");
+      sec.id = "section-" + id; sec.innerHTML = html;
+      (ref && ref.parentNode ? ref.parentNode : principal).appendChild(sec);
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("nav.onglets button").forEach(b => b.classList.remove("actif"));
+        btn.classList.add("actif");
+        document.querySelectorAll("section").forEach(s => s.classList.remove("visible"));
+        sec.classList.add("visible");
+        if (id === "courses-partenaire") chargerCoursesPartenaire(); else chargerPortefeuille();
+      });
+    });
+    const d = new Date();
+    const m = document.getElementById("mois-portefeuille");
+    m.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    m.addEventListener("change", chargerPortefeuille);
+  }
+
+  async function chargerCoursesPartenaire() {
+    const zone = document.getElementById("liste-courses-partenaire");
+    zone.textContent = "Chargement…";
+    const { data, error } = await supabase.rpc("partenaire_courses_publiees");
+    if (error) { zone.textContent = "Erreur : " + error.message; return; }
+    if (!data || !data.length) { zone.innerHTML = `<p style="color:#6b6b6b; text-align:center;">Aucune course proposée pour le moment.</p>`; return; }
+    zone.innerHTML = "";
+    data.forEach(c => {
+      const carte = document.createElement("div");
+      carte.className = "course";
+      const quand = new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const traitee = c.mon_statut && c.mon_statut !== "proposee";
+      carte.innerHTML = `<div style="font-weight:700;">${esc(quand)}</div>
+        <div>${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)}</div>
+        <div style="color:#6b6b6b; font-size:.9rem;">${esc(c.passagers || 1)} passager(s)${c.bagages ? " · " + esc(c.bagages) + " bagage(s)" : ""}${c.aller_retour ? " · aller-retour" : ""}${c.vehicule_souhaite ? " · " + esc(c.vehicule_souhaite) : ""}</div>
+        ${c.mon_prix != null ? `<div style="margin-top:6px;">Ton offre : <b>${eur(c.mon_prix)}</b>${traitee ? " · transmise au client" : ""}</div>` : ""}
+        ${traitee ? "" : `<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+          <input type="number" class="op-prix" min="1" step="0.5" placeholder="Ton prix (€)" value="${c.mon_prix != null ? esc(c.mon_prix) : ""}" style="flex:1; min-width:110px; padding:10px; border-radius:8px; border:1px solid #cfcfcd;">
+          <input type="text" class="op-type" placeholder="Véhicule (ex : Berline, Van 8 places)" value="${esc(c.mon_type_vehicule || "")}" style="flex:2; min-width:160px; padding:10px; border-radius:8px; border:1px solid #cfcfcd;">
+          <button type="button" class="op-envoyer" style="width:100%; padding:10px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:700;">${c.mon_prix != null ? "Modifier mon offre" : "Envoyer mon offre"}</button>
+          <div class="op-msg" style="min-height:1em; font-size:.85rem; color:#c81e2c;"></div></div>`}`;
+      const btn = carte.querySelector(".op-envoyer");
+      if (btn) btn.addEventListener("click", async () => {
+        const prix = parseFloat(carte.querySelector(".op-prix").value);
+        const msg = carte.querySelector(".op-msg");
+        if (!(prix > 0)) { msg.textContent = "Indique un prix."; return; }
+        btn.disabled = true;
+        const { error: e } = await supabase.rpc("partenaire_faire_offre", { p_course: c.course_id, p_prix: prix, p_type_vehicule: carte.querySelector(".op-type").value, p_message: null });
+        btn.disabled = false;
+        if (e) { msg.textContent = e.message; return; }
+        chargerCoursesPartenaire();
+      });
+      zone.appendChild(carte);
+    });
+  }
+
+  async function chargerPortefeuille() {
+    const zone = document.getElementById("contenu-portefeuille");
+    const mois = document.getElementById("mois-portefeuille").value;
+    if (!mois) return;
+    const [a, m] = mois.split("-").map(Number);
+    zone.textContent = "Chargement…";
+    const { data, error } = await supabase.rpc("partenaire_portefeuille", { p_debut: new Date(a, m - 1, 1).toISOString(), p_fin: new Date(a, m, 1).toISOString() });
+    if (error) { zone.textContent = "Erreur : " + error.message; return; }
+    const terminees = (data || []).filter(c => c.statut === "terminee");
+    const solde = terminees.reduce((s, c) => s + Number(c.montant || 0), 0);
+    const cashRecu = terminees.filter(c => c.en_cash).reduce((s, c) => s + Number(c.a_encaisser || 0), 0);
+    const regle = terminees.length && terminees.every(c => c.regle);
+    zone.innerHTML = `<div class="course" style="font-size:.95rem;">
+        <div>Courses terminées : <b>${terminees.length}</b></div>
+        <div>Cash reçu : <b>${eur(cashRecu)}</b></div>
+        <div style="margin-top:6px; font-weight:800; color:${solde >= 0 ? "#1f8a4c" : "#c81e2c"};">${solde >= 0 ? `Taxi Wal te doit ${eur(solde)}` : `Tu dois ${eur(-solde)} à Taxi Wal`}</div>
+        ${regle ? `<div style="color:#1f8a4c; margin-top:4px;">✅ Mois réglé</div>` : ""}
+      </div>` + ((data || []).map(c => `<div class="course" style="font-size:.88rem;">
+        <div><b>${new Date(c.date_heure).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</b> · ${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)}</div>
+        <div>${c.statut !== "terminee" ? "⏳ Pas encore terminée" : c.en_cash ? `💵 Cash encaissé : ${eur(c.a_encaisser)} — tu dois ${eur(-Number(c.montant))}` : `💳 Payée à Taxi Wal — Taxi Wal te doit ${eur(c.montant)}`}</div>
+      </div>`).join("") || `<p style="color:#6b6b6b; text-align:center;">Aucune course ce mois-ci.</p>`);
+  }
+
+  (async function demarrer(essai) {
+    if (await estPartenaire()) {
+      installerOnglets();
+      const maj = async () => { if (await chargerPrixPartenaire() && typeof chargerCourses === "function") chargerCourses(); };
+      maj(); setInterval(maj, 60000);
+      return;
+    }
+    if ((essai || 0) < 5) setTimeout(() => demarrer((essai || 0) + 1), 3000);
+  })(0);
+})();
+</script>
 </body>
 </html>
