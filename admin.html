@@ -11909,6 +11909,13 @@ function texteFacture(v) {
 function payeurFactureMaj(v) { const p = lirePayeurFacture(v).payeur; return p ? p.toUpperCase() : ""; }
 function texteSommesFacture(l) { const p = payeurFactureMaj(l && l.numero_dossier); return "FACTURE" + (p ? " — " + p : ""); }
 function estTexteFactureAuto(t) { return /^FACTURE —/.test(String(t || "")); }
+// 🚕 Uber à l'impression (contrôleur) : mention claire, jamais de montant dans « Sommes perçues » (hors recette, TVA par Uber)
+function texteSommesUberImp(l) {
+  if (l.mode_paiement === "uber_cash") return "Course Uber payée cash";
+  if (l.mode_paiement === "uber_carte") return "Course Uber payée carte";
+  return "Course Uber payée en ligne";
+}
+function mentionPrixUberImp(l) { return { uber_cash: "Uber · payé cash", uber_carte: "Uber · payé carte" }[l.mode_paiement] || ""; }
 // Colonne « Sommes perçues » à l'impression : si la ligne a un montant qui compte dans la recette
 // (même règle que recette_feuille), on imprime TOUJOURS le montant en gros, puis le mode / texte en petit.
 function celluleSommesImpression(l, fmt) {
@@ -11918,8 +11925,8 @@ function celluleSommesImpression(l, fmt) {
   const libMode = { cash: "CASH", carte: "CARTE", qr: "QR / VIREMENT", cheque_social: "CHÈQUE", uber_cash: "UBER CASH", uber_carte: "UBER CARTE", facture: libFacture, annulee: "ANNULÉE" }[l.mode_paiement]
     || (l.mode_paiement && l.mode_paiement !== "uber" ? esc(l.mode_paiement).toUpperCase() : null);
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
-  // 🚕 Uber : JAMAIS de montant ici (le montant est dans « Prix taximètre ») → « UBER » + APP / CASH / CARTE
-  if (estUber) return `<b>UBER</b>` + petit({ uber: "APP", uber_cash: "CASH", uber_carte: "CARTE" }[l.mode_paiement] || "APP");
+  // 🚕 Uber : JAMAIS de montant ici (le montant est dans « Prix taximètre ») → « Course Uber payée en ligne / cash / carte »
+  if (estUber) return `<span style="font-weight:bold; font-size:8.5px;">${texteSommesUberImp(l)}</span>`;
   const recu = (l.recu_demande && l.mode_paiement !== "facture") ? petit("(reçu)") : "";
   // 🧾 Facture : « FACTURE — TAXI VERT » (jamais de montant ici, hors recette) ; ancien montant noté → rappelé en petit
   if (l.mode_paiement === "facture" && l.type_course !== "prive") {
@@ -11956,7 +11963,8 @@ function cellulePrixImpression(l) {
     const lib = { uber_cash: "UBER CASH", uber_carte: "UBER CARTE" }[l.mode_paiement] || "UBER";
     // Payé dans l'app sans montant : « UBER APP » (normal, pas en rouge) ; cash / carte sans montant : rouge
     if (m === null) return lib === "UBER" ? `<b style="white-space:nowrap;">UBER APP</b>` : rougeP("Prix Uber manquant");
-    return `<span style="white-space:nowrap;">${Number(m).toFixed(2).replace(".", ",")}</span><br><span style="font-size:7px; font-weight:bold; letter-spacing:.3px; white-space:nowrap;">${lib}</span>`;
+    const mention = mentionPrixUberImp(l) ? `<span style="font-size:8px; font-weight:bold; white-space:nowrap;">${mentionPrixUberImp(l)}</span>` : `<span style="font-size:7px; font-weight:bold; letter-spacing:.3px; white-space:nowrap;">${lib}</span>`;
+    return `<span style="white-space:nowrap;">${Number(m).toFixed(2).replace(".", ",")}</span><br>${mention}`;
   }
   if (l.motif_sans_prix) return noteP(esc(texteMotifImp(l)));
   if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;

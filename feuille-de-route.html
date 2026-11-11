@@ -4852,7 +4852,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     select.insertAdjacentElement("afterend", zone);
     pucesARafraichir.push(rendre);
   }
-  creerPuces(inputsParChamp["motif_sans_prix"], true);
+  // (« Pas de prix ? » : grille de boutons comme le paiement, créée plus bas avec les autres grilles)
   // (mode de paiement : grille de boutons, créée plus bas après le bloc « Facture : pour qui ? »)
 
   // ---- Facture : pour qui ? (obligatoire) + n° de facture (optionnel) → colonne numero_dossier ----
@@ -5093,6 +5093,21 @@ function construireLigneHtml(ligne, numeroAffiche) {
     { cle: "Événement / mariage", texte: "🎉 Événement / mariage" },
     { cle: "Livraison / colis", texte: "📦 Livraison / colis" }
   ], "Autre", "✏️ Autre", [{ cle: "__ecrire__", texte: "✏️ Écrire mon propre motif…" }]);
+
+  // « Pas de prix ? Choisis le motif » : GRILLE de boutons (2 colonnes), comme le paiement et le forfait
+  creerGrilleSelect("motif_sans_prix", "grille-motifs", [
+    { cle: "", texte: "💶 Il y a un prix" },
+    { cle: "Forfait école", texte: "🏫 Forfait école" },
+    { cle: "Contrat / sur facture", texte: "🧾 Contrat / sur facture" },
+    { cle: "Uber (prix dans l'app)", texte: "🚕 Uber (prix dans l'app)" },
+    { cle: "Course annulée / client absent", texte: "❌ Annulée / client absent" },
+    { cle: "Trajet privé", texte: "🚗 Trajet privé" },
+    { cle: "Achat / course pour la société", texte: "🛒 Achat pour la société" },
+    { cle: "Déplacement à vide (garage, retour…)", texte: "↩️ Déplacement à vide" },
+    { cle: "Carwash / entretien", texte: "🧽 Carwash / entretien" },
+    { cle: "Plein de carburant", texte: "⛽ Plein de carburant" },
+    { cle: "Course gratuite / geste commercial", texte: "🎁 Course gratuite" }
+  ], "Autre (voir note)", "📝 Autre (voir note)", [{ cle: "__ecrire__", texte: "✏️ Écrire mon propre motif…" }]);
 
   function rafraichirPuces() { pucesARafraichir.forEach(f => f()); rendrePayeurs(); }
   requestAnimationFrame(() => pucesARafraichir.forEach(f => f()));
@@ -5448,6 +5463,13 @@ function texteFacture(v) {
   const p = lirePayeurFacture(v);
   return "FACTURE" + (p.payeur ? " " + p.payeur : "") + (p.numero ? " n° " + p.numero : "");
 }
+// 🚕 Uber à l'impression (contrôleur) : mention claire, jamais de montant dans « Sommes perçues » (hors recette, TVA par Uber)
+function texteSommesUberImp(l) {
+  if (l.mode_paiement === "uber_cash") return "Course Uber payée cash";
+  if (l.mode_paiement === "uber_carte") return "Course Uber payée carte";
+  return "Course Uber payée en ligne";
+}
+function mentionPrixUberImp(l) { return { uber_cash: "Uber · payé cash", uber_carte: "Uber · payé carte" }[l.mode_paiement] || ""; }
 // Colonne « Sommes perçues » à l'impression : si la ligne a un montant qui compte dans la recette
 // (même règle que recette_feuille), on imprime TOUJOURS le montant en gros, puis le mode / texte en petit.
 function celluleSommesImpression(l, fmt) {
@@ -5459,7 +5481,9 @@ function celluleSommesImpression(l, fmt) {
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
   const recu = (l.recu_demande && l.mode_paiement !== "facture") ? petit("(reçu)") : "";
   const compte = n !== null && !isNaN(n) && n > 0 && !estUber && l.type_course !== "prive" && l.mode_paiement !== "uber_cash" && l.mode_paiement !== "facture";
-  if (l.mode_paiement === "uber_cash") return `<span style="font-weight:bold; font-size:8px;">UBER CASH</span>`;
+  // 🚕 Uber (app, cash ou ancienne « carte ») : mention AVANT tout test motif_sans_prix → jamais vide ni « — »
+  if (estUber || ["uber_cash", "uber_carte"].includes(l.mode_paiement) || l.motif_sans_prix === "Uber (prix dans l'app)")
+    return `<span style="font-weight:bold; font-size:8.5px;">${texteSommesUberImp(l)}</span>`;
   // 🧾 Facture : « FACTURE — TAXI VERT » (jamais de montant ici, hors recette) ; ancien montant noté → rappelé en petit
   if (l.mode_paiement === "facture" && l.type_course !== "prive") {
     const numF = lirePayeurFacture(l.numero_dossier).numero;
@@ -5861,7 +5885,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
         <td>${(() => {
-          if (l.mode_paiement === "uber_cash") { const m = montantUberCash(l); return m !== null ? esc(String(m)) : ""; }
+          if (l.mode_paiement === "uber_cash" || l.mode_paiement === "uber_carte") {
+            const m = montantUberCash(l);
+            return (m !== null ? esc(String(m)) : "Uber") + `<br><span style="font-size:8px; font-weight:bold; white-space:nowrap;">${mentionPrixUberImp(l)}</span>`;
+          }
           if (estUber) return "Uber";
           if (l.motif_sans_prix) return `<span style="font-size:8px; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
           if (l.mode_paiement === "annulee") return "—";
