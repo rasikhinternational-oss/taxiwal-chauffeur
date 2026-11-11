@@ -7,14 +7,14 @@
 // n'est utilisée que s'il n'y a pas de réseau. Une mise à jour sur GitHub arrive donc tout de suite.
 // Les données (Supabase) ne passent JAMAIS par ce cache : c'est la page qui les gère.
 // Changer VERSION à chaque modification de ce fichier (les anciennes copies sont effacées).
-const VERSION = "taxiwal-v8";
+const VERSION = "taxiwal-v9";
 const ATTENTE_RESEAU_PAGE_MS = 4000; // page : au-delà, la copie du téléphone est affichée (si elle existe)
 const CACHE_PAGES = VERSION + "-pages";
 const CACHE_FICHIERS = VERSION + "-fichiers";
 const SUPABASE_JS = "https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
 
-const PAGES_A_GARDER = ["./chauffeur.html", "./feuille-de-route.html"];
-const FICHIERS_A_GARDER = ["./manifest.json", "./icon-192.png", "./icon-512.png"];
+const PAGES_A_GARDER = ["./chauffeur.html", "./feuille-de-route.html", "./driver.html", "./index.html", "./", "./gps-natif.js", "./push-natif.js"];
+const FICHIERS_A_GARDER = ["./manifest.json", "./manifest-admin.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

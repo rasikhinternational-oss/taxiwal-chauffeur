@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
+<script>
+// Messages d'erreur : aucun détail technique affiché à l'écran (le détail reste dans la console)
+(function () {
+  var TECH = /row-level security|permission denied|violates|duplicate key|relation "|column "|invalid input syntax|null value in column|syntax error|schema cache|PGRST\d|JWT|function public\.|Could not find the|SQLSTATE|42501|23505|22P02|for type uuid/i;
+  function propre(m) {
+    if (typeof m !== "string" || !TECH.test(m)) return m;
+    try { console.warn("Détail technique :", m.slice(0, 300)); } catch (e) {}
+    var avant = m.split(/Erreur\s*:/i)[0];
+    return (avant && avant.trim() && !TECH.test(avant) ? avant.trim() + "\n" : "") + "Une erreur est survenue. Réessaie ; si le problème continue, contacte Taxi Wal.";
+  }
+  window.twTexteSansDetail = propre;
+  var a = window.alert;
+  window.alert = function (m) { return a.call(window, propre(m)); };
+})();
+</script>
 <script>
 // Messages non bloquants : sur iPhone (appli sur l'écran d'accueil), une alerte système peut rester
 // invisible et bloquer toute l'application (plus aucun bouton ne répond). On affiche donc nos propres messages.
@@ -1219,7 +1235,7 @@ window.onerror = function(msg, url, line, col, err) {
   function lacherEnVol(id) { ecrireFile(lireFileCle(cleEnVol()).filter(function (x) { return x.id !== id; }), cleEnVol()); }
   function msgErreur(e) { return (e && (e.message || e.details)) || String(e || "refusé par le serveur"); }
   function aucuneLigneTouchee(it, data) { return it.op === "update" && it.table === "lignes_feuille_route" && (data == null || (Array.isArray(data) && !data.length)); }
-  function garderRefus(it, msg) { var f = lireFileCle(cleRefus()); var x = itemDe(it); x.erreur = msg; f.push(x); ecrireFile(f, cleRefus()); }
+  function garderRefus(it, msg) { var f = lireFileCle(cleRefus()); var x = itemDe(it); x.erreur = msg; f.push(x); ecrireFile(f, cleRefus()); try { signalerEchec(it, msg); } catch (e) {} }
   // Une modification plus récente de la même course a été enregistrée : l'ancienne valeur refusée ne doit pas l'écraser
   function eleguerRefus(it) {
     if (it.op !== "update" || !it.match) return;
@@ -1271,6 +1287,7 @@ window.onerror = function(msg, url, line, col, err) {
       var k = cleRefusSignee(), f = [];
       try { f = JSON.parse(lsGet(k) || "[]"); if (!Array.isArray(f)) f = []; } catch (e) { f = []; }
       f.push({ id: it.id, cree: it.cree, quand: Date.now(), table: it.table, match: copie(it.match), payload: copie(it.payload), label: it.label || "", annonce: false });
+      try { signalerEchec(it, "Feuille déjà signée / verrouillée (ou ligne disparue) : modification à reporter par la centrale"); } catch (e) {}
       if (f.length > 300) f = f.slice(-300);
       lsSet(k, JSON.stringify(f));
     } catch (e) {}
@@ -1318,7 +1335,7 @@ window.onerror = function(msg, url, line, col, err) {
           r.error = { message: "course pas trouvée sur le serveur" };
         }
         var reste = lireFileCle(cleRefus());
-        if (!r.error) { reste = reste.filter(function (x) { return x.id !== it.id; }); faits++; }
+        if (!r.error) { reste = reste.filter(function (x) { return x.id !== it.id; }); faits++; try { signalerEchecResolu(it.id); } catch (e) {} }
         else reste.forEach(function (x) { if (x.id === it.id) x.erreur = msgErreur(r.error); });
         ecrireFile(reste, cleRefus());
       }
@@ -1479,7 +1496,7 @@ window.onerror = function(msg, url, line, col, err) {
       return depuisCache(cle, url, init).then(function (r) { if (r) return r; throw new TypeError("Failed to fetch (hors ligne)"); });
     }
     var ctrl = new AbortController();
-    var minuterie = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, DELAI_RESEAU_MS);
+    var minuterie = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, url.indexOf("/auth/v1/") >= 0 ? 30000 : DELAI_RESEAU_MS);
     if (init.signal) { if (init.signal.aborted) ctrl.abort(); else init.signal.addEventListener("abort", function () { ctrl.abort(); }); }
     var opts = Object.assign({}, init, { signal: ctrl.signal });
     return fetch(input, opts).then(function (rep) {
@@ -1625,6 +1642,8 @@ window.onerror = function(msg, url, line, col, err) {
         if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
         // Course refusée : mise de côté (gardée + réessayée), les courses suivantes partent quand même
         if (estCourse(item)) { garderRefus(item, msgErreur(r.error)); retirer(item.id, kf); continue; }
+        // Autres refus (feuille, compteurs…) : même règle, mis de côté + signalé à la centrale, la suite continue
+        try { garderRefus(item, msgErreur(r.error)); retirer(item.id, kf); etat.infoRefusJusqua = Date.now() + 10000; continue; } catch (e) {}
         marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error), kf);
         break;
       }
@@ -1676,6 +1695,9 @@ window.onerror = function(msg, url, line, col, err) {
       fond = "#333"; html = "📴 Hors ligne — tu peux continuer, tout sera envoyé dès le retour du réseau (" + n + " en attente)";
     } else if (n) {
       fond = "#b86e00"; html = "⏳ " + n + " modification(s) en attente d'envoi…";
+    } else if (Date.now() < (etat.infoRefusJusqua || 0)) {
+      fond = "#b86e00"; html = "⚠️ Une modification a été refusée par le serveur : elle est gardée et la centrale est prévenue. Continue ta journée normalement.";
+      clearTimeout(minuterieFlash); minuterieFlash = setTimeout(majBandeau, etat.infoRefusJusqua - Date.now() + 50);
     } else if (Date.now() < etat.flashJusqua) {
       fond = "#1f8a4c"; html = "✅ Tout est synchronisé";
       clearTimeout(minuterieFlash); minuterieFlash = setTimeout(majBandeau, etat.flashJusqua - Date.now() + 50);
@@ -1715,6 +1737,56 @@ window.onerror = function(msg, url, line, col, err) {
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") planifier(300); });
   window.addEventListener("focus", function () { planifier(300); });
   setInterval(function () { if (lireFile().length) rejouer(false); }, 20000);
+
+  // ---- Modification refusée par le serveur : signalée à la centrale (jamais bloquant pour le chauffeur) ----
+  // Gardée sur le téléphone jusqu'à ce que la centrale l'ait bien reçue (envoi idempotent par id).
+  function cleEchecs() { return cleUtil("taxiwal_echecs_a_signaler"); }
+  var envoiEchecsEnCours = false;
+  function signalerEchec(it, msg) {
+    try {
+      if (!it || !it.id) return;
+      var f = lireFileCle(cleEchecs());
+      if (f.some(function (x) { return x.id === it.id && !x.resolu; })) return;
+      f.push({ id: it.id, app: etat.app, operation: { op: it.op, table: it.table, match: copie(it.match), payload: copie(it.payload),
+        fn: it.fn, args: copie(it.args), label: it.label || "", cree: it.cree }, erreur: String(msg || "refusé par le serveur").slice(0, 1000) });
+      ecrireFile(f.slice(-300), cleEchecs());
+      setTimeout(envoyerEchecs, 500);
+    } catch (e) {}
+  }
+  function signalerEchecResolu(id) {
+    try {
+      var f = lireFileCle(cleEchecs());
+      if (f.some(function (x) { return x.id === id && !x.resolu; })) {
+        f = f.filter(function (x) { return !(x.id === id && !x.envoye); });
+        f.forEach(function (x) { if (x.id === id) x.resolu = true; });
+      } else f.push({ id: id, resolu: true, envoye: true, seulementResolu: true });
+      ecrireFile(f, cleEchecs());
+      setTimeout(envoyerEchecs, 500);
+    } catch (e) {}
+  }
+  async function envoyerEchecs() {
+    if (envoiEchecsEnCours || !etat.client || navigator.onLine === false) return;
+    var f = lireFileCle(cleEchecs());
+    if (!f.length) return;
+    envoiEchecsEnCours = true;
+    try {
+      for (var i = 0; i < f.length; i++) {
+        var x = f[i], r;
+        try {
+          if (!x.envoye) r = await etat.client.rpc("signaler_echec_synchro", { p_id: x.id, p_app: x.app, p_operation: x.operation, p_erreur: x.erreur });
+          else if (x.resolu) r = await etat.client.rpc("echec_synchro_resolu", { p_id: x.id });
+          else continue;
+        } catch (e) { r = { error: e }; }
+        if (r && r.error) { if (estErreurReseau(r.error, r.status)) break; continue; }
+        var reste = lireFileCle(cleEchecs());
+        if (!x.envoye && !x.resolu) reste.forEach(function (y) { if (y.id === x.id) y.envoye = true; });
+        else reste = reste.filter(function (y) { return y.id !== x.id; });
+        ecrireFile(reste, cleEchecs());
+      }
+    } finally { envoiEchecsEnCours = false; }
+  }
+  setInterval(envoyerEchecs, 60000);
+  window.addEventListener("online", function () { setTimeout(envoyerEchecs, 1500); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", majBandeau); else setTimeout(majBandeau, 0);
 
   // ---- branchement sur le client supabase ----

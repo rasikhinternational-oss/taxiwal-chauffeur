@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
+<script>
+// Messages d'erreur : aucun détail technique affiché à l'écran (le détail reste dans la console)
+(function () {
+  var TECH = /row-level security|permission denied|violates|duplicate key|relation "|column "|invalid input syntax|null value in column|syntax error|schema cache|PGRST\d|JWT|function public\.|Could not find the|SQLSTATE|42501|23505|22P02|for type uuid/i;
+  function propre(m) {
+    if (typeof m !== "string" || !TECH.test(m)) return m;
+    try { console.warn("Détail technique :", m.slice(0, 300)); } catch (e) {}
+    var avant = m.split(/Erreur\s*:/i)[0];
+    return (avant && avant.trim() && !TECH.test(avant) ? avant.trim() + "\n" : "") + "Une erreur est survenue. Réessaie ; si le problème continue, contacte Taxi Wal.";
+  }
+  window.twTexteSansDetail = propre;
+  var a = window.alert;
+  window.alert = function (m) { return a.call(window, propre(m)); };
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Taxi Wal Driver</title>
@@ -160,6 +176,28 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage: stockageSecurise }
 });
 
+// ================== Hors ligne : session et rôle gardés sur le téléphone ==================
+const CLE_SESSION_LOCALE = "sb-dgtsgylgqucyzujvfkgo-auth-token";
+function sessionLocaleDriver() {
+  try {
+    let s = JSON.parse(window.localStorage.getItem(CLE_SESSION_LOCALE) || "null");
+    if (s && s.currentSession) s = s.currentSession;
+    return (s && s.access_token && s.user) ? s : null;
+  } catch (e) { return null; }
+}
+function estErreurReseauDriver(err) {
+  if (navigator.onLine === false) return true;
+  if (!err) return false;
+  if (err.name === "AuthRetryableFetchError" || err.name === "AbortError" || err.status === 0) return true;
+  return /Failed to fetch|NetworkError|Load failed|network|timeout|aborted/i.test(String(err.message || err));
+}
+// Sans réseau : on ouvre directement l'espace du chauffeur avec le rôle déjà connu (jamais l'écran de connexion)
+function allerSelonRoleLocal(user) {
+  let role = null;
+  try { role = window.localStorage.getItem("taxiwal_role_" + user.id); } catch (e) {}
+  location.replace(role === "admin" ? "admin.html" : "chauffeur.html");
+}
+
 // ================== Redirection selon le rôle ==================
 async function redirigerSelonRole(user) {
   afficher("ecran-chargement");
@@ -167,8 +205,9 @@ async function redirigerSelonRole(user) {
   const { data: profil, error } = await supabase.from("profils").select("role, actif").eq("id", user.id).maybeSingle();
 
   if (error) {
+    if (estErreurReseauDriver(error)) { allerSelonRoleLocal(user); return; }
     afficher("ecran-refus");
-    $("msg-refus").textContent = "Impossible de lire votre profil (" + error.message + "). Vérifiez votre connexion et réessayez.";
+    $("msg-refus").textContent = "Impossible de lire votre profil. Vérifiez votre connexion et réessayez.";
     return;
   }
   if (profil && profil.actif === false) {
@@ -177,6 +216,7 @@ async function redirigerSelonRole(user) {
     return;
   }
   const role = profil && profil.role;
+  try { if (role) window.localStorage.setItem("taxiwal_role_" + user.id, role); } catch (e) {}
   if (role === "admin") { location.replace("admin.html"); return; }
   if (role === "chauffeur_partenaire") { location.replace("chauffeur.html"); return; }
   if (role === "chauffeur" || role === "partenaire") { location.replace("chauffeur.html"); return; }
@@ -412,11 +452,24 @@ $("btn-envoyer-partenaire").addEventListener("click", async () => {
 });
 
 // ================== Démarrage : session existante ? ==================
+if ("serviceWorker" in navigator) {
+  try { navigator.serviceWorker.register("sw.js", { scope: "./", updateViaCache: "none" }).catch(() => {}); } catch (e) {}
+}
 (async () => {
+  // Déjà connecté sur ce téléphone : sans réseau (ou réseau trop lent), on ouvre l'app sans redemander la connexion
+  const locale = sessionLocaleDriver();
+  if (locale && navigator.onLine === false) { allerSelonRoleLocal(locale.user); return; }
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session && session.user) { await redirigerSelonRole(session.user); return; }
-  } catch (e) { /* pas de session lisible → formulaire */ }
+    const r = await Promise.race([supabase.auth.getSession(), new Promise((res) => setTimeout(() => res("delai"), 8000))]);
+    if (r === "delai") { if (locale) { allerSelonRoleLocal(locale.user); return; } }
+    else {
+      const session = r && r.data && r.data.session;
+      if (session && session.user) { await redirigerSelonRole(session.user); return; }
+      if (locale && r && r.error && estErreurReseauDriver(r.error)) { allerSelonRoleLocal(locale.user); return; }
+    }
+  } catch (e) {
+    if (locale) { allerSelonRoleLocal(locale.user); return; }
+  }
   afficher("ecran-login");
 })();
 </script>

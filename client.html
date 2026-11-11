@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
+<script>
+// Messages d'erreur : aucun détail technique affiché à l'écran (le détail reste dans la console)
+(function () {
+  var TECH = /row-level security|permission denied|violates|duplicate key|relation "|column "|invalid input syntax|null value in column|syntax error|schema cache|PGRST\d|JWT|function public\.|Could not find the|SQLSTATE|42501|23505|22P02|for type uuid/i;
+  function propre(m) {
+    if (typeof m !== "string" || !TECH.test(m)) return m;
+    try { console.warn("Détail technique :", m.slice(0, 300)); } catch (e) {}
+    var avant = m.split(/Erreur\s*:/i)[0];
+    return (avant && avant.trim() && !TECH.test(avant) ? avant.trim() + "\n" : "") + "Une erreur est survenue. Réessaie ; si le problème continue, contacte Taxi Wal.";
+  }
+  window.twTexteSansDetail = propre;
+  var a = window.alert;
+  window.alert = function (m) { return a.call(window, propre(m)); };
+})();
+</script>
 <meta charset="UTF-8">
 <script>
 // Date du jour à l'heure BELGE (et non en heure UTC, qui change de jour à 2h du matin en été)
@@ -2603,7 +2619,7 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
         <button type="button" data-langue="en" onclick="changerLangue('en')">🇬🇧 English</button>
       </div>
     </div>
-    <a href="https://taxiwal.com" target="_blank" id="btn-visiter-site" style="text-decoration:none; display:block;" data-i18n="p.site">🌐 Visiter le site Taxi Wal</a>
+    <a href="https://taxiwal.com" target="_blank" rel="noopener noreferrer" id="btn-visiter-site" style="text-decoration:none; display:block;" data-i18n="p.site">🌐 Visiter le site Taxi Wal</a>
     <button id="btn-deconnexion" class="secondaire" data-i18n="p.logout">Se déconnecter</button>
     <div style="margin-top:28px; padding-top:16px; border-top:1px solid #e3e3e0;">
       <button id="btn-supprimer-compte" type="button" style="width:100%; padding:13px; border-radius:12px; border:1px solid #c81e2c; background:#fff; color:#c81e2c; font-weight:700;" data-i18n="p.supprimer">🗑️ Supprimer mon compte</button>
@@ -6198,6 +6214,10 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 })();
 // Applique la langue choisie (ou détectée) à tous les textes de la page
 appliquerLangue();
+</script>
+<script>
+// Fenêtres de message de l'app client : même nettoyage des détails techniques
+(function () { try { if (typeof twAlert === "function" && window.twTexteSansDetail) { var b = twAlert; twAlert = function (m) { return b(window.twTexteSansDetail(m)); }; } } catch (e) {} })();
 </script>
 </body>
 </html>
