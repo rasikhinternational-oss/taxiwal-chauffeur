@@ -13694,5 +13694,128 @@ function imprimerRelevePartenaire(p, lignes, solde, mois) {
   w.document.close();
 }
 </script>
+<script>
+// ================== Partenaires : chauffeurs des sociétés (validation) + société/chauffeur sur les courses ==================
+(function () {
+  "use strict";
+  const BUCKET = "documents-partenaires";
+  const LIB_DOCS = { permis: "Permis de conduire", licence: "Licence / carte de chauffeur" };
+
+  async function chargerChauffeursAValider() {
+    const section = document.getElementById("section-partenaires");
+    if (!section) return;
+    let bloc = document.getElementById("bloc-chauffeurs-partenaires");
+    if (!bloc) {
+      bloc = document.createElement("div");
+      bloc.id = "bloc-chauffeurs-partenaires";
+      const apres = document.getElementById("bloc-demandes-partenariat");
+      if (apres && apres.parentNode === section) apres.after(bloc); else section.prepend(bloc);
+    }
+    const { data, error } = await supabase.from("chauffeurs_partenaires")
+      .select("*, societe:partenaire_id(nom, societe)").order("created_at", { ascending: false }).limit(200);
+    if (error) { bloc.innerHTML = ""; return; }
+    const attente = (data || []).filter(c => c.statut === "en_attente");
+    const autres = (data || []).filter(c => c.statut !== "en_attente");
+    bloc.innerHTML = `<h3 style="margin:14px 0 8px;">👤 Chauffeurs à valider ${attente.length ? `<span class="badge-ar" style="background:var(--rouge); color:#fff;">${attente.length}</span>` : ""}</h3>`;
+    if (!data || !data.length) { bloc.insertAdjacentHTML("beforeend", `<p style="color:var(--gris); margin-top:0;">Aucun chauffeur de partenaire.</p>`); return; }
+    const LIB = { en_attente: "⏳ En attente", actif: "✅ Validé", refuse: "⛔ Refusé", desactive: "⛔ Désactivé" };
+    [...attente, ...autres].forEach(c => {
+      const l = document.createElement("div");
+      l.className = "vehicule-admin";
+      l.style.cursor = "pointer";
+      l.innerHTML = `<b>${esc(c.nom)}</b> — ${esc(c.societe?.societe || c.societe?.nom || "")} <span style="color:var(--gris); font-size:.85rem;">· ${LIB[c.statut] || esc(c.statut)}</span>`;
+      l.addEventListener("click", () => ouvrirFicheChauffeur(c));
+      bloc.appendChild(l);
+    });
+  }
+
+  async function ouvrirFicheChauffeur(c) {
+    const fond = ouvrirModalePart("Chauffeur — " + c.nom, `
+      <p style="margin:0 0 6px;"><b>Société :</b> ${esc(c.societe?.societe || c.societe?.nom || "")}</p>
+      <p style="margin:0 0 6px;"><b>Téléphone :</b> ${esc(c.telephone || "—")} · <b>E-mail :</b> ${esc(c.email)}</p>
+      <p style="margin:8px 0 2px;"><b>Documents</b></p><div class="fc-docs" style="color:var(--gris);">Chargement…</div>
+      ${c.motif_refus ? `<p><b>Motif :</b> ${esc(c.motif_refus)}</p>` : ""}
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        ${c.statut !== "refuse" && c.statut !== "desactive" ? `<button type="button" class="fc-refuser" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--rouge); background:transparent; color:var(--rouge); font-weight:600;">⛔ ${c.statut === "actif" ? "Désactiver" : "Refuser"}</button>` : ""}
+        ${c.statut !== "actif" ? `<button type="button" class="fc-activer" style="flex:1; padding:12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600;">✅ Activer</button>` : ""}
+      </div><p class="fc-msg" style="min-height:1em; color:var(--gris);"></p>`);
+    const zone = fond.querySelector(".fc-docs");
+    try {
+      const { data: fichiers } = await supabase.storage.from(BUCKET).list(`chauffeurs/${c.id}`, { limit: 100 });
+      if (!fichiers || !fichiers.length) zone.textContent = "Aucun document.";
+      else {
+        zone.innerHTML = "";
+        for (const f of fichiers) {
+          const { data: s } = await supabase.storage.from(BUCKET).createSignedUrl(`chauffeurs/${c.id}/${f.name}`, 600);
+          const a = document.createElement("a");
+          a.href = s?.signedUrl || "#"; a.target = "_blank"; a.rel = "noopener";
+          a.textContent = "📄 " + (LIB_DOCS[f.name.split("-")[0]] || f.name);
+          a.style.cssText = "display:block; margin:4px 0;";
+          zone.appendChild(a);
+        }
+      }
+    } catch (err) { zone.textContent = "Documents indisponibles."; }
+    const msg = fond.querySelector(".fc-msg");
+    const agir = async (accepter) => {
+      let motif = null;
+      if (!accepter) { motif = prompt("Motif (facultatif) :", ""); if (motif === null) return; }
+      const { error } = await supabase.rpc("admin_valider_chauffeur_partenaire", { p_id: c.id, p_accepter: accepter, p_motif: motif });
+      if (error) { msg.textContent = "Erreur : " + error.message; return; }
+      fond.remove(); chargerChauffeursAValider();
+    };
+    const bA = fond.querySelector(".fc-activer"), bR = fond.querySelector(".fc-refuser");
+    if (bA) bA.addEventListener("click", () => agir(true));
+    if (bR) bR.addEventListener("click", () => agir(false));
+  }
+
+  // Ajout à l'onglet Partenaires (sans toucher au chargement existant)
+  if (typeof chargerPartenairesAdmin === "function") {
+    const base = chargerPartenairesAdmin;
+    chargerPartenairesAdmin = async function () {
+      const r = await base.apply(this, arguments);
+      try { await chargerChauffeursAValider(); } catch (err) { console.error(err); }
+      return r;
+    };
+  }
+
+  // Société + chauffeur sur chaque course faite par un partenaire
+  const cacheAttrib = new Map();
+  async function infosPartenaireCourse(courseId) {
+    if (cacheAttrib.has(courseId) && Date.now() - cacheAttrib.get(courseId).t < 60000) return cacheAttrib.get(courseId).v;
+    const { data } = await supabase.from("attributions_partenaires")
+      .select("course_id, chauffeur:chauffeur_partenaire_id(nom, telephone)").eq("course_id", courseId).maybeSingle();
+    cacheAttrib.set(courseId, { t: Date.now(), v: data || null });
+    return data || null;
+  }
+  function nomSociete(course) {
+    try {
+      const p = (typeof partenairesCache !== "undefined" ? partenairesCache : []).find(x => x.id === course.chauffeur_id);
+      return (p && (p.societe || p.nom)) || course.profils?.nom || "Partenaire";
+    } catch (err) { return course.profils?.nom || "Partenaire"; }
+  }
+  if (typeof construireCarteAdmin === "function") {
+    const baseCarte = construireCarteAdmin;
+    construireCarteAdmin = function (course) {
+      const div = baseCarte.apply(this, arguments);
+      try {
+        if (div && course && course.chauffeur_id && course.profils?.role === "partenaire") {
+          const badge = document.createElement("div");
+          badge.className = "badge-ar";
+          badge.style.cssText = "display:inline-block; margin:4px 0;";
+          badge.textContent = "🤝 " + nomSociete(course) + " · chauffeur : …";
+          const cible = div.querySelector(".entete-course-admin > div") || div;
+          cible.appendChild(badge);
+          infosPartenaireCourse(course.id).then(a => {
+            if (!a) { badge.textContent = "🤝 " + nomSociete(course); return; }
+            badge.textContent = "🤝 " + nomSociete(course) +
+              " · chauffeur : " + (a.chauffeur?.nom ? a.chauffeur.nom + (a.chauffeur.telephone ? " (" + a.chauffeur.telephone + ")" : "") : "pas encore attribué");
+          }).catch(() => {});
+        }
+      } catch (err) { console.error(err); }
+      return div;
+    };
+  }
+})();
+</script>
 </body>
 </html>

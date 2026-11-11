@@ -4056,5 +4056,254 @@ async function chargerMesPleins() {
   })(0);
 })();
 </script>
+<script>
+// ================== Espace « Ma société » (partenaire) et chauffeurs des partenaires ==================
+(function () {
+  "use strict";
+  const BUCKET = "documents-partenaires";
+  const eur = (n) => (Number(n) || 0).toFixed(2).replace(".", ",") + " €";
+  const e = (v) => (typeof esc === "function" ? esc(v) : String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])));
+  const chauffeursSociete = [];
+  const chauffeurParCourse = new Map();
+
+  async function monRole() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("profils").select("role").eq("id", user.id).maybeSingle();
+      return data ? data.role : null;
+    } catch (err) { return null; }
+  }
+
+  function afficherSection(sec, btn) {
+    document.querySelectorAll("nav.onglets button").forEach(b => b.classList.remove("actif"));
+    if (btn) btn.classList.add("actif");
+    document.querySelectorAll("#ecran-principal section").forEach(s => s.classList.remove("visible"));
+    sec.classList.add("visible");
+  }
+
+  // ---------- Partenaire : 4 onglets ----------
+  async function chargerDonneesSociete() {
+    const [{ data: ch }, { data: att }] = await Promise.all([
+      supabase.from("chauffeurs_partenaires").select("id, nom, telephone, email, statut, motif_refus").order("created_at"),
+      supabase.from("attributions_partenaires").select("course_id, chauffeur_partenaire_id")
+    ]);
+    chauffeursSociete.length = 0; (ch || []).forEach(c => chauffeursSociete.push(c));
+    chauffeurParCourse.clear(); (att || []).forEach(a => chauffeurParCourse.set(a.course_id, a.chauffeur_partenaire_id));
+  }
+
+  function installerEspacePartenaire() {
+    const nav = document.querySelector("nav.onglets");
+    const ref = document.getElementById("section-mes-courses");
+    if (!nav || !ref || document.getElementById("section-mes-chauffeurs-partenaire")) return;
+    // Seuls les 4 onglets de la société restent visibles
+    const garder = ["courses-partenaire", "mes-courses", "mes-chauffeurs-partenaire", "portefeuille-partenaire"];
+    const btnMesCourses = nav.querySelector('button[data-onglet="mes-courses"]');
+    if (btnMesCourses) btnMesCourses.textContent = "🚖 Mes courses";
+    const btnProp = nav.querySelector('button[data-onglet="courses-partenaire"]');
+    if (btnProp) btnProp.textContent = "📢 Courses proposées";
+    const btnPf = nav.querySelector('button[data-onglet="portefeuille-partenaire"]');
+    if (btnPf) btnPf.textContent = "💰 Portefeuille";
+
+    const btn = document.createElement("button");
+    btn.dataset.onglet = "mes-chauffeurs-partenaire"; btn.textContent = "👥 Mes chauffeurs";
+    const sec = document.createElement("section");
+    sec.id = "section-mes-chauffeurs-partenaire";
+    sec.innerHTML = `
+      <div class="course">
+        <div style="font-weight:700; margin-bottom:6px;">Ajouter un chauffeur</div>
+        <input type="text" id="mc-nom" placeholder="Nom et prénom" style="width:100%; padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid #cfcfcd;">
+        <input type="tel" id="mc-tel" placeholder="Téléphone" style="width:100%; padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid #cfcfcd;">
+        <input type="email" id="mc-email" placeholder="E-mail (pour se connecter)" autocapitalize="off" style="width:100%; padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid #cfcfcd;">
+        <label style="font-size:.85rem; color:#6b6b6b;">Permis de conduire</label>
+        <input type="file" id="mc-permis" accept="image/*,application/pdf" multiple style="width:100%; margin-bottom:6px;">
+        <label style="font-size:.85rem; color:#6b6b6b;">Licence / carte de chauffeur</label>
+        <input type="file" id="mc-licence" accept="image/*,application/pdf" multiple style="width:100%; margin-bottom:8px;">
+        <button type="button" id="mc-ajouter" style="width:100%; padding:12px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:700;">Envoyer à Taxi Wal pour validation</button>
+        <div id="mc-msg" style="min-height:1em; font-size:.85rem; margin-top:6px;"></div>
+      </div>
+      <div id="mc-liste"></div>`;
+    nav.appendChild(btn);
+    ref.parentNode.appendChild(sec);
+    btn.addEventListener("click", () => { afficherSection(sec, btn); chargerMesChauffeurs(); });
+    sec.querySelector("#mc-ajouter").addEventListener("click", ajouterChauffeur);
+
+    // Ordre et masquage des autres onglets
+    garder.forEach(id => { const b = nav.querySelector(`button[data-onglet="${id}"]`); if (b) nav.appendChild(b); });
+    nav.querySelectorAll("button").forEach(b => { if (!garder.includes(b.dataset.onglet)) b.style.display = "none"; });
+  }
+
+  async function chargerMesChauffeurs() {
+    const zone = document.getElementById("mc-liste");
+    if (!zone) return;
+    try {
+      await chargerDonneesSociete();
+      const LIB = { en_attente: "⏳ En attente de validation Taxi Wal", actif: "✅ Validé", refuse: "⛔ Refusé", desactive: "⛔ Désactivé" };
+      zone.innerHTML = chauffeursSociete.length ? chauffeursSociete.map(c => `<div class="course">
+        <b>${e(c.nom)}</b> <span style="color:#6b6b6b; font-size:.85rem;">${e(c.telephone || "")} · ${e(c.email)}</span>
+        <div style="font-size:.9rem;">${LIB[c.statut] || e(c.statut)}${c.motif_refus ? " — " + e(c.motif_refus) : ""}</div></div>`).join("")
+        : `<p style="color:#6b6b6b; text-align:center;">Aucun chauffeur pour l'instant.</p>`;
+    } catch (err) { zone.textContent = "Erreur de chargement."; }
+  }
+
+  async function ajouterChauffeur() {
+    const msg = document.getElementById("mc-msg");
+    const btn = document.getElementById("mc-ajouter");
+    const v = (id) => document.getElementById(id).value.trim();
+    msg.style.color = "#c81e2c"; msg.textContent = "";
+    if (!v("mc-nom") || !v("mc-tel") || !v("mc-email")) { msg.textContent = "Nom, téléphone et e-mail sont obligatoires."; return; }
+    const docs = [["permis", "mc-permis"], ["licence", "mc-licence"]];
+    for (const [, id] of docs) {
+      const f = document.getElementById(id).files;
+      if (!f || !f.length) { msg.textContent = "Ajoute le permis et la licence du chauffeur."; return; }
+      for (const x of f) if (x.size > 10 * 1024 * 1024) { msg.textContent = "Fichier trop lourd (10 Mo max)."; return; }
+    }
+    btn.disabled = true;
+    try {
+      const { data: id, error } = await supabase.rpc("partenaire_ajouter_chauffeur", { p_nom: v("mc-nom"), p_telephone: v("mc-tel"), p_email: v("mc-email") });
+      if (error || !id) throw new Error(error ? error.message : "Envoi impossible");
+      let echecs = 0;
+      for (const [type, idInput] of docs) {
+        let n = 0;
+        for (const f of document.getElementById(idInput).files) {
+          n++;
+          const ext = ((f.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin").slice(0, 5);
+          const { error: eUp } = await supabase.storage.from(BUCKET).upload(`chauffeurs/${id}/${type}-${n}-${Date.now()}.${ext}`, f, { contentType: f.type || undefined, upsert: false });
+          if (eUp) echecs++;
+        }
+      }
+      ["mc-nom", "mc-tel", "mc-email", "mc-permis", "mc-licence"].forEach(i => { document.getElementById(i).value = ""; });
+      msg.style.color = "#1f8a4c";
+      msg.textContent = "Chauffeur envoyé à Taxi Wal pour validation." + (echecs ? ` (${echecs} document(s) non envoyé(s))` : "");
+      chargerMesChauffeurs();
+    } catch (err) { msg.textContent = "Erreur : " + (err.message || err); }
+    finally { btn.disabled = false; }
+  }
+
+  // Choix du chauffeur sur chaque course gagnée (onglet « Mes courses »)
+  function installerAttributionSurCartes() {
+    if (typeof construireCarteCourse !== "function") return;
+    const base = construireCarteCourse;
+    construireCarteCourse = function (course) {
+      const div = base.apply(this, arguments);
+      try {
+        if (div && course && chauffeurParCourse.has(course.id) && !["terminee", "annulee"].includes(course.statut)) {
+          const actifs = chauffeursSociete.filter(c => c.statut === "actif");
+          const actuel = chauffeurParCourse.get(course.id);
+          const bloc = document.createElement("div");
+          bloc.style.cssText = "margin:8px 0; padding:8px; border-radius:10px; background:#f4f4f2;";
+          bloc.innerHTML = `<div style="font-size:.85rem; color:#555; margin-bottom:4px;">👤 Chauffeur pour cette course</div>
+            <div style="display:flex; gap:6px;">
+              <select class="pa-chauffeur" style="flex:1; padding:8px; border-radius:8px;">
+                <option value="">— Choisir —</option>
+                ${actifs.map(c => `<option value="${e(c.id)}" ${c.id === actuel ? "selected" : ""}>${e(c.nom)}</option>`).join("")}
+              </select>
+              <button type="button" class="pa-ok" style="width:auto; padding:8px 12px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:700;">Attribuer</button>
+            </div>
+            ${actifs.length ? "" : `<div style="font-size:.8rem; color:#c81e2c; margin-top:4px;">Aucun chauffeur validé : ajoute-en dans « Mes chauffeurs ».</div>`}`;
+          ["click", "touchstart", "mousedown"].forEach(ev => bloc.addEventListener(ev, (x) => x.stopPropagation()));
+          bloc.querySelector(".pa-ok").addEventListener("click", async (x) => {
+            x.stopPropagation();
+            const id = bloc.querySelector(".pa-chauffeur").value || null;
+            if (!id) return;
+            const { error } = await supabase.rpc("partenaire_attribuer_chauffeur", { p_course: course.id, p_chauffeur: id });
+            if (error) { alert(error.message); return; }
+            chauffeurParCourse.set(course.id, id);
+            alert("Course attribuée. Le chauffeur est prévenu.");
+          });
+          div.appendChild(bloc);
+        }
+      } catch (err) { console.error(err); }
+      return div;
+    };
+  }
+
+  // ---------- Chauffeur de partenaire : uniquement ses courses ----------
+  function installerEspaceChauffeurPartenaire() {
+    const nav = document.querySelector("nav.onglets");
+    const ref = document.getElementById("section-mes-courses");
+    if (!ref || document.getElementById("section-courses-chauffeur-partenaire")) return;
+    if (nav) nav.style.display = "none";
+    const sec = document.createElement("section");
+    sec.id = "section-courses-chauffeur-partenaire";
+    sec.innerHTML = `<div id="ccp-liste">Chargement…</div>`;
+    ref.parentNode.appendChild(sec);
+    afficherSection(sec, null);
+    chargerCoursesChauffeurPartenaire();
+    setInterval(() => { if (!document.hidden) chargerCoursesChauffeurPartenaire(); }, 30000);
+  }
+
+  async function chargerCoursesChauffeurPartenaire() {
+    const zone = document.getElementById("ccp-liste");
+    if (!zone) return;
+    try {
+      const { data, error } = await supabase.rpc("chauffeur_partenaire_mes_courses");
+      if (error) { zone.textContent = "Erreur : " + error.message; return; }
+      if (!data || !data.length) { zone.innerHTML = `<p style="color:#6b6b6b; text-align:center;">Aucune course pour le moment.</p>`; return; }
+      zone.innerHTML = "";
+      data.forEach(c => {
+        const carte = document.createElement("div");
+        carte.className = "course " + (c.statut || "");
+        const quand = new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        const arrets = (Array.isArray(c.arrets) ? c.arrets : []).filter(a => a && a.adresse).map(a => `<div>• ${e(a.adresse)}</div>`).join("");
+        const paiement = c.deja_payee ? `<div style="color:#1f8a4c; font-weight:700;">💳 Déjà payée</div>`
+          : `<div style="color:#b86e00; font-weight:700;">💵 À encaisser : ${eur(c.a_encaisser)}</div>`;
+        const LIB = { assignee: "À faire", confirmee: "À faire", en_cours: "En cours", terminee: "Terminée" };
+        carte.innerHTML = `<div style="font-weight:700;">${e(quand)} · ${e(LIB[c.statut] || c.statut)}</div>
+          <div><b>Départ :</b> ${e(c.adresse_depart)}</div>${arrets}<div><b>Arrivée :</b> ${e(c.adresse_arrivee)}</div>
+          <div style="color:#6b6b6b; font-size:.9rem;">${e(c.passagers || 1)} passager(s)${c.bagages ? " · " + e(c.bagages) + " bagage(s)" : ""}${c.numero_vol ? " · vol " + e(c.numero_vol) : ""}${c.nom_panneau ? " · panneau « " + e(c.nom_panneau) + " »" : ""}</div>
+          ${c.client_nom ? `<div>👤 ${e(c.client_nom)}${c.client_telephone ? ` · <a href="tel:${e(String(c.client_telephone).replace(/\s/g, ""))}">${e(c.client_telephone)}</a>` : ""}</div>` : ""}
+          ${paiement}<div class="ccp-actions" style="margin-top:8px;"></div>`;
+        const actions = carte.querySelector(".ccp-actions");
+        const bouton = (texte, couleur, fn) => {
+          const b = document.createElement("button");
+          b.type = "button"; b.textContent = texte;
+          b.style.cssText = `width:100%; padding:12px; border-radius:8px; border:none; background:${couleur}; color:#fff; font-weight:700; margin-top:6px;`;
+          b.addEventListener("click", async () => { b.disabled = true; try { await fn(); } finally { b.disabled = false; } });
+          actions.appendChild(b);
+        };
+        const changer = async (statut, mode) => {
+          const { error: er } = await supabase.rpc("chauffeur_partenaire_changer_statut", { p_course: c.course_id, p_statut: statut, p_mode_paiement: mode || null });
+          if (er) { alert(er.message); return; }
+          chargerCoursesChauffeurPartenaire();
+        };
+        if (["assignee", "confirmee"].includes(c.statut)) bouton("▶️ Démarrer la course", "#1d4f86", () => changer("en_cours"));
+        if (c.statut === "en_cours") {
+          if (c.deja_payee) bouton("✅ Terminer la course", "#1f8a4c", () => changer("terminee"));
+          else {
+            bouton("✅ Terminer — payé en cash", "#1f8a4c", () => changer("terminee", "cash"));
+            bouton("✅ Terminer — payé par carte", "#1d4f86", () => changer("terminee", "carte"));
+          }
+        }
+        zone.appendChild(carte);
+      });
+    } catch (err) { zone.textContent = "Erreur de chargement."; }
+  }
+
+  (async function demarrer(essai) {
+    try {
+      const role = await monRole();
+      if (role === "partenaire") {
+        await chargerDonneesSociete();
+        installerAttributionSurCartes();
+        // les onglets de la phase précédente sont créés en parallèle : on attend qu'ils existent
+        let n = 0;
+        const attendre = setInterval(() => {
+          n++;
+          if (document.querySelector('nav.onglets button[data-onglet="courses-partenaire"]') || n > 20) {
+            clearInterval(attendre);
+            try { installerEspacePartenaire(); } catch (err) { console.error(err); }
+            if (typeof chargerCourses === "function") chargerCourses();
+          }
+        }, 500);
+        setInterval(async () => { try { await chargerDonneesSociete(); } catch (err) {} }, 60000);
+        return;
+      }
+      if (role === "chauffeur_partenaire") { installerEspaceChauffeurPartenaire(); return; }
+      if (role === null && (essai || 0) < 5) setTimeout(() => demarrer((essai || 0) + 1), 3000);
+    } catch (err) { console.error(err); }
+  })(0);
+})();
+</script>
 </body>
 </html>

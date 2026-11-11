@@ -178,11 +178,20 @@ async function redirigerSelonRole(user) {
   }
   const role = profil && profil.role;
   if (role === "admin") { location.replace("admin.html"); return; }
+  if (role === "chauffeur_partenaire") { location.replace("chauffeur.html"); return; }
   if (role === "chauffeur" || role === "partenaire") { location.replace("chauffeur.html"); return; }
 
   // Client ou pas de profil
   afficher("ecran-refus");
   $("msg-refus").textContent = "Ce compte n'a pas accès à Taxi Wal Driver";
+}
+
+// ================== Partenaires : envoi du code pour un compte pas encore créé ==================
+async function envoyerCodeComptePartenaire(email) {
+  const { data: autorise, error } = await supabase.rpc("email_driver_autorise", { p_email: email });
+  if (error || !autorise) return false;
+  const { data, error: e2 } = await supabase.functions.invoke("connexion-client", { body: { email } });
+  return !e2 && !!(data && data.ok);
 }
 
 // ================== Étape 1 : envoi du code ==================
@@ -207,6 +216,17 @@ $("btn-code").addEventListener("click", async () => {
     // shouldCreateUser: false → une adresse inconnue ne crée PAS de compte
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
     if (error) {
+      // Partenaire activé / chauffeur de partenaire validé, sans compte encore créé : code envoyé par Taxi Wal
+      try {
+        if (await envoyerCodeComptePartenaire(email)) {
+          $("msg-code-envoye").textContent = "Un code a été envoyé à " + email + ".";
+          $("etape-email").classList.add("cache");
+          $("etape-code").classList.remove("cache");
+          $("code").value = "";
+          $("code").focus();
+          return;
+        }
+      } catch (e) { /* on garde le message habituel */ }
       const m = (error.message || "").toLowerCase();
       if (error.status === 422 || m.includes("signups not allowed") || m.includes("not found") || m.includes("user not")) {
         $("erreur").textContent = "Cette adresse email n'est pas enregistrée chez Taxi Wal. Vérifiez l'orthographe ou contactez l'administrateur.";
@@ -243,6 +263,7 @@ $("btn-connexion").addEventListener("click", async () => {
   try {
     const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
     if (error || !data || !data.user) { $("erreur").textContent = "Code invalide ou expiré."; return; }
+    try { await supabase.rpc("lier_mon_compte_driver"); } catch (e) { /* compte déjà relié */ }
     await redirigerSelonRole(data.user);
   } catch (e) {
     $("erreur").textContent = "Connexion impossible. Vérifiez votre connexion internet et réessayez.";
