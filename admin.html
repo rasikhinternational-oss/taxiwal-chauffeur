@@ -67,7 +67,7 @@ window.addEventListener("error", function (e) {
     document.body.appendChild(fond);
     try { ok.focus(); } catch (e) {}
   }
-  window.alert = function (msg) { file.push(msg); suivant(); };
+  window.alert = function (msg) { file.push(window.twTexteSansDetail ? window.twTexteSansDetail(msg) : msg); suivant(); };
 })();
 </script>
 <script>

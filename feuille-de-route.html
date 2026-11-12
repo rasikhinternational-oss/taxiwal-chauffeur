@@ -41,7 +41,7 @@
     boite.appendChild(texte); boite.appendChild(ok); fond.appendChild(boite);
     document.body.appendChild(fond);
   }
-  window.alert = function (msg) { file.push(msg); suivant(); };
+  window.alert = function (msg) { file.push(window.twTexteSansDetail ? window.twTexteSansDetail(msg) : msg); suivant(); };
 })();
 // Confirmation dans la page (remplace window.confirm, qui peut rester invisible sur iPhone).
 // Renvoie une Promise<boolean> : true si "OK", false si "Annuler".
