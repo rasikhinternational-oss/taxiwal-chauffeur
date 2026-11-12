@@ -12922,6 +12922,7 @@ function construireVehiculeAdmin(vehicule) {
   vignette.src = estVan ? "van-principal.webp" : "berline.webp";
   vignette.alt = ""; vignette.width = 64; vignette.height = 48;
   if (!estVan) vignette.style.objectPosition = "center 78%";
+  if (/mercedes|classe\s*e\b/i.test(vehicule.nom || "")) { vignette.src = "mercedes-classe-e-1-vignette.jpg"; vignette.alt = "Mercedes Classe E"; vignette.style.objectPosition = "center 60%"; }
   vignette.loading = "lazy"; vignette.decoding = "async";
   vignette.onerror = () => vignette.remove();
   const titreVeh = document.createElement("div");
