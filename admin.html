@@ -1325,6 +1325,7 @@ window.onerror = function(msg, url, line, col, err) {
       <button id="fa-next">›</button>
       <button id="fa-aujourdhui">Aujourd'hui</button>
     </div>
+    <div id="recap-controle-caisse-fa"></div>
     <div id="a-imprimer-fa" style="display:none;"></div>
     <div id="classees-fa" style="display:none;"></div>
     <div id="liste-feuilles-admin"></div>
@@ -9325,6 +9326,7 @@ function ligneFeuilleFA(e, entrees, chauffeur, dateChoisie, opts) {
   info.innerHTML = `<span class="lf-voiture">${emojiVehiculeFA(nomV)} ${esc(nomV)}${plaque ? ` <span class="lf-plaque">${esc(plaque)}</span>` : ""}</span>`
     + `<span class="lf-infos">${e.nuit ? "🌙 nuit du " + esc(jjmmFA(f.date_service)) + " · " : ""}🕐 ${esc(hd)} → ${esc(hf)} · ${vide ? "<i>vide</i>" : nb + " course" + (nb > 1 ? "s" : "")}${vide ? "" : " · " + esc(eurosFr(recetteFeuilleFA(f, e.lignes || [])))}</span>`
     + `<span class="lf-puces"><span class="puce-fa puce-fa-${st.cle}">${esc(st.texte)}</span>${an ? ` <span class="puce-fa puce-fa-anomalie">⚠️ À vérifier (${an})</span>` : ""}</span>`;
+  if (!vide) { const pucesCC = info.querySelector(".lf-puces"); if (pucesCC) { pucesCC.appendChild(document.createTextNode(" ")); pucesCC.appendChild(pastilleControleCaisse(f, e.lignes || [])); } }
   const ouvrir = () => { if (opts.surOuvrir) opts.surOuvrir(f.id); };
   info.addEventListener("click", ouvrir);
   row.appendChild(info);
@@ -11248,6 +11250,9 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   }
   rendreTotauxLignesFA();
   corps.appendChild(totalPercuDiv);
+  // 🔍 Contrôle caisse (admin uniquement)
+  const controleCaisseDiv = blocControleCaisse(feuille, lignes);
+  corps.appendChild(controleCaisseDiv);
   // Après une modification d'une course (montant, mode, pourboire…) : totaux recalculés tout de suite,
   // puis recette / pourboires relus dans la base (recalculés par les triggers) pour l'en-tête.
   let majTotauxSeq = 0;
@@ -11557,6 +11562,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     btnFermer.addEventListener("click", () => {
       feuillePleinEcranId = null;
       corps.appendChild(totalPercuDiv);
+      corps.appendChild(controleCaisseDiv);
       corps.appendChild(alertesPbFA);
       corps.appendChild(zoneOrdre);
       corps.appendChild(conteneurLignes);
@@ -11569,6 +11575,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     overlay.appendChild(entetePlein);
     overlay.appendChild(rangeeRelaisArchiveFA(feuille, lignes, () => { feuillesDepliees.add(feuille.id); chargerFeuillesAdmin(); }));
     overlay.appendChild(totalPercuDiv);
+    overlay.appendChild(controleCaisseDiv);
     overlay.appendChild(alertesPbFA);
     overlay.appendChild(zoneOrdre);
     overlay.appendChild(conteneurLignes);
@@ -11581,6 +11588,158 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
 
   return div;
 }
+// ================== 🔍 CONTRÔLE CAISSE (visible uniquement dans l'admin) ==================
+// Compare le compteur argent du taximètre (fin − début) aux prix taximètre notés sur les courses,
+// montre les remises (reçu < compteur) et l'argent à remettre. Calcul uniquement à l'affichage :
+// rien n'est enregistré, rien ne change pour le chauffeur.
+function nombreCC(x) { return (x === null || x === undefined || x === "" || isNaN(Number(x))) ? null : Number(x); }
+function arrondiCC(x) { return Math.round((Number(x) || 0) * 100) / 100; }
+function ecartCompteurCC(f, a, b) { const d = nombreCC(f[a]), e = nombreCC(f[b]); return (d === null || e === null) ? null : arrondiCC(e - d); }
+function ligneAuCompteurCC(l) {
+  if (!l) return false;
+  if (["uber", "prive", "garage", "relais", "relais_fin"].includes(l.type_course)) return false;
+  if (["uber", "uber_cash", "uber_carte", "annulee"].includes(l.mode_paiement)) return false;
+  if (l.motif_sans_prix === "Uber (prix dans l'app)") return false;
+  const p = nombreCC(l.prix_taximetre);
+  return p !== null && p > 0;
+}
+function controleCaisseFeuille(feuille, lignes) {
+  const f = feuille || {};
+  const liste = (lignes || []).filter(l => l && l.type_course !== "relais" && l.type_course !== "relais_fin");
+  const r = {
+    compteur: ecartCompteurCC(f, "taximetre_debut", "taximetre_fin"),
+    prises: ecartCompteurCC(f, "prise_en_charge_debut", "prise_en_charge_fin"),
+    kmCharge: ecartCompteurCC(f, "km_en_charge_debut", "km_en_charge_fin"),
+    sommePrix: 0, nbCompteur: 0, remises: [], totalRemises: 0,
+    recette: typeof recetteLignesFA === "function" ? recetteLignesFA(lignes || []) : 0,
+    cash: 0, uberCash: 0, carte: 0, qr: 0, facture: 0, signaux: []
+  };
+  liste.forEach((l, i) => {
+    const num = i + 1;
+    const prix = nombreCC(l.prix_taximetre), recu = nombreCC(l.sommes_percues);
+    const priveGarage = l.type_course === "prive" || l.type_course === "garage";
+    if (ligneAuCompteurCC(l)) {
+      r.sommePrix += prix; r.nbCompteur++;
+      if (recu !== null && recu < prix) {
+        const z = arrondiCC(prix - recu);
+        if (z > 0) { r.remises.push({ num, prix, recu, remise: z }); r.totalRemises += z; }
+      }
+    }
+    if (priveGarage) return;
+    if (l.mode_paiement === "uber_cash") { const u = typeof montantUberImp === "function" ? montantUberImp(l) : prix; r.uberCash += (u || 0); }
+    else if (l.mode_paiement === "cash" && recu > 0) r.cash += recu;
+    else if (l.mode_paiement === "carte" && recu > 0) r.carte += recu;
+    else if (l.mode_paiement === "qr" && recu > 0) r.qr += recu;
+    else if (l.mode_paiement === "facture") r.facture += (recu > 0 ? recu : (prix > 0 ? prix : 0));
+  });
+  ["sommePrix", "totalRemises", "cash", "uberCash", "carte", "qr", "facture"].forEach(k => { r[k] = arrondiCC(r[k]); });
+  r.aRemettre = arrondiCC(r.cash + r.uberCash);
+  r.incomplet = r.compteur === null || r.prises === null;
+  if (r.incomplet) {
+    r.niveau = "gris";
+    r.signaux.push({ c: "gris", t: "⚪ Compteurs incomplets (début ou fin manquant) — pas de conclusion possible" });
+  } else {
+    r.ecart = arrondiCC(r.compteur - r.sommePrix);
+    if (r.ecart > 1) r.signaux.push({ c: "rouge", t: "🔴 Écart compteur : " + eurosFr(r.ecart) + " non notés" });
+    else if (r.ecart < -1) r.signaux.push({ c: "orange", t: "🟠 Prix notés supérieurs au compteur de " + eurosFr(-r.ecart) + " (vérifier les saisies)" });
+    else r.signaux.push({ c: "vert", t: "🟢 Compteur ≈ prix notés (écart " + eurosFr(Math.abs(r.ecart)) + ")" });
+    if (r.prises > r.nbCompteur) r.signaux.push({ c: "rouge", t: "🔴 " + r.prises + " prise" + (r.prises > 1 ? "s" : "") + " en charge au compteur, " + r.nbCompteur + " course" + (r.nbCompteur > 1 ? "s" : "") + " notée" + (r.nbCompteur > 1 ? "s" : "") });
+    if (r.totalRemises > 0) r.signaux.push({ c: "orange", t: "🟠 Remises accordées : " + eurosFr(r.totalRemises) });
+    r.niveau = r.signaux.some(s => s.c === "rouge") ? "rouge" : r.signaux.some(s => s.c === "orange") ? "orange" : "vert";
+  }
+  r.rouge = r.niveau === "rouge";
+  return r;
+}
+const COULEURS_CC = { vert: ["#e3f4e8", "#1f6b3f"], orange: ["#fff1d6", "#8a5a00"], rouge: ["#fde3e1", "#a3261b"], gris: ["#efefed", "#555"] };
+const PASTILLES_CC = { vert: "🟢", orange: "🟠", rouge: "🔴", gris: "⚪" };
+function pastilleControleCaisse(feuille, lignes) {
+  const r = controleCaisseFeuille(feuille, lignes);
+  const s = document.createElement("span");
+  s.className = "puce-fa puce-controle-caisse-fa";
+  s.title = "Contrôle caisse : " + r.signaux.map(x => x.t).join(" · ");
+  s.style.cssText = "background:" + COULEURS_CC[r.niveau][0] + "; color:" + COULEURS_CC[r.niveau][1] + ";";
+  s.textContent = PASTILLES_CC[r.niveau] + " Caisse";
+  return s;
+}
+function blocControleCaisse(feuille, lignes) {
+  const r = controleCaisseFeuille(feuille, lignes);
+  const d = document.createElement("div");
+  d.className = "controle-caisse-fa";
+  d.style.cssText = "margin:10px 0; padding:10px 12px; border-radius:10px; border:1px solid " + COULEURS_CC[r.niveau][1] + "55; background:" + COULEURS_CC[r.niveau][0] + "; color:#222; font-size:.86rem; line-height:1.45;";
+  const v = x => x === null ? "—" : esc(String(x).replace(".", ","));
+  const remises = r.remises.length
+    ? r.remises.map(x => `<div>Course ${x.num} : compteur ${esc(eurosFr(x.prix))} → reçu ${esc(eurosFr(x.recu))} (remise ${esc(eurosFr(x.remise))})</div>`).join("")
+      + `<div><b>Total des remises : ${esc(eurosFr(r.totalRemises))}</b></div>`
+    : `<div style="opacity:.75;">Aucune remise.</div>`;
+  d.innerHTML = `<div style="font-weight:700; margin-bottom:6px;">🔍 Contrôle caisse <span style="font-weight:400; font-size:.75rem; opacity:.7;">(visible seulement par la direction)</span></div>`
+    + r.signaux.map(s => `<div style="font-weight:700; color:${COULEURS_CC[s.c][1]};">${esc(s.t)}</div>`).join("")
+    + `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:2px 14px; margin-top:6px;">`
+    + `<div>Compteur argent taximètre : <b>${r.compteur === null ? "—" : esc(eurosFr(r.compteur))}</b></div>`
+    + `<div>Prix taximètre notés : <b>${esc(eurosFr(r.sommePrix))}</b> (${r.nbCompteur} course${r.nbCompteur > 1 ? "s" : ""} au compteur)</div>`
+    + `<div>Prises en charge : <b>${v(r.prises)}</b></div>`
+    + `<div>Km en charge : <b>${v(r.kmCharge)}</b></div>`
+    + `<div>Recette déclarée : <b>${esc(eurosFr(r.recette))}</b></div>`
+    + `</div>`
+    + `<div style="margin-top:6px; font-weight:700;">Remises</div>${remises}`
+    + `<div style="margin-top:6px; font-weight:700;">Argent</div>`
+    + `<div>💵 Cash à remettre : <b>${esc(eurosFr(r.aRemettre))}</b> (cash ${esc(eurosFr(r.cash))} + Uber cash ${esc(eurosFr(r.uberCash))})</div>`
+    + `<div>💳 Carte : ${esc(eurosFr(r.carte))} · 📱 QR : ${esc(eurosFr(r.qr))} · 🧾 Facture : ${esc(eurosFr(r.facture))}</div>`;
+  return d;
+}
+// Récapitulatif par chauffeur sur 7 / 30 jours
+async function afficherRecapControleCaisse(nbJours) {
+  const zone = document.getElementById("recap-controle-caisse-fa");
+  if (!zone) return;
+  const corpsRecap = zone.querySelector(".recap-cc-corps");
+  corpsRecap.innerHTML = "Chargement…";
+  const fin = new Date(); const debut = new Date(); debut.setDate(debut.getDate() - (nbJours - 1));
+  const { data: feuilles, error } = await supabase.from("feuilles_route")
+    .select("id, chauffeur_id, date_service, taximetre_debut, taximetre_fin, prise_en_charge_debut, prise_en_charge_fin, km_en_charge_debut, km_en_charge_fin, profils:chauffeur_id(nom)")
+    .gte("date_service", dateLocaleISO(debut)).lte("date_service", dateLocaleISO(fin));
+  if (error) { corpsRecap.textContent = "Erreur : " + error.message; return; }
+  const ids = (feuilles || []).map(f => f.id);
+  let lignes = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error: e2 } = await supabase.from("lignes_feuille_route")
+      .select("feuille_route_id, n_ordre, prix_taximetre, sommes_percues, mode_paiement, type_course, motif_sans_prix, pourboire")
+      .in("feuille_route_id", ids.slice(i, i + 100)).order("n_ordre", { ascending: true });
+    if (e2) { corpsRecap.textContent = "Erreur : " + e2.message; return; }
+    lignes = lignes.concat(data || []);
+  }
+  const parCh = new Map();
+  (feuilles || []).forEach(f => {
+    const r = controleCaisseFeuille(f, lignes.filter(l => l.feuille_route_id === f.id));
+    const k = f.chauffeur_id;
+    if (!parCh.has(k)) parCh.set(k, { nom: (f.profils && f.profils.nom) || "Chauffeur", nb: 0, compteur: 0, declare: 0, remises: 0, rouges: 0, incompletes: 0 });
+    const t = parCh.get(k);
+    t.nb++; t.declare += r.recette; t.remises += r.totalRemises;
+    if (r.compteur !== null) t.compteur += r.compteur;
+    if (r.rouge) t.rouges++;
+    if (r.incomplet) t.incompletes++;
+  });
+  if (!parCh.size) { corpsRecap.textContent = "Aucune feuille sur la période."; return; }
+  const lignesTab = [...parCh.values()].sort((a, b) => a.nom.localeCompare(b.nom)).map(t =>
+    `<tr><td>${esc(t.nom)}</td><td>${t.nb}</td><td>${esc(eurosFr(t.compteur))}</td><td>${esc(eurosFr(t.declare))}</td><td>${esc(eurosFr(t.remises))}</td>`
+    + `<td style="font-weight:700; color:${t.rouges ? "#a3261b" : "#1f6b3f"};">${t.rouges ? "🔴 " + t.rouges : "🟢 0"}</td><td>${t.incompletes ? "⚪ " + t.incompletes : "—"}</td></tr>`).join("");
+  corpsRecap.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:.82rem;">`
+    + `<thead><tr style="text-align:left;"><th>Chauffeur</th><th>Feuilles</th><th>Total compteur</th><th>Total déclaré</th><th>Total remises</th><th>Écarts rouges</th><th>Compteurs incomplets</th></tr></thead>`
+    + `<tbody>${lignesTab}</tbody></table></div>`
+    + `<div style="font-size:.75rem; opacity:.7; margin-top:4px;">Du ${debut.toLocaleDateString("fr-BE")} au ${fin.toLocaleDateString("fr-BE")} · le total compteur ne compte que les feuilles dont le taximètre début et fin est rempli.</div>`;
+}
+function initialiserRecapControleCaisse() {
+  const zone = document.getElementById("recap-controle-caisse-fa");
+  if (!zone || zone.dataset.pret) return;
+  zone.dataset.pret = "1";
+  zone.style.cssText = "margin:8px 0 12px;";
+  zone.innerHTML = `<details><summary style="cursor:pointer; font-weight:700; padding:6px 0;">🔍 Contrôle caisse par chauffeur (7 / 30 jours)</summary>`
+    + `<div style="display:flex; gap:8px; margin:6px 0;"><button type="button" class="recap-cc-7" style="width:auto; padding:7px 12px; border-radius:8px;">7 jours</button>`
+    + `<button type="button" class="recap-cc-30" style="width:auto; padding:7px 12px; border-radius:8px;">30 jours</button></div>`
+    + `<div class="recap-cc-corps" style="font-size:.85rem;">Choisis une période.</div></details>`;
+  zone.querySelector(".recap-cc-7").addEventListener("click", () => afficherRecapControleCaisse(7));
+  zone.querySelector(".recap-cc-30").addEventListener("click", () => afficherRecapControleCaisse(30));
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialiserRecapControleCaisse);
+else initialiserRecapControleCaisse();
 
 function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   ctx = ctx || { lignes: [ligne], feuille: {}, anomalies: [] };
