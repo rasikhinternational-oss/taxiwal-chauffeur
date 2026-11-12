@@ -274,6 +274,7 @@ window.onerror = function(msg, url, line, col, err) {
   section.visible{ display:block; }
   /* Menu en grille ↔ section plein écran */
   body.mode-section-admin header nav{ display:none; }
+  body.mode-section-admin #bandeau-alertes-vehicules{ display:none !important; }
   #barre-section-admin{ display:none; align-items:center; gap:10px; margin-top:10px; }
   body.mode-section-admin #barre-section-admin{ display:flex; }
   #btn-retour-menu{ width:auto; flex-shrink:0; padding:11px 16px; border-radius:10px; border:none; background:var(--rouge); color:#fff; font-size:1rem; font-weight:800; cursor:pointer; }
@@ -370,6 +371,15 @@ window.onerror = function(msg, url, line, col, err) {
   .cc-chiffres span{ display:block; font-size:.66rem; color:var(--gris); }
   .cc-chiffres b{ font-size:.95rem; }
   #carte-liste-chauffeurs{ margin-top:14px; }
+  .cc-chauffeur{ cursor:pointer; }
+  .cc-chauffeur .cc-contact a{ color:inherit; }
+  .cc-chauffeur .cc-etat-gps{ display:inline-block; margin-top:4px; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:700; color:#fff; }
+  #outil-trajet-jour{ background:var(--noir-2); border-radius:12px; padding:14px; margin:12px 0; }
+  @media (min-width: 1000px){
+    #carte-suivi-grille{ display:grid; grid-template-columns:minmax(0,2fr) minmax(300px,1fr); gap:14px; align-items:start; }
+    #carte-suivi-grille #carte{ height:70vh; }
+    #carte-suivi-grille #carte-liste-chauffeurs{ margin-top:0; max-height:70vh; overflow-y:auto; }
+  }
   .cc-chauffeur{ background:var(--noir-2); border-radius:12px; padding:12px 14px; margin-bottom:10px; border-left:4px solid var(--gris); font-size:.9rem; }
   .cc-chauffeur.cc-dispo{ border-left-color:var(--vert); }
   .cc-chauffeur.cc-course{ border-left-color:var(--rouge); }
@@ -1187,6 +1197,7 @@ window.onerror = function(msg, url, line, col, err) {
       <button id="btn-deconnexion-admin" style="width:100%; padding:12px 16px; background:transparent; border:none; color:var(--rouge); font-weight:600; text-align:left; cursor:pointer;">🔒 Se déconnecter</button>
     </div>
   </div>
+  <div id="bandeau-alertes-vehicules" style="display:none; cursor:pointer;"></div>
   <nav>
     <button class="actif" data-onglet="courses">Courses</button>
     <button data-onglet="agenda">Agenda</button>
@@ -1202,6 +1213,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="feuilles">Feuilles de route</button>
     <button data-onglet="vehicules-jour">🚗 Véhicules du jour</button>
     <button data-onglet="photos-vehicules">📸 Photos véhicules</button>
+    <button data-onglet="controle-uber">📸 Contrôle Uber</button>
     <button data-onglet="vehicules">Véhicules</button>
     <button data-onglet="caisse">Caisse</button>
     <button data-onglet="partenaires">🤝 Partenaires</button>
@@ -1247,8 +1259,24 @@ window.onerror = function(msg, url, line, col, err) {
 </section>
 
 <section id="section-carte">
-  <div id="carte"></div>
-  <div id="carte-liste-chauffeurs"></div>
+  <div id="carte-suivi-grille">
+    <div id="carte"></div>
+    <div id="carte-liste-chauffeurs"></div>
+  </div>
+
+  <div id="outil-trajet-jour">
+    <h3 style="margin-top:0;">🛣️ Trajet d'une journée</h3>
+    <p style="margin:4px 0 10px; font-size:.85rem; color:var(--gris);">Revoir tout le chemin d'un chauffeur, ses arrêts et leur durée.</p>
+    <label>Chauffeur</label>
+    <select id="tj-chauffeur"></select>
+    <label>Date</label>
+    <input type="date" id="tj-date">
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button id="tj-afficher" style="flex:1;">Afficher le trajet</button>
+      <button id="tj-effacer" class="secondaire" style="flex:0 0 auto; width:auto; padding:0 14px;">Effacer</button>
+    </div>
+    <div id="tj-resultat" style="margin-top:10px; font-size:.9rem;"></div>
+  </div>
 
   <div id="outil-calcul">
     <h3>🧭 Calculer un trajet</h3>
@@ -1514,7 +1542,20 @@ window.onerror = function(msg, url, line, col, err) {
   <div id="pva-agrandi" role="dialog" aria-label="Photo agrandie"><span>✕</span><img alt="Photo du véhicule"></div>
 </section>
 
+<section id="section-controle-uber">
+  <div class="ev-barre">
+    <select id="cu-periode" style="flex:1;">
+      <option value="7">7 derniers jours</option>
+      <option value="14">14 derniers jours</option>
+      <option value="31">31 derniers jours</option>
+    </select>
+    <button type="button" id="cu-actualiser" style="flex:0 0 auto;" onclick="chargerControleUber()">🔄</button>
+  </div>
+  <div id="cu-liste"></div>
+</section>
+
 <section id="section-vehicules">
+  <div id="va-bandeau"></div>
   <button id="btn-ajouter-vehicule">+ Ajouter un véhicule</button>
   <div id="liste-vehicules-admin"></div>
 </section>
@@ -2266,6 +2307,12 @@ function versDatetimeLocal(dateStr) {
   return new Date(d.getTime() - decalageMs).toISOString().slice(0, 16);
 }
 
+// 🔧 Garage : se comporte comme un trajet privé (non facturé, hors recette), avec un motif
+function estPriveOuGarage(t) { return t === "prive" || t === "garage"; }
+const LIBELLES_MOTIF_GARAGE = { entretien: "Entretien / vidange", pneus: "Pneus", reparation: "Réparation / panne", controle_technique: "Contrôle technique", carrosserie: "Carrosserie", lavage: "Lavage", autre: "Autre" };
+function texteGarage(l) { return "🔧 GARAGE" + (l && l.motif_garage ? " — " + (LIBELLES_MOTIF_GARAGE[l.motif_garage] || l.motif_garage) : ""); }
+function libellePriveOuGarage(l) { return l && l.type_course === "garage" ? texteGarage(l) : "PRIVÉ"; }
+const TEXTE_SOMMES_GARAGE = "Déplacement garage — non facturé";
 function esc(valeur) {
   if (valeur === null || valeur === undefined) return "";
   return String(valeur)
@@ -2855,6 +2902,7 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.onglet === "factures") chargerFacturesAdmin();
     if (btn.dataset.onglet === "messages") { chargerConversationsAdmin(); chargerConversationsChauffeursAdmin(); if (chatClientOuvert) chatMarquerLuAdmin(); if (chchOuvert) chchMarquerLu(); }
     if (btn.dataset.onglet === "vehicules") chargerVehiculesAdmin();
+    if (btn.dataset.onglet === "controle-uber" && typeof chargerControleUber === "function") chargerControleUber();
     if (btn.dataset.onglet === "vehicules-jour") chargerVehiculesDuJour();
     if (btn.dataset.onglet === "partenaires") chargerPartenairesAdmin();
     if (btn.dataset.onglet === "clients") chargerClientsAdmin();
@@ -3405,6 +3453,7 @@ async function chargerChauffeurs() {
     .eq("actif", true)
     .order("places", { ascending: true });
   vehiculesCache = vehicules || [];
+  try { majAlertesVehicules(); } catch (e) {}
   await chargerAttributionsCache();
 
   rendreLignesVehiculesModale();
@@ -7921,6 +7970,7 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
           <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>
         <div class="cc-ligne">⏱️ Dépose du client : <b id="cc-depose-${courseActive.id}">calcul…</b></div>
         <div class="cc-ligne">↩️ Retour centrale ensuite : <b id="cc-retour-${courseActive.id}">calcul…</b></div>`;
+      completerFicheSuivi(div, p, courseActive);
       conteneur.appendChild(div);
 
       calculerEta(courseActive.id, p.latitude, p.longitude, courseActive.adresse_arrivee).then(eta => {
@@ -7937,6 +7987,7 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
         <div class="cc-ligne">${p.disponible ? "✅ Disponible" : "⛔ Hors service"}</div>
         <div class="cc-ligne">📍 Position actuelle : <span id="cc-adresse-${p.chauffeur_id}">chargement…</span>
           <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>`;
+      completerFicheSuivi(div, p, courseActive);
       conteneur.appendChild(div);
     }
 
@@ -7949,6 +8000,169 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
   if (!positions || positions.length === 0) {
     conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun chauffeur avec position partagée pour le moment.</p>';
   }
+}
+
+
+// ================== SUIVI EN DIRECT : fiche de chaque chauffeur (liste à côté de la carte) ==================
+let emailsChauffeurs = null;
+async function chargerEmailsChauffeurs() {
+  if (emailsChauffeurs) return;
+  emailsChauffeurs = {};
+  try {
+    const { data, error } = await supabase.rpc("admin_emails_chauffeurs");
+    if (!error) (data || []).forEach(r => { emailsChauffeurs[r.id] = r.email; });
+  } catch (e) { /* e-mail facultatif */ }
+}
+function etatSuiviChauffeur(p, courseActive) {
+  const minutes = p.updated_at ? (Date.now() - new Date(p.updated_at).getTime()) / 60000 : 9999;
+  if (p.localisation_refusee) return { texte: "⚠️ Localisation désactivée", fond: "#d97706" };
+  if (minutes > 10) return { texte: "⚫ Hors ligne", fond: "#6b6b6b" };
+  if (courseActive) return { texte: "🚕 En course", fond: "#c81e2c" };
+  return p.disponible ? { texte: "✅ Libre", fond: "#1f8a4c" } : { texte: "⏸️ Occupé / pas disponible", fond: "#6b6b6b" };
+}
+function completerFicheSuivi(div, p, courseActive) {
+  const etat = etatSuiviChauffeur(p, courseActive);
+  const tel = p.profils?.telephone || "";
+  const email = (emailsChauffeurs || {})[p.chauffeur_id] || "";
+  const vitesse = p.vitesse_kmh != null ? Math.round(Number(p.vitesse_kmh)) + " km/h" : "—";
+  div.insertAdjacentHTML("beforeend", `
+    <div class="cc-ligne"><span class="cc-etat-gps" style="background:${etat.fond};">${etat.texte}</span></div>
+    <div class="cc-ligne">🕒 Vu ${esc(p.updated_at ? ageMiseAJour(p.updated_at) : "jamais")} · 🚀 ${esc(vitesse)}</div>
+    <div class="cc-ligne cc-contact">${tel ? `📞 <a href="tel:${esc(tel.replace(/\s/g, ""))}">${esc(tel)}</a>` : "📞 —"}${email ? ` · ✉️ <a href="mailto:${esc(email)}">${esc(email)}</a>` : ""}</div>
+    ${p.localisation_refusee ? `<div class="cc-ligne" style="color:#d97706;">Le chauffeur a coupé la localisation de son téléphone${p.localisation_refusee_le ? " (" + esc(ageMiseAJour(p.localisation_refusee_le)) + ")" : ""}. Dernière position connue affichée.</div>` : ""}`);
+  div.title = "Cliquer pour centrer la carte sur ce chauffeur";
+  div.addEventListener("click", (e) => {
+    if (e.target.closest("a, button")) return;
+    if (!carteLeaflet) return;
+    carteLeaflet.setView([p.latitude, p.longitude], 15);
+    const m = marqueurs[p.chauffeur_id];
+    if (m) m.openPopup();
+    document.getElementById("carte").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
+
+// Alerte (une seule fois par coupure) quand un chauffeur désactive sa localisation
+async function verifierLocalisationsCoupees() {
+  try {
+    const { data, error } = await supabase.from("positions_chauffeurs")
+      .select("chauffeur_id, localisation_refusee_le, profils:chauffeur_id(nom, role)")
+      .eq("localisation_refusee", true);
+    if (error || !data) return;
+    let vus = {};
+    try { vus = JSON.parse(localStorage.getItem("taxiwal_alertes_gps_vues") || "{}"); } catch (e) {}
+    const nouveaux = data.filter(p => p.profils?.role !== "admin" && vus[p.chauffeur_id] !== String(p.localisation_refusee_le));
+    if (!nouveaux.length) return;
+    nouveaux.forEach(p => { vus[p.chauffeur_id] = String(p.localisation_refusee_le); });
+    localStorage.setItem("taxiwal_alertes_gps_vues", JSON.stringify(vus));
+    const noms = nouveaux.map(p => p.profils?.nom || "Un chauffeur").join(", ");
+    const boite = document.createElement("div");
+    boite.style.cssText = "position:fixed; right:16px; bottom:16px; z-index:100000; max-width:340px; background:#d97706; color:#fff; padding:14px 16px; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.35); font-weight:600; font-size:.9rem;";
+    boite.innerHTML = `⚠️ Localisation désactivée : <b>${esc(noms)}</b>. La centrale ne voit plus sa position.
+      <div style="display:flex; gap:8px; margin-top:10px;"><button type="button" class="vl-voir" style="flex:1; width:auto; padding:8px; border:none; border-radius:8px; background:#fff; color:#111; font-weight:700;">Voir la carte</button><button type="button" class="vl-ok" style="width:auto; padding:8px 12px; border:none; border-radius:8px; background:rgba(0,0,0,.25); color:#fff;">OK</button></div>`;
+    document.body.appendChild(boite);
+    boite.querySelector(".vl-ok").addEventListener("click", () => boite.remove());
+    boite.querySelector(".vl-voir").addEventListener("click", () => { boite.remove(); const b = document.querySelector('nav button[data-onglet="carte"]'); if (b) b.click(); });
+  } catch (e) { /* pas bloquant */ }
+}
+setTimeout(verifierLocalisationsCoupees, 8000);
+setInterval(verifierLocalisationsCoupees, 60000);
+
+// ================== TRAJET COMPLET D'UNE JOURNÉE (table trajets_gps) ==================
+let coucheTrajetJour = null;
+function distanceKm(a, b) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.latitude - a.latitude), dLon = rad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function heureTJ(d) { return new Date(d).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }); }
+function dureeTexte(min) { min = Math.round(min); return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}` : `${min} min`; }
+
+async function initTrajetJour() {
+  const sel = document.getElementById("tj-chauffeur");
+  if (!sel || sel.dataset.pret) return;
+  sel.dataset.pret = "1";
+  const { data } = await supabase.from("profils").select("id, nom, role").in("role", ["chauffeur", "partenaire"]).order("nom");
+  sel.innerHTML = (data || []).map(c => `<option value="${c.id}">${esc(c.nom || "Chauffeur")}${c.role === "partenaire" ? " (partenaire)" : ""}</option>`).join("");
+  const d = new Date();
+  document.getElementById("tj-date").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  document.getElementById("tj-afficher").addEventListener("click", afficherTrajetJour);
+  document.getElementById("tj-effacer").addEventListener("click", () => {
+    if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
+    coucheTrajetJour = null;
+    document.getElementById("tj-resultat").innerHTML = "";
+  });
+}
+
+async function afficherTrajetJour() {
+  const res = document.getElementById("tj-resultat");
+  const chauffeurId = document.getElementById("tj-chauffeur").value;
+  const jour = document.getElementById("tj-date").value;
+  if (!chauffeurId || !jour) { res.textContent = "Choisis un chauffeur et une date."; return; }
+  res.textContent = "Chargement du trajet…";
+  const debut = new Date(jour + "T00:00:00"), fin = new Date(debut.getTime() + 24 * 3600e3);
+  let points = [], depuis = 0;
+  while (true) {
+    const { data, error } = await supabase.from("trajets_gps")
+      .select("latitude, longitude, precision_m, vitesse_kmh, enregistre_le")
+      .eq("chauffeur_id", chauffeurId)
+      .gte("enregistre_le", debut.toISOString()).lt("enregistre_le", fin.toISOString())
+      .order("enregistre_le", { ascending: true })
+      .range(depuis, depuis + 999);
+    if (error) { res.textContent = "Erreur : " + error.message; return; }
+    points = points.concat(data || []);
+    if (!data || data.length < 1000) break;
+    depuis += 1000;
+  }
+  points = points.filter(p => p.precision_m == null || p.precision_m <= 100);
+  if (coucheTrajetJour && carteLeaflet) carteLeaflet.removeLayer(coucheTrajetJour);
+  coucheTrajetJour = null;
+  if (points.length < 2) {
+    res.innerHTML = "Aucun trajet enregistré pour ce jour.<br><span style='color:var(--gris); font-size:.82rem;'>Le trajet est enregistré automatiquement dès que le chauffeur est connecté à l'app avec la localisation autorisée.</span>";
+    return;
+  }
+  let km = 0;
+  for (let i = 1; i < points.length; i++) {
+    const d = distanceKm(points[i - 1], points[i]);
+    const h = (new Date(points[i].enregistre_le) - new Date(points[i - 1].enregistre_le)) / 3600e3;
+    if (h > 0 && d / h > 200) continue;
+    km += d;
+  }
+  const arrets = [];
+  let i = 0;
+  while (i < points.length) {
+    let j = i + 1;
+    while (j < points.length && distanceKm(points[i], points[j]) <= 0.12) j++;
+    const minutes = (new Date(points[j - 1].enregistre_le) - new Date(points[i].enregistre_le)) / 60000;
+    if (minutes >= 5) { arrets.push({ p: points[i], de: points[i].enregistre_le, a: points[j - 1].enregistre_le, minutes }); i = j; }
+    else i++;
+  }
+  const trous = [];
+  for (let k = 1; k < points.length; k++) {
+    const min = (new Date(points[k].enregistre_le) - new Date(points[k - 1].enregistre_le)) / 60000;
+    if (min > 10) trous.push({ de: points[k - 1].enregistre_le, a: points[k].enregistre_le, minutes: min });
+  }
+  coucheTrajetJour = L.layerGroup().addTo(carteLeaflet);
+  const ligne = L.polyline(points.map(p => [p.latitude, p.longitude]), { color: "#c8102e", weight: 4, opacity: .85 }).addTo(coucheTrajetJour);
+  const pastille = (txt, fond) => L.divIcon({ className: "", iconSize: [0, 0], html: `<div style="transform:translate(-50%,-50%); background:${fond}; color:#fff; font-weight:800; font-size:11px; padding:3px 7px; border-radius:999px; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); white-space:nowrap;">${txt}</div>` });
+  L.marker([points[0].latitude, points[0].longitude], { icon: pastille("Départ " + heureTJ(points[0].enregistre_le), "#1f8a4c") }).addTo(coucheTrajetJour);
+  const der = points[points.length - 1];
+  L.marker([der.latitude, der.longitude], { icon: pastille("Fin " + heureTJ(der.enregistre_le), "#111") }).addTo(coucheTrajetJour);
+  arrets.forEach((a, n) => {
+    L.marker([a.p.latitude, a.p.longitude], { icon: pastille(`⏸️ ${n + 1} · ${dureeTexte(a.minutes)}`, "#d97706") })
+      .addTo(coucheTrajetJour)
+      .bindPopup(`<b>Arrêt ${n + 1}</b><br>de ${heureTJ(a.de)} à ${heureTJ(a.a)}<br>${dureeTexte(a.minutes)}`);
+  });
+  carteLeaflet.fitBounds(ligne.getBounds(), { padding: [40, 40] });
+  document.getElementById("carte").scrollIntoView({ behavior: "smooth", block: "center" });
+  const dureeTotale = (new Date(der.enregistre_le) - new Date(points[0].enregistre_le)) / 60000;
+  const totalArrets = arrets.reduce((t, a) => t + a.minutes, 0);
+  res.innerHTML = `
+    <div><b>${km.toFixed(1)} km</b> parcourus · de <b>${heureTJ(points[0].enregistre_le)}</b> à <b>${heureTJ(der.enregistre_le)}</b> (${dureeTexte(dureeTotale)})</div>
+    <div>⏸️ <b>${arrets.length}</b> arrêt(s) de 5 min ou plus, au total <b>${dureeTexte(totalArrets)}</b></div>
+    ${arrets.length ? `<ol style="margin:8px 0 0; padding-left:20px;">${arrets.map(a => `<li>${heureTJ(a.de)} → ${heureTJ(a.a)} : <b>${dureeTexte(a.minutes)}</b></li>`).join("")}</ol>` : ""}
+    ${trous.length ? `<div style="margin-top:8px; color:#d97706;">⚠️ Suivi interrompu ${trous.length} fois (GPS coupé ou app fermée) :<br>${trous.map(t => `${heureTJ(t.de)} → ${heureTJ(t.a)} (${dureeTexte(t.minutes)})`).join("<br>")}</div>` : ""}
+  `;
 }
 
 // ================== SUIVI EN TEMPS RÉEL : parcouru / reste / minutes / heure d'arrivée ==================
@@ -8075,6 +8289,11 @@ async function chargerCarte() {
       return b;
     };
     centrer.addTo(carteLeaflet);
+    // Secours si le direct (realtime) décroche : nouvelle lecture toutes les 15 s quand l'onglet est ouvert
+    setInterval(() => {
+      if (document.getElementById("section-carte").classList.contains("visible") && document.visibilityState === "visible") chargerCarte();
+    }, 15000);
+    initTrajetJour();
     // Position des chauffeurs en direct : dès qu'un téléphone envoie sa position, on redessine
     supabase.channel("positions-admin")
       .on("postgres_changes", { event: "*", schema: "public", table: "positions_chauffeurs" }, () => {
@@ -8109,8 +8328,9 @@ function centrerSurChauffeurs(meme) {
 async function chargerCarteInterne() {
   const { data: positionsBrutes, error } = await supabase
     .from("positions_chauffeurs")
-    .select("*, profils:chauffeur_id(nom, role)");
+    .select("*, profils:chauffeur_id(nom, role, telephone)");
   if (error) { console.error(error); return; }
+  await chargerEmailsChauffeurs();
   // seulement les chauffeurs / sous-traitants, et pas les positions de plus de 24 h
   const positions = (positionsBrutes || []).filter(p =>
     p.profils?.role !== "admin" && p.updated_at && Date.now() - new Date(p.updated_at).getTime() < 24 * 3600e3);
@@ -8159,7 +8379,7 @@ async function chargerCarteInterne() {
       iconSize: [0, 0], iconAnchor: [0, 0],
       html: `<div style="position:absolute; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto;">
         <div style="background:${fondPastille}; color:#fff; font-weight:800; font-size:12px; padding:4px 9px; border-radius:999px; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.35); border:2px solid #fff;">
-          ${courseActive ? "🚕" : (p.disponible ? "✅" : "⏸️")} ${esc(nom)}${villeConnue ? " · " + esc(villeConnue) : ""}${ageSec > 45 ? " · " + esc(ageMiseAJour(p.updated_at)) : " · en direct"}
+          ${courseActive ? "🚕" : (p.disponible ? "✅" : "⏸️")} ${p.localisation_refusee ? "⚠️ " : ""}${esc(nom)}${villeConnue ? " · " + esc(villeConnue) : ""}${ageSec > 45 ? " · " + esc(ageMiseAJour(p.updated_at)) : " · en direct"}
         </div>
         <div style="width:14px; height:14px; margin-top:-2px; border-radius:50%; background:${fondPastille}; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>
       </div>`
@@ -9634,7 +9854,7 @@ async function chargerRecusFA() {
     .gte("feuilles_route.date_service", dateLocaleISO(debut))
     .order("created_at", { ascending: false }).limit(300);
   if (error) { zone.innerHTML = `<p style="color:var(--rouge); font-size:.85rem;">Erreur : ${esc(error.message)}</p>`; return; }
-  const liste = (data || []).filter(l => l.type_course !== "prive")
+  const liste = (data || []).filter(l => !estPriveOuGarage(l.type_course))
     .sort((a, b) => String((b.feuilles_route || {}).date_service || "").localeCompare(String((a.feuilles_route || {}).date_service || "")) || String(b.embarquement_heure || "").localeCompare(String(a.embarquement_heure || "")));
   document.getElementById("btn-recus-fa").textContent = `🧾 Reçus / factures à faire (30 jours)${liste.length ? " · " + liste.length : ""}`;
   if (!liste.length) { zone.innerHTML = '<p style="color:var(--gris); font-size:.85rem; margin:8px 2px;">Aucune facture ni reçu demandé sur les 30 derniers jours.</p>'; return; }
@@ -9730,7 +9950,7 @@ function recetteLignesFA(listeLignes) {
     if (!l) return s;
     const somme = l.sommes_percues == null || l.sommes_percues === "" ? null : parseFloat(l.sommes_percues);
     // Uber / Uber cash / privé : jamais (TVA déclarée par Uber) ; annulée : seulement si une somme est notée
-    if (estLigneUberImp(l) || l.type_course === "prive" || l.type_course === "relais" || l.type_course === "relais_fin") return s;
+    if (estLigneUberImp(l) || estPriveOuGarage(l.type_course) || l.type_course === "relais" || l.type_course === "relais_fin") return s;
     // 🧾 Facture : jamais dans la recette (déclarée à part sur la facture), comme Uber
     if (l.mode_paiement === "facture") return s;
     if (l.mode_paiement === "annulee" && !(somme > 0)) return s;
@@ -9742,7 +9962,7 @@ function recetteLignesFA(listeLignes) {
 function totalFacturesFA(listeLignes) {
   const r = { total: 0, sansPrix: 0, nb: 0 };
   (listeLignes || []).forEach(l => {
-    if (!l || l.mode_paiement !== "facture" || l.type_course === "prive" || estLigneRelais(l)) return;
+    if (!l || l.mode_paiement !== "facture" || estPriveOuGarage(l.type_course) || estLigneRelais(l)) return;
     r.nb++;
     const p = parseFloat(l.prix_taximetre), s = parseFloat(l.sommes_percues);
     const m = p > 0 ? p : (s > 0 ? s : null);
@@ -9826,7 +10046,7 @@ function payeToutEnLigneFA(l) {
 function problemesLigneCaisse(l) {
   const pb = [];
   if (!l || estLigneRelais(l) || ligneCaisseVideFA(l)) return pb;
-  const prive = l.type_course === "prive";
+  const prive = estPriveOuGarage(l.type_course);
   const uber = estLigneUberImp(l);
   const annulee = l.mode_paiement === "annulee";
   const motifSansPaiement = !!l.motif_sans_prix && !MOTIFS_AVEC_PAIEMENT_FA[l.motif_sans_prix];
@@ -9834,6 +10054,7 @@ function problemesLigneCaisse(l) {
   if (!prive && !uber && !annulee && !motifSansPaiement && !rempli(l.mode_paiement) && !payeToutEnLigneFA(l)) pb.push("Mode de paiement manquant");
   // Montant obligatoire seulement pour Uber cash / carte (argent reçu) ; Uber payé dans l'app : facultatif
   if (["uber_cash", "uber_carte"].includes(l.mode_paiement) && montantUberImp(l) === null) pb.push("Prix Uber manquant");
+  if (l.type_course === "garage" && !l.motif_garage) pb.push("Motif du garage manquant");
   if (!prive && !uber && !annulee) {
     if (l.type_course === "forfait") { if (!l.motif_forfait) pb.push("Motif du forfait manquant"); }
     else {
@@ -11391,15 +11612,21 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
   entete.className = "num-ligne";
   // Ligne 1 : « N° 3 · 22:45 → 23:02 · UBER » ; ligne 2 : « départ → arrivée » ; ligne 3 : petites étiquettes
   const hhmmFA = v => v ? String(v).slice(0, 5) : "--:--";
-  const modeCourtFA = ligne.type_course === "prive" ? "PRIVÉ"
+  const modeCourtFA = estPriveOuGarage(ligne.type_course) ? libellePriveOuGarage(ligne)
     : ({ cash: "CASH", carte: "CARTE", qr: "QR", facture: "FACTURE", cheque_social: "CHÈQUE", uber: "UBER", uber_cash: "UBER CASH", uber_carte: "UBER CARTE", annulee: "ANNULÉE" }[modeAffiche]
       || (estUberLigne ? "UBER" : (modeAffiche ? String(modeAffiche).toUpperCase() : "")));
   entete.innerHTML = `<div class="resume-ligne-fa">
       <div class="rl1"><span class="rl1-t"><b>N° ${numeroAffiche}</b> · ${hhmmFA(ligne.embarquement_heure)} → ${hhmmFA(ligne.debarquement_heure)}${modeCourtFA ? " · <b>" + esc(modeCourtFA) + "</b>" : ""}</span><span class="chevron-ligne">${ligneOuverte ? "▴" : "▾"}</span></div>
       <div class="rl2">${esc(resume)}</div>
-      <div class="rl3"><span class="chip-fa">${ligne.course_id ? "attribuée par la centrale" : "manuelle"}</span>${ligne.cloturee ? `<span class="chip-fa">🔒 clôturée</span>` : ""}${labelStatutLigne ? `<span class="chip-fa">${esc(labelStatutLigne)}</span>` : ""}${ligne.signalee_erreur ? `<span class="chip-fa" style="color:var(--rouge); border-color:var(--rouge); font-weight:700;">📨 DEMANDE DU CHAUFFEUR</span>` : ""}<span class="chip-fa conduit-entete-fa conduit-par-fa">${ligne.conducteur ? "🔁 conduit par " + esc(libConducteur(ligne.conducteur)) : ""}</span><span class="chip-fa pb-entete-ligne-fa" style="color:#8a5a00; font-weight:700;">${Number(ligne.pourboire) > 0 ? "💶 pourboire " + esc(eurosFr(ligne.pourboire)) : ""}</span></div>
+      <div class="rl3">${ligne.type_course === "garage" ? `<span class="chip-fa" style="color:#7a4a00; border-color:#e08a00; background:#fff4e0; font-weight:800;">${esc(texteGarage(ligne))}</span>` : ""}<span class="chip-fa">${ligne.course_id ? "attribuée par la centrale" : "manuelle"}</span>${ligne.cloturee ? `<span class="chip-fa">🔒 clôturée</span>` : ""}${labelStatutLigne ? `<span class="chip-fa">${esc(labelStatutLigne)}</span>` : ""}${ligne.signalee_erreur ? `<span class="chip-fa" style="color:var(--rouge); border-color:var(--rouge); font-weight:700;">📨 DEMANDE DU CHAUFFEUR</span>` : ""}<span class="chip-fa conduit-entete-fa conduit-par-fa">${ligne.conducteur ? "🔁 conduit par " + esc(libConducteur(ligne.conducteur)) : ""}</span><span class="chip-fa pb-entete-ligne-fa" style="color:#8a5a00; font-weight:700;">${Number(ligne.pourboire) > 0 ? "💶 pourboire " + esc(eurosFr(ligne.pourboire)) : ""}</span></div>
     </div><div class="actions-ligne-fa"></div>`;
   const actionsLigneFA = entete.querySelector(".actions-ligne-fa");
+  if (ligne.type_course === "garage" && ["entretien", "controle_technique"].includes(ligne.motif_garage)) {
+    const btnSuivi = document.createElement("button");
+    btnSuivi.textContent = ligne.motif_garage === "entretien" ? "🔧 Noter l'entretien du véhicule" : "✅ Noter le contrôle technique";
+    btnSuivi.addEventListener("click", (e) => { e.stopPropagation(); if (typeof proposerSuiviDepuisGarage === "function") proposerSuiviDepuisGarage(ligne, ctx.feuille); });
+    actionsLigneFA.appendChild(btnSuivi);
+  }
 
   const btnSupprimer = document.createElement("button");
   btnSupprimer.textContent = "Supprimer";
@@ -11562,6 +11789,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         <option value="scolaire">🏫 Transport scolaire</option>
         <option value="uber">🚕 Course Uber</option>
         <option value="prive">🔒 Trajet privé (non facturé)</option>
+        <option value="garage">🔧 Garage (non facturé)</option>
       `;
       ajouterTexteLibre(input, ligne.type_course);
     } else if (estCheckbox) {
@@ -11777,7 +12005,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     const typeCourse = inputsParChampAdmin["type_course"].value;
     const famUber = ["uber", "uber_cash", "uber_carte"].includes(mode) || typeCourse === "uber";
     const estUber = famUber;
-    const estPrive = typeCourse === "prive";
+    const estPrive = estPriveOuGarage(typeCourse);
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
     const estForfait = typeCourse === "forfait";
@@ -11874,6 +12102,18 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
             rendre();
             return;
           }
+          if (b.cle === "uber" || b.cle === "uber_cash") {
+            // 🚕 Uber : question obligatoire (aucune valeur par défaut), montant cash obligatoire
+            questionPaiementUber(() => { choisirMode("uber"); rendre(); }, (montant) => {
+              choisirMode("uber_cash");
+              const champPrix = inputsParChampAdmin["prix_taximetre"];
+              champPrix.value = String(montant);
+              champPrix.dispatchEvent(new Event("input"));
+              champPrix.dispatchEvent(new Event("change"));
+              rendre();
+            });
+            return;
+          }
           choisirMode(b.cle);
           rendre();
         });
@@ -11935,6 +12175,38 @@ function texteSommesUberImp(l) {
   if (l.mode_paiement === "uber_carte") return "Course Uber payée carte";
   return "Course Uber payée en ligne";
 }
+// 🚕 Uber : question OBLIGATOIRE « Le client a payé comment ? » (aucune valeur par défaut).
+// surApp() : payé dans l'app Uber ; surCash(montant) : payé en cash, montant reçu obligatoire (> 0).
+function questionPaiementUber(surApp, surCash) {
+  const fond = document.createElement("div");
+  fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100000; display:flex; align-items:center; justify-content:center; padding:16px;";
+  fond.innerHTML = `<div style="background:#fff; color:#1c1c1c; width:100%; max-width:420px; border-radius:16px; padding:18px; font-family:-apple-system,Arial,sans-serif;">
+    <div style="font-size:1.25rem; font-weight:800; margin-bottom:12px; text-align:center;">🚕 Le client a payé comment ?</div>
+    <button type="button" class="qu-app" style="display:block; width:100%; padding:16px; margin-bottom:10px; border-radius:12px; border:2px solid #1d4f86; background:#eef4fb; color:#1d4f86; font-size:1.05rem; font-weight:800;">📱 Payé dans l'app Uber<br><span style="font-weight:600; font-size:.9rem;">(je n'ai rien reçu)</span></button>
+    <button type="button" class="qu-cash" style="display:block; width:100%; padding:16px; border-radius:12px; border:2px solid #d9822b; background:#fff1e0; color:#7a3e00; font-size:1.05rem; font-weight:800;">💵 Le client m'a payé en CASH</button>
+    <div class="qu-zone-cash" style="display:none; margin-top:12px;">
+      <label style="display:block; font-weight:700; margin-bottom:6px;">Montant reçu en cash (€)</label>
+      <input type="text" inputmode="decimal" class="qu-montant" placeholder="ex : 33,60" style="width:100%; padding:14px; font-size:1.3rem; border-radius:10px; border:2px solid #d9822b; box-sizing:border-box;">
+      <div class="qu-erreur" style="color:#b3141b; font-size:.9rem; min-height:1.2em; margin-top:4px;"></div>
+      <button type="button" class="qu-valider" style="display:block; width:100%; padding:14px; border-radius:12px; border:none; background:#d9822b; color:#fff; font-size:1.05rem; font-weight:800;">✅ Valider</button>
+    </div>
+    <button type="button" class="qu-annuler" style="display:block; width:100%; margin-top:12px; padding:10px; border:none; background:transparent; color:#555; text-decoration:underline;">Annuler</button>
+  </div>`;
+  document.body.appendChild(fond);
+  const fermer = () => fond.remove();
+  fond.querySelector(".qu-annuler").addEventListener("click", fermer);
+  fond.querySelector(".qu-app").addEventListener("click", () => { fermer(); surApp(); });
+  fond.querySelector(".qu-cash").addEventListener("click", () => {
+    fond.querySelector(".qu-zone-cash").style.display = "";
+    fond.querySelector(".qu-montant").focus();
+  });
+  fond.querySelector(".qu-valider").addEventListener("click", () => {
+    const n = Number(String(fond.querySelector(".qu-montant").value || "").replace(/\s/g, "").replace(",", "."));
+    if (!(n > 0) || n > 5000) { fond.querySelector(".qu-erreur").textContent = "Tape le montant reçu en cash (ex : 33,60)."; return; }
+    fermer();
+    surCash(Math.round(n * 100) / 100);
+  });
+}
 function mentionPrixUberImp(l) { return { uber_cash: "Uber · payé cash", uber_carte: "Uber · payé carte" }[l.mode_paiement] || ""; }
 // Colonne « Sommes perçues » à l'impression : si la ligne a un montant qui compte dans la recette
 // (même règle que recette_feuille), on imprime TOUJOURS le montant en gros, puis le mode / texte en petit.
@@ -11949,17 +12221,17 @@ function celluleSommesImpression(l, fmt) {
   if (estUber) return `<span style="font-weight:bold; font-size:8.5px;">${texteSommesUberImp(l)}</span>`;
   const recu = (l.recu_demande && l.mode_paiement !== "facture") ? petit("(reçu)") : "";
   // 🧾 Facture : « FACTURE — TAXI VERT » (jamais de montant ici, hors recette) ; ancien montant noté → rappelé en petit
-  if (l.mode_paiement === "facture" && l.type_course !== "prive") {
+  if (l.mode_paiement === "facture" && !estPriveOuGarage(l.type_course)) {
     const numF = lirePayeurFacture(l.numero_dossier).numero;
     return `<span style="font-weight:bold; font-size:8px;">${esc(texteSommesFacture(l))}</span>` + (numF ? petit("n° " + esc(numF)) : "") + (n !== null && !isNaN(n) && n > 0 ? petit(montantImp(n) + " €") : "");
   }
-  const compte = n !== null && !isNaN(n) && n > 0 && l.type_course !== "prive";
+  const compte = n !== null && !isNaN(n) && n > 0 && !estPriveOuGarage(l.type_course);
   if (compte) {
     return `<b style="font-size:10pt;">${montantImp(n)}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "") + recu;
   }
   if (l.sommes_texte) return `<span style="font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
   if (l.mode_paiement === "facture") return libFacture;
-  if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
+  if (estPriveOuGarage(l.type_course)) return `<span style="font-size:8px; font-weight:bold;">${esc(libellePriveOuGarage(l))}</span>`;
   if (l.mode_paiement === "annulee") return "ANNULÉE";
   if (l.motif_sans_prix && n === null) return `<span style="font-size:8px; font-weight:bold;">${esc(texteMotifImp(l))}</span>`;
   return fmt(l.sommes_percues) + (libMode && n !== null ? petit(libMode) : "") + recu;
@@ -11987,7 +12259,7 @@ function cellulePrixImpression(l) {
     return `<span style="white-space:nowrap;">${Number(m).toFixed(2).replace(".", ",")}</span><br>${mention}`;
   }
   if (l.motif_sans_prix) return noteP(esc(texteMotifImp(l)));
-  if (l.type_course === "prive") return `<span style="font-size:8px; font-weight:bold;">PRIVÉ</span>`;
+  if (estPriveOuGarage(l.type_course)) return `<span style="font-size:8px; font-weight:bold;">${esc(libellePriveOuGarage(l))}</span>`;
   if (l.mode_paiement === "annulee") return `<span style="font-size:8px; font-weight:bold;">ANNULÉE</span>`;
   if (l.mode_paiement === "facture") {
     // 🧾 Facture : le montant s'il est connu, sinon « FACTURE »
@@ -11995,8 +12267,8 @@ function cellulePrixImpression(l) {
     return esc(l.prix_taximetre) + (l.type_course === "forfait" ? `<br><span style="font-size:8px;">Forfait${l.motif_forfait ? " — " + esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait) : ""}</span>` : "");
   }
   if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-  if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? noteP(esc(libelleTypeCourse(l.type_course))) : ""));
-  const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
+  if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive", "garage"].includes(l.type_course) ? noteP(esc(libelleTypeCourse(l.type_course))) : ""));
+  const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive", "garage"];
   const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br>${noteP(esc(libelleTypeCourse(l.type_course)))}` : "";
   return esc(l.prix_taximetre) + typeLibre;
 }
@@ -12622,6 +12894,7 @@ async function chargerVehiculesAdmin() {
 
   if (error) { conteneur.innerHTML = "Erreur : " + esc(error.message); return; }
 
+  try { await chargerSuiviVehicules(); majAlertesVehicules(); } catch (e) {}
   conteneur.innerHTML = "";
   if (!vehicules || vehicules.length === 0) {
     conteneur.innerHTML = '<p style="color:var(--gris); text-align:center;">Aucun véhicule enregistré.</p>';
@@ -12717,6 +12990,7 @@ function construireVehiculeAdmin(vehicule) {
   lienVj.addEventListener("click", ouvrirVehiculesDuJourDepuisVehicules);
   wrapChauffeur.appendChild(lienVj);
   div.appendChild(wrapChauffeur);
+  try { div.appendChild(blocSuiviVehicule(vehicule)); } catch (e) { console.warn(e); }
 
   const actions = document.createElement("div");
   actions.className = "ligne-actions-veh";
@@ -13832,6 +14106,276 @@ function imprimerRelevePartenaire(p, lignes, solde, mois) {
     };
   }
 })();
+</script>
+<script>
+// ================== 🔧 ENTRETIENS · CONTRÔLE TECHNIQUE · ALERTES (par véhicule) ==================
+// Même principe que les pleins : historique par véhicule, dernier entretien sur la fiche.
+// Les notifications (30 j, 15 j, jour J) sont envoyées par la base chaque matin (verifier_alertes_vehicules).
+let suiviVehicules = null;
+const TYPES_ENTRETIEN = { entretien: "Entretien / vidange", pneus: "Pneus", freins: "Freins", reparation: "Réparation", autre: "Autre" };
+const RESULTATS_CT = { favorable: "Favorable", favorable_reparations: "Favorable avec réparations", defavorable: "Défavorable" };
+function svJours(d) { return Math.round((new Date(d + "T12:00:00Z") - new Date(dateBruxellesISO() + "T12:00:00Z")) / 864e5); }
+function svDate(d) { return d ? new Date(String(d).slice(0, 10) + "T12:00:00Z").toLocaleDateString("fr-BE", { timeZone: "UTC" }) : "—"; }
+function svLireDate(t) {
+  t = String(t || "").trim();
+  let m = t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+  if (m) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? t : null;
+}
+function svAjouterMois(iso, mois) {
+  const d = new Date(iso + "T12:00:00Z"); const j = d.getUTCDate();
+  d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + mois);
+  const fin = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(j, fin)); return d.toISOString().slice(0, 10);
+}
+const svNombre = v => { const x = parseFloat(String(v ?? "").replace(",", ".")); return isNaN(x) ? null : x; };
+
+async function chargerSuiviVehicules() {
+  const [v, e, c, p] = await Promise.all([
+    supabase.from("vehicules").select("id, nom, plaque, actif, ct_prochain, ct_dernier, ct_resultat, entretien_intervalle_km"),
+    supabase.from("entretiens_vehicules").select("*, profils:chauffeur_id(nom)").order("fait_le", { ascending: false }).order("km_compteur", { ascending: false }),
+    supabase.from("controles_techniques").select("*").order("date_passage", { ascending: false }),
+    supabase.from("pleins_carburant").select("vehicule_id, km_compteur").order("km_compteur", { ascending: false }).limit(2000)
+  ]);
+  if (v.error || e.error || c.error) { suiviVehicules = null; return null; } // pas encore installé en base : rien ne s'affiche
+  const kmMax = {};
+  (p.data || []).concat(e.data || []).forEach(x => { if (x.km_compteur > (kmMax[x.vehicule_id] || 0)) kmMax[x.vehicule_id] = x.km_compteur; });
+  suiviVehicules = { vehicules: v.data || [], entretiens: e.data || [], controles: c.data || [], kmMax };
+  return suiviVehicules;
+}
+function svDernierEntretien(vid, pourKm) {
+  if (!suiviVehicules) return null;
+  const l = suiviVehicules.entretiens.filter(x => x.vehicule_id === vid && (!pourKm || ["entretien", "autre", "reparation"].includes(x.type)));
+  if (!pourKm) return l[0] || null;
+  return l.slice().sort((a, b) => b.km_compteur - a.km_compteur)[0] || null;
+}
+// Alertes d'un véhicule : contrôle technique (30 j / 15 j / jour J / retard) + entretien au kilométrage
+function svAlertesVehicule(v) {
+  const res = [];
+  if (!v || v.actif === false) return res;
+  const nom = (v.nom || "Véhicule") + (v.plaque ? " (" + v.plaque + ")" : "");
+  if (v.ct_prochain) {
+    const j = svJours(v.ct_prochain);
+    if (j < 0) res.push({ niveau: "rouge", texte: `🔴 ${nom} : contrôle technique EN RETARD de ${-j} jour(s) (prévu le ${svDate(v.ct_prochain)})` });
+    else if (j === 0) res.push({ niveau: "rouge", texte: `🔴 ${nom} : contrôle technique AUJOURD'HUI` });
+    else if (j <= 15) res.push({ niveau: "orange", texte: `🟠 ${nom} : contrôle technique dans ${j} jour(s), le ${svDate(v.ct_prochain)}` });
+    else if (j <= 30) res.push({ niveau: "jaune", texte: `🟡 ${nom} : contrôle technique dans ${j} jours, le ${svDate(v.ct_prochain)}` });
+  }
+  const d = svDernierEntretien(v.id, true);
+  const km = suiviVehicules && suiviVehicules.kmMax[v.id];
+  const inter = v.entretien_intervalle_km || 15000;
+  if (d && km && km >= d.km_compteur + inter)
+    res.push({ niveau: "orange", texte: `🔧 ${nom} : entretien à prévoir — ${(km - d.km_compteur).toLocaleString("fr-BE")} km depuis le dernier (${Number(d.km_compteur).toLocaleString("fr-BE")} km)` });
+  return res;
+}
+function svHtmlBandeau(alertes) {
+  if (!alertes.length) return "";
+  const rouge = alertes.some(a => a.niveau === "rouge");
+  return `<div style="border:2px solid ${rouge ? "#b3141b" : "#e08a00"}; background:${rouge ? "#fdecec" : "#fff4e0"}; color:${rouge ? "#b3141b" : "#7a4a00"}; border-radius:12px; padding:10px 12px; margin:10px 0; font-weight:700; font-size:.9rem;">
+    <div style="font-weight:800; margin-bottom:4px;">⚠️ Véhicules : à faire</div>
+    ${alertes.map(a => `<div style="margin-top:3px;${a.niveau === "rouge" ? " color:#b3141b;" : ""}">${esc(a.texte)}</div>`).join("")}</div>`;
+}
+async function majAlertesVehicules() {
+  try {
+    if (!(await chargerSuiviVehicules())) return;
+    const alertes = suiviVehicules.vehicules.flatMap(svAlertesVehicule);
+    const html = svHtmlBandeau(alertes);
+    const acc = document.getElementById("bandeau-alertes-vehicules");
+    if (acc) { acc.innerHTML = html; acc.style.display = html ? "" : "none"; }
+    const sec = document.getElementById("va-bandeau");
+    if (sec) sec.innerHTML = html;
+  } catch (e) { console.warn(e); }
+}
+document.getElementById("bandeau-alertes-vehicules").addEventListener("click", () => {
+  const b = document.querySelector('nav button[data-onglet="vehicules"]'); if (b) b.click();
+});
+
+// ---- Saisie (même style que les pleins) ----
+async function saisirEntretien(vid, pre, existant) {
+  if (!vid) { alert("Véhicule inconnu."); return; }
+  const p = existant || pre || {};
+  const date = prompt("Date de l'entretien (JJ/MM/AAAA) :", svDate(p.fait_le || dateBruxellesISO())); if (date === null) return;
+  const iso = svLireDate(date); if (!iso) { alert("Date invalide."); return; }
+  const km = prompt("Kilométrage au tableau de bord :", p.km_compteur ?? ""); if (km === null) return;
+  if (!svNombre(km)) { alert("Kilométrage invalide."); return; }
+  const codes = Object.keys(TYPES_ENTRETIEN);
+  const t = prompt("Type : " + codes.map((c, i) => (i + 1) + " = " + TYPES_ENTRETIEN[c]).join(", "), String(codes.indexOf(p.type || "entretien") + 1)); if (t === null) return;
+  const type = codes[parseInt(t, 10) - 1] || "autre";
+  const garage = prompt("Garage (facultatif) :", p.garage || ""); if (garage === null) return;
+  const montant = prompt("Montant € (facultatif) :", p.montant ?? ""); if (montant === null) return;
+  const note = prompt("Note (facultatif) :", p.note || ""); if (note === null) return;
+  const donnees = { fait_le: iso, km_compteur: Math.round(svNombre(km)), type, garage: garage.trim() || null, montant: svNombre(montant), note: note.trim() || null };
+  let error;
+  if (existant) ({ error } = await supabase.from("entretiens_vehicules").update(donnees).eq("id", existant.id));
+  else ({ error } = await supabase.from("entretiens_vehicules").insert({ ...donnees, vehicule_id: vid }));
+  if (error) { alert("Erreur : " + error.message); return; }
+  toastAdmin("✅ Entretien enregistré");
+  svRafraichir();
+}
+async function saisirControleTechnique(vid, pre) {
+  if (!vid) { alert("Véhicule inconnu."); return; }
+  pre = pre || {};
+  const date = prompt("Date du passage au contrôle technique (JJ/MM/AAAA) :", svDate(pre.date || dateBruxellesISO())); if (date === null) return;
+  const iso = svLireDate(date); if (!iso) { alert("Date invalide."); return; }
+  const r = prompt("Résultat (facultatif) : 1 = Favorable, 2 = Favorable avec réparations, 3 = Défavorable", "1"); if (r === null) return;
+  const resultat = ({ "1": "favorable", "2": "favorable_reparations", "3": "defavorable" })[String(r).trim()] || null;
+  // Proposition : défavorable → revenir sous 15 jours ; sinon 6 mois (taxi) — modifiable
+  const propose = resultat === "defavorable" ? svDate(new Date(new Date(iso + "T12:00:00Z").getTime() + 15 * 864e5).toISOString().slice(0, 10)) : svDate(svAjouterMois(iso, 6));
+  const pro = prompt("Date du PROCHAIN contrôle technique (proposée, modifiable) :", propose); if (pro === null) return;
+  const isoPro = svLireDate(pro); if (pro.trim() && !isoPro) { alert("Date invalide."); return; }
+  const note = prompt("Note (facultatif) :", ""); if (note === null) return;
+  const { error } = await supabase.from("controles_techniques").insert({ vehicule_id: vid, date_passage: iso, resultat, prochain: isoPro, note: note.trim() || null });
+  if (error) { alert("Erreur : " + error.message); return; }
+  toastAdmin("✅ Passage au contrôle technique enregistré");
+  svRafraichir();
+}
+function svRafraichir() {
+  majAlertesVehicules();
+  const sec = document.getElementById("section-vehicules");
+  if (sec && sec.classList.contains("visible")) chargerVehiculesAdmin();
+}
+// Depuis une ligne « 🔧 Garage » de la feuille de route (admin seulement)
+function proposerSuiviDepuisGarage(ligne, feuille) {
+  const vid = feuille && feuille.vehicule_id;
+  if (!vid) { alert("Cette feuille n'a pas de véhicule."); return; }
+  const date = (feuille && feuille.date_service) || dateBruxellesISO();
+  const km = [ligne.debarquement_index, ligne.embarquement_index, ligne.index_depart].map(svNombre).find(x => x);
+  if (ligne.motif_garage === "controle_technique") saisirControleTechnique(vid, { date });
+  else saisirEntretien(vid, { fait_le: date, km_compteur: km != null ? Math.round(km) : "", type: "entretien", note: ligne.note_chauffeur || "" });
+}
+
+// ---- Bloc sur la fiche véhicule ----
+function blocSuiviVehicule(vehicule) {
+  const bloc = document.createElement("div");
+  if (!suiviVehicules) return bloc;
+  const v = Object.assign({}, vehicule, suiviVehicules.vehicules.find(x => x.id === vehicule.id) || {});
+  bloc.style.cssText = "margin-top:10px; padding:10px; border-radius:8px; border:1px solid #cfd8e3; background:#f5f8fc; font-size:.88rem;";
+  const alertes = svAlertesVehicule(v);
+  const d = svDernierEntretien(v.id, false);
+  const kmNow = suiviVehicules.kmMax[v.id];
+  const dKm = svDernierEntretien(v.id, true);
+  const inter = v.entretien_intervalle_km || 15000;
+  const histo = suiviVehicules.entretiens.filter(x => x.vehicule_id === v.id).map(x => ({ t: "e", d: x.fait_le, x }))
+    .concat(suiviVehicules.controles.filter(x => x.vehicule_id === v.id).map(x => ({ t: "c", d: x.date_passage, x })))
+    .sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  bloc.innerHTML = `<div style="font-weight:800; margin-bottom:6px;">🔧 Entretien & contrôle technique</div>
+    ${alertes.map(a => `<div style="font-weight:700; color:${a.niveau === "rouge" ? "#b3141b" : "#8a5a00"}; margin-bottom:4px;">${esc(a.texte)}</div>`).join("")}
+    <label style="display:block; font-size:.8rem; color:var(--gris); margin:6px 0 3px;">Prochain contrôle technique</label>
+    <input type="date" class="sv-ct" style="width:100%; box-sizing:border-box;">
+    <div style="color:var(--gris); margin-top:4px;">Dernier passage : <b>${svDate(v.ct_dernier)}</b>${v.ct_resultat ? " · " + esc(RESULTATS_CT[v.ct_resultat] || v.ct_resultat) : ""}</div>
+    <div style="margin-top:8px;">Dernier entretien : <b>${d ? esc(TYPES_ENTRETIEN[d.type] || d.type) + " · " + svDate(d.fait_le) + " · " + Number(d.km_compteur).toLocaleString("fr-BE") + " km" + (d.garage ? " · " + esc(d.garage) : "") + (d.montant ? " · " + Number(d.montant).toFixed(2).replace(".", ",") + " €" : "") : "aucun enregistré"}</b></div>
+    ${dKm ? `<div style="color:var(--gris);">Prochain entretien vers ${(dKm.km_compteur + inter).toLocaleString("fr-BE")} km${kmNow ? " · compteur connu : " + Number(kmNow).toLocaleString("fr-BE") + " km" : ""}</div>` : ""}
+    <label style="display:block; font-size:.8rem; color:var(--gris); margin:6px 0 3px;">Entretien tous les … km</label>
+    <input type="number" inputmode="numeric" class="sv-inter" style="width:100%; box-sizing:border-box;">
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+      <button type="button" class="sv-ent" style="width:auto; padding:9px 12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:800;">➕ Entretien</button>
+      <button type="button" class="sv-ctp" style="width:auto; padding:9px 12px; border-radius:8px; border:none; background:#1d4f86; color:#fff; font-weight:800;">✅ Passage au contrôle technique</button>
+      <button type="button" class="sv-histo" style="width:auto; padding:9px 12px; border-radius:8px; border:1px solid #cfcfcd; background:#fff; font-weight:700;">📋 Historique (${histo.length})</button>
+    </div>
+    <div class="sv-liste" style="display:none; margin-top:8px;"></div>`;
+  const ct = bloc.querySelector(".sv-ct"); ct.value = v.ct_prochain || "";
+  ct.addEventListener("change", async () => {
+    const { error } = await supabase.from("vehicules").update({ ct_prochain: ct.value || null }).eq("id", v.id);
+    if (error) { toastAdmin("Erreur : " + error.message, "#b3141b"); return; }
+    toastAdmin("✅ Date du prochain contrôle technique enregistrée"); svRafraichir();
+  });
+  const iv = bloc.querySelector(".sv-inter"); iv.value = inter;
+  iv.addEventListener("change", async () => {
+    const n = parseInt(iv.value, 10);
+    if (!(n > 0)) { iv.value = inter; return; }
+    const { error } = await supabase.from("vehicules").update({ entretien_intervalle_km: n }).eq("id", v.id);
+    if (error) { toastAdmin("Erreur : " + error.message, "#b3141b"); return; }
+    toastAdmin("✅ Intervalle d'entretien enregistré"); svRafraichir();
+  });
+  bloc.querySelector(".sv-ent").addEventListener("click", () => saisirEntretien(v.id, { km_compteur: kmNow || "" }));
+  bloc.querySelector(".sv-ctp").addEventListener("click", () => saisirControleTechnique(v.id));
+  const liste = bloc.querySelector(".sv-liste");
+  bloc.querySelector(".sv-histo").addEventListener("click", () => {
+    if (liste.style.display === "none") {
+      liste.innerHTML = histo.length ? histo.map((h, i) => h.t === "e"
+        ? `<div class="cb-ligne" data-i="${i}"><div class="cb-haut"><span>🔧 ${svDate(h.x.fait_le)} · ${esc(TYPES_ENTRETIEN[h.x.type] || h.x.type)}</span><span>${Number(h.x.km_compteur).toLocaleString("fr-BE")} km</span></div>
+           <div class="cb-info">${[h.x.garage && esc(h.x.garage), h.x.montant && Number(h.x.montant).toFixed(2).replace(".", ",") + " €", h.x.profils?.nom && "noté par " + esc(h.x.profils.nom)].filter(Boolean).join(" · ")}</div>${h.x.note ? `<div class="cb-info">📝 ${esc(h.x.note)}</div>` : ""}</div>`
+        : `<div class="cb-ligne" data-i="${i}"><div class="cb-haut"><span>✅ ${svDate(h.x.date_passage)} · Contrôle technique</span><span>${esc(RESULTATS_CT[h.x.resultat] || "")}</span></div>
+           <div class="cb-info">${h.x.prochain ? "Prochain : " + svDate(h.x.prochain) : ""}${h.x.note ? " · 📝 " + esc(h.x.note) : ""}</div></div>`).join("")
+        : '<p style="color:var(--gris);">Rien d\'enregistré pour ce véhicule.</p>';
+      liste.querySelectorAll(".cb-ligne").forEach(el => el.addEventListener("click", async () => {
+        const h = histo[+el.dataset.i];
+        const table = h.t === "e" ? "entretiens_vehicules" : "controles_techniques";
+        if (h.t === "e" && !confirm("Supprimer cet entretien ?\n\nOK = supprimer · Annuler = le modifier")) { saisirEntretien(v.id, null, h.x); return; }
+        if (h.t === "c" && !confirm("Supprimer ce passage au contrôle technique ?")) return;
+        const { error } = await supabase.from(table).delete().eq("id", h.x.id);
+        if (error) { alert("Erreur : " + error.message); return; }
+        svRafraichir();
+      }));
+      liste.style.display = "";
+    } else liste.style.display = "none";
+  });
+  return bloc;
+}
+</script>
+<script>
+// ================== 📸 CONTRÔLE UBER (séparé des feuilles de route) ==================
+// Par jour et par chauffeur : captures d'écran Uber, confirmation « Uber éteint », et pour comparer
+// le total Uber cash noté sur sa feuille ce jour-là (simple chiffre lu).
+let cuJours = 7;
+async function chargerControleUber() {
+  const z = document.getElementById("cu-liste");
+  z.innerHTML = "Chargement…";
+  const fin = dateBruxellesISO();
+  const debut = new Date(Date.now() - (cuJours - 1) * 864e5).toLocaleDateString("en-CA", { timeZone: "Europe/Brussels" });
+  const [fr, cap, fs] = await Promise.all([
+    supabase.from("feuilles_route").select("id, chauffeur_id, date_service, signee, verrouillee, profils:chauffeur_id(nom)").gte("date_service", debut).lte("date_service", fin),
+    supabase.from("captures_uber").select("*, profils:chauffeur_id(nom)").gte("date_service", debut).lte("date_service", fin).order("ajoutee_le"),
+    supabase.from("fin_service_uber").select("*, profils:chauffeur_id(nom)").gte("date_service", debut).lte("date_service", fin)
+  ]);
+  if (cap.error || fs.error) { z.innerHTML = '<p style="color:var(--gris);">Contrôle Uber pas encore installé en base.</p>'; return; }
+  if (fr.error) { z.textContent = "Erreur : " + fr.error.message; return; }
+  const feuilles = fr.data || [];
+  let lignes = [];
+  if (feuilles.length) {
+    const { data } = await supabase.from("lignes_feuille_route").select("feuille_route_id, mode_paiement, type_course, prix_taximetre, sommes_percues, motif_sans_prix").in("feuille_route_id", feuilles.map(f => f.id));
+    lignes = data || [];
+  }
+  const groupes = new Map();
+  const g = (ch, d, nom) => { const k = ch + "|" + d; if (!groupes.has(k)) groupes.set(k, { ch, d, nom: nom || "", feuilles: [], captures: [], fin: null }); const x = groupes.get(k); if (nom && !x.nom) x.nom = nom; return x; };
+  feuilles.forEach(f => g(f.chauffeur_id, f.date_service, f.profils?.nom).feuilles.push(f));
+  (cap.data || []).forEach(c => g(c.chauffeur_id, c.date_service, c.profils?.nom).captures.push(c));
+  (fs.data || []).forEach(s => { g(s.chauffeur_id, s.date_service, s.profils?.nom).fin = s; });
+  const chemins = (cap.data || []).map(c => c.chemin);
+  const urls = {};
+  if (chemins.length) {
+    const { data } = await supabase.storage.from("captures-uber").createSignedUrls(chemins, 3600);
+    (data || []).forEach(u => { if (u.signedUrl) urls[u.path] = u.signedUrl; });
+  }
+  const liste = [...groupes.values()].sort((a, b) => b.d.localeCompare(a.d) || a.nom.localeCompare(b.nom));
+  if (!liste.length) { z.innerHTML = '<p style="color:var(--gris); text-align:center;">Rien sur cette période.</p>'; return; }
+  let jour = "";
+  z.innerHTML = liste.map(x => {
+    const ids = new Set(x.feuilles.map(f => f.id));
+    const lf = lignes.filter(l => ids.has(l.feuille_route_id));
+    const nbUber = lf.filter(estLigneUberImp).length;
+    const cash = lf.filter(l => l.mode_paiement === "uber_cash").reduce((s, l) => s + (montantUberImp(l) || 0), 0);
+    const cloturee = x.feuilles.some(f => f.signee || f.verrouillee);
+    const pasUber = x.fin && x.fin.pas_uber;
+    const eteint = x.fin && x.fin.uber_eteint_a
+      ? `<span style="color:#1f6b3f; font-weight:800;">✅ Uber éteint confirmé à ${new Date(x.fin.uber_eteint_a).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" })}</span>`
+      : `<span style="color:#b3141b; font-weight:800;">🔴 Uber éteint non confirmé</span>`;
+    const capt = x.captures.length
+      ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">${x.captures.map(c => urls[c.chemin] ? `<a href="${esc(urls[c.chemin])}" target="_blank" rel="noopener"><img src="${esc(urls[c.chemin])}" alt="" loading="lazy" style="width:84px; height:84px; object-fit:cover; border-radius:8px; border:1px solid #ccc;"></a>` : "").join("")}</div>`
+      : (pasUber ? `<div style="color:#1f6b3f; font-weight:700;">🚫 Pas d'Uber ce jour-là (déclaré par le chauffeur)</div>`
+        : `<div style="color:#b3141b; font-weight:800;">📸 Capture manquante${nbUber ? " (" + nbUber + " course(s) Uber sur la feuille)" : ""}</div>`);
+    const titreJour = x.d !== jour ? `<h3 style="margin:16px 0 6px; font-size:1rem;">${new Date(x.d + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "2-digit" })}</h3>` : "";
+    jour = x.d;
+    return titreJour + `<div class="cb-ligne" style="cursor:default;">
+      <div class="cb-haut"><span>👤 ${esc(x.nom || "Chauffeur")}</span><span>${cloturee ? "feuille clôturée" : (x.feuilles.length ? "feuille en cours" : "pas de feuille")}</span></div>
+      <div style="margin-top:4px;">${eteint}</div>
+      <div class="cb-info" style="font-size:.88rem; color:#111; margin-top:4px;">Uber cash noté sur la feuille : <b>${esc(eurosFr(Math.round(cash * 100) / 100))}</b>${nbUber ? " · " + nbUber + " course(s) Uber" : ""}</div>
+      ${capt}
+    </div>`;
+  }).join("");
+}
+document.getElementById("cu-periode").addEventListener("change", (e) => { cuJours = parseInt(e.target.value, 10) || 7; chargerControleUber(); });
 </script>
 </body>
 </html>

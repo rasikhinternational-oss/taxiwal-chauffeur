@@ -506,7 +506,7 @@ window.onerror = function(msg, url, line, col, err) {
     <button type="button" id="btn-reactiver-notifs" style="margin-top:10px; width:100%; background:#c81e2c; color:#fff; border:none; border-radius:10px; padding:13px; font-weight:700; font-size:1rem;">🔔 Réactiver les notifications</button>
   </div>
   <div id="barre-dispo">
-    <span id="label-dispo">Disponible / position partagée</span>
+    <span id="label-dispo">Disponible pour les courses</span>
     <div class="switch" id="switch-dispo"></div>
   </div>
   <div id="bloc-gains-jour" style="flex-wrap:wrap; row-gap:6px;">
@@ -515,6 +515,12 @@ window.onerror = function(msg, url, line, col, err) {
     <span>💳/📱 <b id="gains-carte">0,00 €</b></span>
     <span>🧾 <b id="gains-facture">0,00 €</b></span>
     <span>🚕 Uber : <b id="gains-uber">0</b></span>
+  </div>
+  <div id="etat-suivi-gps" style="display:none; margin:10px 20px 0; background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; border-radius:12px; padding:8px 14px; font-weight:700; font-size:.85rem;">📍 Suivi actif <span style="font-weight:400;">— Taxi Wal suit la position du véhicule pendant le service.</span></div>
+  <div id="bandeau-gps-refuse" style="display:none; margin:10px 20px 0; background:#fdecee; border:2px solid #c81e2c; color:#8a1520; border-radius:12px; padding:12px 14px; font-size:.88rem; font-weight:600;">
+    <div>⚠️ Localisation désactivée : la centrale ne voit plus ta position. Taxi Wal suit la position du véhicule pendant le service, merci de la réactiver.</div>
+    <div id="bandeau-gps-refuse-aide" style="font-weight:400; margin-top:6px; white-space:pre-line;"></div>
+    <button type="button" id="btn-gps-reessayer" style="margin-top:10px; width:100%; background:#c81e2c; color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; font-size:.95rem;">📍 J'ai activé la localisation, réessayer</button>
   </div>
   <div id="bandeau-suivi-direct" style="display:none; margin:10px 20px 0; background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; border-radius:12px; padding:10px 14px; font-weight:700; font-size:.88rem;">📍 Course en cours : la centrale te suit en direct. <span style="font-weight:400;">Garde l'app Taxi Wal ouverte à l'écran (l'écran reste allumé).</span></div>
   <div id="horaire-du-jour" style="display:none; margin:10px 20px 0; background:#eef4fb; border:1px solid #bcd3ee; color:#1d4f86; border-radius:12px; padding:11px 14px; font-weight:700; font-size:.92rem;"></div>
@@ -536,8 +542,10 @@ window.onerror = function(msg, url, line, col, err) {
     <button data-onglet="mes-horaires">🗓️ Mes horaires</button>
     <button data-onglet="demande-client">📝 Demande d'un client</button>
     <button data-onglet="plein">⛽ J'ai fait le plein</button>
+    <button data-onglet="entretien">🔧 Entretien / garage fait</button>
     <button data-onglet="messages">💬 Messages avec la centrale</button>
   </nav>
+  <button type="button" id="btn-capture-uber" onclick="if (window.RappelUber) RappelUber.ouvrir()" style="display:block; width:calc(100% - 32px); margin:10px 16px 0; padding:14px; border:none; border-radius:12px; background:#111; color:#fff; font-weight:800; font-size:1rem;">📸 Envoyer la capture Uber</button>
 
   <section id="section-mes-courses" class="visible">
     <div id="liste-courses"></div>
@@ -646,6 +654,37 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
     <h3 style="margin:22px 0 8px; font-size:1rem;">Mes derniers pleins</h3>
     <div id="pl-liste"></div>
+  </section>
+
+  <section id="section-entretien" style="padding:4px 16px 40px;">
+    <div class="form-plein">
+      <p style="color:var(--gris); font-size:.88rem; margin:0 0 12px;">Quand un entretien ou une réparation a été fait sur ta voiture, note-le ici. La centrale le voit dans la fiche du véhicule.</p>
+      <label for="en-vehicule">Véhicule *</label>
+      <select id="en-vehicule"></select>
+      <div id="en-dernier" class="pl-info"></div>
+      <label for="en-type">Type *</label>
+      <select id="en-type">
+        <option value="entretien">🛢️ Entretien / vidange</option>
+        <option value="pneus">🛞 Pneus</option>
+        <option value="freins">🛑 Freins</option>
+        <option value="reparation">🔧 Réparation</option>
+        <option value="autre">Autre</option>
+      </select>
+      <label for="en-date">Date *</label>
+      <input id="en-date" type="date">
+      <label for="en-km">Kilométrage au tableau de bord *</label>
+      <input id="en-km" type="number" inputmode="numeric" placeholder="ex : 72540">
+      <label for="en-garage">Garage (optionnel)</label>
+      <input id="en-garage" placeholder="ex : Garage du Centre Boussu">
+      <label for="en-montant">Montant (€) (optionnel)</label>
+      <input id="en-montant" type="text" inputmode="decimal" placeholder="ex : 189,90">
+      <label for="en-note">Note (optionnel)</label>
+      <input id="en-note" placeholder="ex : vidange + filtre à huile">
+      <p id="en-erreur" style="color:var(--rouge); font-weight:600; min-height:1em;"></p>
+      <button type="button" id="en-envoyer" style="width:100%; padding:16px; border:none; border-radius:12px; background:var(--vert); color:#fff; font-weight:800; font-size:1.05rem;">🔧 Enregistrer l'entretien</button>
+    </div>
+    <h3 style="margin:22px 0 8px; font-size:1rem;">Mes derniers entretiens notés</h3>
+    <div id="en-liste"></div>
   </section>
 
   <section id="section-mes-horaires">
@@ -1041,6 +1080,21 @@ window.onerror = function(msg, url, line, col, err) {
     return { data: spec.optimiste === undefined ? null : spec.optimiste, error: null, enAttente: true };
   }
 
+  // Opération sans enjeu (seulement « cloturee: true ») : un refus ne fait perdre aucune donnée
+  function seulementCloture(it) {
+    if (!it || it.op !== "update" || it.table !== "lignes_feuille_route" || !it.payload) return false;
+    var k = Object.keys(it.payload);
+    return k.length === 1 && k[0] === "cloturee" && it.payload.cloturee === true;
+  }
+  function purgerSansEnjeu() {
+    try {
+      var kc = cleUtil("taxiwal_outbox_a_corriger"), lc = lireFileCle(kc), lc2 = lc.filter(function (x) { return !seulementCloture(x); });
+      if (lc2.length !== lc.length) ecrireFile(lc2, kc);
+      var e = lireFileCle(cleEchecs()), e2 = e.filter(function (x) { return x.envoye || !seulementCloture(x.operation); });
+      if (e2.length !== e.length) ecrireFile(e2, cleEchecs());
+    } catch (e) {}
+  }
+
   // ---- renvoi automatique de la file ----
   function nomVerrou(kf) { return "taxiwal_verrou_" + (kf && kf.indexOf(CLES_FILES[1]) === 0 ? "feuille" : kf ? "chauffeur" : etat.app); }
   function prendreVerrou(kf) {
@@ -1076,13 +1130,15 @@ window.onerror = function(msg, url, line, col, err) {
         if (!r.error) { retirer(item.id, kf); faits++; lsSet(nomVerrou(kf), String(Date.now())); continue; }
         if (r.reseau) break;
         if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
+        // Clôture seule refusée (ligne disparue / feuille signée) : rien n'est perdu → retirée sans bandeau ni alerte
+        if (seulementCloture(item)) { retirer(item.id, kf); continue; }
         // Refus du serveur : la modification est mise de côté (gardée + signalée à la centrale), la suite continue
         try {
           var kc = cleUtil("taxiwal_outbox_a_corriger"), lc = lireFileCle(kc);
           var xc = copie(item); xc.erreur = (r.error && (r.error.message || r.error.details)) || String(r.error); lc.push(xc);
           ecrireFile(lc.slice(-300), kc);
           signalerEchec(item, xc.erreur);
-          retirer(item.id, kf); etat.infoRefusJusqua = Date.now() + 10000; continue;
+          retirer(item.id, kf); etat.infoRefusJusqua = Date.now() + 6000; continue;
         } catch (e) {
           marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error), kf);
           break;
@@ -1124,7 +1180,7 @@ window.onerror = function(msg, url, line, col, err) {
     } else if (n) {
       fond = "#b86e00"; html = "⏳ " + n + " modification(s) en attente d'envoi…";
     } else if (Date.now() < (etat.infoRefusJusqua || 0)) {
-      fond = "#b86e00"; html = "⚠️ Une modification a été refusée par le serveur : elle est gardée et la centrale est prévenue. Continue ta journée normalement.";
+      fond = "#1d4f86"; html = "ℹ️ Une saisie a été transmise à la centrale, continue ta journée";
       clearTimeout(minuterieFlash); minuterieFlash = setTimeout(majBandeau, etat.infoRefusJusqua - Date.now() + 50);
     } else if (Date.now() < etat.flashJusqua) {
       fond = "#1f8a4c"; html = "✅ Tout est synchronisé";
@@ -1217,6 +1273,7 @@ window.onerror = function(msg, url, line, col, err) {
     etat.app = (cfg && cfg.app) || "chauffeur";
     etat.apresSync = (cfg && cfg.apresSync) || null;
     migrerAnciennesFiles();
+    purgerSansEnjeu();
     var auth = client.auth;
     var getSessionOrig = auth.getSession.bind(auth), getUserOrig = auth.getUser.bind(auth);
     // Sans réseau : la session enregistrée sur le téléphone suffit (pas de renvoi vers la connexion)
@@ -2181,8 +2238,11 @@ function activerLocalisationAutomatique() {
     },
     (err) => {
       console.error("Localisation automatique impossible :", err);
+      if (err && err.code === 1) gererErreurSuiviGps(err);
+      else demarrerPartagePosition(); // GPS lent : le suivi continue d'essayer
     }
   );
+  surveillerPermissionLocalisation();
 }
 
 async function creerFeuilleDuJourSiAbsente() {
@@ -2488,6 +2548,7 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
     if (btn.dataset.onglet === "historique-feuilles") chargerHistoriqueFeuilles();
     if (btn.dataset.onglet === "mes-horaires") chargerMesHoraires();
     if (btn.dataset.onglet === "plein") preparerPlein();
+    if (btn.dataset.onglet === "entretien" && typeof preparerEntretien === "function") preparerEntretien();
     if (btn.dataset.onglet === "messages") chmOuvrir();
   });
 });
@@ -3391,13 +3452,56 @@ switchDispo.addEventListener("click", () => {
   dispoActive = !dispoActive;
   switchDispo.classList.toggle("actif", dispoActive);
 
-  if (dispoActive) {
-    alertePermissionSuiviMontree = false;
-    demarrerPartagePosition();
-  } else {
-    arreterPartagePosition();
-  }
+  // Disponible / occupé uniquement : l'envoi de la position continue dans les deux cas
+  majDisponibilite(dispoActive);
+  if (suiviGpsId === null) { alertePermissionSuiviMontree = false; demarrerPartagePosition(); }
 });
+
+async function majDisponibilite(dispo) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("positions_chauffeurs").update({ disponible: dispo }).eq("chauffeur_id", user.id);
+  } catch (e) { /* pas bloquant */ }
+}
+
+// Indicateur visible par le chauffeur : suivi actif ou localisation désactivée
+let localisationRefusee = false;
+function afficherEtatSuivi(etat) {
+  const ok = document.getElementById("etat-suivi-gps"), ko = document.getElementById("bandeau-gps-refuse");
+  if (!ok || !ko) return;
+  localisationRefusee = etat === "refuse";
+  ok.style.display = etat === "actif" && !window.TAXIWAL_GPS_NATIF ? "block" : "none";
+  ko.style.display = localisationRefusee ? "block" : "none";
+  if (localisationRefusee) document.getElementById("bandeau-gps-refuse-aide").textContent = messageErreurPosition({ code: 1 }).replace(/^📍 /, "");
+}
+// Prévient la centrale que la localisation est coupée (l'alerte se lève toute seule à la prochaine position reçue)
+async function signalerLocalisationRefusee() {
+  if (window.TAXIWAL_GPS_NATIF) return; // l'app native le signale elle-même
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("positions_chauffeurs").update({ localisation_refusee: true }).eq("chauffeur_id", user.id);
+  } catch (e) { /* pas bloquant */ }
+}
+function relancerSuiviGps() {
+  if (suiviGpsId !== null) { navigator.geolocation.clearWatch(suiviGpsId); suiviGpsId = null; }
+  alertePermissionSuiviMontree = false;
+  demarrerPartagePosition();
+}
+// Si le chauffeur retire (ou redonne) l'autorisation dans les réglages pendant que l'app est ouverte
+let permissionSurveillee = false;
+function surveillerPermissionLocalisation() {
+  if (permissionSurveillee || !navigator.permissions || !navigator.permissions.query) return;
+  permissionSurveillee = true;
+  navigator.permissions.query({ name: "geolocation" }).then(st => {
+    st.onchange = () => {
+      if (st.state === "denied") gererErreurSuiviGps({ code: 1 });
+      else if (st.state === "granted") relancerSuiviGps();
+    };
+  }).catch(() => {});
+}
+document.getElementById("btn-gps-reessayer").addEventListener("click", relancerSuiviGps);
 
 // Suivi GPS en continu : le téléphone donne sa position dès qu'il bouge,
 // et on l'envoie à la centrale toutes les 15 secondes (même si le chauffeur est à l'arrêt).
@@ -3406,11 +3510,11 @@ let suiviGpsId = null, dernierEnvoiPosition = 0, alertePermissionSuiviMontree = 
 // délai dépassé / position indisponible -> silencieux (le suivi continue).
 function gererErreurSuiviGps(err) {
   console.error("Erreur GPS :", err);
-  if (!err || err.code !== 1 || !dispoActive || alertePermissionSuiviMontree) return;
+  if (!err || err.code !== 1) return;
+  if (!localisationRefusee) signalerLocalisationRefusee();
+  afficherEtatSuivi("refuse");
+  if (alertePermissionSuiviMontree) return;
   alertePermissionSuiviMontree = true;
-  dispoActive = false;
-  switchDispo.classList.remove("actif");
-  arreterPartagePosition();
   alert(messageErreurPosition(err));
 }
 function demarrerPartagePosition() {
@@ -3437,18 +3541,28 @@ function arreterPartagePosition() {
   metPositionIndisponible();
 }
 
+// Position du véhicule → positions_chauffeurs (la base l'ajoute aussi à l'historique trajets_gps)
+async function envoyerLignePosition(user, pos) {
+  const c = pos.coords;
+  const { error } = await supabase.from("positions_chauffeurs").upsert({
+    chauffeur_id: user.id,
+    latitude: c.latitude,
+    longitude: c.longitude,
+    disponible: dispoActive,
+    vitesse_kmh: c.speed != null && c.speed >= 0 ? Math.round(c.speed * 3.6) : null,
+    cap: c.heading != null && !isNaN(c.heading) ? Math.round(c.heading) : null,
+    source: "app_web",
+    updated_at: new Date().toISOString()
+  });
+  if (!error) afficherEtatSuivi("actif");
+}
+
 async function envoyerPositionLue(pos) {
   dernierEnvoiPosition = Date.now();
   if (navigator.onLine === false) return; // hors ligne : position non envoyée (pas de file d'attente)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-  await supabase.from("positions_chauffeurs").upsert({
-    chauffeur_id: user.id,
-    latitude: pos.coords.latitude,
-    longitude: pos.coords.longitude,
-    disponible: true,
-    updated_at: new Date().toISOString()
-  });
+  await envoyerLignePosition(user, pos);
 }
 
 // Dès que l'app revient à l'écran : position envoyée tout de suite + écran gardé allumé si course en cours
@@ -3484,13 +3598,7 @@ async function envoyerPosition() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from("positions_chauffeurs").upsert({
-      chauffeur_id: user.id,
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-      disponible: true,
-      updated_at: new Date().toISOString()
-    });
+    await envoyerLignePosition(user, pos);
   }, gererErreurSuiviGps, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 }
 
@@ -3778,6 +3886,69 @@ async function chargerMesPleins() {
   z.innerHTML = (data || []).length ? (data || []).map(p => `<div class="pl-ligne"><b>${new Date(p.fait_le).toLocaleDateString("fr-BE")} · ${esc(p.vehicules?.nom || "")}</b><br>
     ${Number(p.km_compteur).toLocaleString("fr-BE")} km${p.litres ? " · " + String(p.litres).replace(".", ",") + " L" : ""}${p.montant ? " · " + String(p.montant).replace(".", ",") + " €" : ""}${p.plein_complet ? "" : " · plein partiel"}</div>`).join("")
     : '<p style="color:var(--gris);">Aucun plein enregistré.</p>';
+}
+</script>
+<script>
+// ================== 🔧 ENTRETIENS (même parcours que le plein) ==================
+const EN_TYPES = { entretien: "Entretien / vidange", pneus: "Pneus", freins: "Freins", reparation: "Réparation", autre: "Autre" };
+async function preparerEntretien() {
+  const sel = document.getElementById("en-vehicule");
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  if (!sel.options.length) {
+    const { data: vehs } = await supabase.from("vehicules").select("id, nom, plaque").eq("actif", true).order("nom");
+    (vehs || []).forEach(v => sel.add(new Option(v.nom + (v.plaque ? " · " + v.plaque : ""), v.id)));
+    const duJour = vehiculeDuJourChauffeur && (vehs || []).find(v => v.id === vehiculeDuJourChauffeur.vehicule_id);
+    if (duJour) sel.value = duJour.id;
+    sel.addEventListener("change", majDernierEntretien);
+  }
+  if (!document.getElementById("en-date").value) document.getElementById("en-date").value = dateLocaleISO();
+  majDernierEntretien();
+  chargerMesEntretiens();
+}
+async function majDernierEntretien() {
+  const vid = document.getElementById("en-vehicule").value;
+  let d = null;
+  if (vid) { const { data } = await supabase.rpc("dernier_entretien_vehicule", { p_vehicule: vid }); d = (data && data[0]) || null; }
+  document.getElementById("en-dernier").textContent = d
+    ? `Dernier entretien : ${EN_TYPES[d.type] || d.type}, ${Number(d.km_compteur).toLocaleString("fr-BE")} km, le ${new Date(d.fait_le + "T12:00:00").toLocaleDateString("fr-BE")}`
+    : "";
+}
+document.getElementById("en-envoyer").addEventListener("click", async () => {
+  const err = document.getElementById("en-erreur"); err.textContent = "";
+  const { data: { user } } = await supabase.auth.getUser();
+  const vid = document.getElementById("en-vehicule").value;
+  const km = plNombre(document.getElementById("en-km").value);
+  const date = document.getElementById("en-date").value;
+  if (!vid) { err.textContent = "Choisis le véhicule."; return; }
+  if (!date) { err.textContent = "Indique la date."; return; }
+  if (!km || km < 1) { err.textContent = "Indique le kilométrage du tableau de bord."; return; }
+  const btn = document.getElementById("en-envoyer"); btn.disabled = true; btn.textContent = "Enregistrement…";
+  const { error } = await supabase.from("entretiens_vehicules").insert({
+    vehicule_id: vid, chauffeur_id: user.id, fait_le: date, km_compteur: Math.round(km),
+    type: document.getElementById("en-type").value,
+    garage: document.getElementById("en-garage").value.trim() || null,
+    montant: plNombre(document.getElementById("en-montant").value),
+    note: document.getElementById("en-note").value.trim() || null
+  });
+  btn.disabled = false; btn.textContent = "🔧 Enregistrer l'entretien";
+  if (error) {
+    err.textContent = /row-level security|violates/i.test(error.message)
+      ? "Ce véhicule ne t'est pas attribué : demande à la centrale de noter l'entretien."
+      : "Erreur : " + error.message;
+    return;
+  }
+  alert("✅ Entretien enregistré.");
+  ["en-km", "en-garage", "en-montant", "en-note"].forEach(id => document.getElementById(id).value = "");
+  majDernierEntretien(); chargerMesEntretiens();
+});
+async function chargerMesEntretiens() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.from("entretiens_vehicules").select("*, vehicules:vehicule_id(nom)").eq("chauffeur_id", user.id).order("fait_le", { ascending: false }).limit(10);
+  const z = document.getElementById("en-liste");
+  z.innerHTML = (data || []).length ? (data || []).map(p => `<div class="pl-ligne"><b>${new Date(p.fait_le + "T12:00:00").toLocaleDateString("fr-BE")} · ${esc(p.vehicules?.nom || "")}</b><br>
+    ${esc(EN_TYPES[p.type] || p.type)} · ${Number(p.km_compteur).toLocaleString("fr-BE")} km${p.garage ? " · " + esc(p.garage) : ""}${p.montant ? " · " + String(p.montant).replace(".", ",") + " €" : ""}</div>`).join("")
+    : '<p style="color:var(--gris);">Aucun entretien noté.</p>';
 }
 </script>
 <script>
@@ -4387,5 +4558,7 @@ async function chargerMesPleins() {
 // Messages d'erreur des actions chauffeur : même nettoyage des détails techniques
 (function () { try { if (typeof ttwMessageErreurRpc === "function" && window.twTexteSansDetail) { var b = ttwMessageErreurRpc; ttwMessageErreurRpc = function (e) { return window.twTexteSansDetail(b(e)); }; } } catch (e) {} })();
 </script>
+<script src="gps-natif.js"></script>
+<script src="rappel-uber.js"></script>
 </body>
 </html>

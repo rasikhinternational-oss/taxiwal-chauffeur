@@ -43,6 +43,18 @@
   var dernierPoint = null;    // { lat, lng, t } du dernier point enregistré
   var vidageEnCours = false;
   var alerteReglagesMontree = false;
+  var localisationRefusee = false;
+
+  // Prévient la centrale que la localisation est coupée (levé automatiquement à la prochaine position)
+  async function signalerRefus() {
+    if (localisationRefusee) return;
+    localisationRefusee = true;
+    majBadge();
+    var sb = clientSupabase();
+    if (!sb || !utilisateur) return;
+    try { await sb.from("positions_chauffeurs").update({ localisation_refusee: true }).eq("chauffeur_id", utilisateur.id); }
+    catch (e) { /* pas bloquant */ }
+  }
 
   // ---------- 4. Petit badge en bas à gauche ----------
   var badge = null;
@@ -57,8 +69,8 @@
           "box-shadow:0 2px 8px rgba(0,0,0,.2); pointer-events:none;"; // informatif seulement : aucun clic
         document.body.appendChild(badge);
       }
-      var actif = idObservateur !== null;
-      badge.textContent = actif ? "📍 Suivi GPS actif" : "📍 GPS coupé";
+      var actif = idObservateur !== null && !localisationRefusee;
+      badge.textContent = localisationRefusee ? "⚠️ Localisation désactivée" : (actif ? "📍 Suivi actif" : "📍 GPS coupé");
       badge.style.background = actif ? "#1f8a4c" : "#c81e2c";
     } catch (e) { /* le badge n'est pas essentiel */ }
   }
@@ -121,6 +133,7 @@
     if (!location || !utilisateur) return;
     var lat = location.latitude, lng = location.longitude;
     if (typeof lat !== "number" || typeof lng !== "number") return;
+    if (localisationRefusee) { localisationRefusee = false; majBadge(); }
     var t = location.time ? Number(location.time) : Date.now();
 
     // Filtre : trop proche dans le temps ET dans l'espace → ignoré
@@ -173,10 +186,11 @@
         },
         function (location, error) {
           if (error) {
+            if (error.code === "NOT_AUTHORIZED") signalerRefus();
             if (error.code === "NOT_AUTHORIZED" && !alerteReglagesMontree) {
               alerteReglagesMontree = true;
               var ok = window.confirm(
-                "Taxi Wal Driver a besoin de votre position pour enregistrer vos trajets pendant le service.\n\n" +
+                "Taxi Wal suit la position du véhicule pendant le service : la centrale ne vous voit plus.\n\n" +
                 "Ouvrir les réglages pour autoriser la localisation (choisir « Toujours ») ?"
               );
               if (ok) { try { BG.openSettings(); } catch (e) { /* ignoré */ } }
@@ -266,6 +280,14 @@
     if (++essais < 240) setTimeout(attendreClient, 500);
     else console.warn("GPS natif : client Supabase introuvable sur cette page.");
   })();
+
+  // Retour dans l'app après être passé par les réglages : on relance le suivi
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && localisationRefusee && utilisateur) {
+      alerteReglagesMontree = false;
+      stop().then(start);
+    }
+  });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", majBadge);
   else majBadge();

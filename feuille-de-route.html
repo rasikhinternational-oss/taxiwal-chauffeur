@@ -391,12 +391,18 @@ function anomaliesFeuille(lignes, feuille) {
   });
   return { triees, parId, liste, total: parId.size };
 }
+// 🔧 Garage : se comporte comme un trajet privé (non facturé, hors recette), avec un motif
+function estPriveOuGarage(t) { return t === "prive" || t === "garage"; }
+const LIBELLES_MOTIF_GARAGE = { entretien: "Entretien / vidange", pneus: "Pneus", reparation: "Réparation / panne", controle_technique: "Contrôle technique", carrosserie: "Carrosserie", lavage: "Lavage", autre: "Autre" };
+function texteGarage(l) { return "🔧 GARAGE" + (l && l.motif_garage ? " — " + (LIBELLES_MOTIF_GARAGE[l.motif_garage] || l.motif_garage) : ""); }
+function libellePriveOuGarage(l) { return l && l.type_course === "garage" ? texteGarage(l) : "PRIVÉ"; }
+const TEXTE_SOMMES_GARAGE = "Déplacement garage — non facturé";
 // ================== COURSE COMPLÈTE / CLÔTURE ==================
 // Une course sans argent encaissé est « expliquée » par un motif (facture, contrat, école, Uber, annulée…)
 function sansArgentExplique(l) {
   return !!l.motif_sans_prix || !!(l.sommes_texte && String(l.sommes_texte).trim())
     || ["facture", "uber", "uber_cash", "annulee"].includes(l.mode_paiement)
-    || ["uber", "prive"].includes(l.type_course);
+    || ["uber", "prive", "garage"].includes(l.type_course);
 }
 // Uber payé en CASH : montant reçu = « Prix taximètre » (jamais dans la recette, Uber déclare lui-même).
 // Anciennes lignes : montant noté par erreur dans « Sommes perçues » → repris comme montant reçu.
@@ -444,8 +450,8 @@ function etatCompletude(l, triees, feuille) {
     exiger(rempli(l.debarquement_lieu), "debarquement_lieu", "lieu de débarquement");
     exiger(!!l.debarquement_heure, "debarquement_heure", "heure de débarquement");
   }
-  const typeSansPrix = ["uber", "prive"].includes(l.type_course) || ["uber", "uber_cash", "annulee"].includes(l.mode_paiement);
-  if (l.mode_paiement === "uber_cash" && l.type_course !== "prive") {
+  const typeSansPrix = ["uber", "prive", "garage"].includes(l.type_course) || ["uber", "uber_cash", "annulee"].includes(l.mode_paiement);
+  if (l.mode_paiement === "uber_cash" && !estPriveOuGarage(l.type_course)) {
     // Uber payé cash : le montant reçu (Prix taximètre) est obligatoire ; jamais de « sommes perçues »
     exiger(montantUberCash(l) !== null, "prix_taximetre", "montant reçu en cash (Uber)");
   } else if (l.type_course === "forfait") {
@@ -458,8 +464,9 @@ function etatCompletude(l, triees, feuille) {
   }
   // Mode de paiement : obligatoire, sauf trajet privé ou motif sans aucun paiement (carwash, à vide, gratuit…)
   const motifSansPaiement = !!l.motif_sans_prix && !MOTIFS_AVEC_PAIEMENT[l.motif_sans_prix];
-  if (l.type_course !== "prive" && !motifSansPaiement) exiger(rempli(l.mode_paiement) || enLigneTout, "mode_paiement", "mode de paiement");
+  if (!estPriveOuGarage(l.type_course) && !motifSansPaiement) exiger(rempli(l.mode_paiement) || enLigneTout, "mode_paiement", "mode de paiement");
   if (ligneEnFacture(l)) exiger(!!lirePayeurFacture(l.numero_dossier).payeur, "payeur", "facture : pour qui ?");
+  if (l.type_course === "garage") exiger(!!l.motif_garage, "type_course", "motif du garage");
   const t = triees || trierLignesChrono(lignesActuelles || [], feuille);
   const idx = t.findIndex(x => x.id === l.id);
   const bloquants = idx < 0 ? [] : problemesLigne(t, idx, feuille, { heures: true, suivante: true });
@@ -480,7 +487,7 @@ function resumeLigneFermee(l, numero) {
     : (LIBELLES_MODE_COURT[l.mode_paiement] || (l.mode_paiement ? String(l.mode_paiement).toUpperCase() : ""));
   let argent;
   if (l.mode_paiement === "annulee") argent = "❌ ANNULÉE";
-  else if (l.type_course === "prive") argent = "PRIVÉ";
+  else if (estPriveOuGarage(l.type_course)) argent = libellePriveOuGarage(l);
   else if (l.mode_paiement === "facture" && !(somme !== null && somme > 0)) {
     const prixF = frNum(l.prix_taximetre), numF = lirePayeurFacture(l.numero_dossier).numero;
     argent = (prixF !== null && prixF > 0 ? formatEuro(prixF) : "FACTURE") + " · 🧾 " + texteSommesFacture(l) + (numF ? " n° " + numF : "");
@@ -568,6 +575,19 @@ async function cloturerLigneEnBase(ligne) {
   try { rafraichirPanneauSignature(); } catch (_) {}
   return null;
 }
+// 🚕 Uber choisi sans « Uber cash » : le chauffeur doit dire s'il a reçu du cash (réponse gardée sur le téléphone)
+const CLE_UBER_CONFIRME = "taxiwal_uber_app_confirme";
+function uberAppConfirme(id) { try { return !!(JSON.parse(localStorage.getItem(CLE_UBER_CONFIRME) || "{}")[String(id)]); } catch (_) { return false; } }
+function confirmerUberApp(id) {
+  try { const o = JSON.parse(localStorage.getItem(CLE_UBER_CONFIRME) || "{}"); o[String(id)] = Date.now();
+    const lim = Date.now() - 7 * 864e5; Object.keys(o).forEach(k => { if (o[k] < lim) delete o[k]; });
+    localStorage.setItem(CLE_UBER_CONFIRME, JSON.stringify(o)); } catch (_) {}
+}
+function uberPaiementAConfirmer(l) {
+  if (!l || l.cloturee || estPriveOuGarage(l.type_course) || l.mode_paiement === "uber_cash") return false;
+  if (!(l.mode_paiement === "uber" || l.type_course === "uber")) return false;
+  return !uberAppConfirme(l.id);
+}
 async function tenterClotureAuto(id) {
   if (!lignesAClotureAuto.has(id) || !feuilleActuelle || feuilleActuelle.verrouillee) return;
   const ligne = (lignesActuelles || []).find(x => String(x.id) === id);
@@ -578,6 +598,7 @@ async function tenterClotureAuto(id) {
   const qr = document.getElementById("overlay-qr");
   if (qr && qr.style.display === "flex") { planifierClotureAuto(id, 3000); return; }
   if (!etatCompletude(ligne, null, feuilleActuelle).complet) return;
+  if (uberPaiementAConfirmer(ligne)) return;
   const err = await cloturerLigneEnBase(ligne);
   if (err) { console.warn("Clôture auto impossible :", err.message); return; }
   afficherToast("✅ Course clôturée");
@@ -826,6 +847,13 @@ window.onerror = function(msg, url, line, col, err) {
   #bloc-caisse .caisse-ligne b{ white-space:nowrap; }
   #bloc-caisse .caisse-total{ font-weight:800; border-bottom:none; }
   #bloc-caisse .caisse-factures{ background:#eaf1f8; border:2px solid #9bb7d4; border-radius:8px; padding:10px 12px; font-weight:800; color:#1f3d5c; margin-bottom:8px; }
+  #bloc-caisse .caisse-a-remettre{ background:#ff8c00; border:2px solid #b35f00; border-radius:8px; padding:12px; font-weight:800; font-size:1rem; color:#fff; margin-bottom:8px; }
+  .badge-uber-cash{ display:inline-block; background:#ff8c00; color:#fff; font-weight:800; border-radius:6px; padding:2px 8px; margin-left:6px; white-space:nowrap; }
+  .question-uber{ background:#fff3e0; border:3px solid #ff8c00; border-radius:10px; padding:12px; margin:8px 0; }
+  .question-uber .qu-titre{ font-weight:800; font-size:1.05rem; margin-bottom:8px; color:#5c3300; }
+  .question-uber button{ display:block; width:100%; font-size:1.05rem; font-weight:800; padding:14px 10px; margin:6px 0; border-radius:10px; border:2px solid #b35f00; background:#fff; color:#111; }
+  .champ-uber-cash-requis{ border:3px solid #d0021b !important; background:#fff5f5 !important; }
+  .consigne-uber-cash{ background:#d0021b; color:#fff; font-weight:800; border-radius:8px; padding:10px; margin:6px 0; font-size:1rem; }
   #bloc-caisse .caisse-uber-cash{ background:#fff7e0; border:2px solid #e0b400; border-radius:8px; padding:10px 12px; font-weight:800; color:#5c4500; margin-bottom:8px; }
   .ligne-course .mention-sommes-uber-cash{ font-size:.8rem; font-weight:700; color:#5c4500; background:#fff7e0; border:1px solid #e0b400; border-radius:8px; padding:8px 10px; }
   #bloc-caisse .caisse-alerte{ background:#fdecee; color:var(--rouge); border-radius:8px; padding:9px 11px; font-size:.85rem; margin-top:8px; font-weight:600; }
@@ -1235,7 +1263,23 @@ window.onerror = function(msg, url, line, col, err) {
   function lacherEnVol(id) { ecrireFile(lireFileCle(cleEnVol()).filter(function (x) { return x.id !== id; }), cleEnVol()); }
   function msgErreur(e) { return (e && (e.message || e.details)) || String(e || "refusé par le serveur"); }
   function aucuneLigneTouchee(it, data) { return it.op === "update" && it.table === "lignes_feuille_route" && (data == null || (Array.isArray(data) && !data.length)); }
-  function garderRefus(it, msg) { var f = lireFileCle(cleRefus()); var x = itemDe(it); x.erreur = msg; f.push(x); ecrireFile(f, cleRefus()); try { signalerEchec(it, msg); } catch (e) {} }
+  // Opération sans enjeu (seulement « cloturee: true ») : si elle est refusée, rien n'est perdu → abandonnée sans bruit
+  function seulementCloture(it) {
+    if (!it || it.op !== "update" || it.table !== "lignes_feuille_route" || !it.payload) return false;
+    var k = Object.keys(it.payload);
+    return k.length === 1 && k[0] === "cloturee" && it.payload.cloturee === true;
+  }
+  function purgerSansEnjeu() {
+    try {
+      [cleRefus(), cleRefusSignee()].forEach(function (k) {
+        var f = lireFileCle(k), g = f.filter(function (x) { return !seulementCloture(x); });
+        if (g.length !== f.length) ecrireFile(g, k);
+      });
+      var e = lireFileCle(cleEchecs()), e2 = e.filter(function (x) { return x.envoye || !seulementCloture(x.operation); });
+      if (e2.length !== e.length) ecrireFile(e2, cleEchecs());
+    } catch (e) {}
+  }
+  function garderRefus(it, msg) { if (seulementCloture(it)) return; var f = lireFileCle(cleRefus()); var x = itemDe(it); x.erreur = msg; f.push(x); ecrireFile(f, cleRefus()); try { signalerEchec(it, msg); } catch (e) {} }
   // Une modification plus récente de la même course a été enregistrée : l'ancienne valeur refusée ne doit pas l'écraser
   function eleguerRefus(it) {
     if (it.op !== "update" || !it.match) return;
@@ -1283,6 +1327,7 @@ window.onerror = function(msg, url, line, col, err) {
   }
   function cleRefusSignee() { return cleUtil("taxiwal_refuses_signee"); }
   function archiverRefusSignee(it) {
+    if (seulementCloture(it)) return;
     try {
       var k = cleRefusSignee(), f = [];
       try { f = JSON.parse(lsGet(k) || "[]"); if (!Array.isArray(f)) f = []; } catch (e) { f = []; }
@@ -1308,15 +1353,16 @@ window.onerror = function(msg, url, line, col, err) {
       d.style.cssText = "position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:99992;border-radius:12px;padding:10px 12px;background:#eef2f6;color:#33404d;border:1px solid #c9d3dd;font:500 14px/1.35 -apple-system,Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.12);display:flex;gap:8px;align-items:flex-start;";
       document.body.appendChild(d);
     }
-    d.innerHTML = "<span style=\"flex:1\">ℹ️ " + n + " modification(s) d'une feuille déjà signée n'ont pas été appliquées — seule la centrale peut modifier une feuille signée.</span><button type=\"button\" aria-label=\"Fermer\" style=\"border:none;background:transparent;color:#33404d;font-size:18px;line-height:1;padding:0 2px\">×</button>";
+    d.innerHTML = "<span style=\"flex:1\">ℹ️ Une saisie a été transmise à la centrale, continue ta journée</span><button type=\"button\" aria-label=\"Fermer\" style=\"border:none;background:transparent;color:#33404d;font-size:18px;line-height:1;padding:0 2px\">×</button>";
     d.querySelector("button").onclick = function () { d.style.display = "none"; };
     d.style.display = "flex";
-    setTimeout(function () { d.style.display = "none"; }, 15000);
+    setTimeout(function () { d.style.display = "none"; }, 6000);
   }
 
   var refusEnCours = false;
   async function reessayerRefusees() {
     if (refusEnCours || !etat.client || navigator.onLine === false) return;
+    purgerSansEnjeu();
     var f = lireFileCle(cleRefus());
     if (!f.length) { majBandeau(); return; }
     refusEnCours = true; var faits = 0;
@@ -1641,9 +1687,10 @@ window.onerror = function(msg, url, line, col, err) {
         if (r.reseau) break;
         if (r.jwt && jwtEssais++ < 2) { try { await etat.client.auth.refreshSession(); } catch (e) {} continue; }
         // Course refusée : mise de côté (gardée + réessayée), les courses suivantes partent quand même
+        if (seulementCloture(item)) { retirer(item.id, kf); continue; }
         if (estCourse(item)) { garderRefus(item, msgErreur(r.error)); retirer(item.id, kf); continue; }
         // Autres refus (feuille, compteurs…) : même règle, mis de côté + signalé à la centrale, la suite continue
-        try { garderRefus(item, msgErreur(r.error)); retirer(item.id, kf); etat.infoRefusJusqua = Date.now() + 10000; continue; } catch (e) {}
+        try { garderRefus(item, msgErreur(r.error)); retirer(item.id, kf); etat.infoRefusJusqua = Date.now() + 6000; continue; } catch (e) {}
         marquerErreur(item.id, (r.error && (r.error.message || r.error.details)) || String(r.error), kf);
         break;
       }
@@ -1659,17 +1706,24 @@ window.onerror = function(msg, url, line, col, err) {
 
   // ---- bandeau ----
   var minuterieFlash = null;
+  // Saisie refusée : gardée et réessayée en silence ; le chauffeur est prévenu UNE fois (annonce gardée sur le téléphone)
+  var minuterieLigneRefus = null;
   function majLigneRefus() {
-    var n = nbCoursesRefusees(), l = document.getElementById("ligne-non-envoyees");
-    if (!n) { if (l) l.style.display = "none"; return; }
+    var l = document.getElementById("ligne-non-envoyees");
+    var fr = lireFileCle(cleRefus()), nouveaux = fr.filter(function (x) { return !x.annonce; });
+    if (!nouveaux.length) return;
+    fr.forEach(function (x) { x.annonce = true; });
+    ecrireFile(fr, cleRefus());
     if (!l) {
       l = document.createElement("div"); l.id = "ligne-non-envoyees";
-      l.style.cssText = "position:sticky;top:0;z-index:99991;background:#b3141b;color:#fff;font:700 14px/1.3 -apple-system,Arial,sans-serif;padding:8px 12px;display:flex;align-items:center;gap:8px;";
+      l.style.cssText = "position:sticky;top:0;z-index:99991;background:#1d4f86;color:#fff;font:700 14px/1.3 -apple-system,Arial,sans-serif;padding:8px 12px;display:flex;align-items:center;gap:8px;";
       document.body.insertBefore(l, document.body.firstChild);
     }
-    var html = "<span data-hl=\"details-refus\" style=\"flex:1\">⚠️ " + n + " course(s) pas encore envoyée(s)</span><button type=\"button\" data-hl=\"reessayer-refus\" style=\"padding:6px 12px;border:none;border-radius:8px;background:#fff;color:#b3141b;font-weight:800\">Réessayer</button>";
+    var html = "<span style=\"flex:1\">ℹ️ Une saisie a été transmise à la centrale, continue ta journée</span>";
     if (l._html !== html) { l.innerHTML = html; l._html = html; }
     l.style.display = "flex";
+    clearTimeout(minuterieLigneRefus);
+    minuterieLigneRefus = setTimeout(function () { l.style.display = "none"; }, 6000);
   }
   function majBandeau() {
     if (!document.body) return;
@@ -1696,7 +1750,7 @@ window.onerror = function(msg, url, line, col, err) {
     } else if (n) {
       fond = "#b86e00"; html = "⏳ " + n + " modification(s) en attente d'envoi…";
     } else if (Date.now() < (etat.infoRefusJusqua || 0)) {
-      fond = "#b86e00"; html = "⚠️ Une modification a été refusée par le serveur : elle est gardée et la centrale est prévenue. Continue ta journée normalement.";
+      fond = "#1d4f86"; html = "ℹ️ Une saisie a été transmise à la centrale, continue ta journée";
       clearTimeout(minuterieFlash); minuterieFlash = setTimeout(majBandeau, etat.infoRefusJusqua - Date.now() + 50);
     } else if (Date.now() < etat.flashJusqua) {
       fond = "#1f8a4c"; html = "✅ Tout est synchronisé";
@@ -1795,6 +1849,7 @@ window.onerror = function(msg, url, line, col, err) {
     etat.app = (cfg && cfg.app) || "chauffeur";
     etat.apresSync = (cfg && cfg.apresSync) || null;
     migrerAnciennesFiles();
+    purgerSansEnjeu();
     // Envois coupés (app fermée pendant l'envoi) : remis en tête de la file d'attente
     var envol = lireFileCle(cleEnVol());
     if (envol.length) { ecrireFile(envol.concat(lireFile())); lsDel(cleEnVol()); }
@@ -3239,6 +3294,7 @@ async function signerFeuilleActuelleAvantNouvelle() {
   if (error) { alert("Erreur à la signature de la feuille actuelle : " + error.message); return false; }
   feuilleActuelle.verrouillee = true; feuilleActuelle.signee = true;
   sauverInstantaneFeuille();
+  try { if (window.RappelUber) RappelUber.apresCloture(feuilleActuelle); } catch (_) {}
   return true;
 }
 
@@ -3933,7 +3989,7 @@ function recetteDesLignes(lignes) {
   return (lignes || []).reduce((s, l) => {
     const somme = nombreOuNull(l.sommes_percues);
     // Facture : jamais dans la recette (déclarée à part sur la facture), comme Uber
-    if (l.type_course === "uber" || l.type_course === "prive" || estLigneRelais(l) || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.mode_paiement === "facture") return s;
+    if (l.type_course === "uber" || estPriveOuGarage(l.type_course) || estLigneRelais(l) || l.mode_paiement === "uber" || l.mode_paiement === "uber_cash" || l.mode_paiement === "facture") return s;
     if (l.mode_paiement === "annulee" && !(somme !== null && somme > 0)) return s;
     return s + (somme !== null ? somme : 0);
   }, 0);
@@ -3981,7 +4037,7 @@ async function afficherCaisse() {
     const somme = nombreOuNull(l.sommes_percues);
     const montant = (l.mode_paiement === "uber_cash") ? (montantUberCash(l) ?? 0)
       : (somme !== null && somme > 0) ? somme : (nombreOuNull(l.prix_taximetre) ?? 0);
-    if (l.type_course === "prive") return;
+    if (estPriveOuGarage(l.type_course)) return;
     if (l.mode_paiement === "annulee") { nbAnnulees++; return; }
     if (l.mode_paiement === "facture") {
       const pf = nombreOuNull(l.prix_taximetre);
@@ -4012,6 +4068,7 @@ async function afficherCaisse() {
       <div class="cp-montant">${formatEuro(especesDansCaisse)}</div>
       <div class="cp-label">${modes.cash.nb} course(s) payée(s) en espèces${modes.uber_cash.nb ? " + " + modes.uber_cash.nb + " Uber payée(s) en cash" : ""}</div>
     </div>
+    <div class="caisse-ligne caisse-a-remettre"><span>💶 Cash à remettre = espèces ${formatEuro(modes.cash.total)} + Uber cash ${formatEuro(modes.uber_cash.total)}</span><b>${formatEuro(especesDansCaisse)}</b></div>
     <div class="caisse-ligne caisse-uber-cash"><span>${modes.uber_cash.nom}${modes.uber_cash.nb ? " · " + modes.uber_cash.nb : ""}</span><b>${formatEuro(modes.uber_cash.total)}</b></div>
     <div class="caisse-ligne caisse-factures"><span>🧾 Factures (hors recette, déclarées à part)</span><b>${formatEuro(Math.round(totalFactures * 100) / 100)}${nbFacturesSansPrix ? " + " + nbFacturesSansPrix + " sans prix" : ""}</b></div>`;
   Object.values(modes).forEach(m => {
@@ -4134,7 +4191,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
   let badge = "";
   if (ligne.cloturee) badge = " · 🔒 clôturée";
   else if (ligne.course_id && !courseManuelle) badge = ligneTerminee ? " · ✅ course faite — à compléter puis clôturer" : " · attribuée par la centrale";
-  if (ligne.mode_paiement === "uber_cash") badge += " · 🚕💵 Uber cash";
+  // Uber payé cash : badge orange séparé (voir badgeUberCash)
+  const badgeUberCash = ligne.mode_paiement === "uber_cash"
+    ? `<span class="badge-uber-cash">🚕💵 UBER CASH ${esc(montantUberCash(ligne) !== null ? formatEuro(montantUberCash(ligne)) : "— montant à écrire")}</span>` : "";
+  if (ligne.mode_paiement === "uber_cash") { /* badge orange */ }
   else if (ligne.type_course === "uber" || ligne.mode_paiement === "uber") badge += " · 🚕 Uber";
   const _enLigneBadge = paiementEnLigneLigne(ligne);
   if (_enLigneBadge && _enLigneBadge.tout) badge += " · ✅ payé par Bancontact";
@@ -4159,9 +4219,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const extra = (ligne.note_chauffeur ? " 📝" : "") + (anomaliesLigne.length ? " ⚠️" : "") + (ligne.signalee_erreur ? " 📨" : "");
     div.classList.add("ligne-fermee");
     if (ouverte) div.classList.add("depliee");
-    entete.innerHTML = `<div class="resume-ferme"><div class="rf1">🔒 ${esc(r.ligne1)}${esc(extra)}</div><div class="rf2">${esc(r.ligne2)}</div></div><span class="chevron-ligne">${ouverte ? "▴" : "▾"}</span>`;
+    entete.innerHTML = `<div class="resume-ferme"><div class="rf1">🔒 ${esc(r.ligne1)}${esc(extra)}${badgeUberCash}</div><div class="rf2">${esc(r.ligne2)}</div></div><span class="chevron-ligne">${ouverte ? "▴" : "▾"}</span>`;
   } else {
-    entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${esc(resume)}${esc(heureResume)}${esc(badge)}</span><span class="chevron-ligne">${ouverte ? "▴" : "▾"}</span>`;
+    entete.innerHTML = `<span>Course n° ${numeroAffiche} · ${esc(resume)}${esc(heureResume)}${esc(badge)}${badgeUberCash}</span><span class="chevron-ligne">${ouverte ? "▴" : "▾"}</span>`;
   }
   div.appendChild(entete);
 
@@ -4300,6 +4360,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         <option value="scolaire">🏫 Transport scolaire</option>
         <option value="uber">🚕 Course Uber</option>
         <option value="prive">🔒 Trajet privé (non facturé)</option>
+        <option value="garage">🔧 Garage (non facturé)</option>
       `;
       ajouterTexteLibre(input, ligne.type_course);
     } else if (estCheckbox) {
@@ -4372,6 +4433,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
       // Prix et motif « pas de prix » s'excluent : un motif efface le prix, un prix efface le motif
       const maj = { [champ]: valeur };
       if (champ === "motif_sans_prix" && valeur !== null) maj.prix_taximetre = null;
+      // 🔧 Garage : « Sommes perçues » = « Déplacement garage — non facturé » (jamais de case vide à l'impression)
+      if (champ === "type_course" && valeur === "garage" && !ligne.sommes_texte) maj.sommes_texte = TEXTE_SOMMES_GARAGE;
+      if (champ === "type_course" && valeur !== "garage" && ligne.sommes_texte === TEXTE_SOMMES_GARAGE) maj.sommes_texte = null;
       if (champ === "prix_taximetre" && valeur !== null && ligne.motif_sans_prix) maj.motif_sans_prix = null;
       // Motif qui implique un paiement (école / contrat → facture, Uber, annulée) : mode choisi d'office s'il est vide
       if (champ === "motif_sans_prix" && valeur && MOTIFS_AVEC_PAIEMENT[valeur] && !ligne.mode_paiement) maj.mode_paiement = MOTIFS_AVEC_PAIEMENT[valeur];
@@ -4405,6 +4469,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
           inputsParChamp["prix_taximetre"].value = ligne.prix_taximetre ?? "";
         }
         if ("mode_paiement" in maj) synchroniserChampsUber();
+        if (champ === "type_course" && div._majGarage) div._majGarage();
         if ("sommes_texte" in maj && wrapsParChamp["sommes_percues"]._rendreTexte) wrapsParChamp["sommes_percues"]._rendreTexte();
         majEtatPrix();
         majInfoCompletude();
@@ -4535,6 +4600,47 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionPrive.className = "mention-uber";
   mentionPrive.textContent = "🔒 Trajet privé : non facturé au client, juste comptabilisé pour le kilométrage du véhicule.";
   corps.insertBefore(mentionPrive, wrapsParChamp["mode_paiement"]);
+
+  // ---- 🔧 Garage : motif obligatoire en gros boutons (enregistré comme les autres champs, hors ligne compris) ----
+  const blocGarage = document.createElement("div");
+  blocGarage.className = "mention-uber bloc-garage";
+  blocGarage.style.cssText = "background:#fff4e0; color:#7a4a00; border:2px solid #e08a00;";
+  corps.insertBefore(blocGarage, wrapsParChamp["mode_paiement"]);
+  function rendreGarage() {
+    const estGarage = (inputsParChamp["type_course"].value || ligne.type_course) === "garage";
+    blocGarage.style.display = estGarage ? "" : "none";
+    if (!estGarage) return;
+    blocGarage.replaceChildren();
+    const titre = document.createElement("div");
+    titre.style.cssText = "font-weight:800; margin-bottom:6px;";
+    titre.textContent = "🔧 Dépôt au garage : non facturé, hors recette — gardé pour le kilométrage. Motif (obligatoire) :";
+    const grille = document.createElement("div");
+    grille.className = "grille-motifs";
+    Object.keys(LIBELLES_MOTIF_GARAGE).forEach(cle => {
+      const b = creerPuce(LIBELLES_MOTIF_GARAGE[cle], ligne.motif_garage === cle, ligneVerrouillee, () => choisirMotifGarage(cle));
+      b.dataset.valeur = cle;
+      grille.appendChild(b);
+    });
+    const info = document.createElement("div");
+    info.style.cssText = "font-size:.8rem; margin-top:6px;";
+    info.textContent = ligne.motif_garage ? "Motif : " + LIBELLES_MOTIF_GARAGE[ligne.motif_garage] + " · une note libre est possible plus bas." : "⚠️ Choisis le motif.";
+    if (!ligne.motif_garage) info.style.color = "var(--rouge)";
+    blocGarage.append(titre, grille, info);
+  }
+  async function choisirMotifGarage(cle) {
+    if (ligneVerrouillee || ligne.motif_garage === cle) return;
+    const ancien = ligne.motif_garage;
+    ligne.motif_garage = cle; rendreGarage();
+    const { data: ligneServeur, error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update",
+      match: { id: ligne.id }, payload: { motif_garage: cle }, select: "*", single: "maybe",
+      optimiste: Object.assign({}, ligne, { motif_garage: cle }), label: "Course n° " + numeroAffiche + " : motif garage" });
+    if (!error && ligneServeur) Object.assign(ligne, ligneServeur);
+    else if (error) ligne.motif_garage = ancien;
+    rendreGarage();
+    try { majInfoCompletude(); } catch (_) {}
+    if (!ligne.cloturee) { lignesAClotureAuto.add(String(ligne.id)); planifierClotureAuto(ligne.id); }
+  }
+  div._majGarage = rendreGarage;
 
   // ---- Course payée en ligne par Bancontact (Stripe) ----
   const payeEnLigne = paiementEnLigneLigne(ligne);
@@ -4784,6 +4890,17 @@ function construireLigneHtml(ligne, numeroAffiche) {
       const st = etatCompletude(ligne, null, feuilleActuelle);
       // Aucune case vide : pas de « clôturer quand même » côté chauffeur (heures manquantes comprises)
       st.manque.push(...st.bloquants.filter(x => /manquante\.$/.test(x) && !st.manque.length));
+      if (ligne.mode_paiement === "uber_cash" && montantUberCash(ligne) === null) {
+        majInfoCompletude();
+        alert("❌ Impossible de clôturer : écris dans PRIX TAXIMÈTRE la somme reçue en cash du client Uber.");
+        if (div._exigerUberCash) div._exigerUberCash();
+        return;
+      }
+      if (uberPaiementAConfirmer(ligne)) {
+        alert("❌ Impossible de clôturer : réponds d'abord à la question « Uber : comment le client a-t-il payé ? ».");
+        if (div._questionUber) div._questionUber.scrollIntoView({ block: "center", behavior: "smooth" });
+        return;
+      }
       if (st.manque.length) {
         majInfoCompletude();
         alert("❌ Impossible de clôturer : toutes les cases doivent être remplies.\n\nIl manque : " + st.manque.join(", ") + ".\n\nLes cases manquantes sont entourées en rouge (« Obligatoire »).");
@@ -4849,7 +4966,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const typeCourse = inputsParChamp["type_course"].value;
     const estUberCash = mode === "uber_cash";
     const estUber = !estUberCash && (mode === "uber" || typeCourse === "uber");
-    const estPrive = typeCourse === "prive";
+    const estPrive = estPriveOuGarage(typeCourse);
     const estFacture = mode === "facture";
     const estAnnulee = mode === "annulee";
     const estForfait = typeCourse === "forfait";
@@ -4870,18 +4987,20 @@ function construireLigneHtml(ligne, numeroAffiche) {
     if (div._majEtatPrix) div._majEtatPrix();
     mentionSommesUberCash.style.display = estUberCash ? "" : "none";
     const ancienneSomme = frNum(ligne.sommes_percues);
-    mentionSommesUberCash.textContent = "Sommes perçues : Uber payé cash — ne compte pas dans la recette"
+    mentionSommesUberCash.textContent = "Sommes perçues : Course Uber payée cash — ne compte pas dans la recette"
       + ((estUberCash && frNum(ligne.prix_taximetre) === null && ancienneSomme !== null && ancienneSomme > 0) ? " (montant noté : " + formatEuro(ancienneSomme) + ")" : "");
     wrapPourboire.style.display = ((estUber || estPrive || estAnnulee) && !(Number(ligne.pourboire) > 0)) ? "none" : "";
     wrapsParChamp["numero_dossier"].style.display = "none"; // remplacé par le bloc « Facture : pour qui ? »
     blocPayeur.style.display = (!estPrive && (estFacture || inputsParChamp["motif_sans_prix"].value === "Contrat / sur facture")) ? "" : "none";
     wrapsParChamp["mode_paiement"].style.display = estPrive ? "none" : "";
-    mentionPrive.style.display = estPrive ? "" : "none";
+    mentionPrive.style.display = (estPrive && typeCourse !== "garage") ? "" : "none";
+    if (div._majGarage) div._majGarage();
     mentionUber.style.display = estUber ? "" : "none";
     mentionUberCash.style.display = estUberCash ? "" : "none";
     blocMonnaie.style.display = (!(payeEnLigne && payeEnLigne.tout) && !estUber && !estPrive && (mode === "cash" || mode === "" || estUberCash)) ? "" : "none";
     mentionAnnulee.style.display = estAnnulee ? "" : "none";
     blocQr.style.display = (mode === "qr" && !estPrive && !(payeEnLigne && payeEnLigne.tout)) ? "" : "none";
+    if (div._majUberCash) div._majUberCash();
   }
 
   // ---- Puces : motifs et modes de paiement affichés directement (rangée qui défile horizontalement) ----
@@ -5142,7 +5261,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     { cle: "normale", texte: "🚖 Normale (taximètre)" }, { cle: "forfait", texte: "💶 Forfait" },
     { cle: "navette_aeroport", texte: "✈️ Navette aéroport" }, { cle: "a_l_heure", texte: "⏱️ À l'heure (mise à disposition)" },
     { cle: "medical", texte: "🏥 Transport médical / hôpital" }, { cle: "scolaire", texte: "🏫 Transport scolaire" },
-    { cle: "prive", texte: "🚗 Trajet privé" }
+    { cle: "prive", texte: "🚗 Trajet privé" }, { cle: "garage", texte: "🔧 Garage" }
   ], "__ecrire__", "✏️ Autre…", null, TYPES_SYSTEME);
   (function () {
     const z = wrapsParChamp["type_course"].querySelector(".grille-type");
@@ -5185,6 +5304,76 @@ function construireLigneHtml(ligne, numeroAffiche) {
   ], "Autre (voir note)", "📝 Autre (voir note)", [{ cle: "__ecrire__", texte: "✏️ Écrire mon propre motif…" }]);
 
   function rafraichirPuces() { pucesARafraichir.forEach(f => f()); rendrePayeurs(); }
+
+  // ---- 🚕💵 Uber payé en cash : bouton dans « Type de course », question obligatoire si Uber, montant obligatoire ----
+  (function blocUberCash() {
+    const selMode = inputsParChamp["mode_paiement"], selType = inputsParChamp["type_course"];
+    const inputPrix = inputsParChamp["prix_taximetre"];
+    if (inputPrix && inputPrix.tagName === "INPUT") inputPrix.setAttribute("inputmode", "decimal");
+    const grilleType = wrapsParChamp["type_course"].querySelector(".grille-type");
+    const zoneBouton = document.createElement("div");
+    zoneBouton.className = "grille-type";
+    if (grilleType) grilleType.insertAdjacentElement("afterend", zoneBouton);
+    const consigne = document.createElement("div");
+    consigne.className = "consigne-uber-cash";
+    consigne.textContent = "💵 Écris dans PRIX TAXIMÈTRE la somme reçue en cash du client Uber";
+    wrapsParChamp["prix_taximetre"].insertAdjacentElement("beforebegin", consigne);
+    const question = document.createElement("div");
+    question.className = "question-uber";
+    question.innerHTML = `<div class="qu-titre">🚕 Uber : comment le client a-t-il payé ? (obligatoire)</div>
+      <button type="button" data-r="app">📱 Payé dans l'app Uber (je n'ai rien reçu)</button>
+      <button type="button" data-r="cash">💵 Le client m'a payé en CASH</button>`;
+    corps.insertBefore(question, wrapsParChamp["mode_paiement"]);
+    div._questionUber = question;
+    let attente = false;
+    function mettreEnEvidence(focus) {
+      if (!inputPrix || ligneVerrouillee) return;
+      inputPrix.classList.add("champ-uber-cash-requis");
+      if (focus) { try { inputPrix.focus(); inputPrix.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {} }
+    }
+    div._exigerUberCash = () => { maj(); mettreEnEvidence(true); };
+    function activerUberCash() {
+      if (ligneVerrouillee || attente) return;
+      afficherToast("💵 Écris dans PRIX TAXIMÈTRE la somme reçue en cash du client Uber");
+      const finir = () => {
+        attente = false;
+        // Type Uber après le mode (deux écritures, jamais en même temps)
+        if (ligne.type_course !== "uber" && !estPriveOuGarage(ligne.type_course) && [...selType.options].some(o => o.value === "uber")) {
+          selType.value = "uber"; selType.dispatchEvent(new Event("change"));
+        }
+        rafraichirPuces(); maj(); mettreEnEvidence(true);
+      };
+      if (ligne.mode_paiement === "uber_cash") { finir(); return; }
+      attente = true;
+      selMode.value = "uber_cash";
+      selMode.dispatchEvent(new Event("change"));
+      rafraichirPuces();
+      const debut = Date.now();
+      (function attendre() {
+        if (ligne.mode_paiement === "uber_cash") { finir(); return; }
+        if (Date.now() - debut > 20000) { attente = false; rafraichirPuces(); return; }
+        setTimeout(attendre, 120);
+      })();
+    }
+    question.querySelector('[data-r="app"]').addEventListener("click", (ev) => {
+      ev.stopPropagation(); confirmerUberApp(ligne.id); maj();
+      if (!ligne.cloturee) { lignesAClotureAuto.add(String(ligne.id)); planifierClotureAuto(ligne.id); }
+    });
+    question.querySelector('[data-r="cash"]').addEventListener("click", (ev) => { ev.stopPropagation(); activerUberCash(); });
+    function maj() {
+      const estUberCash = (ligne.mode_paiement === "uber_cash" || selMode.value === "uber_cash") && !estPriveOuGarage(ligne.type_course);
+      zoneBouton.replaceChildren(creerPuce("🚕💵 Uber cash", estUberCash, ligneVerrouillee, activerUberCash));
+      zoneBouton.style.display = ligneVerrouillee ? "none" : "";
+      const manque = estUberCash && !ligneVerrouillee && montantUberCash(ligne) === null && !(frNum(inputPrix && inputPrix.value) > 0);
+      consigne.style.display = manque ? "" : "none";
+      if (inputPrix) inputPrix.classList.toggle("champ-uber-cash-requis", manque);
+      question.style.display = (!ligneVerrouillee && !estUberCash && uberPaiementAConfirmer(ligne)) ? "" : "none";
+    }
+    div._majUberCash = maj;
+    pucesARafraichir.push(maj);
+    if (inputPrix) inputPrix.addEventListener("input", maj);
+    maj();
+  })();
   requestAnimationFrame(() => pucesARafraichir.forEach(f => f()));
   chargerPayeursRecents();
 
@@ -5444,6 +5633,7 @@ document.getElementById("btn-signer-confirmer").addEventListener("click", async 
   afficherLignes();
   appliquerVerrouillage();
   afficherSelecteurFeuilles();
+  try { if (window.RappelUber) RappelUber.apresCloture(feuilleActuelle); } catch (_) {}
 });
 
 function remplirResumeSignee() {
@@ -5555,12 +5745,12 @@ function celluleSommesImpression(l, fmt) {
     || (l.mode_paiement && l.mode_paiement !== "uber" ? esc(l.mode_paiement).toUpperCase() : null);
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
   const recu = (l.recu_demande && l.mode_paiement !== "facture") ? petit("(reçu)") : "";
-  const compte = n !== null && !isNaN(n) && n > 0 && !estUber && l.type_course !== "prive" && l.mode_paiement !== "uber_cash" && l.mode_paiement !== "facture";
+  const compte = n !== null && !isNaN(n) && n > 0 && !estUber && !estPriveOuGarage(l.type_course) && l.mode_paiement !== "uber_cash" && l.mode_paiement !== "facture";
   // 🚕 Uber (app, cash ou ancienne « carte ») : mention AVANT tout test motif_sans_prix → jamais vide ni « — »
   if (estUber || ["uber_cash", "uber_carte"].includes(l.mode_paiement) || l.motif_sans_prix === "Uber (prix dans l'app)")
     return `<span style="font-weight:bold; font-size:8.5px;">${texteSommesUberImp(l)}</span>`;
   // 🧾 Facture : « FACTURE — TAXI VERT » (jamais de montant ici, hors recette) ; ancien montant noté → rappelé en petit
-  if (l.mode_paiement === "facture" && l.type_course !== "prive") {
+  if (l.mode_paiement === "facture" && !estPriveOuGarage(l.type_course)) {
     const numF = lirePayeurFacture(l.numero_dossier).numero;
     const ancien = (n !== null && !isNaN(n) && n > 0) ? petit((Number.isInteger(n) ? String(n) : n.toFixed(2)) + " €") : "";
     return `<span style="font-weight:bold; font-size:8px;">${esc(texteSommesFacture(l))}</span>` + (numF ? petit("n° " + esc(numF)) : "") + ancien;
@@ -5570,6 +5760,7 @@ function celluleSommesImpression(l, fmt) {
     return `<b style="font-size:10pt;">${montant}</b>` + (l.sommes_texte ? petit(esc(l.sommes_texte)) : "") + (libMode ? petit(libMode) : "") + recu;
   }
   if (l.sommes_texte) return `<span style="font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
+  if (l.type_course === "garage") return `<span style="font-weight:bold; font-size:8px;">${esc(TEXTE_SOMMES_GARAGE)}</span>`;
   if (l.mode_paiement === "facture") return libFacture;
   if (l.motif_sans_prix && n === null) return "—";
   if (l.mode_paiement === "annulee") return "ANNULÉE";
@@ -5960,6 +6151,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
         <td>${fmtVal(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
         <td>${(() => {
+          if (l.type_course === "garage") return `<span style="font-size:8px; font-weight:bold;">${esc(texteGarage(l))}</span>`;
           if (l.mode_paiement === "uber_cash" || l.mode_paiement === "uber_carte") {
             const m = montantUberCash(l);
             return (m !== null ? esc(String(m)) : "Uber") + `<br><span style="font-size:8px; font-weight:bold; white-space:nowrap;">${mentionPrixUberImp(l)}</span>`;
@@ -5974,8 +6166,8 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             return esc(l.prix_taximetre) + (l.type_course === "forfait" ? `<br><span style="font-size:8px;">Forfait${l.motif_forfait ? " — " + esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait) : ""}</span>` : "");
           }
           if (l.type_course === "forfait") return "Forfait" + (l.motif_forfait ? `<br><span style="font-size:8px;">${esc(l.motif_forfait === "Autre" && l.note_chauffeur ? l.note_chauffeur : l.motif_forfait)}</span>` : "");
-          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive"].includes(l.type_course) ? `<span style="font-size:8px; font-weight:bold;">${esc(libelleTypeCourse(l.type_course))}</span>` : ""));
-          const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive"];
+          if (l.prix_taximetre == null || l.prix_taximetre === "") return l.mode_paiement === "facture" ? "Sur facture" : (l.type_course === "navette_aeroport" ? "Navette" : (l.type_course && !["normale", "forfait", "uber", "prive", "garage"].includes(l.type_course) ? `<span style="font-size:8px; font-weight:bold;">${esc(libelleTypeCourse(l.type_course))}</span>` : ""));
+          const typesConnus = ["", "normale", "forfait", "navette_aeroport", "uber", "prive", "garage"];
           const typeLibre = l.type_course && !typesConnus.includes(l.type_course) ? `<br><span style="font-size:8px; font-weight:bold;">${esc(libelleTypeCourse(l.type_course))}</span>` : "";
           return esc(l.prix_taximetre) + typeLibre;
         })()}</td>
@@ -6024,6 +6216,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
       <table class="totaux-pourboires">
         <tr><td>Recette (somme des sommes perçues) : <b>${esc(formatEuro(recetteDesLignes(lignesF)))}</b></td>
             <td>Total pourboires (hors recette) : <b>${esc(formatEuro(totalPbF))}</b></td></tr>
+        <tr><td></td><td>Uber reçu en cash (hors recette) : <b>${esc(formatEuro(Math.round((lignesF || []).reduce((t, l) => t + ((l && l.mode_paiement === "uber_cash" && !estPriveOuGarage(l.type_course)) ? (montantUberCash(l) || 0) : 0), 0) * 100) / 100))}</b></td></tr>
       </table>
     `);
   }
@@ -6530,5 +6723,6 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   try { if (feuilleActuelle) window.compteursApresRemplissage(); } catch (e) {}
 })();
 </script>
+<script src="rappel-uber.js"></script>
 </body>
 </html>
