@@ -227,11 +227,28 @@
   // À l'ouverture de l'app : le rappel revient tant que les deux étapes ne sont pas faites
   async function verifierAuDemarrage() {
     if (!(await uid())) { setTimeout(verifierAuDemarrage, 15000); return; } // pas encore connecté
+    try { await envoyerTout(); } catch (e) {}
     try {
-      var l = lire(CLE_RAPPELS).filter(function (r) { return !(r.eteint && (r.capture || r.pasUber)); });
-      if (l.length && !document.getElementById("rappel-uber")) ouvrir(l[0].date, l[0].feuille, true);
+      // Nettoyage : rappels de plus de 3 jours, ou déjà faits côté serveur
+      var limite = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+      var tous = lire(CLE_RAPPELS).filter(function (r) { return r.date && r.date >= limite; });
+      var c = sb(), u = await uid();
+      if (c && u && tous.length) {
+        var dates = tous.map(function (r) { return r.date; });
+        var fins = await c.from("fin_service_uber").select("date_service, uber_eteint_a, pas_uber").eq("chauffeur_id", u).in("date_service", dates);
+        var caps = await c.from("captures_uber").select("date_service").eq("chauffeur_id", u).in("date_service", dates);
+        var faits = {};
+        ((fins && fins.data) || []).forEach(function (f) { faits[f.date_service] = { eteint: !!f.uber_eteint_a, pas: !!f.pas_uber }; });
+        ((caps && caps.data) || []).forEach(function (x) { faits[x.date_service] = faits[x.date_service] || {}; faits[x.date_service].cap = true; });
+        tous.forEach(function (r) {
+          var f = faits[r.date];
+          if (f) { if (f.eteint) r.eteint = true; if (f.cap) r.capture = true; if (f.pas) r.pasUber = true; }
+        });
+      }
+      tous = tous.filter(function (r) { return !(r.eteint && (r.capture || r.pasUber)); });
+      ecrire(CLE_RAPPELS, tous);
+      if (tous.length && !document.getElementById("rappel-uber")) ouvrir(tous[0].date, tous[0].feuille, true);
     } catch (e) {}
-    envoyerTout();
   }
   // Bouton accessible à tout moment (chauffeur.html)
   function ouvrirManuel() {
