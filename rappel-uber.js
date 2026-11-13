@@ -31,8 +31,7 @@
     var l = lire(CLE_RAPPELS), r = l.find(function (x) { return x.date === date; });
     if (!r) { r = { date: date }; l.push(r); }
     Object.assign(r, champs);
-    l = l.filter(function (x) { return !(x.eteint && (x.capture || x.pasUber)); }).slice(-10);
-    ecrire(CLE_RAPPELS, l);
+    ecrire(CLE_RAPPELS, l.slice(-10));
   }
 
   // ---- file d'attente des images (IndexedDB) ----
@@ -150,6 +149,19 @@
     var z = document.getElementById("rappel-uber");
     if (!z || !courant) return;
     var r = rappel(courant.date) || {};
+    try {
+      var c0 = sb(), u0 = await uid();
+      if (c0 && u0) {
+        var f0 = await c0.from("fin_service_uber").select("uber_eteint_a, pas_uber").eq("chauffeur_id", u0).eq("date_service", courant.date).maybeSingle();
+        var k0 = await c0.from("captures_uber").select("id").eq("chauffeur_id", u0).eq("date_service", courant.date).limit(1);
+        var maj = {};
+        if (f0 && f0.data && f0.data.uber_eteint_a) maj.eteint = true;
+        if (f0 && f0.data && f0.data.pas_uber) maj.pasUber = true;
+        if (k0 && k0.data && k0.data.length) maj.capture = true;
+        if (Object.keys(maj).length) { majRappel(courant.date, maj); r = rappel(courant.date) || r; }
+      }
+    } catch (e) {}
+    if (!document.getElementById("rappel-uber") || !courant) return;
     var enAttente = (await fileListe()).filter(function (o) { return o.date === courant.date; });
     urlsVignettes.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} }); urlsVignettes = [];
     var vign = enAttente.map(function (o) { var u = URL.createObjectURL(o.blob); urlsVignettes.push(u); return '<img src="' + u + '" alt="">'; }).join("");
@@ -203,6 +215,7 @@
     };
   }
   function fermerFenetre() {
+    try { ecrire(CLE_RAPPELS, lire(CLE_RAPPELS).filter(function (x) { return !(x.eteint && (x.capture || x.pasUber)); })); } catch (e) {}
     var z = document.getElementById("rappel-uber"); if (z) z.remove();
     urlsVignettes.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} }); urlsVignettes = [];
     courant = null;

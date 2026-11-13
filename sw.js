@@ -7,7 +7,7 @@
 // n'est utilisée que s'il n'y a pas de réseau. Une mise à jour sur GitHub arrive donc tout de suite.
 // Les données (Supabase) ne passent JAMAIS par ce cache : c'est la page qui les gère.
 // Changer VERSION à chaque modification de ce fichier (les anciennes copies sont effacées).
-const VERSION = "taxiwal-v12";
+const VERSION = "taxiwal-v13";
 const ATTENTE_RESEAU_PAGE_MS = 4000; // page : au-delà, la copie du téléphone est affichée (si elle existe)
 const CACHE_PAGES = VERSION + "-pages";
 const CACHE_FICHIERS = VERSION + "-fichiers";
