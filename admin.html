@@ -4157,6 +4157,14 @@ function reservationClientValidee(c) {
   const requis = montantDemandeAvantCourse(c), paye = Number(c.paye_en_ligne_montant) || 0;
   return requis > 0 && paye > 0 && paye + 0.005 >= requis;
 }
+// Vraie réservation : course admin / chauffeur, ou demande client validée (paiement reçu ou accord) et acceptée.
+// Tant que ce n'est pas le cas, la demande reste uniquement dans « Demandes clients ».
+function estReservationReelle(c) {
+  if (!c) return false;
+  if (c.origine !== "client") return true;
+  if (c.statut === "annulee") return true;
+  return reservationClientValidee(c) && ["confirmee", "assignee", "en_cours", "terminee"].includes(c.statut);
+}
 // Client qui a accepté le prix mais n'a pas encore payé (et pas d'accord « voiture / cash » de la centrale)
 function prixAccepteEnAttentePaiement(c) {
   return !!c && c.origine === "client" && !reservationClientValidee(c) && ["attente_acompte", "acompte_declare", "confirmee"].includes(c.statut);
@@ -5292,7 +5300,7 @@ document.querySelectorAll("#fa-filtres button").forEach(b => b.addEventListener(
 
 // ================== COURSES PAR CHAUFFEUR ==================
 function estCourseAttribueeActive(c) {
-  return !!c.chauffeur_id && ["assignee", "confirmee", "en_cours"].includes(c.statut);
+  return !!c.chauffeur_id && ["assignee", "confirmee", "en_cours"].includes(c.statut) && estReservationReelle(c);
 }
 let pcChauffeurChoisi = null;
 function afficherCoursesParChauffeur() {
@@ -5365,6 +5373,7 @@ function afficherListeCoursesAdmin() {
     conteneur.appendChild(infoD);
   }
   const coursesAffichees = dernieresCoursesAdmin.filter(c => {
+    if (!estReservationReelle(c)) return false;
     // un numéro de réservation retrouve la course même archivée
     if (recherche && correspondNumeroResa(c.numero_reservation, recherche)) return true;
     if (!recherche && estCourseAttribueeActive(c)) return false;
@@ -5526,6 +5535,7 @@ function verifierRappels30MinAdmin(courses) {
   const maintenant = Date.now();
   (courses || []).forEach(c => {
     if (["terminee", "annulee"].includes(c.statut)) return;
+    if (!estReservationReelle(c)) return;
     if (rappelsEnvoyesAdmin.has(c.id)) return;
     const minutesRestantes = (new Date(c.date_heure).getTime() - maintenant) / 60000;
     if (minutesRestantes > 0 && minutesRestantes <= 30) {
@@ -5591,7 +5601,7 @@ function rendreCalendrierAdmin() {
 
   const premierJourSemaine = (new Date(annee, mois, 1).getDay() + 6) % 7;
   const nbJours = new Date(annee, mois + 1, 0).getDate();
-  const map = joursAvecCoursesAdmin(dernieresCoursesAdmin);
+  const map = joursAvecCoursesAdmin(dernieresCoursesAdmin.filter(estReservationReelle));
   const todayStr = dateLocaleISO();
 
   for (let i = 0; i < premierJourSemaine; i++) {
@@ -5630,7 +5640,7 @@ function afficherCoursesDuJourAdmin(dateStr) {
   });
   texte.textContent = dateLisible;
 
-  const coursesDuJour = dernieresCoursesAdmin.filter(c => dateLocaleISO(c.date_heure) === dateStr);
+  const coursesDuJour = dernieresCoursesAdmin.filter(c => estReservationReelle(c) && dateLocaleISO(c.date_heure) === dateStr);
   liste.innerHTML = "";
   if (coursesDuJour.length === 0) {
     liste.innerHTML = '<p style="color:var(--gris); text-align:center; padding:20px 0;">Aucune course ce jour-là.</p>';
@@ -8341,10 +8351,10 @@ async function chargerCarteInterne() {
 
   const { data: coursesEnCours } = await supabase
     .from("courses")
-    .select("id, chauffeur_id, adresse_depart, adresse_arrivee")
+    .select("id, chauffeur_id, adresse_depart, adresse_arrivee, statut, origine, sans_acompte_autorise, acompte_paye, paiement_exige, paiement_choisi, prix, surprime, acompte_montant, paye_en_ligne_montant")
     .eq("statut", "en_cours");
   const coursesParChauffeur = {};
-  (coursesEnCours || []).forEach(c => { coursesParChauffeur[c.chauffeur_id] = c; });
+  (coursesEnCours || []).filter(estReservationReelle).forEach(c => { coursesParChauffeur[c.chauffeur_id] = c; });
 
   dernieresPositionsCarte = positions || [];
   afficherListeChauffeursCarte(positions, coursesParChauffeur);
@@ -11250,9 +11260,12 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   }
   rendreTotauxLignesFA();
   corps.appendChild(totalPercuDiv);
-  // 🔍 Contrôle caisse (admin uniquement)
-  const controleCaisseDiv = blocControleCaisse(feuille, lignes);
+  // 🔍 Contrôle caisse (admin uniquement) — recalculé après chaque correction, masqué une fois la feuille contrôlée
+  let controleCaisseDiv = blocControleCaisse(feuille, lignes);
   corps.appendChild(controleCaisseDiv);
+  const rafraichirControleCaisseFA = () => {
+    try { const n = blocControleCaisse(feuille, lignes); controleCaisseDiv.replaceWith(n); controleCaisseDiv = n; } catch (e) { console.warn(e); }
+  };
   // Après une modification d'une course (montant, mode, pourboire…) : totaux recalculés tout de suite,
   // puis recette / pourboires relus dans la base (recalculés par les triggers) pour l'en-tête.
   let majTotauxSeq = 0;
@@ -11340,6 +11353,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   function ouvrirFxFA(ligneId) { fxOuvrir(adFxFA, { ligneId }); }
   async function majTotauxFA() {
     rendreTotauxLignesFA();
+    rafraichirControleCaisseFA();
     majPbFA();
     derniereActiviteFeuilles = Date.now();
     const seq = ++majTotauxSeq;
@@ -11652,7 +11666,9 @@ function controleCaisseFeuille(feuille, lignes) {
 }
 const COULEURS_CC = { vert: ["#e3f4e8", "#1f6b3f"], orange: ["#fff1d6", "#8a5a00"], rouge: ["#fde3e1", "#a3261b"], gris: ["#efefed", "#555"] };
 const PASTILLES_CC = { vert: "🟢", orange: "🟠", rouge: "🔴", gris: "⚪" };
+function feuilleControleeCC(feuille) { return !!(feuille && (feuille.verifiee_admin || feuille.archivee_papier_at)); }
 function pastilleControleCaisse(feuille, lignes) {
+  if (feuilleControleeCC(feuille)) return document.createTextNode("");
   const r = controleCaisseFeuille(feuille, lignes);
   const s = document.createElement("span");
   s.className = "puce-fa puce-controle-caisse-fa";
@@ -11662,6 +11678,7 @@ function pastilleControleCaisse(feuille, lignes) {
   return s;
 }
 function blocControleCaisse(feuille, lignes) {
+  if (feuilleControleeCC(feuille)) { const vide = document.createElement("div"); vide.className = "controle-caisse-fa"; vide.style.display = "none"; return vide; }
   const r = controleCaisseFeuille(feuille, lignes);
   const d = document.createElement("div");
   d.className = "controle-caisse-fa";

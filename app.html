@@ -1789,6 +1789,59 @@ en: {
   };
   ["fr", "nl", "en"].forEach(function (l) { var d = X[l]; for (var k in d) I18N[l][k] = d[k]; });
 })();
+(function () {
+  var X = {
+    fr: {
+      "er.demande.b": "📨 Demande envoyée — PAS ENCORE RÉSERVÉE",
+      "er.demande.m": "Nous vous envoyons un prix. Rien n'est réservé tant que vous n'avez pas accepté le prix et payé.",
+      "er.prix.b": "💶 Prix proposé : {prix} € — ⚠️ PAS ENCORE RÉSERVÉE",
+      "er.prix.m": "Pour réserver, acceptez le prix puis payez l'acompte (ou la totalité). Sans votre confirmation, aucun taxi n'est prévu.",
+      "er.paiement.b": "⏳ En attente de votre paiement — ⚠️ PAS ENCORE RÉSERVÉE",
+      "er.paiement.m": "Le taxi est réservé dès réception du paiement.",
+      "er.ok.b": "✅ RÉSERVATION CONFIRMÉE",
+      "er.annulee.b": "❌ Annulée",
+      "resa.envoyee": "📨 Demande envoyée — PAS ENCORE RÉSERVÉE.",
+      "resa.suite": " Ceci est une demande de prix, pas une réservation. Vous allez recevoir un prix : rien n'est réservé tant que vous n'avez pas accepté le prix et payé l'acompte (ou la totalité). Suivez l'avancement dans « Mes courses ».",
+      "notif.prix_envoye": "💶 Un prix vous a été proposé — votre course n'est PAS encore réservée. Acceptez le prix et payez pour la réserver.",
+      "notif.attente_acompte": "⏳ Prix accepté — PAS ENCORE RÉSERVÉE : le taxi est réservé dès réception du paiement.",
+      "notif.acompte_declare": "⏳ Paiement déclaré — PAS ENCORE RÉSERVÉE tant que le paiement n'est pas reçu.",
+      "notif.confirmee": "✅ RÉSERVATION CONFIRMÉE — votre taxi est réservé."
+    },
+    nl: {
+      "er.demande.b": "📨 Aanvraag verzonden — NOG NIET GERESERVEERD",
+      "er.demande.m": "Wij sturen u een prijs. Niets is gereserveerd zolang u de prijs niet hebt aanvaard en betaald.",
+      "er.prix.b": "💶 Voorgestelde prijs: {prix} € — ⚠️ NOG NIET GERESERVEERD",
+      "er.prix.m": "Om te reserveren: aanvaard de prijs en betaal het voorschot (of het volledige bedrag). Zonder uw bevestiging is er geen taxi voorzien.",
+      "er.paiement.b": "⏳ Wacht op uw betaling — ⚠️ NOG NIET GERESERVEERD",
+      "er.paiement.m": "De taxi is gereserveerd zodra de betaling ontvangen is.",
+      "er.ok.b": "✅ RESERVATIE BEVESTIGD",
+      "er.annulee.b": "❌ Geannuleerd",
+      "resa.envoyee": "📨 Aanvraag verzonden — NOG NIET GERESERVEERD.",
+      "resa.suite": " Dit is een prijsaanvraag, geen reservatie. U ontvangt een prijs: niets is gereserveerd zolang u de prijs niet hebt aanvaard en het voorschot (of het volledige bedrag) hebt betaald. Volg de voortgang in « Mijn ritten ».",
+      "notif.prix_envoye": "💶 Er werd u een prijs voorgesteld — uw rit is NOG NIET gereserveerd. Aanvaard de prijs en betaal om te reserveren.",
+      "notif.attente_acompte": "⏳ Prijs aanvaard — NOG NIET GERESERVEERD: de taxi is gereserveerd zodra de betaling ontvangen is.",
+      "notif.acompte_declare": "⏳ Betaling gemeld — NOG NIET GERESERVEERD zolang de betaling niet ontvangen is.",
+      "notif.confirmee": "✅ RESERVATIE BEVESTIGD — uw taxi is gereserveerd."
+    },
+    en: {
+      "er.demande.b": "📨 Request sent — NOT BOOKED YET",
+      "er.demande.m": "We will send you a price. Nothing is booked until you have accepted the price and paid.",
+      "er.prix.b": "💶 Price offered: €{prix} — ⚠️ NOT BOOKED YET",
+      "er.prix.m": "To book, accept the price and pay the deposit (or the full amount). Without your confirmation, no taxi is scheduled.",
+      "er.paiement.b": "⏳ Waiting for your payment — ⚠️ NOT BOOKED YET",
+      "er.paiement.m": "The taxi is booked as soon as the payment is received.",
+      "er.ok.b": "✅ BOOKING CONFIRMED",
+      "er.annulee.b": "❌ Cancelled",
+      "resa.envoyee": "📨 Request sent — NOT BOOKED YET.",
+      "resa.suite": " This is a price request, not a booking. You will receive a price: nothing is booked until you have accepted the price and paid the deposit (or the full amount). Follow its progress in “My rides”.",
+      "notif.prix_envoye": "💶 A price has been offered — your ride is NOT booked yet. Accept the price and pay to book it.",
+      "notif.attente_acompte": "⏳ Price accepted — NOT BOOKED YET: the taxi is booked as soon as the payment is received.",
+      "notif.acompte_declare": "⏳ Payment reported — NOT BOOKED YET until the payment is received.",
+      "notif.confirmee": "✅ BOOKING CONFIRMED — your taxi is booked."
+    }
+  };
+  ["fr", "nl", "en"].forEach(function (l) { var d = X[l]; for (var k in d) I18N[l][k] = d[k]; });
+})();
 var LANGUES = ["fr", "nl", "en"];
 var LANG = (function () {
   var l = null;
@@ -2027,6 +2080,11 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .statut-label.en_cours{ background:rgba(200,30,44,.2); color:var(--rouge); }
   .statut-label.terminee{ background:rgba(31,138,76,.2); color:var(--vert); }
   .statut-label.annulee{ background:#dcdcda; color:var(--gris); }
+  .etat-resa{ margin:8px 0; border-radius:10px; padding:10px 12px; font-size:.88rem; line-height:1.4; border:2px solid; }
+  .etat-resa b{ display:block; font-size:.95rem; }
+  .etat-resa.attente{ background:#fff4e5; border-color:#e8912d; color:#6b3d00; }
+  .etat-resa.ok{ background:#e8f6ee; border-color:#1f8a4c; color:#145c33; }
+  .etat-resa.annulee{ background:#efefed; border-color:#9a9a98; color:#555; }
   #vide{ text-align:center; color:var(--gris); padding:60px 20px; font-size:.95rem; }
 
   /* Info process de réservation */
@@ -3861,6 +3919,33 @@ function ouvrirFormulaireDemandeAnnulation(carte, btn, course, infos) {
   setTimeout(() => { try { f.querySelector(".fda-motif").focus(); } catch (e) {} }, 30);
 }
 
+// Même règle que l'admin : réservation validée = sans acompte autorisé, acompte payé ou paiement en ligne suffisant
+function reservationClientValidee(c) {
+  if (!c || c.origine !== "client") return true;
+  if (c.sans_acompte_autorise) return true;
+  if (c.acompte_paye) return true;
+  const total = (Number(c.prix) || 0) + (Number(c.surprime) || 0);
+  const requis = (c.paiement_exige === "total" || c.paiement_choisi === "total") ? total : (Number(c.acompte_montant) || 0);
+  const paye = Number(c.paye_en_ligne_montant) || 0;
+  return requis > 0 && paye > 0 && paye + 0.005 >= requis;
+}
+function etatReservationClient(c) {
+  if (["annulee", "refusee"].includes(c.statut)) return { cls: "annulee", b: t("er.annulee.b") };
+  if (["confirmee", "assignee", "en_cours"].includes(c.statut) && reservationClientValidee(c)) return { cls: "ok", b: t("er.ok.b") };
+  if (c.statut === "en_attente") return { cls: "attente", b: t("er.demande.b"), m: c.reservation_directe ? t("hab.carte") : t("er.demande.m") };
+  if (c.statut === "prix_envoye") {
+    const p = totalCourseClient(c);
+    return { cls: "attente", b: t("er.prix.b", { prix: p.toLocaleString(LOCALE(), { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }), m: t("er.prix.m") };
+  }
+  if (["attente_acompte", "acompte_declare", "confirmee"].includes(c.statut)) return { cls: "attente", b: t("er.paiement.b"), m: t("er.paiement.m") };
+  return null;
+}
+function blocEtatReservationHtml(c) {
+  const e = etatReservationClient(c);
+  if (!e) return "";
+  return `<div class="etat-resa ${e.cls}"><b>${esc(e.b)}</b>${e.m ? esc(e.m) : ""}</div>`;
+}
+
 async function construireCarteCourseClient(course) {
   const div = document.createElement("div");
   div.className = "course " + course.statut;
@@ -3875,6 +3960,7 @@ async function construireCarteCourseClient(course) {
   div.innerHTML = `
     ${course.numero_reservation ? `<div class="num-resa">${esc(t("num", { n: course.numero_reservation }))}</div>` : ""}
     <span class="statut-label ${course.statut}">${esc(labelStatut)}</span>
+    ${blocEtatReservationHtml(course)}
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>${esc(t("card.depart"))}</b> ${esc(course.adresse_depart)}<br>
@@ -4503,7 +4589,8 @@ async function afficherCarteChauffeurClient(courseId, chauffeurId) {
 }
 
 function notifierChangementStatut(course) {
-  const texte = I18N.fr["notif." + course.statut] != null ? t("notif." + course.statut) : null;
+  const statutNotif = (["confirmee", "assignee"].includes(course.statut) && !reservationClientValidee(course)) ? "attente_acompte" : course.statut;
+  const texte = I18N.fr["notif." + statutNotif] != null ? t("notif." + statutNotif) : null;
   if (!texte) return;
 
   try {
