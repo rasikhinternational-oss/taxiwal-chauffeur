@@ -6528,6 +6528,14 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
   }
 
   // ---- avertissements rouges (jamais bloquants) ----
+  // « Différent de la feuille précédente » : simple rappel pendant la saisie (90 s), jamais rouge en permanence
+  var saisieRecente = {};
+  document.addEventListener("input", function (e) {
+    var id = e.target && e.target.id; if (!id) return;
+    saisieRecente[id] = Date.now();
+    setTimeout(function () { try { verifier(); } catch (_) {} }, 91000);
+  }, true);
+  function rappelRecent(id) { return !!saisieRecente[id] && (Date.now() - saisieRecente[id]) < 90000; }
   function verifier() {
     var f = feuilleActuelle;
     var prec = (f && precedent.feuille === f.id) ? precedent.v : null;
@@ -6535,7 +6543,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
     function signaler(idInput, idLigne, texte) { rouges[idInput] = true; (msgs[idLigne] = msgs[idLigne] || []).push(texte); }
     LIGNES.forEach(function (l) {
       var d = num($(l.d).value), fi = num($(l.f).value);
-      if (!l.prive && prec && !vide(prec[l.pf]) && d !== null && Math.abs(d - Number(prec[l.pf])) > 0.001)
+      if (!l.prive && prec && !vide(prec[l.pf]) && d !== null && Math.abs(d - Number(prec[l.pf])) > 0.001 && rappelRecent(l.d))
         signaler(l.d, l.d, "Différent de la feuille précédente (" + texteNombre(prec[l.pf]) + ") — bon ticket ?");
       if (d !== null && fi !== null) {
         if (fi < d - 0.001) signaler(l.f, l.d, "Fin plus petite que le début");
