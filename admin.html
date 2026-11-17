@@ -3972,6 +3972,52 @@ async function journaliserVirement(course) {
   } catch (e) { console.warn("journal virement :", e); }
 }
 
+// ---- Virement bancaire reçu : l'admin coche qu'il a vérifié son compte, puis confirme au client ----
+function peutConfirmerVirementAdmin(c) {
+  return !!c && c.origine === "client" && ["attente_acompte", "acompte_declare"].includes(c.statut)
+    && !c.acompte_paye && !(Number(c.paye_en_ligne_montant) > 0) && Number(c.prix) > 0;
+}
+function construireBlocVirementAdmin(course) {
+  const montantDefaut = Math.round(montantDemandeAvantCourse(course) * 100) / 100;
+  const bloc = document.createElement("div");
+  bloc.className = "alerte-acompte bloc-virement-recu";
+  bloc.style.cssText = "border:3px solid #1d4f86; background:#eef4fb; color:#1d2b3a;";
+  bloc.addEventListener("click", e => e.stopPropagation());
+  bloc.innerHTML = `
+    <div style="font-weight:900; font-size:1rem; margin-bottom:6px;">🏦 Virement reçu — confirmer</div>
+    <div style="font-size:.88rem; margin-bottom:8px;">${course.statut === "acompte_declare"
+      ? `Le client indique avoir fait le virement${course.acompte_declare_at ? " le " + esc(new Date(course.acompte_declare_at).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) : ""}.`
+      : "Le client n'a pas encore signalé de virement."} Communication attendue : <b>${esc(course.numero_reservation || "—")}</b>. Vérifie ton compte bancaire.</div>
+    <label style="display:block; font-size:.85rem; margin-bottom:4px;">Montant reçu (€)</label>
+    <input type="text" inputmode="decimal" class="vr-montant" value="${montantDefaut.toFixed(2).replace(".", ",")}" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #cfcfcd; font-size:1.05rem; font-weight:700;">
+    <label style="display:flex; gap:8px; align-items:flex-start; margin:10px 0; font-weight:700; cursor:pointer;">
+      <input type="checkbox" class="vr-verifie" style="width:22px; height:22px; flex:none;">
+      <span>☑️ J'ai bien vérifié : le paiement pour cette course est reçu sur le compte</span>
+    </label>
+    <button type="button" class="vr-envoyer" disabled style="width:100%; background:#1f8a4c; color:#fff; font-weight:900;">📩 Confirmer au client</button>
+    <div class="vr-erreur" style="display:none; color:#b3141b; font-weight:700; margin-top:6px;"></div>`;
+  const cb = bloc.querySelector(".vr-verifie"), btn = bloc.querySelector(".vr-envoyer"), err = bloc.querySelector(".vr-erreur");
+  cb.addEventListener("change", () => { btn.disabled = !cb.checked; });
+  btn.addEventListener("click", async () => {
+    if (!cb.checked) return;
+    const montant = Math.round(parseFloat(String(bloc.querySelector(".vr-montant").value).replace(",", ".").replace(/[^\d.]/g, "")) * 100) / 100;
+    if (!(montant > 0)) { err.textContent = "Indique le montant reçu."; err.style.display = "block"; return; }
+    if (!confirm(`Confirmer au client la réception de ${eurosFr(montant)} pour ${course.numero_reservation || "cette course"} ?\nLa course passe en confirmée et le client reçoit une notification + un e-mail.`)) return;
+    btn.disabled = true; cb.disabled = true; btn.textContent = "Envoi…"; err.style.display = "none";
+    const { error } = await supabase.rpc("admin_confirmer_virement", { p_course: course.id, p_montant: montant });
+    if (error) { btn.disabled = false; cb.disabled = false; btn.textContent = "📩 Confirmer au client"; err.textContent = "Erreur : " + error.message; err.style.display = "block"; return; }
+    toastAdmin("✅ Virement confirmé — client prévenu", "#1f8a4c");
+    chargerCoursesAdmin();
+  });
+  return bloc;
+}
+// Trace « virement reçu le JJ/MM à HH:MM » (acompte validé à la main, pas par Bancontact)
+function texteVirementRecuAdmin(c) {
+  if (!c || !c.acompte_paye || !c.acompte_confirme_at || Number(c.paye_en_ligne_montant) > 0) return "";
+  const d = new Date(c.acompte_confirme_at);
+  return "🏦 virement reçu le " + d.toLocaleDateString("fr-BE", { day: "2-digit", month: "2-digit" }) + " à " + d.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
+}
+
 function ouvrirAjoutPaiement() {
   const fond = document.createElement("div");
   fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:700; display:flex; align-items:flex-end;";
@@ -4218,6 +4264,7 @@ function afficherDemandesClients() {
       ${demandeCashEnAttente(c) ? `<div style="margin-top:6px; padding:8px 10px; border-radius:10px; background:#1f8a4c; color:#fff; font-weight:900;">💵 Client demande à payer CASH — ouvre la course pour répondre</div>` : ""}`;
     const btnGrand = carte.querySelector(".btn-carte-grand");
     if (btnGrand && btnGrand.nextSibling) carte.insertBefore(resume, btnGrand.nextSibling); else carte.insertBefore(resume, carte.firstChild);
+    if (dcFiltre === "paiement" && peutConfirmerVirementAdmin(c)) resume.appendChild(construireBlocVirementAdmin(c));
     zone.appendChild(carte);
   });
   }
@@ -6370,6 +6417,7 @@ function construireCarteAdmin(course) {
     else { txt = "❌ ACOMPTE NON PAYÉ — ne pas attribuer de chauffeur"; fond = "#fdecee"; coul = "#b3141b"; }
     etat.style.cssText = `background:${fond}; color:${coul}; border-radius:10px; padding:10px 12px; margin:8px 0; font-weight:800; font-size:.88rem;`;
     etat.textContent = txt;
+    if (texteVirementRecuAdmin(course)) etat.innerHTML += `<div style="font-weight:700; font-size:.82rem; margin-top:4px;">${esc(texteVirementRecuAdmin(course))}</div>`;
     if (course.chauffeur_prefere_id && !course.chauffeur_id) {
       const nomPref = (chauffeursCache.find(c => c.id === course.chauffeur_prefere_id) || {}).nom;
       if (nomPref) etat.innerHTML += `<div style="font-weight:600; font-size:.8rem; margin-top:4px;">Chauffeur choisi par le client : ${esc(nomPref)} (à attribuer après paiement)</div>`;
@@ -6547,7 +6595,9 @@ function construireCarteAdmin(course) {
     corps.appendChild(blocPrix);
   }
 
-  if (course.statut === "acompte_declare") {
+  if (peutConfirmerVirementAdmin(course)) corps.appendChild(construireBlocVirementAdmin(course));
+
+  if (course.statut === "acompte_declare" && !peutConfirmerVirementAdmin(course)) {
     const blocVerif = document.createElement("div");
     blocVerif.className = "alerte-acompte";
     blocVerif.innerHTML = `
@@ -10055,6 +10105,15 @@ function payeToutEnLigneFA(l) {
   const reste = Math.max(0, Math.round((c.reste_a_payer != null ? Number(c.reste_a_payer) : total - montant) * 100) / 100);
   return reste <= 0;
 }
+// Véhicules sans taximètre (location avec chauffeur) : plaque commençant par « TL » (ex. T-LAN-480)
+function plaqueSansTaximetreFA(p) { return String(p || "").replace(/[\s-]/g, "").toUpperCase().startsWith("TL"); }
+function feuilleSansTaximetreFA(f) {
+  if (!f) return false;
+  let p = f.plaque || (f.vehicules && f.vehicules.plaque);
+  if (!p && f.vehicule_id) p = ((typeof vehiculesCache !== "undefined" ? vehiculesCache : []).find(v => v.id === f.vehicule_id) || {}).plaque;
+  return plaqueSansTaximetreFA(p);
+}
+const feuillesSansTaximetreFA = new Set();   // id des feuilles affichées dont le véhicule n'a pas de taximètre
 function problemesLigneCaisse(l) {
   const pb = [];
   if (!l || estLigneRelais(l) || ligneCaisseVideFA(l)) return pb;
@@ -10071,7 +10130,7 @@ function problemesLigneCaisse(l) {
     if (l.type_course === "forfait") { if (!l.motif_forfait) pb.push("Motif du forfait manquant"); }
     else {
       const prix = frNum(l.prix_taximetre);
-      if (!(prix !== null && prix > 0) && !l.motif_sans_prix) pb.push("Prix manquant");
+      if (!(prix !== null && prix > 0) && !l.motif_sans_prix && !feuillesSansTaximetreFA.has(l.feuille_route_id)) pb.push("Prix manquant");
     }
   }
   if (l.cloturee && !ligneSansDeplacement(l)) {
@@ -11038,6 +11097,8 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   // Plusieurs feuilles le même jour = plusieurs voitures : chaque carte est nommée par SA voiture (jamais « Feuille 1/2 »)
   const vehLabelFA = ((feuille.vehicules?.nom || "Sans véhicule") + " " + (feuille.plaque || feuille.vehicules?.plaque || "")).trim();
   const labelFeuille = numeroFeuille ? ` — 🚗 ${vehLabelFA}` : "";
+  const sansTaxiFA = feuilleSansTaximetreFA(feuille);
+  if (sansTaxiFA) feuillesSansTaximetreFA.add(feuille.id); else feuillesSansTaximetreFA.delete(feuille.id);
   lignes = trierLignesChrono(lignes, feuille);
   const anomaliesFA = anomaliesFeuille(lignes, feuille);
   if (anomaliesFA.total) div.classList.add("feuille-anomalie-fa");
@@ -11211,7 +11272,14 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   }
 
   blocsEnteteFA.forEach(bloc => {
-    if (bloc.ticket) {
+    if (sansTaxiFA && bloc.debut !== "index_km_debut" && bloc.debut !== "recettes_debut") return;
+    if (bloc.ticket && sansTaxiFA) {
+      const t = document.createElement("div");
+      t.className = "titre-ticket-fa";
+      t.textContent = "🚘 Véhicule sans taximètre — pas de contrôle compteur";
+      corps.appendChild(t);
+    }
+    if (bloc.ticket && !sansTaxiFA) {
       const t = document.createElement("div");
       t.className = "titre-ticket-fa";
       t.innerHTML = "🧾 Ticket du taximètre « TOTALISATEURS »" + AIDE_TICKET_FA;
@@ -11294,7 +11362,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     },
     controleSignature: () => !!feuille.verrouillee || fxFeuillePassee(feuille),
     clotureRequise: false,
-    champsSignature: () => CHAMPS_SIGNATURE_FA,
+    champsSignature: () => sansTaxiFA ? CHAMPS_SIGNATURE_FA.filter(([c]) => ["heure_debut", "heure_fin", "index_km_debut", "index_km_fin"].includes(c)) : CHAMPS_SIGNATURE_FA,
     modeChamp: c => c.startsWith("heure_") ? "heure" : ((champsEnteteFA[c] || [])[1] === "int" ? "int" : "dec"),
     uberMontantObligatoire: l => ["uber_cash", "uber_carte"].includes(l.mode_paiement),
     estUber: l => estLigneUberImp(l),
@@ -11648,8 +11716,12 @@ function controleCaisseFeuille(feuille, lignes) {
   });
   ["sommePrix", "totalRemises", "cash", "uberCash", "carte", "qr", "facture"].forEach(k => { r[k] = arrondiCC(r[k]); });
   r.aRemettre = arrondiCC(r.cash + r.uberCash);
-  r.incomplet = r.compteur === null || r.prises === null;
-  if (r.incomplet) {
+  r.sansTaximetre = feuilleSansTaximetreFA(f);
+  r.incomplet = !r.sansTaximetre && (r.compteur === null || r.prises === null);
+  if (r.sansTaximetre) {
+    r.niveau = "neutre";
+    r.signaux.push({ c: "neutre", t: "🚘 Véhicule sans taximètre — pas de contrôle compteur" });
+  } else if (r.incomplet) {
     r.niveau = "gris";
     r.signaux.push({ c: "gris", t: "⚪ Compteurs incomplets (début ou fin manquant) — pas de conclusion possible" });
   } else {
@@ -11664,8 +11736,8 @@ function controleCaisseFeuille(feuille, lignes) {
   r.rouge = r.niveau === "rouge";
   return r;
 }
-const COULEURS_CC = { vert: ["#e3f4e8", "#1f6b3f"], orange: ["#fff1d6", "#8a5a00"], rouge: ["#fde3e1", "#a3261b"], gris: ["#efefed", "#555"] };
-const PASTILLES_CC = { vert: "🟢", orange: "🟠", rouge: "🔴", gris: "⚪" };
+const COULEURS_CC = { vert: ["#e3f4e8", "#1f6b3f"], orange: ["#fff1d6", "#8a5a00"], rouge: ["#fde3e1", "#a3261b"], gris: ["#efefed", "#555"], neutre: ["#eaf0f7", "#34495e"] };
+const PASTILLES_CC = { vert: "🟢", orange: "🟠", rouge: "🔴", gris: "⚪", neutre: "🚘" };
 function feuilleControleeCC(feuille) { return !!(feuille && (feuille.verifiee_admin || feuille.archivee_papier_at)); }
 function pastilleControleCaisse(feuille, lignes) {
   if (feuilleControleeCC(feuille)) return document.createTextNode("");
@@ -11691,7 +11763,11 @@ function blocControleCaisse(feuille, lignes) {
   d.innerHTML = `<div style="font-weight:700; margin-bottom:6px;">🔍 Contrôle caisse <span style="font-weight:400; font-size:.75rem; opacity:.7;">(visible seulement par la direction)</span></div>`
     + r.signaux.map(s => `<div style="font-weight:700; color:${COULEURS_CC[s.c][1]};">${esc(s.t)}</div>`).join("")
     + `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:2px 14px; margin-top:6px;">`
-    + `<div>Compteur argent taximètre : <b>${r.compteur === null ? "—" : esc(eurosFr(r.compteur))}</b></div>`
+    + (r.sansTaximetre ? `<div>Recette déclarée : <b>${esc(eurosFr(r.recette))}</b></div></div>`
+      + `<div style="margin-top:6px; font-weight:700;">Argent</div>`
+      + `<div>💵 Cash à remettre : <b>${esc(eurosFr(r.aRemettre))}</b> (cash ${esc(eurosFr(r.cash))} + Uber cash ${esc(eurosFr(r.uberCash))})</div>`
+      + `<div>💳 Carte : ${esc(eurosFr(r.carte))} · 📱 QR : ${esc(eurosFr(r.qr))} · 🧾 Facture : ${esc(eurosFr(r.facture))}</div>` : "")
+    + (r.sansTaximetre ? "" : `<div>Compteur argent taximètre : <b>${r.compteur === null ? "—" : esc(eurosFr(r.compteur))}</b></div>`
     + `<div>Prix taximètre notés : <b>${esc(eurosFr(r.sommePrix))}</b> (${r.nbCompteur} course${r.nbCompteur > 1 ? "s" : ""} au compteur)</div>`
     + `<div>Prises en charge : <b>${v(r.prises)}</b></div>`
     + `<div>Km en charge : <b>${v(r.kmCharge)}</b></div>`
@@ -11700,7 +11776,7 @@ function blocControleCaisse(feuille, lignes) {
     + `<div style="margin-top:6px; font-weight:700;">Remises</div>${remises}`
     + `<div style="margin-top:6px; font-weight:700;">Argent</div>`
     + `<div>💵 Cash à remettre : <b>${esc(eurosFr(r.aRemettre))}</b> (cash ${esc(eurosFr(r.cash))} + Uber cash ${esc(eurosFr(r.uberCash))})</div>`
-    + `<div>💳 Carte : ${esc(eurosFr(r.carte))} · 📱 QR : ${esc(eurosFr(r.qr))} · 🧾 Facture : ${esc(eurosFr(r.facture))}</div>`;
+    + `<div>💳 Carte : ${esc(eurosFr(r.carte))} · 📱 QR : ${esc(eurosFr(r.qr))} · 🧾 Facture : ${esc(eurosFr(r.facture))}</div>`);
   return d;
 }
 // Récapitulatif par chauffeur sur 7 / 30 jours
@@ -11711,7 +11787,7 @@ async function afficherRecapControleCaisse(nbJours) {
   corpsRecap.innerHTML = "Chargement…";
   const fin = new Date(); const debut = new Date(); debut.setDate(debut.getDate() - (nbJours - 1));
   const { data: feuilles, error } = await supabase.from("feuilles_route")
-    .select("id, chauffeur_id, date_service, taximetre_debut, taximetre_fin, prise_en_charge_debut, prise_en_charge_fin, km_en_charge_debut, km_en_charge_fin, profils:chauffeur_id(nom)")
+    .select("id, chauffeur_id, date_service, vehicule_id, plaque, taximetre_debut, taximetre_fin, prise_en_charge_debut, prise_en_charge_fin, km_en_charge_debut, km_en_charge_fin, profils:chauffeur_id(nom), vehicules:vehicule_id(plaque)")
     .gte("date_service", dateLocaleISO(debut)).lte("date_service", dateLocaleISO(fin));
   if (error) { corpsRecap.textContent = "Erreur : " + error.message; return; }
   const ids = (feuilles || []).map(f => f.id);
@@ -12839,6 +12915,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
   const identiteFeuille = feuille.identite_exploitant || vehicule?.identite_exploitant || IDENTITE_EXPLOITANT;
 
   const numsImp = numerosCoursesFA(lignes);
+  const sansTaxiImpFA = feuilleSansTaximetreFA(feuille);
   const lignesHtml = (lignes.length ? lignes : new Array(8).fill(null)).map((l, i) => {
     l = l || {};
     if (estLigneRelais(l)) {
@@ -12856,7 +12933,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
       <td>${formatIndex(l.debarquement_index)}</td>
       <td class="lieu">${normaliserArrets(l.arrets).filter(a => a.adresse && a.type === "depose").map(a => lieuImpression(a.adresse)).join("")}${lieuImpression(l.debarquement_lieu)}</td>
       <td>${fmtNombre(l.debarquement_heure ? String(l.debarquement_heure).slice(0, 5) : "")}</td>
-      <td>${cellulePrixImpression(l)}</td>
+      <td>${sansTaxiImpFA && l.id && !estLigneUberImp(l) ? `<span style="font-size:8px; font-weight:bold;">Sans taximètre</span>` + (l.mode_paiement === "facture" ? `<br><b style="font-size:8px;">FACTURE${frNum(l.prix_taximetre) !== null ? " " + esc(l.prix_taximetre) : ""}</b>` : "") : cellulePrixImpression(l)}</td>
       <td>${celluleSommesImpression(l, fmtNombre)}</td>
       <td class="pb">${Number(l.pourboire) > 0 ? esc(eurosFr(l.pourboire).replace(" €", "")) : ""}</td>
     </tr>`;
@@ -12925,7 +13002,16 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     </table>
 
     <h2>Service</h2>
-    <table>
+    ${sansTaxiImpFA ? `<table>
+      <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th><b>Compteur voiture</b> km<br><span class="mini">Tableau de bord</span></th><th><b>Recettes</b> €<br><span class="mini">somme des courses</span></th></tr>
+      <tr><td>Début</td><td>${fmtNombre(feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${fmtNombre(feuille.interruptions)}</td>
+          <td>Fin</td><td>${fmtNombre(feuille.index_km_fin)}</td><td>${fmtNombre(feuille.recettes_fin)}</td></tr>
+      <tr><td>Fin</td><td>${fmtNombre(feuille.heure_fin ? String(feuille.heure_fin).slice(0, 5) : "")}</td><td></td>
+          <td>Début</td><td>${fmtNombre(feuille.index_km_debut)}</td><td>${fmtNombre(feuille.recettes_debut ?? (feuille.recettes_fin != null ? "0.00" : ""))}</td></tr>
+      <tr><td>Total</td><td>${calcTotalHeures(feuille.heure_debut, feuille.heure_fin)}</td><td></td>
+          <td>Total</td><td>${calcTotalBloc(feuille.index_km_debut, feuille.index_km_fin)}</td><td>${calcTotalBloc(feuille.recettes_debut, feuille.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
+    </table>
+    <p class="mini" style="margin:2px 0 6px;">Véhicule sans taximètre (location avec chauffeur) — prix au forfait.</p>` : `<table>
       <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th><b>Compteur voiture</b> km<br><span class="mini">Tableau de bord</span></th><th><b>Rec. globale</b> (ticket) €<br><span class="mini">Taximètre</span></th></tr>
       <tr><td>Début</td><td>${fmtNombre(feuille.heure_debut ? String(feuille.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${fmtNombre(feuille.interruptions)}</td>
           <td>Fin</td><td>${fmtNombre(feuille.index_km_fin)}</td><td>${fmtNombre(feuille.taximetre_fin)}</td></tr>
@@ -12940,7 +13026,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
       <tr><td>Fin</td><td>${fmtNombre(feuille.prise_en_charge_fin)}</td><td>${fmtNombre(feuille.index_km_totaux_fin)}</td><td>${fmtNombre(feuille.km_en_charge_fin)}</td><td>${fmtNombre(feuille.chutes_fin)}</td><td>${fmtNombre(feuille.recettes_fin)}</td></tr>
       <tr><td>Début</td><td>${fmtNombre(feuille.prise_en_charge_debut)}</td><td>${fmtNombre(feuille.index_km_totaux_debut)}</td><td>${fmtNombre(feuille.km_en_charge_debut)}</td><td>${fmtNombre(feuille.chutes_debut)}</td><td>${fmtNombre(feuille.recettes_debut ?? (feuille.recettes_fin != null ? "0.00" : ""))}</td></tr>
       <tr><td>Total</td><td>${calcTotalBloc(feuille.prise_en_charge_debut, feuille.prise_en_charge_fin)}</td><td>${calcTotalBloc(feuille.index_km_totaux_debut, feuille.index_km_totaux_fin)}</td><td>${calcTotalBloc(feuille.km_en_charge_debut, feuille.km_en_charge_fin)}</td><td>${calcTotalBloc(feuille.chutes_debut, feuille.chutes_fin)}</td><td>${calcTotalBloc(feuille.recettes_debut, feuille.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
-    </table>
+    </table>`}
 
     <h2>Courses</h2>
     <table class="courses-table">

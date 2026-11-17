@@ -434,6 +434,19 @@ function paiementEnLigneLigne(l) {
   const reste = Math.max(0, Math.round((c.reste_a_payer != null ? Number(c.reste_a_payer) : total - montant) * 100) / 100);
   return { montant, total, reste, tout: reste <= 0 };
 }
+// Véhicules sans taximètre (location avec chauffeur) : plaque commençant par « TL » (ex. T-LAN-480)
+function plaqueSansTaximetre(p) { return String(p || "").replace(/[\s-]/g, "").toUpperCase().startsWith("TL"); }
+function feuilleSansTaximetre(f) {
+  f = f || feuilleActuelle;
+  if (!f) return false;
+  let p = f.plaque;
+  try {
+    if (!p && vehiculeIdentiteFeuille && vehiculeIdentiteFeuille.id === f.vehicule_id) p = vehiculeIdentiteFeuille.plaque;
+    if (!p && f.vehicule_id) p = ((vehiculesActifsCache || []).find(v => v.id === f.vehicule_id) || {}).plaque;
+    if (!p && vehiculeDuJour && vehiculeDuJour.vehicule_id === f.vehicule_id) p = vehiculeDuJour.plaque;
+  } catch (e) {}
+  return plaqueSansTaximetre(p);
+}
 function etatCompletude(l, triees, feuille) {
   const manque = [], champs = new Set();
   const enLigneTout = !!(paiementEnLigneLigne(l) || {}).tout;
@@ -459,7 +472,7 @@ function etatCompletude(l, triees, feuille) {
     exiger((somme !== null && somme > 0) || sansArgentExplique(l), "sommes_percues", "sommes perçues (ou motif sans argent)");
   } else if (!typeSansPrix) {
     // Facture : le prix n'est pas obligatoire (la société sera facturée plus tard) — seul le payeur l'est
-    exiger((prix !== null && prix > 0) || !!l.motif_sans_prix || l.mode_paiement === "facture", "prix_taximetre", "prix taximètre (ou motif « pas de prix »)", ["motif_sans_prix"]);
+    if (!feuilleSansTaximetre(feuille)) exiger((prix !== null && prix > 0) || !!l.motif_sans_prix || l.mode_paiement === "facture", "prix_taximetre", "prix taximètre (ou motif « pas de prix »)", ["motif_sans_prix"]);
     exiger((somme !== null && somme > 0) || sansArgentExplique(l) || enLigneTout, "sommes_percues", "sommes perçues (ou motif sans argent)");
   }
   // Mode de paiement : obligatoire, sauf trajet privé ou motif sans aucun paiement (carwash, à vide, gratuit…)
@@ -740,6 +753,7 @@ window.onerror = function(msg, url, line, col, err) {
   /* Compteurs : nom du TICKET en gras, nom officiel (modèle légal) en petit dessous */
   .lib-compteur{ margin:10px 0 4px; font-size:.92rem; color:var(--blanc); line-height:1.25; }
   .lib-compteur small{ display:block; font-size:.72rem; color:var(--gris); font-weight:400; }
+  .note-sans-taximetre{ margin:12px 0 4px; font-size:.8rem; color:var(--gris); }
   .titre-ticket{ margin:16px 0 2px; font-size:.8rem; font-weight:800; color:var(--blanc); text-transform:uppercase; letter-spacing:.03em; }
   .sous-ticket{ font-size:.74rem; color:var(--gris); margin-bottom:6px; }
   .aide-ticket{ margin:4px 0 6px; font-size:.85rem; }
@@ -1046,6 +1060,7 @@ window.onerror = function(msg, url, line, col, err) {
     </div>
     </div>
 
+    <div id="bloc-ticket-taximetre">
     <div class="titre-ticket">🧾 Ticket du taximètre « TOTALISATEURS TOTAUX »</div>
     <div class="sous-ticket">Début = ticket imprimé en début de service · Fin = ticket imprimé en fin de service · pas le ticket «&nbsp;JOURNALIERS&nbsp;»</div>
     <details class="aide-ticket" id="aide-ticket">
@@ -1093,6 +1108,8 @@ window.onerror = function(msg, url, line, col, err) {
       <div><label>Fin</label><input type="text" inputmode="decimal" autocomplete="off" class="champ-compteur" data-mode="dec" id="kmtotaux-fin"></div>
       <div><label>Total</label><input class="total-ro" type="text" id="kmtotaux-total" disabled></div>
     </div>
+    </div>
+    <div class="note-sans-taximetre" id="note-sans-taximetre" style="display:none">🚘 Véhicule sans taximètre (location avec chauffeur) : pas de ticket à remplir, seulement le compteur voiture et les heures. Les courses se notent au forfait dans « Sommes perçues ».</div>
 
     <div class="lib-compteur"><b>Recettes de la feuille</b> €<small>Recettes — somme des courses (pas sur le ticket)</small></div>
     <div class="grille3">
@@ -3562,6 +3579,18 @@ async function remplirIdentite(user) {
   document.getElementById("identite-societe").textContent = identiteSocieteActuelle;
   vehiculeIdentiteFeuille = vehicule || null;
   majBoutonIdentite();
+  appliquerModeTaximetre();
+}
+// Bloc du ticket taximètre masqué pour un véhicule sans taximètre (s'adapte au changement de voiture)
+let dernierModeSansTaxi = null;
+function appliquerModeTaximetre() {
+  const sansTaxi = feuilleSansTaximetre();
+  const bloc = document.getElementById("bloc-ticket-taximetre"), note = document.getElementById("note-sans-taximetre");
+  if (bloc) bloc.style.display = sansTaxi ? "none" : "";
+  if (note) note.style.display = sansTaxi ? "" : "none";
+  document.querySelectorAll("[data-maj-visibilite-prix]").forEach(el => { try { el._majVisibilitePrix(); } catch (e) {} });
+  if (dernierModeSansTaxi !== null && dernierModeSansTaxi !== sansTaxi) { try { if (window.compteursApresRemplissage) window.compteursApresRemplissage(); } catch (e) {} }
+  dernierModeSansTaxi = sansTaxi;
 }
 // ---- Identité de CETTE feuille (exploitant / n° d'identification) : modifiable par le chauffeur tant
 // qu'elle n'est pas signée. Enregistré sur la feuille seulement (les autres feuilles ne changent pas). ----
@@ -4972,9 +5001,10 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const estForfait = typeCourse === "forfait";
     wrapsParChamp["motif_forfait"].style.display = estForfait ? "" : "none";
     // Facture : la case prix reste visible (même en forfait) — facultative, « FACTURE » si vide
-    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estAnnulee || (estForfait && !estFacture)) ? "none" : "";
+    const sansTaxi = feuilleSansTaximetre();
+    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estAnnulee || (estForfait && !estFacture) || (sansTaxi && !estUberCash && !estFacture)) ? "none" : "";
     const labPrix = wrapsParChamp["prix_taximetre"].querySelector("label");
-    if (labPrix) labPrix.textContent = estUberCash ? "💵 Montant reçu en cash (Uber)" : "Prix taximètre (€)";
+    if (labPrix) labPrix.textContent = estUberCash ? "💵 Montant reçu en cash (Uber)" : (sansTaxi ? "Montant facturé (€)" : "Prix taximètre (€)");
     wrapsParChamp["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
     // Facture : on peut noter le montant facturé (imprimé « 170 » puis « FACTURE Taxi Vert n° 123 »)
     const ancienMontantFacture = estFacture && frNum(ligne.sommes_percues) !== null && frNum(ligne.sommes_percues) > 0;
@@ -5378,6 +5408,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
   chargerPayeursRecents();
 
   appliquerVisibilitePaiement();
+  div.setAttribute("data-maj-visibilite-prix", "");
+  div._majVisibilitePrix = appliquerVisibilitePaiement;
 
   // ---- Prix taximètre ⇄ « Pas de prix ? » : l'un ou l'autre ----
   const libellePasDePrix = document.createElement("div");
@@ -5490,10 +5522,14 @@ const CHAMPS_SIGNATURE = [
   ["km_en_charge_debut", "Dist. charge (ticket) — début", "kmcharge-debut"], ["km_en_charge_fin", "Dist. charge (ticket) — fin", "kmcharge-fin"],
   ["index_km_totaux_debut", "Dist. totale (ticket) — début", "kmtotaux-debut"], ["index_km_totaux_fin", "Dist. totale (ticket) — fin", "kmtotaux-fin"]
 ];
+// Véhicule sans taximètre : seuls les heures et le compteur voiture sont exigés
+const CHAMPS_HORS_TAXIMETRE = ["heure_debut", "heure_fin", "index_km_debut", "index_km_fin"];
 // Liste détaillée : { cle, libelle, idHtml } pour un champ, { cle, libelle, ligneId, numero } pour une course ouverte
 function manquesSignatureDetail() {
   const f = feuilleActuelle || {};
-  const m = CHAMPS_SIGNATURE.filter(([c]) => f[c] === null || f[c] === undefined || f[c] === "")
+  const sansTaxi = feuilleSansTaximetre(f);
+  const m = CHAMPS_SIGNATURE.filter(([c]) => !(sansTaxi && !CHAMPS_HORS_TAXIMETRE.includes(c)))
+    .filter(([c]) => f[c] === null || f[c] === undefined || f[c] === "")
     .map(([c, l, idHtml]) => ({ cle: c, libelle: l, idHtml }));
   const nums = numerosCourses(lignesActuelles || []);
   (lignesActuelles || []).filter(l => !l.cloturee).forEach((l, i) => {
@@ -6134,6 +6170,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
           .then(r => ({ data: trierLignesChrono(r.data || [], f) }));
 
     const numsImp = numerosCourses(lignesF || []);
+    const sansTaxiImp = plaqueSansTaximetre(f.plaque || vehicule?.plaque);
     const lignesHtml = (lignesF && lignesF.length ? lignesF : new Array(4).fill(null)).map((l, i) => {
       l = l || {};
       if (estLigneRelais(l)) {
@@ -6157,6 +6194,10 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             return (m !== null ? esc(String(m)) : "Uber") + `<br><span style="font-size:8px; font-weight:bold; white-space:nowrap;">${mentionPrixUberImp(l)}</span>`;
           }
           if (estUber) return "Uber";
+          if (sansTaxiImp && l.id) {
+            const pST = l.mode_paiement === "facture" ? frNum(l.prix_taximetre) : null;
+            return `<span style="font-size:8px; font-weight:bold;">Sans taximètre</span>` + (l.mode_paiement === "facture" ? `<br><b style="font-size:8px;">FACTURE${pST !== null ? " " + esc(l.prix_taximetre) : ""}</b>` : "");
+          }
           if (l.motif_sans_prix) return `<span style="font-size:8px; font-weight:bold;">${esc(/^Autre/.test(l.motif_sans_prix) && l.note_chauffeur ? l.note_chauffeur : l.motif_sans_prix)}</span>`;
           if (l.mode_paiement === "annulee") return "—";
           if (l.mode_paiement === "facture") {
@@ -6184,7 +6225,16 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             <td colspan="2"><span class="mini">N° identification</span><br><span class="valeur">${esc(f.numero_identification || vehicule?.numero_identification) || "—"}</span></td></tr>
       </table>
       <h2>Service</h2>
-      <table>
+      ${sansTaxiImp ? `<table>
+        <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th><b>Compteur voiture</b> km<br><span class="mini">Tableau de bord</span></th><th><b>Recettes</b> €<br><span class="mini">somme des courses</span></th></tr>
+        <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${esc(texteInterruptionsResume(f.interruptions))}</td>
+            <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.recettes_fin)}</td></tr>
+        <tr><td>Fin</td><td>${fmtVal(f.heure_fin ? String(f.heure_fin).slice(0, 5) : "")}</td><td></td>
+            <td>Début</td><td>${fmtVal(f.index_km_debut)}</td><td>${fmtVal(f.recettes_debut ?? (f.recettes_fin != null ? "0.00" : ""))}</td></tr>
+        <tr><td>Total</td><td>${calcTotalHeures2(f.heure_debut, f.heure_fin)}</td><td></td>
+            <td>Total</td><td>${calcTotal2(f.index_km_debut, f.index_km_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
+      </table>
+      <p class="mini" style="margin:2px 0 6px;">Véhicule sans taximètre (location avec chauffeur) — prix au forfait.</p>` : `<table>
         <tr><th></th><th>Heures des prestations</th><th></th><th>Index km</th><th><b>Compteur voiture</b> km<br><span class="mini">Tableau de bord</span></th><th><b>Rec. globale</b> (ticket) €<br><span class="mini">Taximètre</span></th></tr>
         <tr><td>Début</td><td>${fmtVal(f.heure_debut ? String(f.heure_debut).slice(0, 5) : "")}</td><td>Interruptions : ${esc(texteInterruptionsResume(f.interruptions))}</td>
             <td>Fin</td><td>${fmtVal(f.index_km_fin)}</td><td>${fmtVal(f.taximetre_fin)}</td></tr>
@@ -6198,7 +6248,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <tr><td>Fin</td><td>${fmtVal(f.prise_en_charge_fin)}</td><td>${fmtVal(f.index_km_totaux_fin)}</td><td>${fmtVal(f.km_en_charge_fin)}</td><td>${fmtVal(f.chutes_fin)}</td><td>${fmtVal(f.recettes_fin)}</td></tr>
         <tr><td>Début</td><td>${fmtVal(f.prise_en_charge_debut)}</td><td>${fmtVal(f.index_km_totaux_debut)}</td><td>${fmtVal(f.km_en_charge_debut)}</td><td>${fmtVal(f.chutes_debut)}</td><td>${fmtVal(f.recettes_debut ?? (f.recettes_fin != null ? "0.00" : ""))}</td></tr>
         <tr><td>Total</td><td>${calcTotal2(f.prise_en_charge_debut, f.prise_en_charge_fin)}</td><td>${calcTotal2(f.index_km_totaux_debut, f.index_km_totaux_fin)}</td><td>${calcTotal2(f.km_en_charge_debut, f.km_en_charge_fin)}</td><td>${calcTotal2(f.chutes_debut, f.chutes_fin)}</td><td>${calcTotal2(f.recettes_debut, f.recettes_fin, { euros: true, debutVideZero: true })}</td></tr>
-      </table>
+      </table>`}
       <h2>Courses</h2>
       <table class="courses-table">
         <thead>
@@ -6489,7 +6539,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
 
   async function preremplir() {
     var f = feuilleActuelle;
-    if (!f || !f.id || !f.vehicule_id || f.verrouillee || f.signee) { afficherNote(); return; }
+    if (!f || !f.id || !f.vehicule_id || f.verrouillee || f.signee || feuilleSansTaximetre(f)) { afficherNote(); return; }
     if (enCours[f.id]) return;
     enCours[f.id] = true;
     try {
