@@ -565,18 +565,26 @@ function saisieDansCarte(el) {
   const a = document.activeElement;
   return !!(el && a && el.contains(a) && ["INPUT", "SELECT", "TEXTAREA"].includes(a.tagName));
 }
-async function cloturerLigneEnBase(ligne) {
+async function cloturerLigneEnBase(ligne, manques) {
+  // Course incomplète : clôturée quand même, signalée à la centrale qui vérifiera
+  const payload = { cloturee: true };
+  if (ligne.type_course === "uber" && !ligne.mode_paiement) payload.mode_paiement = "uber";
+  if (manques && manques.length) {
+    payload.signalee_erreur = true;
+    payload.signalee_erreur_motif = ((ligne.signalee_erreur && ligne.signalee_erreur_motif) ? ligne.signalee_erreur_motif + " — " : "") + "À vérifier, il manque : " + manques.join(", ");
+  }
   if (ligne.course_id && !estCourseManuelle(ligne) && !estTermineeParCentrale(ligne)) {
     const modesCourse = ["cash", "carte", "facture", "uber", "cheque_social", "qr", "uber_cash"];
+    const mode = payload.mode_paiement || ligne.mode_paiement;
     const { error } = await TWHL.ecrire({ table: "courses", op: "update", match: { id: ligne.course_id },
-      payload: { statut: "terminee", mode_paiement: modesCourse.includes(ligne.mode_paiement) ? ligne.mode_paiement : null },
+      payload: { statut: "terminee", mode_paiement: modesCourse.includes(mode) ? mode : null },
       label: "Clôture de la course (terminée)" });
-    if (error) return error;
+    if (error) console.warn("Course non passée en terminée :", error.message);
   }
   const { error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id },
-    payload: { cloturee: true }, label: "Clôture de la course" });
+    payload, label: "Clôture de la course" });
   if (error) return error;
-  ligne.cloturee = true;
+  Object.assign(ligne, payload);
   lignesAClotureAuto.delete(String(ligne.id));
   lignesOuvertesTemp.delete(String(ligne.id));
   etatManuelLignes.delete(ligne.id);
@@ -867,6 +875,16 @@ window.onerror = function(msg, url, line, col, err) {
   .question-uber .qu-titre{ font-weight:800; font-size:1.05rem; margin-bottom:8px; color:#5c3300; }
   .question-uber button{ display:block; width:100%; font-size:1.05rem; font-weight:800; padding:14px 10px; margin:6px 0; border-radius:10px; border:2px solid #b35f00; background:#fff; color:#111; }
   .champ-uber-cash-requis{ border:3px solid #d0021b !important; background:#fff5f5 !important; }
+  .puce.choisie{ border-width:4px !important; box-shadow:0 0 0 3px rgba(0,0,0,.25); }
+  .puce.choisie::before{ content:"✔ "; }
+  .puce.puce-uber-cash{ background:#ff8c00; border-color:#e07000; color:#fff; }
+  .puce.puce-uber-cash.choisie{ background:#e06a00; border-color:#7a3a00 !important; }
+  .barre-raccourcis{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; padding:8px; background:#f3f6f4; border-radius:12px; }
+  .barre-raccourcis .rac-titre{ width:100%; font-weight:800; font-size:.85rem; color:#1d2b22; }
+  .barre-raccourcis .puce{ flex:1 1 30%; min-height:54px; padding:6px 4px; border-radius:12px; font-size:1rem; white-space:normal; text-align:center; }
+  .barre-raccourcis .puce.puce-uber-cash{ flex-basis:100%; font-size:1.15rem; min-height:60px; }
+  .aide-uber{ margin:0 0 10px; font-size:.88rem; background:#fff8ec; border:1px solid #f0c27a; border-radius:10px; padding:6px 10px; }
+  .aide-uber summary{ font-weight:800; cursor:pointer; }
   .consigne-uber-cash{ background:#d0021b; color:#fff; font-weight:800; border-radius:8px; padding:10px; margin:6px 0; font-size:1rem; }
   #bloc-caisse .caisse-uber-cash{ background:#fff7e0; border:2px solid #e0b400; border-radius:8px; padding:10px 12px; font-weight:800; color:#5c4500; margin-bottom:8px; }
   .ligne-course .mention-sommes-uber-cash{ font-size:.8rem; font-weight:700; color:#5c4500; background:#fff7e0; border:1px solid #e0b400; border-radius:8px; padding:8px 10px; }
@@ -4917,31 +4935,22 @@ function construireLigneHtml(ligne, numeroAffiche) {
     btnCloturer.addEventListener("click", async () => {
       // Même règle que la clôture automatique : prix OU motif « pas de prix », sommes OU motif/texte
       const st = etatCompletude(ligne, null, feuilleActuelle);
-      // Aucune case vide : pas de « clôturer quand même » côté chauffeur (heures manquantes comprises)
-      st.manque.push(...st.bloquants.filter(x => /manquante\.$/.test(x) && !st.manque.length));
-      if (ligne.mode_paiement === "uber_cash" && montantUberCash(ligne) === null) {
-        majInfoCompletude();
-        alert("❌ Impossible de clôturer : écris dans PRIX TAXIMÈTRE la somme reçue en cash du client Uber.");
-        if (div._exigerUberCash) div._exigerUberCash();
-        return;
-      }
+      // Jamais bloquant : ce qui manque est signalé, la course est clôturée quand même et la centrale corrigera
+      const manques = [...st.manque, ...st.bloquants.filter(x => /manquante\.$/.test(x))];
+      if (ligne.mode_paiement === "uber_cash" && montantUberCash(ligne) === null && !manques.some(x => /cash/.test(x))) manques.push("montant reçu en cash (Uber)");
       if (uberPaiementAConfirmer(ligne)) {
-        alert("❌ Impossible de clôturer : réponds d'abord à la question « Uber : comment le client a-t-il payé ? ».");
-        if (div._questionUber) div._questionUber.scrollIntoView({ block: "center", behavior: "smooth" });
-        return;
+        // Pas de réponse app / cash : considérée payée dans l'app
+        manques.push("Uber : payé dans l'app ou en cash ? (app retenu)");
+        confirmerUberApp(ligne.id);
       }
-      if (st.manque.length) {
-        majInfoCompletude();
-        alert("❌ Impossible de clôturer : toutes les cases doivent être remplies.\n\nIl manque : " + st.manque.join(", ") + ".\n\nLes cases manquantes sont entourées en rouge (« Obligatoire »).");
-        const premiere = corps.querySelector(".obligatoire");
-        if (premiere) premiere.scrollIntoView({ block: "center", behavior: "smooth" });
-        return;
-      }
-      // Index / heures incohérents : simple avertissement, le chauffeur peut clôturer quand même
+      majInfoCompletude();
       const aVerifier = st.bloquants.filter(x => !/manquante\.$/.test(x));
-      if (aVerifier.length) { if (!(await confirmerDansPage("⚠️ Index à vérifier :\n\n• " + aVerifier.join("\n• ") + "\n\nClôturer quand même ?", "Clôturer quand même", "Corriger"))) return; }
-      else if (!(await confirmerDansPage("Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).", "✅ Oui, clôturer", "Annuler"))) return;
-      const err = await cloturerLigneEnBase(ligne);
+      let message = "";
+      if (manques.length) message += "⚠️ Il manque : " + manques.join(", ") + ".\n\nTu peux continuer, la centrale corrigera.\n\n";
+      if (aVerifier.length) message += "⚠️ Index à vérifier :\n• " + aVerifier.join("\n• ") + "\n\n";
+      message += "Clôturer cette course ? Tu ne pourras plus la modifier ensuite (seule la direction pourra).";
+      if (!(await confirmerDansPage(message, manques.length || aVerifier.length ? "✅ Clôturer quand même" : "✅ Oui, clôturer", "Annuler"))) return;
+      const err = await cloturerLigneEnBase(ligne, manques);
       if (err) { alert("Erreur : " + err.message); return; }
       afficherToast("✅ Course clôturée");
     });
@@ -5164,8 +5173,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const zone = document.createElement("div");
     zone.className = "grille-paiement";
     const BOUTONS = [
+      { cle: "uber_cash", texte: "🚕💵 Uber cash" },
       { cle: "cash", texte: "💵 Cash" }, { cle: "carte", texte: "💳 Carte" }, { cle: "qr", texte: "📱 Bancontact / QR" },
-      { cle: "uber", texte: "🚕 Uber (app)" }, { cle: "uber_cash", texte: "🚕💵 Uber cash" }, { cle: "facture", texte: "🧾 Facture" },
+      { cle: "uber", texte: "🚕 Uber (app)" }, { cle: "facture", texte: "🧾 Facture" },
       { cle: "facture_assurance", texte: "🛡️ Facture assurance" }, { cle: "cheque_social", texte: "🎫 Chèque social" }, { cle: "annulee", texte: "❌ Annulée / absent" },
       { cle: "autre", texte: "✏️ Autre…" }
     ];
@@ -5222,6 +5232,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         });
         bouton.dataset.mode = b.cle;
         if (b.cle === "autre") bouton.classList.add("bouton-autre");
+        if (b.cle === "uber_cash") bouton.classList.add("puce-uber-cash");
         return bouton;
       }));
     }
@@ -5343,7 +5354,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     const grilleType = wrapsParChamp["type_course"].querySelector(".grille-type");
     const zoneBouton = document.createElement("div");
     zoneBouton.className = "grille-type";
-    if (grilleType) grilleType.insertAdjacentElement("afterend", zoneBouton);
+    if (grilleType) grilleType.insertAdjacentElement("beforebegin", zoneBouton);
     const consigne = document.createElement("div");
     consigne.className = "consigne-uber-cash";
     consigne.textContent = "💵 Écris dans PRIX TAXIMÈTRE la somme reçue en cash du client Uber";
@@ -5392,7 +5403,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
     question.querySelector('[data-r="cash"]').addEventListener("click", (ev) => { ev.stopPropagation(); activerUberCash(); });
     function maj() {
       const estUberCash = (ligne.mode_paiement === "uber_cash" || selMode.value === "uber_cash") && !estPriveOuGarage(ligne.type_course);
-      zoneBouton.replaceChildren(creerPuce("🚕💵 Uber cash", estUberCash, ligneVerrouillee, activerUberCash));
+      const puceUC = creerPuce("🚕💵 Uber cash", estUberCash, ligneVerrouillee, activerUberCash);
+      puceUC.classList.add("puce-uber-cash");
+      zoneBouton.replaceChildren(puceUC);
       zoneBouton.style.display = ligneVerrouillee ? "none" : "";
       const manque = estUberCash && !ligneVerrouillee && montantUberCash(ligne) === null && !(frNum(inputPrix && inputPrix.value) > 0);
       consigne.style.display = manque ? "" : "none";
@@ -5400,9 +5413,67 @@ function construireLigneHtml(ligne, numeroAffiche) {
       question.style.display = (!ligneVerrouillee && !estUberCash && uberPaiementAConfirmer(ligne)) ? "" : "none";
     }
     div._majUberCash = maj;
+    div._activerUberCash = activerUberCash;
     pucesARafraichir.push(maj);
     if (inputPrix) inputPrix.addEventListener("input", maj);
     maj();
+  })();
+  // ---- Raccourcis en haut de la course : mêmes boutons que les grilles, juste plus visibles ----
+  (function barreRaccourcis() {
+    const grillePaie = wrapsParChamp["mode_paiement"].querySelector(".grille-paiement");
+    const inputPrix = inputsParChamp["prix_taximetre"];
+    const barre = document.createElement("div");
+    barre.className = "barre-raccourcis";
+    const aide = document.createElement("details");
+    aide.className = "aide-uber";
+    aide.innerHTML = `<summary>❓ Comment remplir une course Uber</summary>
+      <div>📱 Payé dans l'app Uber : rien à écrire.</div>
+      <div>💵 Payé en cash : choisis « 🚕💵 Uber cash » et écris le montant reçu dans Prix taximètre.</div>
+      <div>ℹ️ Une course Uber ne compte pas dans la recette.</div>`;
+    aide.addEventListener("click", (ev) => ev.stopPropagation());
+    const RAC = [
+      { cle: "uber_cash", texte: "🚕💵 Uber cash", msg: "💵 Écris le montant reçu en cash" },
+      { cle: "uber", texte: "🚕 Uber (app)", msg: "📱 Uber payé dans l'app : rien à écrire" },
+      { cle: "cash", texte: "💵 Cash", msg: "💵 Écris le prix dans Prix taximètre" },
+      { cle: "carte", texte: "💳 Carte", msg: "💳 Écris le prix dans Prix taximètre" },
+      { cle: "facture", texte: "📄 Facture", msg: "📄 Choisis le payeur de la facture" }
+    ];
+    function suite(r) {
+      afficherToast(r.msg);
+      let cible = null;
+      if (r.cle === "facture") cible = div.querySelector(".grille-payeurs") || grillePaie;
+      else if (r.cle !== "uber") cible = inputPrix;
+      if (!cible) return;
+      setTimeout(() => {
+        try {
+          cible.scrollIntoView({ block: "center", behavior: "smooth" });
+          if (cible === inputPrix && !inputPrix.disabled) inputPrix.focus();
+          if (cible === inputPrix && r.cle === "uber_cash") inputPrix.classList.add("champ-uber-cash-requis");
+        } catch (_) {}
+      }, 250);
+    }
+    function rendreBarre() {
+      const m = ligne.mode_paiement != null ? String(ligne.mode_paiement) : "";
+      barre.replaceChildren(Object.assign(document.createElement("div"), { className: "rac-titre", textContent: "⚡ Raccourcis paiement" }),
+        ...RAC.map(r => {
+          const choisie = r.cle === "uber" ? (m === "uber" || (ligne.type_course === "uber" && !m)) : m === r.cle;
+          const b = creerPuce(r.texte, choisie, ligneVerrouillee, () => {
+            if (r.cle === "uber_cash" && div._activerUberCash) div._activerUberCash();
+            else {
+              const btn = grillePaie && grillePaie.querySelector('[data-mode="' + r.cle + '"]');
+              if (btn) btn.click();
+            }
+            suite(r);
+          });
+          if (r.cle === "uber_cash") b.classList.add("puce-uber-cash");
+          return b;
+        }));
+      barre.style.display = ligneVerrouillee ? "none" : "";
+    }
+    rendreBarre();
+    pucesARafraichir.push(rendreBarre);
+    corps.insertBefore(aide, corps.firstChild);
+    corps.insertBefore(barre, corps.firstChild);
   })();
   requestAnimationFrame(() => pucesARafraichir.forEach(f => f()));
   chargerPayeursRecents();
@@ -5505,8 +5576,9 @@ document.getElementById("btn-ajouter-ligne").addEventListener("click", async () 
   const { data, error } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "upsert", payload: champsLigne,
     select: "*", optimiste: ligneLocale, local: ligneLocale, label: "Nouvelle course n° " + prochainNumero });
 
-  if (error || !data) { document.getElementById("erreur").textContent = "Erreur : " + (error ? error.message : "ligne non créée"); return; }
-  lignesActuelles.push(data);
+  // Jamais bloquant : sans réponse du serveur, la course est ouverte sur le téléphone quand même
+  if (error || !data) afficherToast("⚠️ Course ouverte sur le téléphone, pas encore enregistrée. Tu peux continuer, la centrale corrigera.");
+  lignesActuelles.push(data || ligneLocale);
   etatManuelLignes.set(data.id, true);
   afficherLignes();
 });
