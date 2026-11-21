@@ -9387,6 +9387,7 @@ function ligneFeuilleFA(e, entrees, chauffeur, dateChoisie, opts) {
     + `<span class="lf-infos">${e.nuit ? "🌙 nuit du " + esc(jjmmFA(f.date_service)) + " · " : ""}🕐 ${esc(hd)} → ${esc(hf)} · ${vide ? "<i>vide</i>" : nb + " course" + (nb > 1 ? "s" : "")}${vide ? "" : " · " + esc(eurosFr(recetteFeuilleFA(f, e.lignes || [])))}</span>`
     + `<span class="lf-puces"><span class="puce-fa puce-fa-${st.cle}">${esc(st.texte)}</span>${an ? ` <span class="puce-fa puce-fa-anomalie">⚠️ À vérifier (${an})</span>` : ""}</span>`;
   if (!vide) { const pucesCC = info.querySelector(".lf-puces"); if (pucesCC) { pucesCC.appendChild(document.createTextNode(" ")); pucesCC.appendChild(pastilleControleCaisse(f, e.lignes || [])); } }
+  if (!vide && typeof pastilleRentaFA === "function") { try { const pr = info.querySelector(".lf-puces"); if (pr) { pr.appendChild(document.createTextNode(" ")); pr.appendChild(pastilleRentaFA(f, e.lignes || [])); } } catch (err) { console.warn(err); } }
   const ouvrir = () => { if (opts.surOuvrir) opts.surOuvrir(f.id); };
   info.addEventListener("click", ouvrir);
   row.appendChild(info);
@@ -11331,8 +11332,13 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
   // 🔍 Contrôle caisse (admin uniquement) — recalculé après chaque correction, masqué une fois la feuille contrôlée
   let controleCaisseDiv = blocControleCaisse(feuille, lignes);
   corps.appendChild(controleCaisseDiv);
+  // 📈 Rentabilité (admin seulement) — bloc à part, ne touche pas au contrôle de caisse
+  let rentaDivFA = document.createElement("div");
+  try { if (typeof blocRentabiliteFA === "function") rentaDivFA = blocRentabiliteFA(feuille, lignes); } catch (e) { console.warn(e); }
+  corps.appendChild(rentaDivFA);
   const rafraichirControleCaisseFA = () => {
     try { const n = blocControleCaisse(feuille, lignes); controleCaisseDiv.replaceWith(n); controleCaisseDiv = n; } catch (e) { console.warn(e); }
+    try { if (typeof blocRentabiliteFA === "function") { const r = blocRentabiliteFA(feuille, lignes); rentaDivFA.replaceWith(r); rentaDivFA = r; } } catch (e) { console.warn(e); }
   };
   // Après une modification d'une course (montant, mode, pourboire…) : totaux recalculés tout de suite,
   // puis recette / pourboires relus dans la base (recalculés par les triggers) pour l'en-tête.
@@ -11645,6 +11651,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       feuillePleinEcranId = null;
       corps.appendChild(totalPercuDiv);
       corps.appendChild(controleCaisseDiv);
+      corps.appendChild(rentaDivFA);
       corps.appendChild(alertesPbFA);
       corps.appendChild(zoneOrdre);
       corps.appendChild(conteneurLignes);
@@ -11658,6 +11665,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
     overlay.appendChild(rangeeRelaisArchiveFA(feuille, lignes, () => { feuillesDepliees.add(feuille.id); chargerFeuillesAdmin(); }));
     overlay.appendChild(totalPercuDiv);
     overlay.appendChild(controleCaisseDiv);
+    overlay.appendChild(rentaDivFA);
     overlay.appendChild(alertesPbFA);
     overlay.appendChild(zoneOrdre);
     overlay.appendChild(conteneurLignes);
@@ -14639,6 +14647,283 @@ async function chargerControleUber() {
   }).join("");
 }
 document.getElementById("cu-periode").addEventListener("change", (e) => { cuJours = parseInt(e.target.value, 10) || 7; chargerControleUber(); });
+</script>
+<script>
+// ================== 📈 RENTABILITÉ PAR JOURNÉE (admin seulement) ==================
+// km roulés = compteur tableau de bord fin − début ; total gagné = toutes les courses (recette + Uber en ligne
+// + Uber cash + factures) ; € par km comparé à un seuil (1,25 €/km par défaut, global ou par véhicule).
+// Ne touche ni à la recette ni au contrôle de caisse.
+const SEUIL_RENTA_DEFAUT = 1.25;
+const CLE_SEUIL_RENTA_LOCAL = "taxiwal_admin_seuil_eur_km";
+const seuilsRentaFA = { global: (() => { try { const v = frNum(localStorage.getItem(CLE_SEUIL_RENTA_LOCAL)); return v > 0 ? v : SEUIL_RENTA_DEFAUT; } catch (_) { return SEUIL_RENTA_DEFAUT; } })(), parVehicule: {}, charge: false, colonneVehicule: false, enBase: false };
+async function chargerSeuilsRentaFA() {
+  try {
+    const p = await supabase.from("parametres_admin").select("valeur").eq("cle", "seuil_eur_km").maybeSingle();
+    if (!p.error) { seuilsRentaFA.enBase = true; const v = frNum(p.data && p.data.valeur); if (v > 0) { seuilsRentaFA.global = v; try { localStorage.setItem(CLE_SEUIL_RENTA_LOCAL, String(v)); } catch (_) {} } }
+  } catch (_) {}
+  try {
+    const r = await supabase.from("vehicules").select("id, nom, plaque, actif, seuil_eur_km");
+    if (!r.error) {
+      seuilsRentaFA.colonneVehicule = true;
+      seuilsRentaFA.vehicules = r.data || [];
+      seuilsRentaFA.parVehicule = {};
+      (r.data || []).forEach(v => { const s = frNum(v.seuil_eur_km); if (s > 0) seuilsRentaFA.parVehicule[v.id] = s; });
+    } else {
+      const r2 = await supabase.from("vehicules").select("id, nom, plaque, actif");
+      seuilsRentaFA.vehicules = r2.data || [];
+    }
+  } catch (_) {}
+  seuilsRentaFA.charge = true;
+}
+function seuilRentaFA(vehiculeId) { return seuilsRentaFA.parVehicule[vehiculeId] || seuilsRentaFA.global || SEUIL_RENTA_DEFAUT; }
+// Montant d'une course pour la rentabilité (prix réel de la course, qu'il compte ou non dans la recette)
+function montantRentaLigneFA(l) {
+  if (!l || estPriveOuGarage(l.type_course) || l.type_course === "relais" || l.type_course === "relais_fin") return 0;
+  const s = frNum(l.sommes_percues), p = frNum(l.prix_taximetre);
+  if (l.mode_paiement === "annulee") return (s !== null && s > 0) ? s : 0;
+  if (estLigneUberImp(l)) return montantUberImp(l) || 0;
+  if (l.mode_paiement === "facture") return (p !== null && p > 0) ? p : ((s !== null && s > 0) ? s : 0);
+  return (s !== null && s > 0) ? s : ((p !== null && p > 0) ? p : 0);
+}
+function rentaFeuilleFA(feuille, lignes) {
+  const deb = frNum(feuille && feuille.index_km_debut), fin = frNum(feuille && feuille.index_km_fin);
+  const km = (deb !== null && fin !== null && fin > deb) ? Math.round((fin - deb) * 10) / 10 : null;
+  let kmPrives = 0, total = 0;
+  (lignes || []).forEach(l => {
+    if (l && estPriveOuGarage(l.type_course)) {
+      const a = frNum(l.embarquement_index), b = frNum(l.debarquement_index);
+      if (a !== null && b !== null && b > a) kmPrives += b - a;
+    }
+    total += montantRentaLigneFA(l);
+  });
+  total = Math.round(total * 100) / 100;
+  kmPrives = Math.round(kmPrives * 10) / 10;
+  const seuil = seuilRentaFA(feuille && feuille.vehicule_id);
+  const eurKm = km ? Math.round(total / km * 100) / 100 : null;
+  const kmHorsPrives = km !== null ? Math.max(0, Math.round((km - kmPrives) * 10) / 10) : null;
+  const eurKmHorsPrives = kmHorsPrives ? Math.round(total / kmHorsPrives * 100) / 100 : null;
+  const ok = eurKm !== null ? eurKm >= seuil : null;
+  const manque = (km && !ok) ? Math.round((seuil * km - total) * 100) / 100 : 0;
+  return { km, kmPrives, kmHorsPrives, total, eurKm, eurKmHorsPrives, seuil, ok, manque };
+}
+const fmtEurKm = v => v === null ? "—" : v.toFixed(2).replace(".", ",") + " €/km";
+const fmtKm = v => v === null ? "—" : String(v).replace(".", ",") + " km";
+function pastilleRentaFA(feuille, lignes) {
+  const r = rentaFeuilleFA(feuille, lignes);
+  const s = document.createElement("span");
+  s.className = "puce-fa";
+  if (r.km === null) { s.textContent = "📈 km incomplets"; s.style.cssText = "background:#eee; color:#555;"; }
+  else { s.textContent = (r.ok ? "🟢 " : "🔴 ") + fmtEurKm(r.eurKm); s.style.cssText = r.ok ? "background:#d8f0e0; color:#1f6b3f;" : "background:#fde2e2; color:#b3141b;"; }
+  s.title = "Rentabilité : total " + eurosFr(r.total) + " · " + fmtKm(r.km) + " · seuil " + fmtEurKm(r.seuil);
+  return s;
+}
+function blocRentabiliteFA(feuille, lignes) {
+  const r = rentaFeuilleFA(feuille, lignes);
+  const d = document.createElement("div");
+  d.className = "bloc-rentabilite-fa";
+  d.style.cssText = "background:#fff; border:1px solid #cfcfcd; border-left:5px solid " + (r.km === null ? "#999" : (r.ok ? "#1f6b3f" : "#b3141b")) + "; border-radius:10px; padding:10px 12px; margin:10px 0; color:#111; font-size:.9rem;";
+  const l = (a, b) => `<div style="display:flex; justify-content:space-between; gap:10px; padding:2px 0;"><span>${a}</span><b>${b}</b></div>`;
+  let verdict;
+  if (r.km === null) verdict = `<div style="color:#7a4a00; font-weight:800; margin-top:6px;">⚠️ km incomplets (compteur tableau de bord début / fin manquant)</div>`;
+  else if (r.ok) verdict = `<div style="color:#1f6b3f; font-weight:800; margin-top:6px;">🟢 Journée rentable (${fmtEurKm(r.eurKm)} ≥ ${fmtEurKm(r.seuil)})</div>`;
+  else verdict = `<div style="color:#b3141b; font-weight:800; margin-top:6px;">🔴 Journée à perte : il manque ${esc(eurosFr(r.manque))} pour atteindre le seuil (${fmtEurKm(r.seuil)})</div>`;
+  d.innerHTML = `<div style="font-weight:800; margin-bottom:4px;">📈 Rentabilité</div>`
+    + l("Km roulés (tableau de bord)", fmtKm(r.km))
+    + l("Montant total gagné (recette + Uber + factures)", esc(eurosFr(r.total)))
+    + l("€ par km", fmtEurKm(r.eurKm))
+    + l("Km privés / garage", fmtKm(r.kmPrives))
+    + l("€ par km hors km privés", fmtEurKm(r.eurKmHorsPrives))
+    + verdict;
+  return d;
+}
+// ---- Récapitulatif 7 / 30 jours + réglage des seuils ----
+async function lignesDesFeuillesRentaFA(ids) {
+  const res = [];
+  for (let i = 0; i < ids.length; i += 150) {
+    const { data, error } = await supabase.from("lignes_feuille_route")
+      .select("feuille_route_id, type_course, mode_paiement, motif_sans_prix, prix_taximetre, sommes_percues, embarquement_index, debarquement_index")
+      .in("feuille_route_id", ids.slice(i, i + 150));
+    if (error) throw error;
+    res.push(...(data || []));
+  }
+  return res;
+}
+let rentaJoursFA = 7;
+async function chargerRecapRentaFA() {
+  const z = document.getElementById("renta-recap-fa");
+  if (!z) return;
+  z.innerHTML = "Chargement…";
+  try {
+    if (!seuilsRentaFA.charge) await chargerSeuilsRentaFA();
+    const fin = dateBruxellesISO();
+    const debut = new Date(Date.now() - (rentaJoursFA - 1) * 864e5).toLocaleDateString("en-CA", { timeZone: "Europe/Brussels" });
+    const { data: feuilles, error } = await supabase.from("feuilles_route")
+      .select("id, chauffeur_id, vehicule_id, date_service, index_km_debut, index_km_fin, plaque, profils:chauffeur_id(nom), vehicules:vehicule_id(nom, plaque)")
+      .gte("date_service", debut).lte("date_service", fin);
+    if (error) throw error;
+    const lignes = (feuilles || []).length ? await lignesDesFeuillesRentaFA(feuilles.map(f => f.id)) : [];
+    const parF = new Map();
+    lignes.forEach(l => { if (!parF.has(l.feuille_route_id)) parF.set(l.feuille_route_id, []); parF.get(l.feuille_route_id).push(l); });
+    const grouper = (cle, nom) => {
+      const m = new Map();
+      (feuilles || []).forEach(f => {
+        const ls = parF.get(f.id) || [];
+        if (!ls.length && f.index_km_fin == null) return;
+        const r = rentaFeuilleFA(f, ls);
+        const k = cle(f) || "?";
+        if (!m.has(k)) m.set(k, { nom: nom(f), km: 0, total: 0, totalAvecKm: 0, jours: 0, perte: 0, incomplets: 0 });
+        const g = m.get(k);
+        g.total += r.total; g.jours++;
+        if (r.km === null) g.incomplets++;
+        else { g.km += r.km; g.totalAvecKm += r.total; if (!r.ok) g.perte++; }
+      });
+      return [...m.values()].sort((a, b) => a.nom.localeCompare(b.nom));
+    };
+    const tableau = (titre, liste) => `<div style="font-weight:800; margin:10px 0 4px;">${titre}</div>`
+      + (liste.length ? `<table style="width:100%; border-collapse:collapse; font-size:.85rem;"><tr style="text-align:left;"><th>Nom</th><th>Km</th><th>Total</th><th>€/km</th><th>Jours à perte</th></tr>`
+      + liste.map(g => { const ek = g.km > 0 ? Math.round(g.totalAvecKm / g.km * 100) / 100 : null;
+          return `<tr style="border-top:1px solid #eee;"><td>${esc(g.nom)}</td><td>${fmtKm(Math.round(g.km * 10) / 10)}</td><td>${esc(eurosFr(g.total))}</td><td>${ek === null ? "—" : fmtEurKm(ek)}</td><td>${g.perte} / ${g.jours}${g.incomplets ? ` <small>(${g.incomplets} km incomplets)</small>` : ""}</td></tr>`; }).join("")
+      + `</table>` : `<div style="color:var(--gris);">Rien sur cette période.</div>`);
+    z.innerHTML = tableau("👤 Par chauffeur", grouper(f => f.chauffeur_id, f => (f.profils && f.profils.nom) || "Chauffeur"))
+      + tableau("🚗 Par véhicule", grouper(f => f.vehicule_id, f => ((f.vehicules && f.vehicules.nom) || "Sans véhicule") + " " + (f.plaque || (f.vehicules && f.vehicules.plaque) || "")))
+      + `<div style="font-size:.78rem; color:var(--gris); margin-top:6px;">€/km calculé sur les journées dont les km sont complets.</div>`;
+  } catch (e) { z.textContent = "Erreur : " + (e.message || e); }
+}
+function rendreReglagesRentaFA() {
+  const z = document.getElementById("renta-reglages-fa");
+  if (!z) return;
+  const vs = (seuilsRentaFA.vehicules || []).filter(v => v.actif !== false);
+  z.innerHTML = `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"><span>Seuil global :</span>
+      <input type="text" inputmode="decimal" id="renta-seuil-global" value="${String(seuilsRentaFA.global).replace(".", ",")}" style="width:90px; padding:8px;"> €/km
+      <button type="button" id="renta-seuil-global-ok" style="width:auto; padding:8px 12px;">Enregistrer</button></div>
+    ${seuilsRentaFA.colonneVehicule ? `<div style="margin-top:8px; font-weight:700;">Seuil par véhicule (vide = seuil global)</div>` + vs.map(v => `<div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+      <span style="flex:1;">${esc((v.nom || "Véhicule") + " " + (v.plaque || ""))}</span>
+      <input type="text" inputmode="decimal" data-vid="${esc(v.id)}" class="renta-seuil-veh" value="${seuilsRentaFA.parVehicule[v.id] ? String(seuilsRentaFA.parVehicule[v.id]).replace(".", ",") : ""}" placeholder="${String(seuilsRentaFA.global).replace(".", ",")}" style="width:90px; padding:8px;"> €/km</div>`).join("")
+      : `<div style="margin-top:6px; font-size:.8rem; color:var(--gris);">Seuil par véhicule : exécuter le fichier SQL « rentabilite-seuils.sql ».</div>`}`;
+  document.getElementById("renta-seuil-global-ok").addEventListener("click", async () => {
+    const v = frNum(document.getElementById("renta-seuil-global").value);
+    if (!(v > 0)) { alert("Seuil invalide."); return; }
+    seuilsRentaFA.global = v;
+    try { localStorage.setItem(CLE_SEUIL_RENTA_LOCAL, String(v)); } catch (_) {}
+    const { error } = await supabase.from("parametres_admin").upsert({ cle: "seuil_eur_km", valeur: String(v), updated_at: new Date().toISOString() }, { onConflict: "cle" });
+    toastAdmin(error ? "Seuil gardé sur cet appareil (base : exécuter le SQL)" : "✅ Seuil enregistré");
+    chargerRecapRentaFA(); chargerFeuillesAdmin();
+  });
+  z.querySelectorAll(".renta-seuil-veh").forEach(inp => inp.addEventListener("change", async () => {
+    const v = frNum(inp.value), vid = inp.dataset.vid;
+    if (inp.value.trim() !== "" && !(v > 0)) { alert("Seuil invalide."); return; }
+    const { error } = await supabase.from("vehicules").update({ seuil_eur_km: v > 0 ? v : null }).eq("id", vid);
+    if (error) { alert("Erreur : " + error.message); return; }
+    if (v > 0) seuilsRentaFA.parVehicule[vid] = v; else delete seuilsRentaFA.parVehicule[vid];
+    toastAdmin("✅ Seuil du véhicule enregistré");
+    chargerRecapRentaFA(); chargerFeuillesAdmin();
+  }));
+}
+(function installerRentaFA() {
+  const ancre = document.getElementById("recap-controle-caisse-fa");
+  if (!ancre) return;
+  const bloc = document.createElement("details");
+  bloc.id = "renta-fa";
+  bloc.style.cssText = "background:#fff; border:1px solid #cfcfcd; border-radius:10px; padding:8px 12px; margin:8px 0; color:#111;";
+  bloc.innerHTML = `<summary style="font-weight:800; cursor:pointer;">📈 Rentabilité (€ par km) — récapitulatif et seuils</summary>
+    <div style="display:flex; gap:6px; margin:8px 0;"><button type="button" data-j="7" style="width:auto; padding:6px 10px;">7 jours</button><button type="button" data-j="30" style="width:auto; padding:6px 10px;">30 jours</button></div>
+    <div id="renta-recap-fa"></div><div style="margin-top:10px;" id="renta-reglages-fa"></div>`;
+  ancre.insertAdjacentElement("beforebegin", bloc);
+  bloc.addEventListener("toggle", async () => { if (!bloc.open) return; if (!seuilsRentaFA.charge) await chargerSeuilsRentaFA(); rendreReglagesRentaFA(); chargerRecapRentaFA(); });
+  bloc.querySelectorAll("[data-j]").forEach(b => b.addEventListener("click", () => { rentaJoursFA = parseInt(b.dataset.j, 10); chargerRecapRentaFA(); }));
+  // Seuils chargés en arrière-plan : pastilles recalculées si différents du défaut
+  supabase.auth.getSession().then(() => chargerSeuilsRentaFA()).then(() => {
+    if ((seuilsRentaFA.global !== SEUIL_RENTA_DEFAUT || Object.keys(seuilsRentaFA.parVehicule).length) && document.querySelector("#section-feuilles.visible")) chargerFeuillesAdmin();
+  }).catch(() => {});
+})();
+</script>
+<script>
+// ================== 📸 CAPTURES UBER : bouton visible sur l'accueil + nouvelles depuis la dernière visite ==================
+const CLE_CAPTURES_VUES = "taxiwal_admin_captures_uber_vues";
+function dateCapturesVues() { try { return localStorage.getItem(CLE_CAPTURES_VUES) || ""; } catch (_) { return ""; } }
+async function majBoutonCapturesUber() {
+  const b = document.getElementById("btn-captures-uber-accueil");
+  if (!b) return;
+  try {
+    let q = supabase.from("captures_uber").select("id", { count: "exact", head: true });
+    const vu = dateCapturesVues();
+    if (vu) q = q.gt("ajoutee_le", vu);
+    else q = q.gte("ajoutee_le", new Date(Date.now() - 7 * 864e5).toISOString());
+    const { count, error } = await q;
+    if (error) { b.style.display = "none"; return; }
+    const n = count || 0;
+    b.style.display = "";
+    b.textContent = "📸 Captures Uber (" + n + " nouvelle" + (n > 1 ? "s" : "") + ")";
+    b.style.background = n ? "#ff8c00" : "#fff";
+    b.style.color = n ? "#fff" : "#111";
+  } catch (_) {}
+}
+function ouvrirOngletAdmin(onglet) {
+  const b = document.querySelector('nav button[data-onglet="' + onglet + '"]');
+  if (b) b.click();
+}
+(function installerBoutonCapturesUber() {
+  const ancre = document.getElementById("bandeau-alertes-vehicules");
+  if (!ancre) return;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.id = "btn-captures-uber-accueil";
+  b.style.cssText = "display:none; width:100%; margin:8px 0; padding:14px; font-size:1.05rem; font-weight:800; border-radius:10px; border:2px solid #ff8c00; cursor:pointer;";
+  b.textContent = "📸 Captures Uber";
+  b.addEventListener("click", () => ouvrirOngletAdmin("controle-uber"));
+  ancre.insertAdjacentElement("afterend", b);
+  const st = document.createElement("style");
+  st.textContent = "body.mode-section-admin #btn-captures-uber-accueil{ display:none !important; }";
+  document.head.appendChild(st);
+  // Ouverture de l'onglet = captures consultées (date mémorisée sur cet appareil)
+  const nav = document.querySelector('nav button[data-onglet="controle-uber"]');
+  if (nav) nav.addEventListener("click", () => {
+    const avant = dateCapturesVues();
+    try { localStorage.setItem(CLE_CAPTURES_VUES, new Date().toISOString()); } catch (_) {}
+    afficherDernieresCapturesUber(avant);
+    majBoutonCapturesUber();
+  });
+  supabase.auth.getSession().then(() => majBoutonCapturesUber()).catch(() => {});
+  setInterval(majBoutonCapturesUber, 120000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) majBoutonCapturesUber(); });
+  // Lien direct : admin.html?onglet=controle-uber (clic sur une notification)
+  try {
+    const o = new URLSearchParams(location.search).get("onglet");
+    if (o && document.querySelector('nav button[data-onglet="' + o + '"]')) supabase.auth.getSession().then(() => setTimeout(() => ouvrirOngletAdmin(o), 800));
+  } catch (_) {}
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", (ev) => {
+    const d = ev.data || {};
+    if (d.type === "capture_uber_recue") majBoutonCapturesUber();
+    if (d.type === "ouvrir-onglet-admin" && d.onglet) ouvrirOngletAdmin(d.onglet);
+  });
+})();
+// En haut de l'onglet : les captures les plus récentes d'abord (chauffeur, date, heure d'envoi, miniature)
+async function afficherDernieresCapturesUber(depuis) {
+  const sec = document.getElementById("section-controle-uber");
+  if (!sec) return;
+  let z = document.getElementById("cu-recentes");
+  if (!z) { z = document.createElement("div"); z.id = "cu-recentes"; z.style.cssText = "margin-bottom:12px;"; sec.insertBefore(z, document.getElementById("cu-liste")); }
+  z.innerHTML = "Chargement des dernières captures…";
+  try {
+    const { data, error } = await supabase.from("captures_uber").select("*, profils:chauffeur_id(nom)").order("ajoutee_le", { ascending: false }).limit(30);
+    if (error) { z.innerHTML = ""; return; }
+    const caps = data || [];
+    if (!caps.length) { z.innerHTML = '<p style="color:var(--gris);">Aucune capture Uber reçue.</p>'; return; }
+    const urls = {};
+    const { data: s } = await supabase.storage.from("captures-uber").createSignedUrls(caps.map(c => c.chemin), 3600);
+    (s || []).forEach(u => { if (u.signedUrl) urls[u.path] = u.signedUrl; });
+    const hb = d => new Date(d).toLocaleString("fr-BE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" });
+    z.innerHTML = `<h3 style="margin:6px 0; font-size:1rem;">📸 Dernières captures reçues (plus récentes d'abord)</h3>` + caps.map(c => {
+      const nouv = depuis ? (c.ajoutee_le > depuis) : false;
+      const u = urls[c.chemin];
+      return `<div class="cb-ligne" style="cursor:default; display:flex; gap:10px; align-items:center;${nouv ? " border:2px solid #ff8c00;" : ""}">
+        ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" loading="lazy" style="width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid #ccc;"></a>` : `<div style="width:72px; height:72px; background:#eee; border-radius:8px;"></div>`}
+        <div style="font-size:.9rem;"><b>👤 ${esc((c.profils && c.profils.nom) || "Chauffeur")}</b>${nouv ? ' <span style="background:#ff8c00; color:#fff; border-radius:6px; padding:1px 6px; font-size:.75rem;">nouvelle</span>' : ""}<br>
+        Service du ${esc(new Date(c.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}<br>
+        Envoyée le ${esc(c.ajoutee_le ? hb(c.ajoutee_le) : "—")}</div></div>`;
+    }).join("");
+  } catch (e) { z.innerHTML = ""; }
+}
 </script>
 </body>
 </html>

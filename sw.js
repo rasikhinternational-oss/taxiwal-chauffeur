@@ -7,7 +7,7 @@
 // n'est utilisée que s'il n'y a pas de réseau. Une mise à jour sur GitHub arrive donc tout de suite.
 // Les données (Supabase) ne passent JAMAIS par ce cache : c'est la page qui les gère.
 // Changer VERSION à chaque modification de ce fichier (les anciennes copies sont effacées).
-const VERSION = "taxiwal-v17";
+const VERSION = "taxiwal-v18";
 const ATTENTE_RESEAU_PAGE_MS = 4000; // page : au-delà, la copie du téléphone est affichée (si elle existe)
 const CACHE_PAGES = VERSION + "-pages";
 const CACHE_FICHIERS = VERSION + "-fichiers";
@@ -163,7 +163,8 @@ self.addEventListener("push", (event) => {
         icon: "icon-192.png",
         badge: "icon-192.png",
         requireInteraction: true,
-        tag: "rappel-taxiwal-" + Date.now()
+        tag: "rappel-taxiwal-" + Date.now(),
+        data: { type: donnees.type || null }
       });
       // Prévient toutes les pages Taxi Wal déjà ouvertes (même en arrière-plan) qu'il faut
       // recharger les courses tout de suite, sans attendre le prochain cycle automatique.
@@ -186,6 +187,19 @@ self.addEventListener("notificationclick", (event) => {
         const ch = clientList.find((c) => /chauffeur\.html|driver\.html/.test(c.url)) || clientList[0];
         if (ch && "focus" in ch) { ch.postMessage({ type: "sonner-ouvrir", courseId: d.courseId }); return ch.focus(); }
         if (self.clients.openWindow) return self.clients.openWindow("./chauffeur.html?sonnerie=" + encodeURIComponent(d.courseId));
+      })
+    );
+    return;
+  }
+  // Notifications admin : 📸 capture Uber reçue → onglet Contrôle Uber ; 📋 feuille clôturée → feuilles de route
+  const ONGLETS_ADMIN = { capture_uber_recue: "controle-uber", feuille_cloturee: "feuilles" };
+  if (ONGLETS_ADMIN[d.type]) {
+    const onglet = ONGLETS_ADMIN[d.type];
+    event.waitUntil(
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+        const adm = clientList.find((c) => /admin\.html/.test(c.url));
+        if (adm && "focus" in adm) { adm.postMessage({ type: "ouvrir-onglet-admin", onglet }); return adm.focus(); }
+        if (self.clients.openWindow) return self.clients.openWindow("./admin.html?onglet=" + onglet);
       })
     );
     return;

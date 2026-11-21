@@ -412,6 +412,42 @@ function montantUberCash(l) {
   const s = frNum(l && l.sommes_percues);
   return (s !== null && s > 0) ? s : null;
 }
+// 🚕 Uber payé DANS L'APP : prix de la course noté (facultatif) dans « Prix taximètre ».
+// Jamais dans la recette (comme Uber cash et les factures) — sert seulement à la vue d'ensemble.
+function estUberApp(l) {
+  if (!l || estPriveOuGarage(l.type_course)) return false;
+  if (["uber_cash", "uber_carte", "facture", "annulee"].includes(l.mode_paiement)) return false;
+  return l.mode_paiement === "uber" || l.type_course === "uber";
+}
+function montantUberApp(l) {
+  if (!estUberApp(l)) return null;
+  const p = frNum(l.prix_taximetre);
+  return (p !== null && p > 0) ? p : null;
+}
+// Vue d'ensemble : recette (règle inchangée) + Uber (en ligne + cash) + factures = total global des courses
+function totauxVueGlobale(lignes) {
+  let uberApp = 0, uberCash = 0, factures = 0, nbUberSansPrix = 0;
+  (lignes || []).forEach(l => {
+    if (!l || estPriveOuGarage(l.type_course)) return;
+    try { if (estLigneRelais(l)) return; } catch (_) {}
+    if (l.mode_paiement === "uber_cash") { uberCash += montantUberCash(l) || 0; return; }
+    if (l.mode_paiement === "facture") {
+      const pf = frNum(l.prix_taximetre), sf = frNum(l.sommes_percues);
+      factures += (pf !== null && pf > 0) ? pf : ((sf !== null && sf > 0) ? sf : 0);
+      return;
+    }
+    if (estUberApp(l)) { const m = montantUberApp(l); if (m !== null) uberApp += m; else nbUberSansPrix++; }
+  });
+  const r2 = v => Math.round(v * 100) / 100;
+  const recette = r2(recetteDesLignes(lignes));
+  const uber = r2(uberApp + uberCash);
+  return { recette, uberApp: r2(uberApp), uberCash: r2(uberCash), uber, factures: r2(factures), nbUberSansPrix, total: r2(recette + uber + factures) };
+}
+function htmlVueGlobale(lignes, classe) {
+  const v = totauxVueGlobale(lignes);
+  return `<div class="${classe || "caisse-ligne"} vue-globale-uber"><span>🚕 Uber (en ligne ${esc(formatEuro(v.uberApp))} + cash ${esc(formatEuro(v.uberCash))})${v.nbUberSansPrix ? " · " + v.nbUberSansPrix + " sans prix" : ""} — hors recette</span><b>${esc(formatEuro(v.uber))}</b></div>
+    <div class="${classe || "caisse-ligne"} vue-globale-total"><span>📊 Total global des courses (recette + Uber + factures)</span><b>${esc(formatEuro(v.total))}</b></div>`;
+}
 // Motifs « pas de prix » qui passent quand même par un paiement (facture, Uber, annulée) → mode obligatoire
 const MOTIFS_AVEC_PAIEMENT = { "Forfait école": "facture", "Contrat / sur facture": "facture", "Uber (prix dans l'app)": "uber", "Course annulée / client absent": "annulee" };
 const PAYEURS_PAR_DEFAUT = ["Taxi Vert", "Assurance", "École", "Mutuelle", "CPAS", "Entreprise"];
@@ -599,6 +635,55 @@ async function cloturerLigneEnBase(ligne, manques) {
 // 🚕 Uber choisi sans « Uber cash » : le chauffeur doit dire s'il a reçu du cash (réponse gardée sur le téléphone)
 const CLE_UBER_CONFIRME = "taxiwal_uber_app_confirme";
 function uberAppConfirme(id) { try { return !!(JSON.parse(localStorage.getItem(CLE_UBER_CONFIRME) || "{}")[String(id)]); } catch (_) { return false; } }
+// 🚕 Uber payé dans l'app : petite fenêtre « Prix de la course » (facultative, bouton « Plus tard »)
+// Le montant va dans « Prix taximètre » (jamais dans la recette). Une seule demande par course et par ouverture.
+const demandesPrixUberFaites = new Set();
+function demanderPrixUberApp(ligne, inputPrix) {
+  try {
+    if (!ligne || !ligne.id || ligne.cloturee || estPriveOuGarage(ligne.type_course)) return;
+    if (feuilleActuelle && feuilleActuelle.verrouillee) return;
+    const id = String(ligne.id);
+    if (demandesPrixUberFaites.has(id) || document.getElementById("fenetre-prix-uber")) return;
+    demandesPrixUberFaites.add(id);
+    const fond = document.createElement("div");
+    fond.id = "fenetre-prix-uber";
+    fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+    const actuel = frNum(ligne.prix_taximetre);
+    fond.innerHTML = `<div style="background:#fff; border-radius:14px; padding:18px; max-width:360px; width:100%; box-shadow:0 8px 30px rgba(0,0,0,.3);">
+      <div style="font-weight:800; font-size:1.1rem; margin-bottom:6px;">🚕 Prix de la course Uber (payé en ligne)</div>
+      <div style="font-size:.85rem; color:#555; margin-bottom:10px;">Facultatif — ne compte pas dans la recette.</div>
+      <div style="display:flex; align-items:center; gap:8px;"><input type="text" inputmode="decimal" class="fpu-montant" placeholder="ex : 18,50" style="flex:1; font-size:1.3rem; padding:10px; border:2px solid #999; border-radius:10px;"><b style="font-size:1.2rem;">€</b></div>
+      <div style="display:flex; gap:8px; margin-top:14px;">
+        <button type="button" class="fpu-plus-tard" style="flex:1; padding:14px; font-size:1rem; font-weight:700; border-radius:10px; border:2px solid #999; background:#fff;">Plus tard</button>
+        <button type="button" class="fpu-ok" style="flex:1; padding:14px; font-size:1rem; font-weight:800; border-radius:10px; border:2px solid #1a7f37; background:#1a7f37; color:#fff;">Enregistrer</button>
+      </div></div>`;
+    const champ = fond.querySelector(".fpu-montant");
+    if (actuel !== null && actuel > 0) champ.value = String(actuel).replace(".", ",");
+    const fermer = () => { try { fond.remove(); } catch (_) {} };
+    fond.addEventListener("click", (ev) => { ev.stopPropagation(); if (ev.target === fond) fermer(); });
+    fond.querySelector(".fpu-plus-tard").addEventListener("click", (ev) => { ev.stopPropagation(); fermer(); });
+    fond.querySelector(".fpu-ok").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const v = frNum(champ.value);
+      fermer();
+      if (v === null || !(v > 0) || !inputPrix) return;
+      // On attend que le mode « uber » soit enregistré (deux écritures, jamais en même temps)
+      const debut = Date.now();
+      (function attendre() {
+        const pret = ligne.mode_paiement === "uber" || ligne.type_course === "uber";
+        if (pret || Date.now() - debut > 20000) {
+          inputPrix.value = String(v);
+          inputPrix.dispatchEvent(new Event("change"));
+          try { planifierCaisse(); } catch (_) {}
+          return;
+        }
+        setTimeout(attendre, 120);
+      })();
+    });
+    document.body.appendChild(fond);
+    setTimeout(() => { try { champ.focus(); } catch (_) {} }, 50);
+  } catch (e) { console.warn("Fenêtre prix Uber :", e); }
+}
 function confirmerUberApp(id) {
   try { const o = JSON.parse(localStorage.getItem(CLE_UBER_CONFIRME) || "{}"); o[String(id)] = Date.now();
     const lim = Date.now() - 7 * 864e5; Object.keys(o).forEach(k => { if (o[k] < lim) delete o[k]; });
@@ -4054,7 +4139,8 @@ function majTotauxFeuilleLocale() {
   const t = totauxLignesLocales(lignesActuelles);
   zone.style.display = (lignesActuelles || []).length ? "" : "none";
   zone.innerHTML = `<div class="rt-ligne"><span>Recette (sommes perçues)</span><b id="rt-recette">${esc(formatEuro(t.recette))}</b></div>
-    <div class="rt-ligne rt-pb"><span>💶 Pourboires${t.nbPourboires ? " · " + t.nbPourboires : ""}<small>non compris dans la recette</small></span><b id="rt-pourboires">${esc(formatEuro(t.pourboires))}</b></div>`;
+    <div class="rt-ligne rt-pb"><span>💶 Pourboires${t.nbPourboires ? " · " + t.nbPourboires : ""}<small>non compris dans la recette</small></span><b id="rt-pourboires">${esc(formatEuro(t.pourboires))}</b></div>`
+    + (() => { try { return htmlVueGlobale(lignesActuelles, "rt-ligne"); } catch (_) { return ""; } })();
   const rp = document.getElementById("resume-pourboires");
   if (rp) rp.textContent = formatEuro(t.pourboires);
 }
@@ -4124,6 +4210,7 @@ async function afficherCaisse() {
   });
   if (nbForfaits) html += `<div class="caisse-ligne"><span>dont forfaits · ${nbForfaits}</span><b>${formatEuro(totalForfaits)}</b></div>`;
   html += `<div class="caisse-ligne caisse-total"><span>Recette (tous paiements, hors Uber et factures)</span><b>${formatEuro(totalGeneral)}</b></div>`;
+  try { html += htmlVueGlobale(lignes, "caisse-ligne"); } catch (e) { console.warn(e); }
   if (totalPourboiresJour > 0) html += `<div class="caisse-ligne caisse-pourboires"><span>💶 Pourboires de cette feuille (non compris dans la recette)</span><b>${formatEuro(totalPourboiresJour)}</b></div>`;
   if (nbAnnulees) html += `<div class="caisse-ligne"><span>❌ Courses annulées (rien encaissé)</span><b>${nbAnnulees}</b></div>`;
   if (sansMode) html += `<div class="caisse-alerte">⚠️ ${sansMode} course(s) sans mode de paiement : choisis Cash, Carte… sinon elles ne comptent pas dans la caisse.</div>`;
@@ -5011,9 +5098,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
     wrapsParChamp["motif_forfait"].style.display = estForfait ? "" : "none";
     // Facture : la case prix reste visible (même en forfait) — facultative, « FACTURE » si vide
     const sansTaxi = feuilleSansTaximetre();
-    wrapsParChamp["prix_taximetre"].style.display = (estUber || estPrive || estAnnulee || (estForfait && !estFacture) || (sansTaxi && !estUberCash && !estFacture)) ? "none" : "";
+    wrapsParChamp["prix_taximetre"].style.display = ((estUber && (estPrive || estAnnulee)) || estPrive || estAnnulee || (estForfait && !estFacture) || (sansTaxi && !estUberCash && !estFacture)) ? "none" : "";
     const labPrix = wrapsParChamp["prix_taximetre"].querySelector("label");
-    if (labPrix) labPrix.textContent = estUberCash ? "💵 Montant reçu en cash (Uber)" : (sansTaxi ? "Montant facturé (€)" : "Prix taximètre (€)");
+    if (labPrix) labPrix.textContent = estUberCash ? "💵 Montant reçu en cash (Uber)" : estUber ? "📱 Prix de la course Uber (payé en ligne, hors recette)" : (sansTaxi ? "Montant facturé (€)" : "Prix taximètre (€)");
     wrapsParChamp["motif_sans_prix"].style.display = (estUber || estUberCash || estAnnulee || estForfait) ? "none" : "";
     // Facture : on peut noter le montant facturé (imprimé « 170 » puis « FACTURE Taxi Vert n° 123 »)
     const ancienMontantFacture = estFacture && frNum(ligne.sommes_percues) !== null && frNum(ligne.sommes_percues) > 0;
@@ -5228,7 +5315,9 @@ function construireLigneHtml(ligne, numeroAffiche) {
             rafraichirPuces();
             return;
           }
+          const etaitUber = (ligne.mode_paiement || "") === "uber";
           choisirMode(b.cle);
+          if (b.cle === "uber" && !etaitUber) demanderPrixUberApp(ligne, inputsParChamp["prix_taximetre"]);
         });
         bouton.dataset.mode = b.cle;
         if (b.cle === "autre") bouton.classList.add("bouton-autre");
@@ -5398,6 +5487,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
     }
     question.querySelector('[data-r="app"]').addEventListener("click", (ev) => {
       ev.stopPropagation(); confirmerUberApp(ligne.id); maj();
+      demanderPrixUberApp(ligne, inputPrix);
       if (!ligne.cloturee) { lignesAClotureAuto.add(String(ligne.id)); planifierClotureAuto(ligne.id); }
     });
     question.querySelector('[data-r="cash"]').addEventListener("click", (ev) => { ev.stopPropagation(); activerUberCash(); });
@@ -6265,6 +6355,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             const m = montantUberCash(l);
             return (m !== null ? esc(String(m)) : "Uber") + `<br><span style="font-size:8px; font-weight:bold; white-space:nowrap;">${mentionPrixUberImp(l)}</span>`;
           }
+          if (estUber && montantUberApp(l) !== null) return `<span style="font-size:8px; font-weight:bold;">Uber en ligne :</span><br>${esc(formatEuro(montantUberApp(l)))}`;
           if (estUber) return "Uber";
           if (sansTaxiImp && l.id) {
             const pST = l.mode_paiement === "facture" ? frNum(l.prix_taximetre) : null;
@@ -6339,6 +6430,8 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
         <tr><td>Recette (somme des sommes perçues) : <b>${esc(formatEuro(recetteDesLignes(lignesF)))}</b></td>
             <td>Total pourboires (hors recette) : <b>${esc(formatEuro(totalPbF))}</b></td></tr>
         <tr><td></td><td>Uber reçu en cash (hors recette) : <b>${esc(formatEuro(Math.round((lignesF || []).reduce((t, l) => t + ((l && l.mode_paiement === "uber_cash" && !estPriveOuGarage(l.type_course)) ? (montantUberCash(l) || 0) : 0), 0) * 100) / 100))}</b></td></tr>
+        ${(() => { const v = totauxVueGlobale(lignesF); return `<tr><td>Uber (en ligne + cash) : <b>${esc(formatEuro(v.uber))}</b> — hors recette</td>
+            <td>Total global des courses (recette + Uber + factures) : <b>${esc(formatEuro(v.total))}</b></td></tr>`; })()}
       </table>
     `);
   }
