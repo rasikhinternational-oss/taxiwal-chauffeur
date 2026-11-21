@@ -216,7 +216,10 @@
         var sb0 = client();
         try {
           var r0 = await sb0.from("courses").select("id, accepte_chauffeur").eq("id", c.id).maybeSingle();
-          if (r0 && r0.data) return !!r0.data.accepte_chauffeur;
+          if (r0 && r0.data && r0.data.accepte_chauffeur) return true;
+          // Écriture mise en file d'attente (réseau faible) : considérée comme faite, comme dans l'app
+          try { if (window.TWHL && TWHL.enAttentePour && TWHL.enAttentePour("courses", c.id)) return true; } catch (e) {}
+          if (r0 && r0.data) return false;
         } catch (e) {}
         return true;
       }
@@ -230,6 +233,9 @@
         res = await sb.from("courses").update(payload).eq("id", c.id).select("id");
       }
       if (res && res.error) { log("acceptation refusée", res.error); return false; }
+      // TWHL.ecrire (feuille de route) ne renvoie pas d'erreur quand le serveur refuse une course :
+      // il la garde sur le téléphone (refusee:true) et renvoie la donnée « optimiste ».
+      if (res && res.refusee) { log("acceptation refusée par le serveur", res); return false; }
       if (!res || !res.data || !res.data.length) { try { alert("❌ Course retirée par la centrale : elle n'est plus à toi."); } catch (e) {} return false; }
       return true;
     } catch (e) { log("accepter", e); return false; }
@@ -287,7 +293,8 @@
       abonner();
       var r = await sb.from("courses").select(CHAMPS).eq("chauffeur_id", uid).eq("statut", "assignee").order("date_heure", { ascending: true });
       if (!r || r.error || !Array.isArray(r.data)) return;
-      enAttente = r.data.filter(function (c) { return !c.accepte_chauffeur; });
+      var limiteAncienne = Date.now() - 6 * 3600 * 1000; // ignore les vieilles courses (> 6 h passées)
+      enAttente = r.data.filter(function (c) { var t = new Date(c.date_heure).getTime(); return !c.accepte_chauffeur && (!isFinite(t) || t >= limiteAncienne); });
       acceptees = r.data.filter(function (c) { return !!c.accepte_chauffeur; });
       majBandeau();
 
