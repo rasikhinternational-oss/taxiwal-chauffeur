@@ -2312,7 +2312,8 @@ function jouerSonAlerte() {
 }
 
 function notifierNouvelleCourse(course) {
-  jouerSonAlerte();
+  // L'alerte plein écran (course-alerte.js) joue déjà son carillon pour une course à accepter : pas de double son.
+  if (!(window.__courseAlerteChargee && course && course.statut === "assignee" && !course.accepte_chauffeur)) jouerSonAlerte();
   if ("Notification" in window && Notification.permission === "granted") {
     new Notification("🚕 Nouvelle course Taxi Wal — vérifie vite !", {
       body: `${course.adresse_depart} → ${course.adresse_arrivee}` + (() => {

@@ -4556,7 +4556,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
         }
       }
       let valeur = estCheckbox ? e.target.checked : (e.target.value === "" ? null : e.target.value);
-      if (type === "number" && typeof valeur === "string") valeur = valeur.replace(",", ".");
+      if (type === "number" && typeof valeur === "string") valeur = valeur.replace(/[\s\u00a0€]/g, "").replace(",", ".");
       // Contrôle à la saisie : index qui recule, débarquement = embarquement, heures incohérentes → simple avertissement (on enregistre quand même)
       if (CHAMPS_INDEX.includes(champ) || champ === "embarquement_heure" || champ === "debarquement_heure") {
         const nouveaux = nouveauxProblemesSaisie(lignesActuelles, feuilleActuelle, ligne, champ, valeur);
@@ -4818,7 +4818,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   let pbAuto = false;   // pourboire pré-rempli automatiquement (montant reçu − sommes perçues)
   let recuTape = false; // le montant reçu a été TAPÉ (un billet 10/20/50/100 = monnaie à rendre, pas de pré-remplissage)
   async function enregistrerPourboire() {
-    const brut = String(inputPb.value || "").trim().replace(",", ".");
+    const brut = String(inputPb.value || "").replace(/[\s\u00a0€]/g, "").replace(",", ".");
     const v = brut === "" ? null : Number(brut);
     const ancien = (ligne.pourboire == null || ligne.pourboire === "") ? null : Number(ligne.pourboire);
     if (v !== null && (!isFinite(v) || v < 0)) {

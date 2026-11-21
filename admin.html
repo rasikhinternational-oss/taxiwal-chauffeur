@@ -3635,7 +3635,7 @@ document.getElementById("btn-assigner-groupe").addEventListener("click", async (
   btn.disabled = true; btn.textContent = "Assignation en cours…";
   const ids = Array.from(coursesSelectionnees);
   const { error } = await supabase.from("courses")
-    .update({ chauffeur_id: chauffeurId, statut: "assignee", accepte_chauffeur: false })
+    .update({ chauffeur_id: chauffeurId, statut: "assignee", accepte_chauffeur: false, accepte_a: null })
     .in("id", ids);
   btn.disabled = false; btn.textContent = "Assigner";
   if (error) { alert("Erreur : " + error.message); return; }
@@ -6388,7 +6388,7 @@ function construireCarteAdmin(course) {
       blocRetour.appendChild(selR);
       selectAvecEnregistrer(selR, async (valeur) => {
         const id = valeur || null;
-        const maj = { chauffeur_id: id, statut: id ? "assignee" : (retour.statut === "assignee" ? "confirmee" : retour.statut), accepte_chauffeur: false };
+        const maj = { chauffeur_id: id, statut: id ? "assignee" : (retour.statut === "assignee" ? "confirmee" : retour.statut), accepte_chauffeur: false, accepte_a: null };
         const veh = id ? vehiculeDuJourAdmin(id, retour.date_heure) : null;
         if (veh) maj.vehicule_id = veh.id; else if (!id) maj.vehicule_id = null;
         if (id && retour.origine === "client" && !retour.acompte_paye && !retour.sans_acompte_autorise && !course.acompte_paye) {
