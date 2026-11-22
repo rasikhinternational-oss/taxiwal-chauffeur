@@ -14633,7 +14633,7 @@ async function chargerControleUber() {
       ? `<span style="color:#1f6b3f; font-weight:800;">✅ Uber éteint confirmé à ${new Date(x.fin.uber_eteint_a).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" })}</span>`
       : `<span style="color:#b3141b; font-weight:800;">🔴 Uber éteint non confirmé</span>`;
     const capt = x.captures.length
-      ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">${x.captures.map(c => urls[c.chemin] ? `<a href="${esc(urls[c.chemin])}" target="_blank" rel="noopener"><img src="${esc(urls[c.chemin])}" alt="" loading="lazy" style="width:84px; height:84px; object-fit:cover; border-radius:8px; border:1px solid #ccc;"></a>` : "").join("")}</div>`
+      ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">${x.captures.map(c => urls[c.chemin] ? `<span style="display:inline-flex; flex-direction:column; gap:3px; align-items:center;"><img data-cu-cap="${esc(c.id)}" data-cu-chemin="${esc(c.chemin)}" data-cu-url="${esc(urls[c.chemin])}" data-cu-grp="j-${esc(x.ch + "-" + x.d)}" data-cu-titre="${esc((x.nom || "Chauffeur") + " · " + x.d)}" data-cu-verif="${c.verifiee_admin ? 1 : 0}" src="${esc(urls[c.chemin])}" alt="" loading="lazy" style="width:84px; height:84px; object-fit:cover; border-radius:8px; border:1px solid #ccc; cursor:zoom-in;${c.verifiee_admin ? " opacity:.6;" : ""}"><span style="display:flex; gap:3px;"><button type="button" data-cu-verifier="${esc(c.id)}" title="Vérifiée" style="padding:2px 6px; border:none; border-radius:6px; background:${c.verifiee_admin ? "#dcdcda" : "var(--vert)"}; color:#fff; font-size:.75rem;">${c.verifiee_admin ? "✅" : "☑️"}</button><button type="button" data-cu-suppr="${esc(c.id)}" data-cu-chemin="${esc(c.chemin)}" title="Supprimer" style="padding:2px 6px; border:none; border-radius:6px; background:#b3141b; color:#fff; font-size:.75rem;">🗑️</button></span></span>` : "").join("")}</div>`
       : (pasUber ? `<div style="color:#1f6b3f; font-weight:700;">🚫 Pas d'Uber ce jour-là (déclaré par le chauffeur)</div>`
         : `<div style="color:#b3141b; font-weight:800;">📸 Capture manquante${nbUber ? " (" + nbUber + " course(s) Uber sur la feuille)" : ""}</div>`);
     const titreJour = x.d !== jour ? `<h3 style="margin:16px 0 6px; font-size:1rem;">${new Date(x.d + "T12:00:00").toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "2-digit" })}</h3>` : "";
@@ -14845,11 +14845,11 @@ async function majBoutonCapturesUber() {
   const b = document.getElementById("btn-captures-uber-accueil");
   if (!b) return;
   try {
-    let q = supabase.from("captures_uber").select("id", { count: "exact", head: true });
     const vu = dateCapturesVues();
-    if (vu) q = q.gt("ajoutee_le", vu);
-    else q = q.gte("ajoutee_le", new Date(Date.now() - 7 * 864e5).toISOString());
-    const { count, error } = await q;
+    const fq = () => { let q = supabase.from("captures_uber").select("id", { count: "exact", head: true });
+      return vu ? q.gt("ajoutee_le", vu) : q.gte("ajoutee_le", new Date(Date.now() - 7 * 864e5).toISOString()); };
+    let { count, error } = await fq().or("verifiee_admin.is.null,verifiee_admin.eq.false");
+    if (error) ({ count, error } = await fq());
     if (error) { b.style.display = "none"; return; }
     const n = count || 0;
     b.style.display = "";
@@ -14905,10 +14905,11 @@ async function afficherDernieresCapturesUber(depuis) {
   if (!z) { z = document.createElement("div"); z.id = "cu-recentes"; z.style.cssText = "margin-bottom:12px;"; sec.insertBefore(z, document.getElementById("cu-liste")); }
   z.innerHTML = "Chargement des dernières captures…";
   try {
-    const { data, error } = await supabase.from("captures_uber").select("*, profils:chauffeur_id(nom)").order("ajoutee_le", { ascending: false }).limit(30);
+    let { data, error } = await supabase.from("captures_uber").select("*, profils:chauffeur_id(nom)").or("verifiee_admin.is.null,verifiee_admin.eq.false").order("ajoutee_le", { ascending: false }).limit(30);
+    if (error) ({ data, error } = await supabase.from("captures_uber").select("*, profils:chauffeur_id(nom)").order("ajoutee_le", { ascending: false }).limit(30));
     if (error) { z.innerHTML = ""; return; }
     const caps = data || [];
-    if (!caps.length) { z.innerHTML = '<p style="color:var(--gris);">Aucune capture Uber reçue.</p>'; return; }
+    if (!caps.length) { z.innerHTML = '<p style="color:var(--gris);">Aucune capture Uber à vérifier.</p>'; return; }
     const urls = {};
     const { data: s } = await supabase.storage.from("captures-uber").createSignedUrls(caps.map(c => c.chemin), 3600);
     (s || []).forEach(u => { if (u.signedUrl) urls[u.path] = u.signedUrl; });
@@ -14917,13 +14918,119 @@ async function afficherDernieresCapturesUber(depuis) {
       const nouv = depuis ? (c.ajoutee_le > depuis) : false;
       const u = urls[c.chemin];
       return `<div class="cb-ligne" style="cursor:default; display:flex; gap:10px; align-items:center;${nouv ? " border:2px solid #ff8c00;" : ""}">
-        ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" loading="lazy" style="width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid #ccc;"></a>` : `<div style="width:72px; height:72px; background:#eee; border-radius:8px;"></div>`}
+        ${u ? `<img data-cu-cap="${esc(c.id)}" data-cu-chemin="${esc(c.chemin)}" data-cu-url="${esc(u)}" data-cu-grp="recentes" data-cu-titre="${esc(((c.profils && c.profils.nom) || "Chauffeur") + " · " + c.date_service)}" data-cu-verif="0" src="${esc(u)}" alt="" loading="lazy" style="width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid #ccc; cursor:zoom-in;">` : `<div style="width:72px; height:72px; background:#eee; border-radius:8px;"></div>`}
         <div style="font-size:.9rem;"><b>👤 ${esc((c.profils && c.profils.nom) || "Chauffeur")}</b>${nouv ? ' <span style="background:#ff8c00; color:#fff; border-radius:6px; padding:1px 6px; font-size:.75rem;">nouvelle</span>' : ""}<br>
         Service du ${esc(new Date(c.date_service + "T12:00:00").toLocaleDateString("fr-BE"))}<br>
-        Envoyée le ${esc(c.ajoutee_le ? hb(c.ajoutee_le) : "—")}</div></div>`;
+        Envoyée le ${esc(c.ajoutee_le ? hb(c.ajoutee_le) : "—")}</div>
+        <div style="margin-left:auto; display:flex; flex-direction:column; gap:4px;"><button type="button" data-cu-verifier="${esc(c.id)}" style="padding:6px 8px; border:none; border-radius:8px; background:var(--vert); color:#fff; font-weight:700;">☑️ Vérifiée</button><button type="button" data-cu-suppr="${esc(c.id)}" data-cu-chemin="${esc(c.chemin)}" style="padding:6px 8px; border:none; border-radius:8px; background:#b3141b; color:#fff; font-weight:700;">🗑️ Supprimer</button></div></div>`;
     }).join("");
   } catch (e) { z.innerHTML = ""; }
 }
+</script>
+<script>
+// ================== 📸 CAPTURES UBER : visionneuse intégrée + ✅ vérifiée + 🗑️ suppression ==================
+(function () {
+  let cuListe = [], cuIdx = 0, cuFond = null;
+  const confirmerCU = async (m, ok) => { try { if (typeof confirmerDansPageFA === "function") return await confirmerDansPageFA(m, ok, "Annuler", "#b3141b"); } catch (_) {} return confirm(m); };
+  const rafraichir = () => { try { chargerControleUber(); } catch (_) {} try { afficherDernieresCapturesUber(); } catch (_) {} try { majBoutonCapturesUber(); } catch (_) {} };
+  function fermer() { if (cuFond) { cuFond.remove(); cuFond = null; document.body.style.overflow = ""; } }
+  function afficher() {
+    if (!cuFond || !cuListe.length) return fermer();
+    const c = cuListe[cuIdx];
+    const img = cuFond.querySelector(".cu-v-img");
+    img.classList.remove("zoom"); img.style.maxWidth = "100%"; img.style.maxHeight = "100%"; img.style.cursor = "zoom-in";
+    img.src = c.url;
+    cuFond.querySelector(".cu-v-titre").textContent = c.titre + (cuListe.length > 1 ? "  (" + (cuIdx + 1) + "/" + cuListe.length + ")" : "");
+    cuFond.querySelectorAll(".cu-v-nav").forEach(b => { b.style.visibility = cuListe.length > 1 ? "visible" : "hidden"; });
+    const bv = cuFond.querySelector(".cu-v-verif"); bv.dataset.cuVerifier = c.id; bv.textContent = c.verif ? "✅ Vérifiée" : "☑️ Marquer vérifiée";
+    const bs = cuFond.querySelector(".cu-v-suppr"); bs.dataset.cuSuppr = c.id; bs.dataset.cuChemin = c.chemin;
+  }
+  function ouvrir(imgEl) {
+    try {
+      const grp = imgEl.dataset.cuGrp, vus = new Set();
+      cuListe = [...document.querySelectorAll('img[data-cu-cap][data-cu-grp="' + (window.CSS && CSS.escape ? CSS.escape(grp) : grp) + '"]')]
+        .filter(e => !vus.has(e.dataset.cuCap) && vus.add(e.dataset.cuCap))
+        .map(e => ({ id: e.dataset.cuCap, chemin: e.dataset.cuChemin, url: e.dataset.cuUrl, titre: e.dataset.cuTitre || "Capture Uber", verif: e.dataset.cuVerif === "1" }));
+      cuIdx = Math.max(0, cuListe.findIndex(x => x.id === imgEl.dataset.cuCap));
+      if (!cuFond) {
+        cuFond = document.createElement("div");
+        cuFond.style.cssText = "position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,.94); display:flex; flex-direction:column; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);";
+        const bt = "border:none; border-radius:10px; padding:10px 14px; font-weight:800; font-size:1rem; cursor:pointer;";
+        cuFond.innerHTML = `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; color:#fff;">
+          <span class="cu-v-titre" style="flex:1; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+          <button type="button" class="cu-v-fermer" aria-label="Fermer" style="${bt} background:#fff; color:#111;">✕</button></div>
+          <div class="cu-v-zone" style="flex:1; overflow:auto; display:flex; align-items:center; justify-content:center; touch-action:pinch-zoom pan-x pan-y; -webkit-overflow-scrolling:touch;">
+          <img class="cu-v-img" alt="" style="max-width:100%; max-height:100%; object-fit:contain; cursor:zoom-in;"></div>
+          <div style="display:flex; gap:8px; padding:10px; justify-content:center; flex-wrap:wrap;">
+          <button type="button" class="cu-v-nav cu-v-prec" style="${bt} background:#444; color:#fff;">◀︎ Précédente</button>
+          <button type="button" class="cu-v-verif" style="${bt} background:var(--vert); color:#fff;"></button>
+          <button type="button" class="cu-v-suppr" style="${bt} background:#b3141b; color:#fff;">🗑️ Supprimer</button>
+          <button type="button" class="cu-v-nav cu-v-suiv" style="${bt} background:#444; color:#fff;">Suivante ▶︎</button></div>`;
+        cuFond.querySelector(".cu-v-fermer").addEventListener("click", fermer);
+        cuFond.querySelector(".cu-v-prec").addEventListener("click", () => { cuIdx = (cuIdx - 1 + cuListe.length) % cuListe.length; afficher(); });
+        cuFond.querySelector(".cu-v-suiv").addEventListener("click", () => { cuIdx = (cuIdx + 1) % cuListe.length; afficher(); });
+        const im = cuFond.querySelector(".cu-v-img");
+        im.addEventListener("click", () => { const z = im.classList.toggle("zoom"); im.style.maxWidth = z ? "none" : "100%"; im.style.maxHeight = z ? "none" : "100%"; im.style.cursor = z ? "zoom-out" : "zoom-in"; });
+        cuFond.querySelector(".cu-v-zone").addEventListener("click", e => { if (e.target.classList.contains("cu-v-zone")) fermer(); });
+        document.body.appendChild(cuFond);
+        document.body.style.overflow = "hidden";
+      }
+      afficher();
+    } catch (e) { console.error(e); }
+  }
+  async function supprimer(id, chemin) {
+    try {
+      if (!(await confirmerCU("Supprimer définitivement cette capture Uber ?\n(fichier + enregistrement)", "🗑️ Supprimer"))) return;
+      if (chemin) { const r = await supabase.storage.from("captures-uber").remove([chemin]); if (r.error) throw r.error; }
+      const { error } = await supabase.from("captures_uber").delete().eq("id", id);
+      if (error) throw error;
+      cuListe = cuListe.filter(x => x.id !== id);
+      if (cuFond) { if (!cuListe.length) fermer(); else { cuIdx = Math.min(cuIdx, cuListe.length - 1); afficher(); } }
+      rafraichir();
+    } catch (e) { alert("Suppression impossible : " + (e && e.message || e)); }
+  }
+  async function verifier(id) {
+    try {
+      const c = cuListe.find(x => x.id === id), el = document.querySelector('img[data-cu-cap="' + id + '"]');
+      const deja = c ? c.verif : (el && el.dataset.cuVerif === "1");
+      const user = (await supabase.auth.getUser()).data?.user;
+      const maj = deja ? { verifiee_admin: false, verifiee_admin_a: null, verifiee_admin_par: null }
+        : { verifiee_admin: true, verifiee_admin_a: new Date().toISOString(), verifiee_admin_par: user?.id || null };
+      const { error } = await supabase.from("captures_uber").update(maj).eq("id", id);
+      if (error) { alert("« Vérifiée » pas encore installé en base (colonne manquante). " + error.message); return; }
+      if (c) c.verif = !deja;
+      document.querySelectorAll('img[data-cu-cap="' + id + '"]').forEach(e => { e.dataset.cuVerif = deja ? "0" : "1"; });
+      if (cuFond) afficher();
+      if (!deja && await confirmerCU("Capture marquée ✅ vérifiée.\nLa supprimer maintenant ?", "🗑️ Supprimer")) { const ch = c ? c.chemin : el && el.dataset.cuChemin; await supprimerSansConfirm(id, ch); return; }
+      rafraichir();
+    } catch (e) { alert("Erreur : " + (e && e.message || e)); }
+  }
+  async function supprimerSansConfirm(id, chemin) {
+    try {
+      if (chemin) { const r = await supabase.storage.from("captures-uber").remove([chemin]); if (r.error) throw r.error; }
+      const { error } = await supabase.from("captures_uber").delete().eq("id", id); if (error) throw error;
+      cuListe = cuListe.filter(x => x.id !== id);
+      if (cuFond) { if (!cuListe.length) fermer(); else { cuIdx = Math.min(cuIdx, cuListe.length - 1); afficher(); } }
+    } catch (e) { alert("Suppression impossible : " + (e && e.message || e)); }
+    rafraichir();
+  }
+  document.addEventListener("click", e => {
+    try {
+      const t = e.target.closest && e.target.closest("[data-cu-cap],[data-cu-suppr],[data-cu-verifier]");
+      if (!t) return;
+      e.preventDefault(); e.stopPropagation();
+      if (t.dataset.cuSuppr) supprimer(t.dataset.cuSuppr, t.dataset.cuChemin);
+      else if (t.dataset.cuVerifier) verifier(t.dataset.cuVerifier);
+      else if (t.tagName === "IMG" && !t.classList.contains("cu-v-img")) ouvrir(t);
+    } catch (_) {}
+  }, true);
+  document.addEventListener("keydown", e => {
+    if (!cuFond || document.querySelector(".modale-confirmer-fa")) return;
+    if (e.key === "Escape") fermer();
+    else if (e.key === "ArrowLeft" && cuListe.length > 1) cuFond.querySelector(".cu-v-prec").click();
+    else if (e.key === "ArrowRight" && cuListe.length > 1) cuFond.querySelector(".cu-v-suiv").click();
+  });
+})();
 </script>
 </body>
 </html>
