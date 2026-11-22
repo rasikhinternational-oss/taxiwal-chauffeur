@@ -4732,6 +4732,35 @@ function construireLigneHtml(ligne, numeroAffiche) {
   });
   wrapsParChamp["debarquement_lieu"].insertAdjacentElement("afterend", editeurArrets);
 
+  // ⇅ Inverser embarquement / débarquement : même chemin que la saisie (événement change → TWHL.ecrire)
+  try {
+    const inE = inputsParChamp["embarquement_lieu"], inD = inputsParChamp["debarquement_lieu"], wrapD = wrapsParChamp["debarquement_lieu"];
+    if (inE && inD && wrapD) {
+      const btnInv = document.createElement("button");
+      btnInv.type = "button";
+      btnInv.className = "tw-inv";
+      btnInv.textContent = "⇅";
+      btnInv.title = "Inverser départ et arrivée";
+      btnInv.setAttribute("aria-label", "Inverser départ et arrivée");
+      btnInv.style.cssText = "float:right; width:44px; height:44px; min-width:44px; padding:0; margin:0 0 4px 8px; border-radius:50%; border:1px solid #cfcfcd; background:#fff; color:#111; font-size:1.3rem; font-weight:700; line-height:1; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.12);";
+      btnInv.disabled = !!ligneVerrouillee || inE.disabled || inD.disabled;
+      if (btnInv.disabled) btnInv.style.opacity = ".4";
+      btnInv.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        try {
+          if (btnInv.disabled || inE.disabled || inD.disabled || feuilleActuelle.verrouillee || ligne.cloturee) return;
+          const vE = inE.value, vD = inD.value;
+          if (vE === vD) return;
+          inE.value = vD; inD.value = vE;
+          // Mémoire locale mise à jour avant l'envoi : les deux enregistrements partent avec le même état (pas d'écrasement croisé)
+          ligne.embarquement_lieu = vD === "" ? null : vD; ligne.debarquement_lieu = vE === "" ? null : vE;
+          [inE, inD].forEach(el => el.dispatchEvent(new Event("change", { bubbles: true })));
+        } catch (e) { console.warn("Inversion impossible", e); }
+      });
+      wrapD.insertBefore(btnInv, wrapD.firstChild);
+    }
+  } catch (e) { console.warn(e); }
+
   const mentionAnnulee = document.createElement("div");
   mentionAnnulee.className = "mention-uber";
   mentionAnnulee.textContent = "❌ Course annulée : rien n'est encaissé, elle ne compte pas dans la caisse. Sur la feuille imprimée, « ANNULÉE » est marqué dans Sommes perçues. Indique la raison dans la note (client absent, annulé sur place…).";

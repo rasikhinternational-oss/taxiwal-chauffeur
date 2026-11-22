@@ -2081,7 +2081,7 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .statut-label.terminee{ background:rgba(31,138,76,.2); color:var(--vert); }
   .statut-label.annulee{ background:#dcdcda; color:var(--gris); }
   .etat-resa{ margin:8px 0; border-radius:10px; padding:10px 12px; font-size:.88rem; line-height:1.4; border:2px solid; }
-  .etat-resa b{ display:block; font-size:.95rem; }
+  .etat-resa b{ display:block; font-size:1.05rem; }
   .etat-resa.attente{ background:#fff4e5; border-color:#e8912d; color:#6b3d00; }
   .etat-resa.ok{ background:#e8f6ee; border-color:#1f8a4c; color:#145c33; }
   .etat-resa.annulee{ background:#efefed; border-color:#9a9a98; color:#555; }
@@ -2163,6 +2163,14 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
     display:inline-block; padding:2px 10px; border-radius:20px; font-size:.7rem; font-weight:700;
     background:linear-gradient(90deg, var(--rouge), var(--vert)); color:#fff; margin-bottom:4px;
   }
+  .tw-inv-wrap{ display:flex; justify-content:flex-end; margin:-4px 4px -10px; position:relative; z-index:3; pointer-events:none; }
+  button.tw-inv{ pointer-events:auto; width:44px !important; height:44px !important; min-width:44px; flex:0 0 44px; padding:0 !important; margin:0 !important; border-radius:50% !important; border:1px solid #cfcfcd; background:#fff; color:#111; font-size:1.3rem; font-weight:700; line-height:1; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.12); cursor:pointer; }
+  button.tw-inv:active{ transform:scale(.94); }
+  button.tw-inv:disabled{ opacity:.4; cursor:not-allowed; }
+  .qr-trajet{ position:relative; }
+  .qr-trajet .qr-ligne{ padding-right:62px; }
+  .qr-trajet .tw-inv{ position:absolute; right:10px; top:50%; transform:translateY(-50%); z-index:3; }
+  .qr-trajet .tw-inv:active{ transform:translateY(-50%) scale(.94); }
   .rr-rangee{ display:flex; gap:6px; margin-top:6px; }
   .rr-rangee > button{ flex:1 1 0; min-width:0; width:auto; margin:0; padding:10px 4px; border-radius:10px; border:1px solid #cfcfcd; background:#fff; color:#111; font-weight:700; font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
   .rr-rangee > button.rr-puce{ border-color:#3b82c4; background:#eef4fb; color:#1d4f86; border-radius:999px; }
@@ -2447,6 +2455,59 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .tw-dialogue-actions .tw-d-annuler{ background:#fff; color:#111; border:1px solid #cfcfcd; }
   nav.onglets button, .rz-vehicule, .choix-paiement button, .bloc-paiement, .course{ overflow-wrap:anywhere; }
   #toast-client{ position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:#1c1c1c; color:#fff; padding:12px 16px; border-radius:12px; font-size:.9rem; z-index:120; max-width:calc(100% - 32px); box-shadow:0 6px 18px rgba(0,0,0,.25); display:none; }
+
+  /* ===== Réservation rapide ===== */
+  #section-reserver.qr-on > *:not(.badge-marque):not(#qr-zone){ display:none !important; }
+  #qr-zone{ margin:4px 0 18px; }
+  .qr-carte{ background:#fff; border-radius:18px; box-shadow:0 6px 24px rgba(0,0,0,.08); border:1px solid #ececea; padding:20px 16px 18px; }
+  .qr-titre{ font-size:1.6rem; font-weight:800; color:#111; margin:0 0 14px; letter-spacing:-.01em; }
+  .qr-trajet{ border:1px solid #e2e2e0; border-radius:14px; overflow:visible; }
+  .qr-ligne{ display:flex; align-items:center; gap:10px; padding:0 12px; min-height:56px; position:relative; }
+  .qr-ligne + .qr-ligne{ border-top:1px solid #ececea; }
+  .qr-point{ width:12px; height:12px; flex-shrink:0; border-radius:50%; background:#111; }
+  .qr-point.b{ border-radius:2px; background:var(--rouge); }
+  .qr-ligne .champ-adresse-rr{ flex:1; min-width:0; }
+  .qr-ligne input{ width:100%; border:none; margin:0; padding:16px 0; font-size:17px; background:transparent; color:#111; outline:none; box-shadow:none; }
+  .qr-pos{ width:auto !important; min-height:48px; padding:0 12px !important; margin:8px 0 0 !important; background:#f3f3f1 !important; color:#111 !important; border-radius:24px !important; font-size:16px !important; font-weight:600; }
+  .qr-bloc{ margin-top:18px; }
+  .qr-label{ font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--gris); margin-bottom:8px; }
+  .qr-puces{ display:flex; gap:8px; }
+  .qr-puces button{ flex:1; width:auto; min-height:48px; padding:0 6px; border-radius:12px; border:1.5px solid #e2e2e0; background:#fff; color:#111; font-size:16px; font-weight:700; }
+  .qr-puces button.actif{ border-color:#111; background:#111; color:#fff; }
+  .qr-date{ width:100%; box-sizing:border-box; min-height:52px; margin:10px 0 0 !important; padding:12px !important; font-size:17px !important; border-radius:12px !important; border:1.5px solid #e2e2e0 !important; background:#fff !important; color:#111 !important; }
+  .qr-pass{ display:flex; align-items:center; justify-content:space-between; border:1.5px solid #e2e2e0; border-radius:12px; padding:4px 6px 4px 14px; font-size:17px; font-weight:600; color:#111; }
+  .qr-pass div{ display:flex; align-items:center; gap:6px; }
+  .qr-pass button{ width:48px; height:48px; padding:0; border-radius:50%; background:#f3f3f1; color:#111; font-size:24px; line-height:1; }
+  .qr-pass output{ min-width:34px; text-align:center; font-size:20px; font-weight:800; }
+  .qr-contact-resume{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:16px; color:#111; }
+  .qr-contact-resume span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qr-lien{ width:auto !important; background:none !important; color:var(--rouge) !important; padding:12px 4px !important; min-height:48px; font-size:16px !important; font-weight:700; text-decoration:underline; }
+  .qr-champ input{ width:100%; box-sizing:border-box; min-height:52px; margin:0 0 4px !important; padding:12px !important; font-size:17px !important; border-radius:12px !important; border:1.5px solid #e2e2e0 !important; background:#fff !important; color:#111 !important; }
+  .qr-champ + .qr-champ{ margin-top:10px; }
+  .qr-err{ color:var(--rouge); font-size:15px; font-weight:600; min-height:0; margin-top:6px; }
+  .qr-err:empty{ display:none; }
+  .qr-invalide{ border-color:var(--rouge) !important; box-shadow:0 0 0 3px rgba(200,30,44,.12) !important; }
+  .qr-envoyer{ margin-top:22px; min-height:60px; font-size:19px !important; font-weight:800 !important; border-radius:14px !important; box-shadow:0 6px 16px rgba(200,30,44,.28); }
+  .qr-envoyer:disabled{ opacity:.6; }
+  .qr-plus{ display:block; width:100% !important; text-align:center; margin-top:8px; background:none !important; color:var(--gris) !important; font-size:16px !important; font-weight:600; min-height:48px; text-decoration:underline; }
+  .qr-retour{ display:none; width:100% !important; min-height:52px; margin:0 0 12px; background:#111 !important; color:#fff !important; border-radius:14px !important; font-size:17px !important; font-weight:800; }
+  #section-reserver:not(.qr-on) #qr-zone .qr-carte{ display:none; }
+  #section-reserver:not(.qr-on) #qr-zone .qr-retour{ display:block; }
+  .qr-ok-icone{ width:76px; height:76px; margin:4px auto 10px; border-radius:50%; background:var(--vert); color:#fff; font-size:42px; display:flex; align-items:center; justify-content:center; }
+  .qr-ok-titre{ text-align:center; font-size:1.6rem; font-weight:800; color:#111; }
+  .qr-ok-num{ text-align:center; font-size:16px; color:var(--gris); margin-top:4px; }
+  .qr-ok-num b{ color:#111; font-size:18px; letter-spacing:.03em; }
+  .qr-etat{ margin:18px 0 6px; border-radius:14px; padding:14px; border:2px solid; text-align:center; }
+  .qr-etat b{ display:block; font-size:20px; font-weight:900; letter-spacing:.02em; }
+  .qr-etat small{ display:block; margin-top:6px; font-size:16px; line-height:1.4; }
+  .qr-etat.attente{ background:#fff4e5; border-color:#e8912d; color:#6b3d00; }
+  .qr-etat.ok{ background:#e8f6ee; border-color:#1f8a4c; color:#145c33; }
+  .qr-etat.annulee{ background:#efefed; border-color:#9a9a98; color:#555; }
+  .qr-recap{ margin-top:14px; border:1px solid #ececea; border-radius:14px; }
+  .qr-recap div{ display:flex; gap:10px; padding:12px; font-size:16px; color:#111; line-height:1.35; }
+  .qr-recap div + div{ border-top:1px solid #ececea; }
+  .qr-recap i{ font-style:normal; width:22px; flex-shrink:0; text-align:center; }
+  .qr-secondaire{ margin-top:10px; min-height:52px; background:#fff !important; color:#111 !important; border:1.5px solid #e2e2e0 !important; font-size:17px !important; font-weight:700; border-radius:14px !important; }
 </style>
 <!-- Générateur de QR code (côté navigateur) pour le QR de virement SEPA / EPC -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" crossorigin="anonymous"></script>
@@ -2558,12 +2619,10 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
       </div>
       <div class="favoris-rapides" id="favoris-rapides-depart"></div>
     </div>
+    <div class="tw-inv-wrap"><button type="button" id="rr-inverser" class="tw-inv" aria-label="Inverser départ et arrivée" title="Inverser départ et arrivée">⇅</button></div>
     <div class="champ">
       <label data-i18n="f.arrivee">Adresse d'arrivée</label>
       <div class="champ-adresse-rr"><input type="text" id="input-arrivee" placeholder="Commence à taper : ex. Aéroport de Charleroi" data-i18n-placeholder="f.arrivee.ph"></div>
-      <div class="rr-rangee">
-        <button type="button" id="rr-inverser" data-i18n="f.inverser">⇅ Inverser départ / arrivée</button>
-      </div>
       <div class="favoris-rapides" id="favoris-rapides-arrivee"></div>
       <button type="button" id="btn-gerer-favoris" class="lien-favoris" data-i18n="f.favoris">⭐ Gérer mes adresses favorites</button>
       <div id="panneau-favoris" style="display:none;">
@@ -3240,7 +3299,9 @@ document.querySelectorAll("nav.onglets button").forEach(btn => {
 });
 
 // ---------- RÉSERVER UNE COURSE ----------
-document.getElementById("btn-reserver").addEventListener("click", async () => {
+// Même envoi pour « Demander cette course » et pour la réservation rapide (opts.rapide : pas d'alerte, on renvoie le résultat)
+async function envoyerDemandeCourse(opts) {
+  const rapide = !!(opts && opts.rapide);
   const erreur = document.getElementById("erreur-reservation");
   erreur.textContent = "";
 
@@ -3250,9 +3311,9 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
 
   if (!depart || !arrivee || !date) {
     erreur.textContent = t("resa.errOblig");
-    return;
+    return { ok: false, erreur: erreur.textContent };
   }
-  if (window.validerDemandeClient && !(await window.validerDemandeClient())) return;
+  if (window.validerDemandeClient && !(await window.validerDemandeClient())) return { ok: false, erreur: erreur.textContent };
 
   const { data: { user } } = await supabase.auth.getUser();
   const { data: nouvelleCourse, error } = await supabase.from("courses").insert({
@@ -3280,7 +3341,7 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
     societe_facturation_id: (window.__societeFacturation && window.__societeFacturation()) || null
   }).select("id, numero_reservation, reservation_directe").maybeSingle();
 
-  if (error) { erreur.textContent = t("erreur", { msg: error.message }); return; }
+  if (error) { erreur.textContent = t("erreur", { msg: error.message }); return { ok: false, erreur: erreur.textContent }; }
   const numeroResa = nouvelleCourse && nouvelleCourse.numero_reservation ? nouvelleCourse.numero_reservation : "";
 
   document.getElementById("input-depart").value = "";
@@ -3290,10 +3351,14 @@ document.getElementById("btn-reserver").addEventListener("click", async () => {
   document.getElementById("input-notes").value = "";
   if (window.__svReset) window.__svReset();
   if (window.__socResetResa) window.__socResetResa();
+  if (rapide) { try { chargerMesCourses(); } catch (e) {} return { ok: true, course: nouvelleCourse || {} }; }
   twAlert(t("resa.envoyee") + (numeroResa ? t("resa.numero", { num: numeroResa }) : "") + t(nouvelleCourse && nouvelleCourse.reservation_directe ? "resa.suiteDirecte" : "resa.suite"));
   document.querySelector('[data-onglet="mes-courses"]').click();
   chargerMesCourses();
-});
+  return { ok: true, course: nouvelleCourse || {} };
+}
+window.envoyerDemandeCourse = envoyerDemandeCourse;
+document.getElementById("btn-reserver").addEventListener("click", () => envoyerDemandeCourse());
 
 
 // ================== RÉPONSE DE LA CENTRALE EN PLEIN ÉCRAN ==================
@@ -3959,8 +4024,8 @@ async function construireCarteCourseClient(course) {
 
   div.innerHTML = `
     ${course.numero_reservation ? `<div class="num-resa">${esc(t("num", { n: course.numero_reservation }))}</div>` : ""}
-    <span class="statut-label ${course.statut}">${esc(labelStatut)}</span>
     ${blocEtatReservationHtml(course)}
+    <span class="statut-label ${course.statut}">${esc(labelStatut)}</span>
     <div class="heure">${esc(heure)}</div>
     <div class="trajet">
       <b>${esc(t("card.depart"))}</b> ${esc(course.adresse_depart)}<br>
@@ -4692,6 +4757,15 @@ function libelleAdresse(p) {
   if (p.countrycode && p.countrycode !== "BE" && p.country) morceaux.push(p.country);
   return morceaux.join(", ");
 }
+// ⇅ Inverser deux champs d'adresse (valeurs + événements input/change pour que tous les calculs suivent)
+function twInverserChamps(a, b) {
+  try {
+    if (!a || !b || a.disabled || b.disabled) return;
+    const v = a.value; a.value = b.value; b.value = v;
+    [a, b].forEach(el => { try { el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) { console.warn(e); } });
+  } catch (e) { console.warn("Inversion impossible", e); }
+}
+
 function attacherSuggestionsAdresse(input, conteneur) {
   input.autocomplete = "off";
   input.setAttribute("autocorrect", "off");
@@ -4779,7 +4853,7 @@ function attacherSuggestionsAdresse(input, conteneur) {
   }));
   $("rr-moins").addEventListener("click", () => { $("input-passagers").value = Math.max(1, (parseInt($("input-passagers").value, 10) || 1) - 1); });
   $("rr-plus").addEventListener("click", () => { $("input-passagers").value = Math.min(16, (parseInt($("input-passagers").value, 10) || 1) + 1); });
-  $("rr-inverser").addEventListener("click", () => { const a = $("input-depart").value; $("input-depart").value = $("input-arrivee").value; $("input-arrivee").value = a; });
+  $("rr-inverser").addEventListener("click", () => twInverserChamps($("input-depart"), $("input-arrivee")));
   $("rr-position-depart").addEventListener("click", () => {
     const b = $("rr-position-depart");
     if (!navigator.geolocation) { twAlert(t("geo.indispo")); return; }
@@ -4874,6 +4948,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 
   // Étape 1 : trajet + carte
   etapes[0].appendChild(champDe("input-depart"));
+  try { const inv = $("rr-inverser") && $("rr-inverser").closest(".tw-inv-wrap"); if (inv) etapes[0].appendChild(inv); } catch (e) { console.warn(e); }
   etapes[0].appendChild(champDe("input-arrivee"));
   const carteDiv = document.createElement("div"); carteDiv.className = "rz-carte"; carteDiv.id = "rz-carte";
   const trajetInfo = document.createElement("div"); trajetInfo.className = "rz-trajet-info"; trajetInfo.id = "rz-trajet-info";
@@ -6326,6 +6401,244 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 })();
 // Applique la langue choisie (ou détectée) à tous les textes de la page
 appliquerLangue();
+</script>
+<script>
+// ================== RÉSERVATION RAPIDE (un seul écran, en haut de « Réserver ») ==================
+// Remplit les champs du parcours complet puis appelle EXACTEMENT le même envoi (envoyerDemandeCourse).
+(function () {
+  const $ = id => document.getElementById(id);
+  const section = $("section-reserver");
+  if (!section || !$("input-depart") || typeof envoyerDemandeCourse !== "function") return;
+  const TXT = {
+    fr: {
+      "qr.titre": "Où allez-vous ?", "qr.depart.ph": "Adresse de départ", "qr.arrivee.ph": "Adresse d'arrivée",
+      "qr.position": "📍 Ma position", "qr.quand": "Quand", "qr.maintenant": "Maintenant", "qr.auj": "Aujourd'hui", "qr.demain": "Demain",
+      "qr.passagers": "Passagers", "qr.contact": "Vos coordonnées", "qr.nom.ph": "Nom et prénom", "qr.tel.ph": "Téléphone (ex : 0470 12 34 56)",
+      "qr.modifier": "modifier", "qr.reserver": "✅ Réserver", "qr.envoi": "Envoi en cours…",
+      "qr.plus": "Plus d'options (aéroport, chauffeur privé, groupes, aller-retour…)", "qr.retour": "⚡ Revenir à la réservation rapide",
+      "qr.e.depart": "Indiquez l'adresse de départ.", "qr.e.arrivee": "Indiquez l'adresse d'arrivée.",
+      "qr.e.date": "Choisissez quand (bouton « Maintenant », « Aujourd'hui » ou « Demain »).", "qr.e.passe": "Cette heure est déjà passée : choisissez une heure à venir.",
+      "qr.e.nom": "Indiquez votre nom.", "qr.e.tel": "Indiquez un numéro de téléphone valide.",
+      "qr.ok.titre": "Demande envoyée", "qr.ok.num": "N° de réservation", "qr.ok.attente": "⏳ PAS ENCORE CONFIRMÉE",
+      "qr.ok.attenteM": "Taxi Wal vous envoie la confirmation et le prix très vite.", "qr.ok.ok": "✅ CONFIRMÉE", "qr.ok.okM": "Votre taxi est réservé.",
+      "qr.ok.pass": "{n} passager(s)", "qr.ok.voir": "Voir mes courses", "qr.ok.nouvelle": "Nouvelle réservation"
+    },
+    nl: {
+      "qr.titre": "Waar gaat u naartoe?", "qr.depart.ph": "Vertrekadres", "qr.arrivee.ph": "Aankomstadres", "qr.position": "📍 Mijn locatie",
+      "qr.quand": "Wanneer", "qr.maintenant": "Nu", "qr.auj": "Vandaag", "qr.demain": "Morgen", "qr.passagers": "Passagiers",
+      "qr.contact": "Uw gegevens", "qr.nom.ph": "Naam en voornaam", "qr.tel.ph": "Telefoon", "qr.modifier": "wijzigen", "qr.reserver": "✅ Reserveren",
+      "qr.plus": "Meer opties (luchthaven, privéchauffeur, groepen, heen en terug…)", "qr.ok.titre": "Aanvraag verzonden", "qr.ok.num": "Reservatienr.",
+      "qr.ok.attente": "⏳ NOG NIET BEVESTIGD", "qr.ok.attenteM": "Taxi Wal stuurt u heel snel de bevestiging en de prijs.", "qr.ok.ok": "✅ BEVESTIGD",
+      "qr.ok.voir": "Mijn ritten bekijken", "qr.ok.nouvelle": "Nieuwe reservatie"
+    },
+    en: {
+      "qr.titre": "Where to?", "qr.depart.ph": "Pickup address", "qr.arrivee.ph": "Destination", "qr.position": "📍 My location",
+      "qr.quand": "When", "qr.maintenant": "Now", "qr.auj": "Today", "qr.demain": "Tomorrow", "qr.passagers": "Passengers",
+      "qr.contact": "Your details", "qr.nom.ph": "Full name", "qr.tel.ph": "Phone", "qr.modifier": "edit", "qr.reserver": "✅ Book",
+      "qr.plus": "More options (airport, private driver, groups, return trip…)", "qr.ok.titre": "Request sent", "qr.ok.num": "Booking no.",
+      "qr.ok.attente": "⏳ NOT CONFIRMED YET", "qr.ok.attenteM": "Taxi Wal will send you the confirmation and price very soon.", "qr.ok.ok": "✅ CONFIRMED",
+      "qr.ok.voir": "See my rides", "qr.ok.nouvelle": "New booking"
+    }
+  };
+  // clés manquantes en NL/EN : t() retombe sur le français
+  Object.keys(TXT).forEach(l => { if (I18N[l]) Object.assign(I18N[l], TXT[l]); });
+
+  const zone = document.createElement("div"); zone.id = "qr-zone";
+  const badge = section.querySelector(".badge-marque");
+  if (badge) badge.after(zone); else section.prepend(zone);
+  section.classList.add("qr-on");
+
+  let quand = null, passagers = 1, contactOuvert = false, derniere = null, minuterieEtat = null;
+  const deux = n => String(n).padStart(2, "0");
+  const versChamp = d => d.getFullYear() + "-" + deux(d.getMonth() + 1) + "-" + deux(d.getDate()) + "T" + deux(d.getHours()) + ":" + deux(d.getMinutes());
+  const arrondir5 = d => { d.setSeconds(0, 0); d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5); return d; };
+  const profilOk = () => typeof monProfil !== "undefined" && monProfil && (monProfil.nom || "").trim().length >= 2 && telOk(monProfil.telephone || "");
+  const telOk = v => { const c = String(v).replace(/\D/g, ""); return c.length >= 9 && c.length <= 15; };
+
+  function rendreFormulaire() {
+    clearInterval(minuterieEtat); derniere = null;
+    const vals = { dep: $("qr-depart") ? $("qr-depart").value : "", arr: $("qr-arrivee") ? $("qr-arrivee").value : "", date: $("qr-date") ? $("qr-date").value : "",
+      nom: $("qr-nom") ? $("qr-nom").value : null, tel: $("qr-tel") ? $("qr-tel").value : null };
+    zone.innerHTML = `<button type="button" class="qr-retour" id="qr-retour">${esc(t("qr.retour"))}</button>
+    <div class="qr-carte" id="qr-carte">
+      <h2 class="qr-titre">${esc(t("qr.titre"))}</h2>
+      <div class="qr-trajet">
+        <div class="qr-ligne"><span class="qr-point"></span><div class="champ-adresse-rr"><input type="text" id="qr-depart" placeholder="${esc(t("qr.depart.ph"))}" aria-label="${esc(t("qr.depart.ph"))}"></div></div>
+        <div class="qr-ligne"><span class="qr-point b"></span><div class="champ-adresse-rr"><input type="text" id="qr-arrivee" placeholder="${esc(t("qr.arrivee.ph"))}" aria-label="${esc(t("qr.arrivee.ph"))}"></div></div>
+        <button type="button" class="tw-inv" id="qr-inverser" aria-label="Inverser départ et arrivée" title="Inverser départ et arrivée">⇅</button>
+      </div>
+      <div class="qr-err" id="qr-err-depart"></div><div class="qr-err" id="qr-err-arrivee"></div>
+      ${$("rr-position-depart") && navigator.geolocation ? `<button type="button" class="qr-pos" id="qr-pos">${esc(t("qr.position"))}</button>` : ""}
+      <div class="qr-bloc"><div class="qr-label">${esc(t("qr.quand"))}</div>
+        <div class="qr-puces"><button type="button" data-qr-quand="0">${esc(t("qr.maintenant"))}</button><button type="button" data-qr-quand="auj">${esc(t("qr.auj"))}</button><button type="button" data-qr-quand="dem">${esc(t("qr.demain"))}</button></div>
+        <input type="datetime-local" class="qr-date" id="qr-date" aria-label="${esc(t("qr.quand"))}">
+        <div class="qr-err" id="qr-err-date"></div></div>
+      <div class="qr-bloc"><div class="qr-pass"><span>👥 ${esc(t("qr.passagers"))}</span><div><button type="button" id="qr-moins" aria-label="−">−</button><output id="qr-nb">${passagers}</output><button type="button" id="qr-plus" aria-label="+">+</button></div></div></div>
+      <div class="qr-bloc" id="qr-contact"></div>
+      <button type="button" class="qr-envoyer" id="qr-envoyer">${esc(t("qr.reserver"))}</button>
+      <div class="qr-err" id="qr-err-envoi"></div>
+      <button type="button" class="qr-plus" id="qr-plus-options">${esc(t("qr.plus"))}</button>
+    </div>`;
+    $("qr-depart").value = vals.dep; $("qr-arrivee").value = vals.arr; $("qr-date").value = vals.date;
+    if (typeof attacherSuggestionsAdresse === "function") ["qr-depart", "qr-arrivee"].forEach(id => attacherSuggestionsAdresse($(id), $(id).parentNode));
+    rendreContact(vals.nom, vals.tel);
+    majPuces();
+    ["qr-depart", "qr-arrivee", "qr-date"].forEach(id => $(id).addEventListener("input", () => effacer(id)));
+    try { $("qr-inverser").addEventListener("click", () => { twInverserChamps($("qr-depart"), $("qr-arrivee")); effacer("qr-depart"); effacer("qr-arrivee"); }); } catch (e) { console.warn(e); }
+    $("qr-date").addEventListener("change", () => { quand = null; majPuces(); effacer("qr-date"); });
+    zone.querySelectorAll("[data-qr-quand]").forEach(b => b.addEventListener("click", () => choisirQuand(b.dataset.qrQuand)));
+    $("qr-moins").addEventListener("click", () => { passagers = Math.max(1, passagers - 1); $("qr-nb").textContent = passagers; });
+    $("qr-plus").addEventListener("click", () => { passagers = Math.min(16, passagers + 1); $("qr-nb").textContent = passagers; });
+    $("qr-envoyer").addEventListener("click", envoyer);
+    $("qr-plus-options").addEventListener("click", () => basculer(false));
+    $("qr-retour").addEventListener("click", () => basculer(true));
+    if ($("qr-pos")) $("qr-pos").addEventListener("click", maPosition);
+  }
+  function rendreContact(nom, tel) {
+    const z = $("qr-contact"); if (!z) return;
+    const p = (typeof monProfil !== "undefined" && monProfil) || {};
+    if (!contactOuvert && profilOk() && nom == null) {
+      z.innerHTML = `<div class="qr-contact-resume"><span>👤 ${esc(p.nom)} · ${esc(p.telephone)}</span><button type="button" class="qr-lien" id="qr-modif-contact">${esc(t("qr.modifier"))}</button></div>`;
+      $("qr-modif-contact").addEventListener("click", () => { contactOuvert = true; rendreContact(); setTimeout(() => $("qr-nom").focus(), 50); });
+      return;
+    }
+    contactOuvert = true;
+    z.innerHTML = `<div class="qr-label">${esc(t("qr.contact"))}</div>
+      <div class="qr-champ"><input type="text" id="qr-nom" autocomplete="name" placeholder="${esc(t("qr.nom.ph"))}" aria-label="${esc(t("qr.nom.ph"))}"><div class="qr-err" id="qr-err-nom"></div></div>
+      <div class="qr-champ"><input type="tel" id="qr-tel" autocomplete="tel" inputmode="tel" placeholder="${esc(t("qr.tel.ph"))}" aria-label="${esc(t("qr.tel.ph"))}"><div class="qr-err" id="qr-err-tel"></div></div>`;
+    $("qr-nom").value = nom != null ? nom : (p.nom || ""); $("qr-tel").value = tel != null ? tel : (p.telephone || "");
+    ["qr-nom", "qr-tel"].forEach(id => $(id).addEventListener("input", () => effacer(id)));
+  }
+  // le profil arrive après la connexion : on met à jour le résumé du contact dès qu'il est là
+  let essaisProfil = 0;
+  const attendreProfil = setInterval(() => {
+    if (++essaisProfil > 60) { clearInterval(attendreProfil); return; }
+    if (typeof monProfil !== "undefined" && monProfil) {
+      clearInterval(attendreProfil);
+      if ($("qr-contact") && !(($("qr-nom") && $("qr-nom").value) || ($("qr-tel") && $("qr-tel").value))) { contactOuvert = false; rendreContact(); }
+    }
+  }, 500);
+
+  function choisirQuand(q) {
+    let d = new Date();
+    if (q === "0") d = arrondir5(new Date(Date.now() + 10 * 60000));
+    else {
+      const actuel = $("qr-date").value ? new Date($("qr-date").value) : null;
+      if (q === "dem") d.setDate(d.getDate() + 1);
+      if (actuel && quand !== "0") d.setHours(actuel.getHours(), actuel.getMinutes(), 0, 0);
+      else if (q === "auj") d = arrondir5(new Date(Date.now() + 60 * 60000));
+      else d.setHours(9, 0, 0, 0);
+    }
+    quand = q; $("qr-date").value = versChamp(d); effacer("qr-date"); majPuces();
+  }
+  function majPuces() { zone.querySelectorAll("[data-qr-quand]").forEach(b => b.classList.toggle("actif", b.dataset.qrQuand === quand)); }
+  function maPosition() {
+    const b = $("qr-pos"), src = $("rr-position-depart"), avant = $("input-depart").value;
+    b.disabled = true; b.textContent = t("geo.recherche");
+    src.click();   // même fonction que « 📍 Ma position actuelle » du parcours complet
+    let n = 0;
+    const suivi = setInterval(() => {
+      const v = $("input-depart").value;
+      if ((v && v !== avant) || !src.disabled || ++n > 30) {
+        if (v && v !== avant) { $("qr-depart").value = v; effacer("qr-depart"); $("input-depart").value = avant; }
+        if (!src.disabled || n > 30) { clearInterval(suivi); if ($("qr-pos")) { b.disabled = false; b.textContent = t("qr.position"); } }
+      }
+    }, 500);
+  }
+  function effacer(id) {
+    const el = $(id); if (el) el.classList.remove("qr-invalide");
+    const ligne = el && el.closest(".qr-trajet"); if (ligne) ligne.classList.remove("qr-invalide");
+    const e = $("qr-err-" + id.replace("qr-", "")); if (e) e.textContent = "";
+    if ($("qr-err-envoi")) $("qr-err-envoi").textContent = "";
+  }
+  function signaler(id, msg) {
+    const el = $(id); if (el) (el.closest(".qr-trajet") || el).classList.add("qr-invalide");
+    const e = $("qr-err-" + id.replace("qr-", "")); if (e) e.textContent = msg;
+  }
+  function basculer(rapide) {
+    section.classList.toggle("qr-on", rapide);
+    if (!rapide) {   // on reprend ce qui a déjà été tapé dans le parcours complet
+      if ($("qr-depart") && $("qr-depart").value.trim() && !$("input-depart").value.trim()) $("input-depart").value = $("qr-depart").value.trim();
+      if ($("qr-arrivee") && $("qr-arrivee").value.trim() && !$("input-arrivee").value.trim()) $("input-arrivee").value = $("qr-arrivee").value.trim();
+      if ($("qr-date") && $("qr-date").value && !$("input-date").value) $("input-date").value = $("qr-date").value;
+      $("input-passagers").value = passagers;
+    }
+    section.scrollIntoView({ block: "start" });
+    window.dispatchEvent(new Event("scroll"));
+  }
+
+  async function envoyer() {
+    const dep = $("qr-depart").value.trim(), arr = $("qr-arrivee").value.trim(), v = $("qr-date").value;
+    const p = (typeof monProfil !== "undefined" && monProfil) || {};
+    const nom = $("qr-nom") ? $("qr-nom").value.trim() : (p.nom || "").trim();
+    const tel = $("qr-tel") ? $("qr-tel").value.trim() : (p.telephone || "").trim();
+    let premier = null; const ko = (id, m) => { signaler(id, m); if (!premier) premier = id; };
+    if (dep.length < 4) ko("qr-depart", t("qr.e.depart"));
+    if (arr.length < 4) ko("qr-arrivee", t("qr.e.arrivee"));
+    if (!v) ko("qr-date", t("qr.e.date"));
+    else if (new Date(v).getTime() < Date.now() - 5 * 60000) ko("qr-date", t("qr.e.passe"));
+    if (nom.length < 2 || !telOk(tel)) { if (!$("qr-nom")) { contactOuvert = true; rendreContact(nom, tel); } if (nom.length < 2) ko("qr-nom", t("qr.e.nom")); if (!telOk(tel)) ko("qr-tel", t("qr.e.tel")); }
+    if (premier) { const el = $(premier); if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); try { el.focus({ preventScroll: true }); } catch (e) {} } return; }
+
+    // mêmes champs que le parcours normal sans tuile (valeurs par défaut pour le reste)
+    if (window.__svReset) window.__svReset();
+    if (window.__socResetResa) window.__socResetResa();
+    $("input-depart").value = dep; $("input-arrivee").value = arr; $("input-date").value = v;
+    $("input-passagers").value = passagers; $("input-bagages").value = 0;
+    $("input-vehicule-souhaite").value = ""; $("input-chauffeur-prefere").value = ""; $("input-notes").value = "";
+    $("input-ouverte-marche").checked = $("input-ouverte-marche").defaultChecked;
+    if ($("rz-aller-retour")) $("rz-aller-retour").checked = false;
+    if ($("rz-nom")) $("rz-nom").value = nom; if ($("rz-tel")) $("rz-tel").value = tel;
+    window.__distanceTrajetKm = null; window.__dureeTrajetMin = null;   // pas de distance d'un ancien trajet
+
+    const b = $("qr-envoyer"); b.disabled = true; b.textContent = t("qr.envoi");
+    let r = null;
+    try { r = await envoyerDemandeCourse({ rapide: true }); } catch (e) { r = { ok: false, erreur: t("erreur", { msg: e.message || e }) }; }
+    if (!$("qr-envoyer")) return;
+    b.disabled = false; b.textContent = t("qr.reserver");
+    if (!r || !r.ok) { $("qr-err-envoi").textContent = (r && r.erreur) || $("erreur-reservation").textContent || t("resa.errOblig"); return; }
+    derniere = { id: r.course.id, numero: r.course.numero_reservation || "", reservation_directe: !!r.course.reservation_directe, dep, arr, date: v, passagers };
+    $("qr-depart").value = ""; $("qr-arrivee").value = ""; $("qr-date").value = ""; quand = null; passagers = 1;
+    rendreConfirmation();
+  }
+
+  function etatCourse() {
+    const c = (window.dernieresCoursesClient || (typeof dernieresCoursesClient !== "undefined" ? dernieresCoursesClient : []) || []).find(x => x.id === derniere.id)
+      || { statut: "en_attente", origine: "client", reservation_directe: derniere.reservation_directe };
+    const e = etatReservationClient(c) || { cls: "attente" };
+    return e.cls === "ok" ? { cls: "ok", b: t("qr.ok.ok"), m: t("qr.ok.okM") }
+      : e.cls === "annulee" ? { cls: "annulee", b: e.b, m: "" }
+      : { cls: "attente", b: t("qr.ok.attente"), m: c.statut === "en_attente" ? t("qr.ok.attenteM") : e.b };
+  }
+  function rendreConfirmation() {
+    const d = new Date(derniere.date);
+    const e = etatCourse();
+    zone.innerHTML = `<div class="qr-carte qr-confirmation" id="qr-confirmation">
+      <div class="qr-ok-icone">✓</div>
+      <div class="qr-ok-titre">${esc(t("qr.ok.titre"))}</div>
+      ${derniere.numero ? `<div class="qr-ok-num">${esc(t("qr.ok.num"))} <b>${esc(derniere.numero)}</b></div>` : ""}
+      <div class="qr-etat ${e.cls}" id="qr-etat"><b>${esc(e.b)}</b>${e.m ? `<small>${esc(e.m)}</small>` : ""}</div>
+      <div class="qr-recap">
+        <div><i>🕐</i><span>${esc(d.toLocaleString(LOCALE(), { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }))}</span></div>
+        <div><i>🟢</i><span>${esc(derniere.dep)}</span></div>
+        <div><i>🔴</i><span>${esc(derniere.arr)}</span></div>
+        <div><i>👥</i><span>${esc(t("qr.ok.pass", { n: derniere.passagers }))}</span></div>
+      </div>
+      <button type="button" class="qr-envoyer" id="qr-voir">${esc(t("qr.ok.voir"))}</button>
+      <button type="button" class="qr-secondaire" id="qr-nouvelle">${esc(t("qr.ok.nouvelle"))}</button>
+    </div>`;
+    $("qr-voir").addEventListener("click", () => { const o = document.querySelector('[data-onglet="mes-courses"]'); if (o) o.click(); });
+    $("qr-nouvelle").addEventListener("click", rendreFormulaire);
+    zone.scrollIntoView({ block: "start" });
+    clearInterval(minuterieEtat);
+    minuterieEtat = setInterval(() => {   // l'état se met à jour tout seul quand la centrale confirme
+      const el = $("qr-etat"); if (!el || !derniere) { clearInterval(minuterieEtat); return; }
+      const n = etatCourse(); el.className = "qr-etat " + n.cls; el.innerHTML = `<b>${esc(n.b)}</b>${n.m ? `<small>${esc(n.m)}</small>` : ""}`;
+    }, 5000);
+  }
+  window.__hooksLangue.push(() => { if (derniere && $("qr-confirmation")) rendreConfirmation(); else rendreFormulaire(); });
+  rendreFormulaire();
+})();
 </script>
 <script>
 // Fenêtres de message de l'app client : même nettoyage des détails techniques

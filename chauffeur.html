@@ -298,6 +298,9 @@ window.onerror = function(msg, url, line, col, err) {
   .form-demande .dc-rangee > button{ width:auto !important; flex:1 1 0 !important; min-width:0; margin:0 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .form-demande .dc-rangee > input{ width:auto !important; flex:1.4 1 0 !important; margin:0 !important; }
   .form-demande .dc-rangee .dc-puce{ padding:10px 4px; font-size:.8rem; }
+  .form-demande .tw-inv-wrap{ display:flex; justify-content:flex-end; margin:6px 2px -14px; position:relative; z-index:2; }
+  .form-demande button.tw-inv{ width:44px !important; height:44px !important; min-width:44px; flex:0 0 44px; padding:0 !important; margin:0 !important; border-radius:50% !important; border:1px solid #cfcfcd !important; background:#fff !important; color:#111 !important; font-size:1.3rem; font-weight:700; line-height:1; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.12); }
+  .form-demande button.tw-inv:active{ transform:scale(.94); }
   .form-demande .dc-mini{ flex:1 1 auto; padding:10px 8px; border-radius:9px; border:1px solid #cfcfcd; background:#fff; color:#111; font-weight:700; font-size:.85rem; }
   .form-demande .dc-puce{ flex:1 1 auto; padding:10px 8px; border-radius:999px; border:1px solid #3b82c4; background:#eef4fb; color:#1d4f86; font-weight:700; font-size:.85rem; }
   .form-demande .dc-champ-adresse{ position:relative; }
@@ -586,8 +589,8 @@ window.onerror = function(msg, url, line, col, err) {
       <div class="dc-champ-adresse"><input id="dc-depart" placeholder="Adresse de prise en charge"></div>
       <div class="dc-rangee">
         <button type="button" class="dc-mini" data-pos="dc-depart">📍 Ma position</button>
-        <button type="button" class="dc-mini" id="dc-inverser">⇅ Inverser</button>
       </div>
+      <div class="tw-inv-wrap"><button type="button" class="tw-inv" id="dc-inverser" aria-label="Inverser départ et arrivée" title="Inverser départ et arrivée">⇅</button></div>
       <label>Arrivée *</label>
       <div class="dc-champ-adresse"><input id="dc-arrivee" placeholder="Destination"></div>
       <div class="dc-rangee">
@@ -1711,7 +1714,12 @@ function messageErreurPosition(err) {
       b.disabled = false; b.textContent = avant;
     }, (err) => { b.disabled = false; b.textContent = avant; alert(messageErreurPosition(err)); });
   }));
-  $("dc-inverser").addEventListener("click", () => { const a = $("dc-depart").value; $("dc-depart").value = $("dc-arrivee").value; $("dc-arrivee").value = a; });
+  $("dc-inverser").addEventListener("click", () => {
+    try {
+      const a = $("dc-depart"), b = $("dc-arrivee"); const v = a.value; a.value = b.value; b.value = v;
+      [a, b].forEach(el => { el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); });
+    } catch (e) { console.warn("Inversion impossible", e); }
+  });
   $("dc-carte").addEventListener("click", () => {
     if (!$("dc-depart").value || !$("dc-arrivee").value) { alert("Remplis d'abord le départ et l'arrivée."); return; }
     window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent($("dc-depart").value)}&destination=${encodeURIComponent($("dc-arrivee").value)}&travelmode=driving`, "_blank");
