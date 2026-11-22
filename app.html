@@ -5337,7 +5337,17 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     majServices();
     if (service === "navette_aeroport") setTimeout(() => { try { $("input-arrivee").focus(); } catch (e) {} }, 60);
   }
-  zoneSv.querySelectorAll(".sv-tuile").forEach(b => b.addEventListener("click", () => choisirService(b.dataset.sv)));
+  zoneSv.querySelectorAll(".sv-tuile").forEach(b => b.addEventListener("click", () => {
+    choisirService(b.dataset.sv);
+    // Après le choix d'un service, amener le client directement au champ « Adresse de départ » (sinon il est très bas sur téléphone)
+    setTimeout(() => { try {
+      const dep = $("input-depart"); if (!dep) return;
+      const bloc = dep.closest(".champ") || dep;
+      bloc.scrollIntoView({ behavior: "smooth", block: "center" });
+      bloc.style.transition = "box-shadow .3s"; bloc.style.boxShadow = "0 0 0 3px #f5b301"; bloc.style.borderRadius = "10px";
+      setTimeout(() => { bloc.style.boxShadow = ""; }, 2500);
+    } catch (e) {} }, 150);
+  }));
   ["input-depart", "input-arrivee"].forEach(id => { $(id).addEventListener("input", majChampVol); $(id).addEventListener("change", majChampVol); });
   ["input", "change"].forEach(ev => $("input-passagers").addEventListener(ev, majConseilVan));
   $("rr-moins") && $("rr-moins").addEventListener("click", () => setTimeout(majConseilVan, 0));
