@@ -1688,8 +1688,20 @@ window.onerror = function(msg, url, line, col, err) {
     if (sansLigneSurveille(item) && (data == null || (Array.isArray(data) && !data.length)) && window.surEcritureSansLigne) return window.surEcritureSansLigne(item);
   }
   // ---- exécution d'une écriture ----
+  // Nettoie les nombres tapés avec une espace (« 16. 20 », « 14, 90 € ») avant l'envoi, y compris pour les écritures déjà en file d'attente.
+  function nettoyerNombres(p) {
+    try {
+      if (!p || typeof p !== "object") return p;
+      Object.keys(p).forEach(function (k) {
+        var v = p[k];
+        if (typeof v === "string" && /^\s*-?\d+\s*[.,]\s*\d+\s*€?\s*$/.test(v)) p[k] = v.replace(/[\s\u00a0€]/g, "").replace(",", ".");
+      });
+    } catch (e) {}
+    return p;
+  }
   async function executer(item, avecRetour) {
     var sb = etat.client, q;
+    if (item.op === "update" || item.op === "upsert") nettoyerNombres(item.payload);
     if (item.op === "update") {
       q = sb.from(item.table).update(item.payload);
       Object.keys(item.match || {}).forEach(function (k) { q = q.eq(k, item.match[k]); });
