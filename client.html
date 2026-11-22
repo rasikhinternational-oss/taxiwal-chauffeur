@@ -295,26 +295,24 @@ fr: {
   "cash.payerAcompte": "💳 Payer l'acompte de 30 % · {m} par Bancontact",
   "cash.payerTotal": "💳 Payer la totalité · {m} par Bancontact",
   "cash.resteChauffeur": "Le reste ({m}) se règle directement au chauffeur.",
-  "cond.cb": "J'ai lu et j'accepte les <button type=\"button\" class=\"lien-conditions\" data-ouvrir-conditions>conditions d'annulation</button> <span style=\"color:var(--rouge);\">*</span>",
-  "cond.dabord": "Merci d'accepter d'abord les conditions d'annulation.",
-  "ca.titre": "ℹ️ Conditions d'annulation :",
-  "ca.acompte": "l'acompte confirme et bloque votre réservation. En cas d'annulation plus de 8 heures avant l'heure de prise en charge, il vous est remboursé. En cas d'annulation moins de 8 heures avant (exemple : course à 12h00 annulée après 4h00 du matin), l'acompte n'est pas remboursable, car nous refusons d'autres clients pour vous garder ce créneau. Merci de payer l'acompte uniquement si vous êtes sûr(e) de votre réservation.",
-  "ca.total": "Si vous payez la totalité : en cas d'annulation tardive (moins de 8 heures avant), 30 % du prix ({m}) sont retenus, le reste vous est remboursé.",
-  "ca.court": "ℹ️ Annulation avec remboursement de l'acompte possible jusqu'au {d} (8 h avant la prise en charge). Après : l'acompte (30 %) n'est pas remboursable.",
-  "an.remb": "✅ Vous annulez plus de 8 heures avant la prise en charge : {m} vous sera remboursé.",
-  "an.nonRemb": "⚠️ Vous annulez moins de 8 heures avant la prise en charge : l'acompte ({m}) n'est pas remboursable.",
-  "an.nonRembTotal": "⚠️ Vous annulez moins de 8 heures avant la prise en charge : 30 % du prix ({m}) sont retenus, {r} vous sera remboursé.",
+  "cond.cb": "J'ai lu et compris les <button type=\"button\" class=\"lien-conditions\" data-ouvrir-conditions>conditions d'annulation et de remboursement</button> <span style=\"color:var(--rouge);\">*</span>",
+  "cond.dabord": "Merci de cocher d'abord la case « J'ai lu et compris les conditions d'annulation et de remboursement ».",
+  "ca.titre": "ℹ️ Conditions d'annulation et de remboursement :",
+  "ca.acompte": "en cas d'annulation, nous remboursons une partie de ce que vous avez payé (acompte ou totalité), selon le délai avant l'heure de prise en charge : 24 heures ou plus avant → 100 % remboursé ; moins de 24 heures avant → 70 % remboursé ; moins de 8 heures avant → 50 % remboursé ; moins de 2 heures avant → aucun remboursement. Dès que le chauffeur a démarré la course : aucun remboursement, quel que soit le délai (le chauffeur vous est réservé et nous refusons d'autres courses).",
+  "ca.court": "ℹ️ Remboursement à 100 % si vous annulez avant le {d} (24 h avant la prise en charge). Ensuite : 70 % (moins de 24 h), 50 % (moins de 8 h), 0 % (moins de 2 h ou course démarrée).",
+  "an.bareme": "⚠️ Vous annulez {h} avant la prise en charge : selon nos conditions, {p} % de ce que vous avez payé ({m}) vous sera remboursé, soit {r}.",
+  "an.bareme0": "⛔ Vous annulez {h} avant la prise en charge (moins de 2 heures) : selon nos conditions, rien n'est remboursé sur ce que vous avez payé ({m}).",
+  "an.demarree": "⛔ Le chauffeur a déjà démarré la course : selon nos conditions, rien n'est remboursé sur ce que vous avez payé ({m}).",
+  "an.remb": "✅ Vous annulez {h} avant la prise en charge (24 heures ou plus) : 100 % de ce que vous avez payé ({m}) vous sera remboursé.",
   "an.rienPaye": "Vous n'avez encore rien payé : l'annulation est sans frais.",
-  "an.carteRemb": "Acompte : remboursable (annulation {h} avant la course)",
-  "an.carteNon": "Acompte : non remboursable (annulation {h} avant la course)",
+  "an.carteRemb": "Montant payé : remboursable (annulation {h} avant la course)",
+  "an.carteNon": "Montant payé : non remboursable (annulation {h} avant la course)",
   "annuler.resa": "Annuler la réservation",
   "an.btnAnnuler": "❌ Annuler la réservation",
   "an.btnDemande": "❌ Demander l'annulation",
   "an.formTitre": "❌ Demande d'annulation",
-  "an.formInfo": "Votre demande sera envoyée à la centrale. Annulation plus de 8 h avant : acompte remboursé ; moins de 8 h : non remboursable.",
-  "an.formReste": "Il reste {h} avant la course (moins de 8 heures) : la réservation ne peut plus être annulée directement.",
-  "an.formNonRemb": "Selon nos conditions, le montant payé ({m}) n'est pas remboursable.",
-  "an.formTotal": "Selon nos conditions, 30 % du prix ({m}) sont retenus ; {r} vous serait remboursé.",
+  "an.formInfo": "Votre demande sera envoyée à la centrale. Barème : 24 h ou plus avant → 100 % ; moins de 24 h → 70 % ; moins de 8 h → 50 % ; moins de 2 h ou course démarrée → 0 %.",
+  "an.formReste": "Il reste {h} avant la course (moins de 24 heures) : la réservation ne peut plus être annulée directement.",
   "an.formRien": "Rien n'a été payé : aucun frais.",
   "an.motif": "Motif (facultatif)",
   "an.motifPh": "Ex. : vol annulé, changement de programme…",
@@ -327,14 +325,14 @@ fr: {
   "an.resNon": "non remboursable",
   "an.resRien": "aucun frais",
   "an.refusee": "La centrale n'a pas accepté votre demande d'annulation : la réservation reste valable. Consultez vos messages.",
-  "an.confirmDirecte": "Annuler cette réservation ?\n\n✅ Vous annulez plus de 8 heures avant la prise en charge : {m} vous sera remboursé dans les prochains jours.",
+  "an.confirmDirecte": "Annuler cette réservation ?\n\n✅ Vous annulez 24 heures ou plus avant la prise en charge : 100 % de ce que vous avez payé ({m}) vous sera remboursé dans les prochains jours.",
   "an.confirmDirecteRien": "Annuler cette réservation ?\n\nRien n'a été payé : l'annulation est sans frais.",
   "an.okDirecte": "Votre réservation est annulée. {m} vous sera remboursé dans les prochains jours, sur le moyen de paiement utilisé.",
   "an.okDirecteRien": "Votre réservation est annulée.",
   "an.carteRembOk": "✅ Annulée {h} avant la course — {m} vous sera remboursé dans les prochains jours",
   "an.carteRembFait": "✅ Annulée — remboursement de {m} effectué",
   "an.carteNonRemb": "⛔ Annulée {h} avant la course — non remboursable",
-  "an.passeDemande": "Il reste maintenant moins de 8 heures avant la course : l'annulation directe n'est plus possible, mais vous pouvez envoyer une demande à la centrale.",
+  "an.passeDemande": "Il reste maintenant moins de 24 heures avant la course : l'annulation directe n'est plus possible, mais vous pouvez envoyer une demande à la centrale (remboursement selon le barème).",
   "annuler.confirmResa": "Annuler cette réservation ?",
   "fs.titre": "📩 Réponse de la centrale",
   "fs.sous": "Votre réservation",
@@ -799,26 +797,24 @@ nl: {
   "cash.payerAcompte": "💳 Voorschot van 30 % betalen · {m} met Bancontact",
   "cash.payerTotal": "💳 Volledig bedrag betalen · {m} met Bancontact",
   "cash.resteChauffeur": "Het saldo ({m}) betaalt u rechtstreeks aan de chauffeur.",
-  "cond.cb": "Ik heb de <button type=\"button\" class=\"lien-conditions\" data-ouvrir-conditions>annuleringsvoorwaarden</button> gelezen en ga ermee akkoord <span style=\"color:var(--rouge);\">*</span>",
-  "cond.dabord": "Gelieve eerst de annuleringsvoorwaarden te aanvaarden.",
-  "ca.titre": "ℹ️ Annuleringsvoorwaarden:",
-  "ca.acompte": "het voorschot bevestigt en blokkeert uw reservering. Bij annulering meer dan 8 uur vóór het ophaaluur wordt het u terugbetaald. Bij annulering minder dan 8 uur vooraf (voorbeeld: rit om 12.00 uur geannuleerd na 4.00 uur 's ochtends) wordt het voorschot niet terugbetaald, omdat wij andere klanten weigeren om dit tijdslot voor u vrij te houden. Betaal het voorschot dus enkel als u zeker bent van uw reservering.",
-  "ca.total": "Betaalt u het volledige bedrag? Bij laattijdige annulering (minder dan 8 uur vooraf) wordt 30 % van de prijs ({m}) ingehouden; de rest wordt u terugbetaald.",
-  "ca.court": "ℹ️ Annuleren met terugbetaling van het voorschot kan tot {d} (8 uur vóór het ophalen). Daarna wordt het voorschot (30 %) niet terugbetaald.",
-  "an.remb": "✅ U annuleert meer dan 8 uur vóór het ophalen: {m} wordt u terugbetaald.",
-  "an.nonRemb": "⚠️ U annuleert minder dan 8 uur vóór het ophalen: het voorschot ({m}) wordt niet terugbetaald.",
-  "an.nonRembTotal": "⚠️ U annuleert minder dan 8 uur vóór het ophalen: 30 % van de prijs ({m}) wordt ingehouden, {r} wordt u terugbetaald.",
+  "cond.cb": "Ik heb de <button type=\"button\" class=\"lien-conditions\" data-ouvrir-conditions>annulerings- en terugbetalingsvoorwaarden</button> gelezen en begrepen <span style=\"color:var(--rouge);\">*</span>",
+  "cond.dabord": "Vink eerst het vakje « Ik heb de annulerings- en terugbetalingsvoorwaarden gelezen en begrepen » aan.",
+  "ca.titre": "ℹ️ Annulerings- en terugbetalingsvoorwaarden:",
+  "ca.acompte": "bij annulering betalen wij een deel van wat u betaald hebt (voorschot of volledig bedrag) terug, afhankelijk van de tijd vóór het ophaaluur: 24 uur of meer vooraf → 100 % terugbetaald; minder dan 24 uur vooraf → 70 % terugbetaald; minder dan 8 uur vooraf → 50 % terugbetaald; minder dan 2 uur vooraf → geen terugbetaling. Zodra de chauffeur de rit gestart is: geen terugbetaling, ongeacht het tijdstip (de chauffeur is voor u gereserveerd en wij weigeren andere ritten).",
+  "ca.court": "ℹ️ 100 % terugbetaling als u annuleert vóór {d} (24 uur vóór het ophalen). Daarna: 70 % (minder dan 24 u), 50 % (minder dan 8 u), 0 % (minder dan 2 u of rit gestart).",
+  "an.bareme": "⚠️ U annuleert {h} vóór het ophalen: volgens onze voorwaarden wordt {p} % van wat u betaald hebt ({m}) terugbetaald, namelijk {r}.",
+  "an.bareme0": "⛔ U annuleert {h} vóór het ophalen (minder dan 2 uur): volgens onze voorwaarden wordt niets terugbetaald van wat u betaald hebt ({m}).",
+  "an.demarree": "⛔ De chauffeur is de rit al gestart: volgens onze voorwaarden wordt niets terugbetaald van wat u betaald hebt ({m}).",
+  "an.remb": "✅ U annuleert {h} vóór het ophalen (24 uur of meer): 100 % van wat u betaald hebt ({m}) wordt u terugbetaald.",
   "an.rienPaye": "U hebt nog niets betaald: de annulering is kosteloos.",
-  "an.carteRemb": "Voorschot: terugbetaalbaar (geannuleerd {h} vóór de rit)",
-  "an.carteNon": "Voorschot: niet terugbetaalbaar (geannuleerd {h} vóór de rit)",
+  "an.carteRemb": "Betaald bedrag: terugbetaalbaar (geannuleerd {h} vóór de rit)",
+  "an.carteNon": "Betaald bedrag: niet terugbetaalbaar (geannuleerd {h} vóór de rit)",
   "annuler.resa": "Reservering annuleren",
   "an.btnAnnuler": "❌ Reservering annuleren",
   "an.btnDemande": "❌ Annulering aanvragen",
   "an.formTitre": "❌ Annuleringsaanvraag",
-  "an.formInfo": "Uw aanvraag wordt naar de centrale gestuurd. Annulering meer dan 8 uur vooraf: voorschot terugbetaald; minder dan 8 uur: niet terugbetaalbaar.",
-  "an.formReste": "Er rest nog {h} vóór de rit (minder dan 8 uur): de reservering kan niet meer rechtstreeks geannuleerd worden.",
-  "an.formNonRemb": "Volgens onze voorwaarden wordt het betaalde bedrag ({m}) niet terugbetaald.",
-  "an.formTotal": "Volgens onze voorwaarden wordt 30 % van de prijs ({m}) ingehouden; {r} zou u terugbetaald worden.",
+  "an.formInfo": "Uw aanvraag wordt naar de centrale gestuurd. Schaal: 24 u of meer vooraf → 100 %; minder dan 24 u → 70 %; minder dan 8 u → 50 %; minder dan 2 u of rit gestart → 0 %.",
+  "an.formReste": "Er rest nog {h} vóór de rit (minder dan 24 uur): de reservering kan niet meer rechtstreeks geannuleerd worden.",
   "an.formRien": "Er is niets betaald: geen kosten.",
   "an.motif": "Reden (facultatief)",
   "an.motifPh": "Bv.: vlucht geannuleerd, gewijzigde plannen…",
@@ -831,14 +827,14 @@ nl: {
   "an.resNon": "niet terugbetaalbaar",
   "an.resRien": "geen kosten",
   "an.refusee": "De centrale heeft uw annuleringsaanvraag niet aanvaard: de reservering blijft geldig. Bekijk uw berichten.",
-  "an.confirmDirecte": "Deze reservering annuleren?\n\n✅ U annuleert meer dan 8 uur vóór het ophalen: {m} wordt u de komende dagen terugbetaald.",
+  "an.confirmDirecte": "Deze reservering annuleren?\n\n✅ U annuleert 24 uur of meer vóór het ophalen: 100 % van wat u betaald hebt ({m}) wordt u de komende dagen terugbetaald.",
   "an.confirmDirecteRien": "Deze reservering annuleren?\n\nEr is niets betaald: de annulering is kosteloos.",
   "an.okDirecte": "Uw reservering is geannuleerd. {m} wordt u de komende dagen terugbetaald via het gebruikte betaalmiddel.",
   "an.okDirecteRien": "Uw reservering is geannuleerd.",
   "an.carteRembOk": "✅ Geannuleerd {h} vóór de rit — {m} wordt u de komende dagen terugbetaald",
   "an.carteRembFait": "✅ Geannuleerd — terugbetaling van {m} uitgevoerd",
   "an.carteNonRemb": "⛔ Geannuleerd {h} vóór de rit — niet terugbetaalbaar",
-  "an.passeDemande": "Er rest nu minder dan 8 uur vóór de rit: rechtstreeks annuleren kan niet meer, maar u kunt een aanvraag naar de centrale sturen.",
+  "an.passeDemande": "Er rest nu minder dan 24 uur vóór de rit: rechtstreeks annuleren kan niet meer, maar u kunt een aanvraag naar de centrale sturen (terugbetaling volgens de schaal).",
   "annuler.confirmResa": "Deze reservering annuleren?",
   "fs.titre": "📩 Antwoord van de centrale",
   "fs.sous": "Uw reservering",
@@ -1082,10 +1078,13 @@ nl: {
   </ul>
   <h3>ANNULERING</h3>
   <ul>
-    <li>Het voorschot bevestigt en blokkeert uw reservering. Annulering meer dan 8 uur vóór het ophaaluur: het voorschot wordt u terugbetaald.</li>
-    <li>Annulering minder dan 8 uur vooraf (voorbeeld: rit om 12.00 uur geannuleerd na 4.00 uur 's ochtends): het voorschot (30 % van de prijs) wordt niet terugbetaald, omdat wij andere klanten weigeren om dit tijdslot voor u vrij te houden. Hebt u het volledige bedrag betaald, dan wordt 30 % van de prijs ingehouden en de rest terugbetaald.</li>
-    <li>Betaal het voorschot dus enkel als u zeker bent van uw reservering.</li>
-    <li>Als de chauffeur al onderweg is: terugbetaling volgens de reeds afgelegde kilometers.</li>
+    <li>Het voorschot bevestigt en blokkeert uw reservering. Bij annulering betalen wij een deel van <b>wat u betaald hebt</b> (voorschot of volledig bedrag) terug, afhankelijk van de tijd tussen de annulering en het ophaaluur:</li>
+    <li><b>24 uur of meer vooraf:</b> 100 % terugbetaling.</li>
+    <li><b>Minder dan 24 uur vooraf:</b> 70 % terugbetaling (30 % wordt ingehouden).</li>
+    <li><b>Minder dan 8 uur vooraf:</b> 50 % terugbetaling.</li>
+    <li><b>Minder dan 2 uur vooraf:</b> geen terugbetaling.</li>
+    <li><b>Zodra de chauffeur de rit gestart is:</b> geen terugbetaling, ongeacht het tijdstip, omdat de chauffeur voor u gereserveerd is en wij andere ritten weigeren.</li>
+    <li>U moet deze voorwaarden lezen en aanvaarden vóór elke betaling. Betaal dus enkel als u zeker bent van uw reservering.</li>
   </ul>
   <h3>VERTRAGING</h3>
   <ul>
@@ -1332,26 +1331,24 @@ en: {
   "cash.payerAcompte": "💳 Pay the 30% deposit · {m} by Bancontact",
   "cash.payerTotal": "💳 Pay in full · {m} by Bancontact",
   "cash.resteChauffeur": "The balance ({m}) is paid directly to the driver.",
-  "cond.cb": "I have read and accept the <button type=\"button\" class=\"lien-conditions\" data-ouvrir-conditions>cancellation terms</button> <span style=\"color:var(--rouge);\">*</span>",
-  "cond.dabord": "Please accept the cancellation terms first.",
-  "ca.titre": "ℹ️ Cancellation terms:",
-  "ca.acompte": "the deposit confirms and secures your booking. If you cancel more than 8 hours before the pick-up time, it is refunded. If you cancel less than 8 hours before (example: a 12:00 ride cancelled after 4:00 am), the deposit is non-refundable, as we turn other customers away to keep this slot for you. Please only pay the deposit if you are sure of your booking.",
-  "ca.total": "If you pay in full: for a late cancellation (less than 8 hours before), 30% of the price ({m}) is kept and the rest is refunded.",
-  "ca.court": "ℹ️ Cancellation with a deposit refund is possible until {d} (8 hours before pick-up). After that, the deposit (30%) is non-refundable.",
-  "an.remb": "✅ You are cancelling more than 8 hours before pick-up: {m} will be refunded.",
-  "an.nonRemb": "⚠️ You are cancelling less than 8 hours before pick-up: the deposit ({m}) is non-refundable.",
-  "an.nonRembTotal": "⚠️ You are cancelling less than 8 hours before pick-up: 30% of the price ({m}) is kept, {r} will be refunded.",
+  "cond.cb": "I have read and understood the <button type=\"button\" class=\"lien-conditions\" data-ouvrir-conditions>cancellation and refund terms</button> <span style=\"color:var(--rouge);\">*</span>",
+  "cond.dabord": "Please first tick the box “I have read and understood the cancellation and refund terms”.",
+  "ca.titre": "ℹ️ Cancellation and refund terms:",
+  "ca.acompte": "if you cancel, we refund part of what you have paid (deposit or full amount), depending on how long before the pick-up time you cancel: 24 hours or more before → 100% refunded; less than 24 hours before → 70% refunded; less than 8 hours before → 50% refunded; less than 2 hours before → no refund. Once the driver has started the ride: no refund, whatever the timing (the driver is reserved for you and we turn other rides down).",
+  "ca.court": "ℹ️ 100% refund if you cancel before {d} (24 hours before pick-up). After that: 70% (less than 24 h), 50% (less than 8 h), 0% (less than 2 h or ride started).",
+  "an.bareme": "⚠️ You are cancelling {h} before pick-up: under our terms, {p}% of what you paid ({m}) will be refunded, i.e. {r}.",
+  "an.bareme0": "⛔ You are cancelling {h} before pick-up (less than 2 hours): under our terms, nothing of what you paid ({m}) is refunded.",
+  "an.demarree": "⛔ The driver has already started the ride: under our terms, nothing of what you paid ({m}) is refunded.",
+  "an.remb": "✅ You are cancelling {h} before pick-up (24 hours or more): 100% of what you paid ({m}) will be refunded.",
   "an.rienPaye": "You haven't paid anything yet: cancellation is free of charge.",
-  "an.carteRemb": "Deposit: refundable (cancelled {h} before the ride)",
-  "an.carteNon": "Deposit: non-refundable (cancelled {h} before the ride)",
+  "an.carteRemb": "Amount paid: refundable (cancelled {h} before the ride)",
+  "an.carteNon": "Amount paid: non-refundable (cancelled {h} before the ride)",
   "annuler.resa": "Cancel the booking",
   "an.btnAnnuler": "❌ Cancel the booking",
   "an.btnDemande": "❌ Request cancellation",
   "an.formTitre": "❌ Cancellation request",
-  "an.formInfo": "Your request will be sent to our dispatch. Cancellation more than 8 hours before: deposit refunded; less than 8 hours: non-refundable.",
-  "an.formReste": "There are {h} left before the ride (less than 8 hours): the booking can no longer be cancelled directly.",
-  "an.formNonRemb": "Under our terms, the amount paid ({m}) is non-refundable.",
-  "an.formTotal": "Under our terms, 30% of the price ({m}) is retained; {r} would be refunded to you.",
+  "an.formInfo": "Your request will be sent to our dispatch. Scale: 24 h or more before → 100%; less than 24 h → 70%; less than 8 h → 50%; less than 2 h or ride started → 0%.",
+  "an.formReste": "There are {h} left before the ride (less than 24 hours): the booking can no longer be cancelled directly.",
   "an.formRien": "Nothing has been paid: no charge.",
   "an.motif": "Reason (optional)",
   "an.motifPh": "E.g. flight cancelled, change of plans…",
@@ -1364,14 +1361,14 @@ en: {
   "an.resNon": "non-refundable",
   "an.resRien": "no charge",
   "an.refusee": "Our dispatch did not accept your cancellation request: the booking remains valid. Please check your messages.",
-  "an.confirmDirecte": "Cancel this booking?\n\n✅ You are cancelling more than 8 hours before pick-up: {m} will be refunded within a few days.",
+  "an.confirmDirecte": "Cancel this booking?\n\n✅ You are cancelling 24 hours or more before pick-up: 100% of what you paid ({m}) will be refunded within a few days.",
   "an.confirmDirecteRien": "Cancel this booking?\n\nNothing has been paid: cancellation is free of charge.",
   "an.okDirecte": "Your booking has been cancelled. {m} will be refunded within a few days, to the payment method used.",
   "an.okDirecteRien": "Your booking has been cancelled.",
   "an.carteRembOk": "✅ Cancelled {h} before the ride — {m} will be refunded within a few days",
   "an.carteRembFait": "✅ Cancelled — refund of {m} completed",
   "an.carteNonRemb": "⛔ Cancelled {h} before the ride — non-refundable",
-  "an.passeDemande": "There are now less than 8 hours left before the ride: direct cancellation is no longer possible, but you can send a request to our dispatch.",
+  "an.passeDemande": "There are now less than 24 hours left before the ride: direct cancellation is no longer possible, but you can send a request to our dispatch (refund according to the scale).",
   "annuler.confirmResa": "Cancel this booking?",
   "fs.titre": "📩 Reply from our dispatch",
   "fs.sous": "Your booking",
@@ -1615,10 +1612,13 @@ en: {
   </ul>
   <h3>CANCELLATION</h3>
   <ul>
-    <li>The deposit confirms and secures your booking. Cancellation more than 8 hours before the pick-up time: the deposit is refunded.</li>
-    <li>Cancellation less than 8 hours before (example: a 12:00 ride cancelled after 4:00 am): the deposit (30% of the price) is non-refundable, as we turn other customers away to keep this slot for you. If you paid in full, 30% of the price is kept and the rest is refunded.</li>
-    <li>Please only pay the deposit if you are sure of your booking.</li>
-    <li>If the driver is already on the way: refund based on the kilometres already driven.</li>
+    <li>The deposit confirms and secures your booking. If you cancel, we refund part of <b>what you have paid</b> (deposit or full amount), depending on the time between the cancellation and the pick-up time:</li>
+    <li><b>24 hours or more before:</b> 100% refund.</li>
+    <li><b>Less than 24 hours before:</b> 70% refund (30% is kept).</li>
+    <li><b>Less than 8 hours before:</b> 50% refund.</li>
+    <li><b>Less than 2 hours before:</b> no refund.</li>
+    <li><b>Once the driver has started the ride:</b> no refund, whatever the timing, as the driver is reserved for you and we turn other rides down.</li>
+    <li>You must read and accept these terms before each payment. Please only pay if you are sure of your booking.</li>
   </ul>
   <h3>DELAYS</h3>
   <ul>
@@ -2935,10 +2935,13 @@ const CONDITIONS_PAIEMENT_HTML = `
   </ul>
   <h3>ANNULATION</h3>
   <ul>
-    <li>L'acompte confirme et bloque votre réservation. Annulation plus de 8 heures avant l'heure de prise en charge : l'acompte vous est remboursé.</li>
-    <li>Annulation moins de 8 heures avant (exemple : course à 12h00 annulée après 4h00 du matin) : l'acompte (30 % du prix) n'est pas remboursable, car nous refusons d'autres clients pour vous garder ce créneau. Si vous avez payé la totalité, 30 % du prix sont retenus et le reste vous est remboursé.</li>
-    <li>Merci de payer l'acompte uniquement si vous êtes sûr(e) de votre réservation.</li>
-    <li>Si le chauffeur est déjà en route : remboursement selon les kilomètres déjà parcourus.</li>
+    <li>L'acompte confirme et bloque votre réservation. En cas d'annulation, nous remboursons une partie de <b>ce que vous avez payé</b> (acompte ou totalité), selon le délai entre l'annulation et l'heure de prise en charge :</li>
+    <li><b>24 heures ou plus avant :</b> remboursement de 100 %.</li>
+    <li><b>Moins de 24 heures avant :</b> remboursement de 70 % (30 % sont retenus).</li>
+    <li><b>Moins de 8 heures avant :</b> remboursement de 50 %.</li>
+    <li><b>Moins de 2 heures avant :</b> aucun remboursement.</li>
+    <li><b>Dès que le chauffeur a démarré la course :</b> aucun remboursement, quel que soit le délai, car le chauffeur vous est réservé et nous refusons d'autres courses.</li>
+    <li>Vous devez lire et accepter ces conditions avant chaque paiement. Merci de payer uniquement si vous êtes sûr(e) de votre réservation.</li>
   </ul>
   <h3>RETARD</h3>
   <ul>
@@ -3445,8 +3448,8 @@ function afficherRepCentrale(c) {
     <div class="fs-regle fs-regle-${regle}">${esc(ligneRegle)}</div>
     ${msg && msg !== MSG_VOITURE_DEFAUT ? `<div class="fs-msg"><b>${esc(t("fs.msg"))}</b>\n${esc(msg)}</div>` : ""}
     ${avecPaiement ? `${blocConditionsAnnulationHtml(c)}
-      <label class="accepte-conditions${c.conditions_acceptees_at ? " ok" : ""}">
-        <input type="checkbox" class="cb-fs-conditions" ${c.conditions_acceptees_at ? "checked" : ""}>
+      <label class="accepte-conditions">
+        <input type="checkbox" class="cb-fs-conditions">
         <span>${t("cond.cb")}</span>
       </label>
       <div class="fs-aide-cb">${esc(t("pb.cocher"))}</div>` : ""}
@@ -3480,10 +3483,7 @@ function afficherRepCentrale(c) {
       if (cb && !cb.checked) { err(t("cond.dabord")); return; }
       err(""); const lib = btn.innerHTML; btn.disabled = true; btn.textContent = t("envoi");
       const echec = (m) => { btn.disabled = false; btn.innerHTML = lib; err(m); };
-      if (!c.conditions_acceptees_at) {
-        const { data, error } = await supabase.rpc("client_accepter_conditions", { p_course: c.id, p_accepte: true });
-        if (!error) c.conditions_acceptees_at = data || new Date().toISOString();
-      }
+      if (!c._preuveConditions && !(await enregistrerAcceptationConditions(c, choix === "total" ? total : ac))) return echec(t("cond.dabord"));
       if (c.statut === "prix_envoye") {
         let { error } = await supabase.rpc("client_accepter_prix", { p_course: c.id });
         if (error && /client_accepter_prix|function/i.test(error.message || "")) ({ error } = await supabase.from("courses").update({ statut: "attente_acompte" }).eq("id", c.id));
@@ -3529,9 +3529,10 @@ function afficherRepCentrale(c) {
     };
     maj();
     if (cb) cb.addEventListener("change", async () => {
-      maj(); err("");
-      const { data, error } = await supabase.rpc("client_accepter_conditions", { p_course: c.id, p_accepte: cb.checked });
-      if (!error) c.conditions_acceptees_at = cb.checked ? (data || new Date().toISOString()) : null;
+      err("");
+      if (cb.checked && !(await enregistrerAcceptationConditions(c, montantConditionsClient(c)))) cb.checked = false;
+      if (!cb.checked) c._preuveConditions = false;
+      maj();
     });
     if (regle === "total") fond.querySelector(".fs-zone-total").appendChild(construireContactTotal(c));
     fond.querySelectorAll(".bct-msg").forEach(b => b.addEventListener("click", () => fermerRepCentrale(false), true));
@@ -3837,8 +3838,8 @@ function construireBlocCashClient(course) {
   const libelle = t(etat === "acompte" ? "cash.payerAcompte" : "cash.payerTotal", { m: eu2(montant) });
   bloc.innerHTML += `
     ${blocConditionsAnnulationHtml(course)}
-    <label class="accepte-conditions${course.conditions_acceptees_at ? " ok" : ""}" style="margin-top:10px;">
-      <input type="checkbox" class="cb-conditions-cash" ${course.conditions_acceptees_at ? "checked" : ""}>
+    <label class="accepte-conditions" style="margin-top:10px;">
+      <input type="checkbox" class="cb-conditions-cash">
       <span>${t("cond.cb")}</span>
     </label>
     <button type="button" class="btn-payer-cash">${esc(libelle)}</button>
@@ -3850,12 +3851,14 @@ function construireBlocCashClient(course) {
   const maj = () => { bp.disabled = !cb.checked; };
   maj();
   cb.addEventListener("change", async () => {
-    maj(); err("");
-    const { data, error } = await supabase.rpc("client_accepter_conditions", { p_course: course.id, p_accepte: cb.checked });
-    if (!error) course.conditions_acceptees_at = cb.checked ? (data || new Date().toISOString()) : null;
+    err("");
+    if (cb.checked && !(await enregistrerAcceptationConditions(course, montant))) cb.checked = false;
+    if (!cb.checked) course._preuveConditions = false;
+    maj();
   });
   bp.addEventListener("click", async () => {
     if (!cb.checked) { err(t("cond.dabord")); return; }
+    if (!course._preuveConditions && !(await enregistrerAcceptationConditions(course, montant))) return;
     err(""); bp.disabled = true; bp.textContent = t("pay.ouverture");
     if (course.statut === "prix_envoye") {
       const { error } = await supabase.from("courses").update({ statut: "attente_acompte" }).eq("id", course.id);
@@ -3883,8 +3886,8 @@ function construireBlocCashClient(course) {
 }
 
 
-// ---- Conditions d'annulation de l'acompte : remboursé si annulation ≥ 8 h avant la prise en charge ----
-const DELAI_REMBOURSEMENT_MS = 8 * 3600 * 1000;
+// ---- Conditions d'annulation : barème 100 % (≥ 24 h) / 70 % (< 24 h) / 50 % (< 8 h) / 0 % (< 2 h ou course démarrée) ----
+const DELAI_REMBOURSEMENT_MS = 24 * 3600 * 1000;   // annulation directe à 100 % : 24 h ou plus avant
 function totalCourseClient(c) { return (Number(c.prix) || 0) + (Number(c.surprime) || 0); }
 function acompteCourseClient(c) { const a = Number(c.acompte_montant); return a > 0 ? a : Math.round(totalCourseClient(c) * 30) / 100; }
 // "voiture" | "cash" | "acompte" | "total" | "choix"
@@ -3896,8 +3899,7 @@ function regleCourseClient(c) {
 function blocConditionsAnnulationHtml(c) {
   const regle = regleCourseClient(c);
   if (regle === "voiture" || regle === "cash") return "";
-  return `<div class="cond-annulation"><b>${esc(t("ca.titre"))}</b> ${esc(t("ca.acompte"))}` +
-    (regle !== "acompte" ? `<div class="ca-total">${esc(t("ca.total", { m: fmtEur(acompteCourseClient(c)) }))}</div>` : "") + `</div>`;
+  return `<div class="cond-annulation"><b>${esc(t("ca.titre"))}</b> ${esc(t("ca.acompte"))}</div>`;
 }
 function ligneConditionsCourteHtml(c) {
   if (!c.date_heure) return "";
@@ -3910,16 +3912,54 @@ function montantDejaPayeClient(c) {
   if (c.acompte_paye || c.acompte_declare_client) return c.paiement_choisi === "total" ? totalCourseClient(c) : acompteCourseClient(c);
   return 0;
 }
+// ---- Barème de remboursement (identique à taux_remboursement() en base) ----
+const CONDITIONS_VERSION = "v2026-11-22";
+function tauxRemboursementHeures(h, demarree) {
+  if (demarree) return 0;
+  if (h == null || !isFinite(h)) return 1;
+  if (h >= 24) return 1;
+  if (h >= 8) return 0.7;
+  if (h >= 2) return 0.5;
+  return 0;
+}
+function bilanRemboursementClient(c, infos) {
+  const paye = infos && infos.montant_paye != null ? Number(infos.montant_paye) : montantDejaPayeClient(c);
+  const demarree = infos && infos.demarree != null ? !!infos.demarree : c.statut === "en_cours";
+  const h = infos && infos.heures_avant != null ? Number(infos.heures_avant) : (c.date_heure ? (new Date(c.date_heure).getTime() - Date.now()) / 3600000 : null);
+  const taux = infos && infos.taux != null ? Number(infos.taux) : tauxRemboursementHeures(h, demarree);
+  const r = infos && infos.remboursement_du != null && infos.mode === "demande" ? Number(infos.remboursement_du) : Math.round(paye * taux * 100) / 100;
+  return { paye, demarree, h, taux, pct: Math.round(taux * 100), r };
+}
+function texteBaremeClient(b) {
+  if (!(b.paye > 0)) return t("an.rienPaye");
+  const h = fmtHeuresDecimal(Math.max(0, b.h == null ? 0 : b.h));
+  if (b.demarree) return t("an.demarree", { m: fmtEur(b.paye) });
+  if (b.taux >= 1) return t("an.remb", { h, m: fmtEur(b.paye) });
+  if (b.taux <= 0) return t("an.bareme0", { h, m: fmtEur(b.paye) });
+  return t("an.bareme", { h, p: b.pct, m: fmtEur(b.paye), r: fmtEur(b.r) });
+}
+// Montant que le client s'apprête à payer (acompte ou totalité)
+function montantConditionsClient(c) {
+  const exige = c.paiement_exige || "choix";
+  const tout = exige === "total" || (exige === "choix" && c.paiement_choisi === "total");
+  return tout ? totalCourseClient(c) : (Number(c.acompte_montant) || acompteCourseClient(c));
+}
+// Preuve d'acceptation enregistrée côté serveur (horodatage, version, texte exact, langue, montant, navigateur)
+async function enregistrerAcceptationConditions(c, montant) {
+  const { data, error } = await supabase.rpc("client_enregistrer_acceptation", {
+    p_course: c.id, p_version: CONDITIONS_VERSION, p_texte: t("ca.titre") + " " + t("ca.acompte"), p_langue: LANG,
+    p_montant: montant != null && isFinite(Number(montant)) ? Math.round(Number(montant) * 100) / 100 : null,
+    p_user_agent: String(navigator.userAgent || "").slice(0, 500)
+  });
+  if (error) { await twAlert(t("erreur", { msg: error.message })); return false; }
+  c.conditions_acceptees_at = c.conditions_acceptees_at || (data && data.accepte_at) || new Date().toISOString();
+  c._preuveConditions = true;
+  return true;
+}
 function fmtDureeHeures(ms) { const m = Math.max(0, Math.round(ms / 60000)); const h = Math.floor(m / 60), r = m % 60; return h + " h" + (r ? " " + String(r).padStart(2, "0") : ""); }
 // Texte affiché dans la confirmation d'annulation (calculé à partir de date_heure et de maintenant)
 function texteAnnulationClient(c) {
-  const paye = montantDejaPayeClient(c);
-  if (!(paye > 0)) return t("an.rienPaye");
-  const avant = c.date_heure ? new Date(c.date_heure).getTime() - Date.now() : 0;
-  if (avant >= DELAI_REMBOURSEMENT_MS) return t("an.remb", { m: fmtEur(paye) });
-  const ac = acompteCourseClient(c);
-  if (paye > ac + 0.009) return t("an.nonRembTotal", { m: fmtEur(ac), r: fmtEur(paye - ac) });
-  return t("an.nonRemb", { m: fmtEur(paye) });
+  return texteBaremeClient(bilanRemboursementClient(c));
 }
 
 // Durée « 3,5 h » à partir d'un nombre d'heures décimal calculé par le serveur
@@ -3933,21 +3973,16 @@ function annulationParDemandeClient(c) {
   return !!c.acompte_paye || Number(c.paye_en_ligne_montant) > 0 || !!c.acompte_declare_client || !!c.sans_acompte_autorise
     || ["acompte_declare", "confirmee", "assignee"].includes(c.statut);
 }
-// "gratuite" | "directe" (payée, > 8 h avant) | "demande" (payée, < 8 h avant) | "aucune"
+// "gratuite" | "directe" (payée, 24 h ou plus avant) | "demande" (payée, < 24 h avant, ou course démarrée) | "aucune"
 function modeAnnulationLocal(c) {
-  if (["annulee", "terminee", "refusee", "expiree", "no_show", "en_cours"].includes(c.statut)) return "aucune";
+  if (["annulee", "terminee", "refusee", "expiree", "no_show"].includes(c.statut)) return "aucune";
+  if (c.statut === "en_cours") return "demande";
   if (!annulationParDemandeClient(c)) return ["en_attente", "prix_envoye", "attente_acompte"].includes(c.statut) && !c.chauffeur_id ? "gratuite" : "aucune";
   if (!c.date_heure || new Date(c.date_heure).getTime() - Date.now() >= DELAI_REMBOURSEMENT_MS) return "directe";
   return "demande";
 }
-// Montant qui serait remboursé selon la règle si la demande est faite maintenant (moins de 8 h avant)
-function remboursementTardifClient(c) {
-  const paye = montantDejaPayeClient(c);
-  if (!(paye > 0)) return 0;
-  const ac = acompteCourseClient(c), retenue = Math.round(totalCourseClient(c) * 30) / 100;
-  if (c.paiement_choisi === "total" || paye > ac + 0.009) return Math.max(0, Math.round((paye - retenue) * 100) / 100);
-  return 0;
-}
+// Montant qui serait remboursé selon le barème si la demande est faite maintenant
+function remboursementTardifClient(c) { return bilanRemboursementClient(c).r; }
 // Formulaire (dans la carte) : motif facultatif + envoi de la demande d'annulation à la centrale
 function ouvrirFormulaireDemandeAnnulation(carte, btn, course, infos) {
   if (carte.querySelector(".form-demande-annulation")) return;
@@ -3955,14 +3990,13 @@ function ouvrirFormulaireDemandeAnnulation(carte, btn, course, infos) {
   const du = infos && infos.remboursement_du != null ? Number(infos.remboursement_du) : remboursementTardifClient(course);
   const hAvant = infos && infos.heures_avant != null ? Number(infos.heures_avant)
     : (course.date_heure ? Math.round((new Date(course.date_heure).getTime() - Date.now()) / 360000) / 10 : null);
-  const ligneMontant = !(paye > 0) ? t("an.formRien")
-    : du > 0 ? t("an.formTotal", { m: fmtEur(Math.round((paye - du) * 100) / 100), r: fmtEur(du) })
-    : t("an.formNonRemb", { m: fmtEur(paye) });
+  const bilan = bilanRemboursementClient(course, Object.assign({ mode: "demande" }, infos || {}, { montant_paye: paye, remboursement_du: du, heures_avant: hAvant }));
+  const ligneMontant = !(paye > 0) ? t("an.formRien") : texteBaremeClient(bilan);
   const f = document.createElement("div");
   f.className = "form-demande-annulation";
   f.innerHTML = `<div class="fda-titre">${esc(t("an.formTitre"))}</div>
     <div class="cond-annulation court">${esc(t("an.formInfo"))}</div>
-    ${hAvant != null ? `<div class="fda-ligne">${esc(t("an.formReste", { h: fmtHeuresDecimal(Math.max(0, hAvant)) }))}</div>` : ""}
+    ${hAvant != null && !bilan.demarree ? `<div class="fda-ligne">${esc(t("an.formReste", { h: fmtHeuresDecimal(Math.max(0, hAvant)) }))}</div>` : ""}
     <div class="fda-ligne fda-montant">${esc(ligneMontant)}</div>
     <label class="fda-label">${esc(t("an.motif"))}<textarea class="fda-motif" rows="2" maxlength="500" placeholder="${esc(t("an.motifPh"))}"></textarea></label>
     <div class="fda-erreur" style="display:none;"></div>
@@ -4169,8 +4203,8 @@ async function construireCarteCourseClient(course) {
         ${exigePP === "acompte" ? `<div class="pp-note">${esc(t("pp.acompteNote", { a: fmtEur(acPP), r: fmtEur(totalPP - acPP) }))}</div>` : ""}
         ${exigePP === "total" ? `<div class="pp-note">${esc(t("pp.totalNote", { m: fmtEur(totalPP) }))}</div>` : ""}
         ${condPP ? `${blocConditionsAnnulationHtml(course)}
-        <label class="accepte-conditions${course.conditions_acceptees_at ? " ok" : ""}">
-          <input type="checkbox" class="cb-conditions-pp" ${course.conditions_acceptees_at ? "checked" : ""}>
+        <label class="accepte-conditions">
+          <input type="checkbox" class="cb-conditions-pp">
           <span>${t("cond.cb")}</span>
         </label>` : ""}
         <button type="button" class="pp-accepter">${esc(t("pp.accepter"))}</button>
@@ -4181,12 +4215,16 @@ async function construireCarteCourseClient(course) {
         const majPP = () => { b.disabled = !cbPP.checked; cbPP.closest(".accepte-conditions").classList.toggle("ok", cbPP.checked); };
         majPP();
         cbPP.addEventListener("change", async () => {
+          if (cbPP.checked && !(await enregistrerAcceptationConditions(course, montantConditionsClient(course)))) cbPP.checked = false;
+          if (!cbPP.checked) course._preuveConditions = false;
           majPP();
-          const { data, error } = await supabase.rpc("client_accepter_conditions", { p_course: course.id, p_accepte: cbPP.checked });
-          if (!error) course.conditions_acceptees_at = cbPP.checked ? (data || new Date().toISOString()) : null;
         });
       }
-      b.addEventListener("click", () => { if (cbPP && !cbPP.checked) { twAlert(t("cond.dabord")); return; } accepterPrix(b, t("pp.accepter")); });
+      b.addEventListener("click", async () => {
+        if (cbPP && !cbPP.checked) { twAlert(t("cond.dabord")); return; }
+        if (cbPP && !course._preuveConditions && !(await enregistrerAcceptationConditions(course, montantConditionsClient(course)))) return;
+        accepterPrix(b, t("pp.accepter"));
+      });
       if (exigePP === "total") bloc.appendChild(construireContactTotal(course));
     }
     div.appendChild(bloc);
@@ -4219,16 +4257,17 @@ async function construireCarteCourseClient(course) {
       ${exige === "acompte" ? `<div class="note-instant" style="margin-top:0;">${esc(t("pb.resteChauffeur", { m: fmtEur(totalCourse - Number(course.acompte_montant || 0)) }))}</div>` : ""}
       ${(() => { const ech = echeancePaiementCourse(course); return `<div class="echeance-paiement${ech.urgent ? " urgent" : ""}">${esc(ech.texte)}</div>`; })()}
       ${blocConditionsAnnulationHtml(course)}
-      <label class="accepte-conditions${course.conditions_acceptees_at ? " ok" : ""}">
-        <input type="checkbox" class="cb-accepte-conditions" ${course.conditions_acceptees_at ? "checked" : ""}>
+      <label class="accepte-conditions">
+        <input type="checkbox" class="cb-accepte-conditions">
         <span>${t("cond.cb")}</span>
       </label>
-      <div class="note-instant aide-conditions" style="color:var(--rouge); margin-top:0; ${course.conditions_acceptees_at ? "display:none;" : ""}">${esc(t("pb.cocher"))}</div>
+      <div class="note-instant aide-conditions" style="color:var(--rouge); margin-top:0; ">${esc(t("pb.cocher"))}</div>
       <div class="zone-paiement-en-ligne" style="display:none;">
         <button type="button" class="btn-payer-en-ligne">${esc(t("pb.bancontact", { m: fmtEur(montantAPayer) }))}</button>
         <div class="payer-moyens">${esc(t("pb.securise"))}</div>
         <div class="payer-ou">${esc(t("pb.ouVirement"))}</div>
       </div>
+      <div class="zone-virement-cond">
       ${(() => {
         const qrSrc = qrPaiementDataUrl({ montant: montantAPayer, communication });
         if (!qrSrc) return "";
@@ -4253,6 +4292,7 @@ async function construireCarteCourseClient(course) {
         <a class="btn-copie" href="${urlQrPaiement({ montant: montantAPayer, communication })}" target="_blank" rel="noopener" style="display:block; text-decoration:none; text-align:center;">${esc(t("pb.qrGrand"))}</a>
       </div>
       <button type="button" class="vert" id="btn-jai-paye" style="margin-top:10px;">${esc(payeTout ? t("pb.jaiPayeTotal") : t("pb.jaiPayeAcompte"))}</button>
+      </div>
       <button type="button" id="btn-pas-moyen" class="btn-copie" style="margin-top:10px;${course.demande_cash_at ? " display:none;" : ""}">${esc(t("pb.pasMoyen"))}</button>
       ${course.message_client_paiement && !course.demande_cash_at ? `<div class="lien-chat-paiement">${esc(t("pb.msgEnvoye"))}<button type="button" class="btn-ouvrir-chat-paiement">${esc(t("pb.ouvrirMsgs"))}</button></div>` : ""}
       <div class="bloc-contact-dispatch" style="display:none;">
@@ -4276,7 +4316,9 @@ async function construireCarteCourseClient(course) {
       majBoutonsPaiement();
       zp.querySelector(".btn-payer-en-ligne").addEventListener("click", async (e) => {
         if (!conditionsCochees()) { twAlert(t("cond.dabord")); return; }
-        const btn = e.currentTarget; btn.disabled = true; btn.textContent = t("pay.ouverture");
+        const btn = e.currentTarget;
+        if (!course._preuveConditions && !(await enregistrerAcceptationConditions(course, montantAPayer))) return;
+        btn.disabled = true; btn.textContent = t("pay.ouverture");
         const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", course_id: course.id, retour: location.origin + location.pathname } });
         if (error || !data || !data.url) {
           btn.disabled = false; btn.textContent = t("pb.bancontact", { m: fmtEur(montantAPayer) });
@@ -4294,14 +4336,14 @@ async function construireCarteCourseClient(course) {
       bloc.querySelectorAll(".btn-payer-en-ligne, #btn-jai-paye").forEach(b => { if (b.textContent !== t("pay.ouverture")) b.disabled = !ok; });
       bloc.querySelector(".accepte-conditions").classList.toggle("ok", ok);
       bloc.querySelector(".aide-conditions").style.display = ok ? "none" : "";
+      // QR code / IBAN / « J'ai payé » : visibles seulement après acceptation des conditions
+      const zv = bloc.querySelector(".zone-virement-cond"); if (zv) zv.style.display = ok ? "" : "none";
     }
     majBoutonsPaiement();
     cbConditions.addEventListener("change", async () => {
+      if (cbConditions.checked && !(await enregistrerAcceptationConditions(course, montantAPayer))) cbConditions.checked = false;
+      if (!cbConditions.checked) course._preuveConditions = false;
       majBoutonsPaiement();
-      const coche = cbConditions.checked;
-      const { data, error } = await supabase.rpc("client_accepter_conditions", { p_course: course.id, p_accepte: coche });
-      if (error) { console.error("conditions:", error.message); return; }
-      course.conditions_acceptees_at = coche ? (data || new Date().toISOString()) : null;
     });
     // Message pré-rempli lu par la centrale : reste en français
     const texteContact = `Bonjour Taxi Wal, j'ai une réservation (${communication}) de ${course.prix} € mais je ne peux pas payer l'acompte à l'avance. Pouvez-vous me contacter ?`;
@@ -4345,11 +4387,12 @@ async function construireCarteCourseClient(course) {
     });
     bloc.querySelector("#btn-jai-paye").addEventListener("click", async () => {
       if (!conditionsCochees()) { twAlert(t("cond.dabord")); return; }
+      if (!course._preuveConditions && !(await enregistrerAcceptationConditions(course, montantAPayer))) return;
       if (!(await twConfirm(t("pb.confirmVirement", { m: fmtEur(montantAPayer) })))) return;
-      await supabase.from("courses").update({
-        statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString(),
-        conditions_acceptees_at: course.conditions_acceptees_at || new Date().toISOString()
+      const { error: eDecl } = await supabase.from("courses").update({
+        statut: "acompte_declare", acompte_declare_client: true, acompte_declare_at: new Date().toISOString()
       }).eq("id", course.id);
+      if (eDecl) { twAlert(t("erreur", { msg: eDecl.message })); return; }
       chargerMesCourses();
     });
     div.appendChild(bloc);
@@ -4543,8 +4586,8 @@ async function construireCarteCourseClient(course) {
 
   // --- Annulation par le client ---
   //  · pas encore payée / confirmée → annulation directe sans frais
-  //  · payée / confirmée, plus de 8 h avant → annulation directe, montant payé remboursé par la centrale
-  //  · payée / confirmée, moins de 8 h avant → « Demander l'annulation » (la centrale décide)
+  //  · payée / confirmée, 24 h ou plus avant → annulation directe, 100 % du montant payé remboursé par la centrale
+  //  · payée / confirmée, moins de 24 h avant ou course démarrée → « Demander l'annulation » (barème 70 / 50 / 0 %, la centrale décide)
   // L'affichage est calculé ici ; la décision finale est toujours prise par le serveur (client_mode_annulation / RPC).
   const demandeEnCours = !!course.annulation_demandee_at && !course.annulation_traitee_at && course.statut !== "annulee";
   if (demandeEnCours) {
@@ -4587,7 +4630,7 @@ async function construireCarteCourseClient(course) {
       if (error && /client_annuler_course|function/i.test(error.message || "") && mode === "gratuite") {
         ({ error } = await supabase.from("courses").update({ statut: "annulee" }).eq("id", course.id));
       }
-      if (error && /8 heures/i.test(error.message || "")) {
+      if (error && /24 heures|8 heures/i.test(error.message || "")) {
         // l'heure limite vient d'être dépassée : on passe à la demande
         btn.disabled = false;
         await twAlert(t("an.passeDemande"));

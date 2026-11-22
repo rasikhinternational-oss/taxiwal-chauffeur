@@ -5500,6 +5500,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
     .order("date_heure", { ascending: true });
   if (error) { console.error(error); return; }
   rafraichissementsEnAttente.delete("courses");
+  await chargerPreuvesConditionsAdmin(courses);
 
   if (idsCoursesConnusAdmin === null) {
     idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, annul: c.annulation_demandee_at, valide: reservationClientValidee(c) }]));
@@ -5527,7 +5528,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
         }
         if (c.annulation_demandee_at && ancien.annul !== c.annulation_demandee_at && annulationEnAttente(c)) {
           const du = Number(c.remboursement_du) || 0;
-          alerteImportanteAdmin("❌ Demande d'annulation — à traiter", `${esc(c.client_nom || "Le client")} demande l'ANNULATION (reçue ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant, ${c.annulation_dans_les_delais === false ? "HORS délai, moins de 8 h" : "dans les délais"}).<br>Selon la règle : ${du > 0 ? "💶 à rembourser " + esc(eurosFr(du)) : "⛔ NON remboursable"}${c.annulation_motif ? "<br>Motif : " + esc(c.annulation_motif) : ""}`, c, "#b3141b", "#fdecee");
+          alerteImportanteAdmin("❌ Demande d'annulation — à traiter", `${esc(c.client_nom || "Le client")} demande l'ANNULATION (reçue ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant, barème : ${esc(trancheBaremeAdmin(c.annulation_heures_avant))}).<br>Selon le barème : ${du > 0 ? "💶 à rembourser " + esc(eurosFr(du)) : "⛔ NON remboursable"}${c.annulation_motif ? "<br>Motif : " + esc(c.annulation_motif) : ""}`, c, "#b3141b", "#fdecee");
         } else if (c.origine === "client" && ancien.statut !== "annulee" && c.statut === "annulee" && c.annulation_demandee_at && c.annulation_demandee_at === c.annulation_traitee_at && ancien.annul !== c.annulation_demandee_at) {
           const s = situationRemboursement(c);
           alerteImportanteAdmin("❌ Annulée par le client", `${esc(c.client_nom || "Le client")} a annulé ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant la course.<br>${s && s.etat === "a_rembourser" ? "💶 À REMBOURSER : " + esc(eurosFr(s.montant)) : "Rien à rembourser."}`, c, "#b3141b", "#fdecee");
@@ -6049,8 +6050,50 @@ function blocDemandeCashAdmin(course) {
   return bloc;
 }
 
-// ================== ❌ ANNULATIONS CLIENT (règle des 8 h) + 💶 REMBOURSEMENTS ==================
-// Demande d'annulation reçue (moins de 8 h avant) et pas encore traitée
+// ================== ❌ ANNULATIONS CLIENT (barème 100 / 70 / 50 / 0 %) + 💶 REMBOURSEMENTS ==================
+// Barème (identique à taux_remboursement() en base), appliqué à ce que le client a payé :
+//   ≥ 24 h avant → 100 % · < 24 h → 70 % · < 8 h → 50 % · < 2 h → 0 % · course démarrée (en_cours) → 0 %
+function tauxRemboursementAdmin(h, demarree) {
+  if (demarree) return 0;
+  if (h == null || h === "" || !isFinite(Number(h))) return 1;
+  h = Number(h);
+  return h >= 24 ? 1 : h >= 8 ? 0.7 : h >= 2 ? 0.5 : 0;
+}
+function trancheBaremeAdmin(h) {
+  if (h == null || h === "" || !isFinite(Number(h))) return "délai inconnu";
+  h = Number(h);
+  return h >= 24 ? "24 h ou plus" : h >= 8 ? "moins de 24 h" : h >= 2 ? "moins de 8 h" : "moins de 2 h (ou course démarrée)";
+}
+// Preuves d'acceptation des conditions (table acceptations_conditions) : dernière preuve par course
+let preuvesConditionsAdmin = new Map(), preuvesConditionsDispo = false;
+async function chargerPreuvesConditionsAdmin(courses) {
+  const ids = (courses || []).filter(c => c.origine === "client").map(c => c.id);
+  const m = new Map();
+  try {
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data, error } = await supabase.from("acceptations_conditions")
+        .select("course_id, accepte_at, version, langue, montant").in("course_id", ids.slice(i, i + 150)).order("accepte_at", { ascending: false });
+      if (error) throw error;
+      (data || []).forEach(a => { if (!m.has(a.course_id)) m.set(a.course_id, a); });
+    }
+    preuvesConditionsAdmin = m; preuvesConditionsDispo = true;
+  } catch (e) { console.warn("preuves conditions :", e && e.message); preuvesConditionsDispo = false; }
+}
+function badgeConditionsAdmin(course) {
+  if (!preuvesConditionsDispo || !course || course.origine !== "client") return null;
+  const avecPaiement = (course.paiement_exige && course.paiement_exige !== "voiture") || montantPayeClientAdmin(course) > 0;
+  if (!avecPaiement) return null;
+  const a = preuvesConditionsAdmin.get(course.id);
+  const d = document.createElement("div");
+  d.className = "badge-conditions-admin";
+  d.style.cssText = "margin:6px 0; padding:6px 10px; border-radius:8px; font-size:.85rem; font-weight:700; " +
+    (a ? "background:#e9f7ef; color:#1f6b3f;" : "background:#fff4e5; color:#8a4b00;");
+  d.textContent = a
+    ? `✅ Conditions acceptées le ${annulFmtDate(a.accepte_at).replace(" ", " à ").replace(",", "")} (version ${a.version}${a.langue ? ", " + String(a.langue).toUpperCase() : ""}${a.montant != null ? ", montant " + eurosFr(Number(a.montant)) : ""})`
+    : "⚠️ Conditions non acceptées";
+  return d;
+}
+// Demande d'annulation reçue (moins de 24 h avant, ou course démarrée) et pas encore traitée
 const annulationEnAttente = c => !!c && !!c.annulation_demandee_at && !c.annulation_traitee_at && c.statut !== "annulee";
 // Montant payé par le client (même calcul que course_montant_paye en base)
 function montantPayeClientAdmin(c) {
@@ -6164,9 +6207,10 @@ function blocAnnulationAdmin(course) {
     const du = Number(course.remboursement_du) || 0;
     html += `<div class="bandeau-demande-annulation" style="margin:6px 0; padding:10px 12px; border-radius:10px; background:#fdecee; border:2px solid #b3141b; color:#7a0f14; font-size:.92rem;">
       <div style="font-weight:900; font-size:1rem;">❌ Demande d'annulation — reçue ${esc(annulHeuresTxt(course.annulation_heures_avant))} h avant (${esc(annulFmtDate(course.annulation_demandee_at))})</div>
-      <div style="margin-top:4px; font-weight:800;">${course.annulation_dans_les_delais === false ? "⚠️ HORS délai (&lt; 8 h)" : "✅ Dans les délais"}</div>
+      ${(() => { const pay = montantPayeClientAdmin(course); const pct = pay > 0 ? Math.round(du / pay * 100) : Math.round(tauxRemboursementAdmin(course.annulation_heures_avant, false) * 100);
+        return `<div style="margin-top:4px; font-weight:800;">${course.annulation_dans_les_delais === false ? "⚠️" : "✅"} Barème : ${esc(trancheBaremeAdmin(course.annulation_heures_avant))} → ${pct} % remboursé${pay > 0 ? ` (${esc(eurosFr(du))} sur ${esc(eurosFr(pay))} payés)` : ""}</div>`; })()}
       ${course.annulation_motif ? `<div style="margin-top:4px;"><b>Motif :</b> ${esc(course.annulation_motif)}</div>` : ""}
-      <div style="margin-top:4px; font-weight:800;">Selon la règle : ${du > 0 ? `💶 À rembourser ${esc(eurosFr(du))}` : "⛔ NON remboursable"}</div>
+      <div style="margin-top:4px; font-weight:800;">Selon le barème : ${du > 0 ? `💶 À rembourser ${esc(eurosFr(du))}` : "⛔ NON remboursable"}</div>
       <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">
         <button type="button" class="an-dec" data-dec="annuler_rembourser" style="width:100%; padding:11px; border-radius:9px; border:none; background:#1f6b3f; color:#fff; font-weight:800;">✅ Annuler + rembourser ${esc(eurosFr(du > 0 ? du : montantPayeClientAdmin(course)))}</button>
         <button type="button" class="an-dec" data-dec="annuler_sans_remboursement" style="width:100%; padding:11px; border-radius:9px; border:none; background:#8a1520; color:#fff; font-weight:800;">⛔ Annuler sans remboursement</button>
@@ -6340,6 +6384,7 @@ function construireCarteAdmin(course) {
   div.appendChild(entete);
   { const bp = blocPayeEnLigneAdmin(course, false); if (bp) entete.firstElementChild.appendChild(bp); }
   { const ba = blocAnnulationAdmin(course); if (ba) { const h = entete.firstElementChild.querySelector("h3"); entete.firstElementChild.insertBefore(ba, h || null); } }
+  { const bc = badgeConditionsAdmin(course); if (bc) entete.firstElementChild.appendChild(bc); }
   { const bs = blocSonnerChauffeurAdmin(course, nomChauffeur); if (bs) entete.firstElementChild.appendChild(bs); }
 
   const corps = document.createElement("div");
