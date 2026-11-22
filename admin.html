@@ -4231,7 +4231,8 @@ const FILTRES_DEMANDES = [
   ["paiement", "⏳ Prix accepté — en attente du paiement", c => prixAccepteEnAttentePaiement(c)],
   ["confirmees", "✅ Réservations validées", c => ["confirmee", "assignee", "en_cours"].includes(c.statut) && reservationClientValidee(c)],
   ["annulees", "❌ Annulées / refusées", c => ["annulee", "refusee"].includes(c.statut) && new Date(c.date_heure) > new Date(Date.now() - 30 * 864e5)],
-  ["rembourser", "💶 À rembourser", c => aRembourserAdmin(c)]
+  ["rembourser", "💶 À rembourser", c => aRembourserAdmin(c)],
+  ["frais", "💶 Frais d'annulation dus", c => fraisAnnulationEtatAdmin(c) && fraisAnnulationEtatAdmin(c).etat !== "recus"]
 ];
 let dcFiltre = "nouvelles";
 function afficherDemandesClients() {
@@ -5503,7 +5504,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
   await chargerPreuvesConditionsAdmin(courses);
 
   if (idsCoursesConnusAdmin === null) {
-    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, annul: c.annulation_demandee_at, valide: reservationClientValidee(c) }]));
+    idsCoursesConnusAdmin = new Map((courses || []).map(c => [c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, annul: c.annulation_demandee_at, valide: reservationClientValidee(c), fraisDecl: c.frais_annulation_declare_at || null }]));
   } else {
     (courses || []).forEach(c => {
       const ancien = idsCoursesConnusAdmin.get(c.id);
@@ -5531,8 +5532,14 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           alerteImportanteAdmin("❌ Demande d'annulation — à traiter", `${esc(c.client_nom || "Le client")} demande l'ANNULATION (reçue ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant, barème : ${esc(trancheBaremeAdmin(c.annulation_heures_avant))}).<br>Selon le barème : ${du > 0 ? "💶 à rembourser " + esc(eurosFr(du)) : "⛔ NON remboursable"}${c.annulation_motif ? "<br>Motif : " + esc(c.annulation_motif) : ""}`, c, "#b3141b", "#fdecee");
         } else if (c.origine === "client" && ancien.statut !== "annulee" && c.statut === "annulee" && c.annulation_demandee_at && c.annulation_demandee_at === c.annulation_traitee_at && ancien.annul !== c.annulation_demandee_at) {
           const s = situationRemboursement(c);
-          alerteImportanteAdmin("❌ Annulée par le client", `${esc(c.client_nom || "Le client")} a annulé ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant la course.<br>${s && s.etat === "a_rembourser" ? "💶 À REMBOURSER : " + esc(eurosFr(s.montant)) : "Rien à rembourser."}`, c, "#b3141b", "#fdecee");
+          const fz = fraisAnnulationEtatAdmin(c);
+          alerteImportanteAdmin("❌ Annulée par le client", `${esc(c.client_nom || "Le client")} a annulé ${esc(c.numero_reservation || "")} ${esc(annulHeuresTxt(c.annulation_heures_avant))} h avant la course.<br>${s && s.etat === "a_rembourser" ? "💶 À REMBOURSER : " + esc(eurosFr(s.montant)) + " (payé " + esc(eurosFr(montantPayeClientAdmin(c))) + " par " + esc(moyenPaiementClientAdmin(c)) + ")" : fz ? "💶 Frais d'annulation dus : " + esc(eurosFr(fz.montant)) + " — ⏳ pas encore payés" : "Rien à rembourser."}`, c, "#b3141b", "#fdecee");
         }
+        try {
+          if (ancien && c.frais_annulation_declare_at && ancien.fraisDecl !== c.frais_annulation_declare_at && !c.frais_annulation_paye_at) {
+            alerteImportanteAdmin("📩 Frais d'annulation déclarés payés", `${esc(c.client_nom || "Le client")} dit avoir payé les frais d'annulation de ${esc(c.numero_reservation || "sa course")} : ${esc(eurosFr(c.frais_annulation_du))} (${esc(c.frais_annulation_mode || "virement")}).<br>Vérifie ton compte puis appuie sur « ✅ Frais reçus ».`, c, "#8a5a00", "#fff7e0");
+          }
+        } catch (e) { console.error("alerte frais:", e); }
         if (!ancien.accepte && c.accepte_chauffeur) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: "✅ Course acceptée par le chauffeur", adresse_arrivee: c.adresse_arrivee });
         }
@@ -5551,7 +5558,7 @@ async function chargerCoursesAdmin(depuisAutoRafraichissement = false) {
           notifierNouvelleCourseAdmin({ ...c, adresse_depart: `❌ Course annulée — ${motifLisible} (${nomChauffeurPourNotif(c)})`, adresse_arrivee: `${c.adresse_depart} → ${c.adresse_arrivee}` });
         }
       }
-      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, annul: c.annulation_demandee_at, valide: reservationClientValidee(c) });
+      idsCoursesConnusAdmin.set(c.id, { statut: c.statut, accepte: c.accepte_chauffeur, paye: c.acompte_paye, declare: c.acompte_declare_client, msg: c.message_client_paiement, cash: c.demande_cash_at, annul: c.annulation_demandee_at, valide: reservationClientValidee(c), fraisDecl: c.frais_annulation_declare_at || null });
     });
   }
 
@@ -6192,13 +6199,50 @@ async function marquerRembourseAdmin(course, fait) {
   if (error) { alert("Erreur : " + error.message); return; }
   chargerCoursesAdmin();
 }
+// ---- Frais d'annulation (client qui n'avait rien payé, annulation tardive) ----
+// → { etat: "non_payes" | "declares" | "recus", montant } ou null
+function fraisAnnulationEtatAdmin(c) {
+  if (!c || c.statut !== "annulee" || !(Number(c.frais_annulation_du) > 0)) return null;
+  const montant = Number(c.frais_annulation_du);
+  if (c.frais_annulation_paye_at) return { etat: "recus", montant };
+  if (c.frais_annulation_declare_at) return { etat: "declares", montant };
+  return { etat: "non_payes", montant };
+}
+function moyenPaiementClientAdmin(c) {
+  if (Number(c.paye_en_ligne_montant) > 0) return "Bancontact (en ligne)";
+  if (c.mode_paiement) return String(c.mode_paiement);
+  return "virement";
+}
+async function confirmerFraisAnnulationAdmin(course) {
+  const f = fraisAnnulationEtatAdmin(course); if (!f) return;
+  if (!(await confirmerDansPageFA(`Confirmer la réception des frais d'annulation de ${course.client_nom || "ce client"} : ${eurosFr(f.montant)} (${course.frais_annulation_mode || "virement"}) ?\n\nLe paiement est ajouté à l'onglet Paiements ; la course annulée sera ensuite supprimée comme les autres annulations.`, "✅ Frais reçus", "Annuler"))) return;
+  const { error } = await supabase.rpc("admin_confirmer_frais_annulation", { p_course: course.id, p_mode: course.frais_annulation_mode || null });
+  if (error) { alert("Erreur : " + error.message); return; }
+  try { toastAdmin("✅ Frais d'annulation reçus : " + eurosFr(f.montant)); } catch (_) {}
+  chargerCoursesAdmin();
+}
+function htmlFraisAnnulationAdmin(course) {
+  const f = fraisAnnulationEtatAdmin(course); if (!f) return "";
+  const tf = course.frais_annulation_taux != null ? Math.round(Number(course.frais_annulation_taux) * 100) : null;
+  const prix = (Number(course.prix_client != null ? course.prix_client : course.prix) || 0) + (Number(course.surprime) || 0);
+  const etat = f.etat === "recus" ? `✅ reçus le ${esc(annulFmtDate(course.frais_annulation_paye_at))}${course.frais_annulation_mode ? " (" + esc(course.frais_annulation_mode) + ")" : ""}`
+    : f.etat === "declares" ? `📩 déclarés payés le ${esc(annulFmtDate(course.frais_annulation_declare_at))} (${esc(course.frais_annulation_mode || "virement")}) — à vérifier`
+    : "⏳ non payés";
+  const couleur = f.etat === "recus" ? "#1f6b3f" : f.etat === "declares" ? "#8a5a00" : "#b3141b";
+  return `<div class="badge-frais-annulation ${f.etat}" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0; padding:8px 10px; border-radius:10px; background:#fff7e0; border:2px solid ${couleur}; color:${couleur};">
+      <span style="font-weight:900;">💶 Frais dus ${esc(eurosFr(f.montant))} — ${etat}</span>
+      <span style="font-size:.8rem; color:#555; width:100%;">Rien payé · annulée ${esc(annulHeuresTxt(course.annulation_heures_avant))} h avant${tf != null ? " → " + tf + " % du prix (" + esc(eurosFr(prix)) + ")" : ""}${course.numero_reservation ? " · communication : " + esc(course.numero_reservation) : ""}</span>
+      ${f.etat !== "recus" ? `<button type="button" class="btn-frais-recus" style="width:auto; padding:8px 12px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:800;">✅ Frais reçus</button>` : ""}</div>`;
+}
 // Bandeau + pastille remboursement à placer en haut de la carte d'une course
 function blocAnnulationAdmin(course) {
   if (!course || course.origine !== "client") return null;
   const enAttente = annulationEnAttente(course);
   const refusee = course.annulation_decision === "refusee" && course.statut !== "annulee";
   const s = situationRemboursement(course);
-  if (!enAttente && !refusee && !s) return null;
+  let fraisHtml = "";
+  try { fraisHtml = htmlFraisAnnulationAdmin(course); } catch (e) { console.error("frais annulation:", e); }
+  if (!enAttente && !refusee && !s && !fraisHtml) return null;
   const bloc = document.createElement("div");
   bloc.className = "bloc-annulation-admin";
   bloc.addEventListener("click", e => e.stopPropagation());
@@ -6222,7 +6266,7 @@ function blocAnnulationAdmin(course) {
   }
   if (s && s.etat === "a_rembourser") {
     html += `<div class="badge-remboursement a-rembourser" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0; padding:8px 10px; border-radius:10px; background:#e9f7ef; border:2px solid #1f8a4c; color:#14532d;">
-      <span style="font-weight:900;">💶 À rembourser : ${esc(eurosFr(s.montant))}</span>
+      <span style="font-weight:900;">💶 À rembourser : ${esc(eurosFr(s.montant))}${montantPayeClientAdmin(course) > 0 ? ` <span style="font-weight:600;">(payé ${esc(eurosFr(montantPayeClientAdmin(course)))} par ${esc(moyenPaiementClientAdmin(course))})</span>` : ""}</span>
       <button type="button" class="btn-rembourse-fait" style="width:auto; padding:8px 12px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:800;">✅ Remboursement fait</button></div>`;
   } else if (s && s.etat === "rembourse") {
     html += `<div class="badge-remboursement rembourse" style="margin:6px 0; padding:6px 10px; border-radius:8px; background:#e9f7ef; color:#1f6b3f; font-size:.88rem; font-weight:800;">✅ Remboursé le ${esc(annulFmtDate(course.rembourse_at))}${s.montant ? " (" + esc(eurosFr(s.montant)) + ")" : ""}
@@ -6230,7 +6274,10 @@ function blocAnnulationAdmin(course) {
   } else if (s && s.etat === "non_remboursable") {
     html += `<div class="badge-remboursement non-remboursable" style="margin:6px 0; padding:6px 10px; border-radius:8px; background:#fdecee; color:#8a1520; font-size:.88rem; font-weight:800;">⛔ Non remboursable (annulée ${esc(annulHeuresTxt(annulHeuresAvant(course)))} h avant)</div>`;
   }
+  html += fraisHtml;
   bloc.innerHTML = html;
+  const bfr = bloc.querySelector(".btn-frais-recus");
+  if (bfr) bfr.addEventListener("click", e => { e.stopPropagation(); confirmerFraisAnnulationAdmin(course); });
   bloc.querySelectorAll(".an-dec").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); ouvrirDecisionAnnulation(course, b.dataset.dec); }));
   const bf = bloc.querySelector(".btn-rembourse-fait");
   if (bf) bf.addEventListener("click", e => { e.stopPropagation(); marquerRembourseAdmin(course, true); });

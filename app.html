@@ -2346,7 +2346,19 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .form-demande-annulation{ margin-top:10px; border:1px solid #e3b7ba; background:#fff; border-radius:12px; padding:12px; text-align:left; }
   .form-demande-annulation .fda-titre{ font-weight:800; font-size:1rem; margin-bottom:4px; }
   .form-demande-annulation .fda-ligne{ font-size:.86rem; margin-top:6px; line-height:1.4; }
-  .form-demande-annulation .fda-montant{ font-weight:700; }
+  .form-demande-annulation .fda-montant{ font-weight:700; white-space:pre-line; }
+  .cgv-resa{ margin:8px 0; } .cgv-resa.cgv-ko{ border-color:var(--rouge); box-shadow:0 0 0 2px rgba(200,0,0,.15); }
+  .qr-cgv{ display:flex; align-items:flex-start; gap:8px; font-size:.82rem; margin:10px 0 6px; text-align:left; }
+  .qr-cgv input{ width:auto; margin-top:2px; }
+  .frais-annulation{ margin-top:10px; border:1px solid #f0c36d; background:#fff8e6; border-radius:10px; padding:10px; font-size:.86rem; }
+  .frais-annulation.recu{ border-color:#9bd3a5; background:#eefaf0; }
+  .frais-annulation .fa-titre{ font-weight:800; } .frais-annulation .fa-etat{ margin-top:4px; font-weight:700; }
+  .frais-annulation .fa-pourquoi{ margin-top:4px; color:#555; }
+  .frais-annulation .fa-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; } .frais-annulation .fa-actions button{ flex:1; }
+  .frais-annulation .fa-virement{ margin-top:8px; background:#fff; border:1px solid #e2e2df; border-radius:8px; padding:8px; }
+  .frais-annulation .fa-ligne{ display:flex; justify-content:space-between; align-items:center; gap:6px; margin:4px 0; }
+  .frais-annulation .fa-ligne button{ width:auto; padding:4px 10px; font-size:.78rem; }
+  .frais-annulation .fa-qr{ display:block; margin:6px auto; width:150px; height:150px; }
   .form-demande-annulation .fda-label{ display:block; font-size:.84rem; font-weight:600; margin-top:10px; }
   .form-demande-annulation .fda-motif{ display:block; width:100%; box-sizing:border-box; margin-top:4px; font:inherit; font-size:.95rem; padding:8px 10px; border:1px solid #cfcfcd; border-radius:8px; resize:vertical; }
   .form-demande-annulation .fda-erreur{ color:var(--rouge); font-size:.84rem; margin-top:6px; }
@@ -2709,6 +2721,7 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
     </div>
     <p id="erreur-reservation"></p>
     <p class="mention-conditions" id="mention-conditions-reservation" data-i18n-html="f.mention">En réservant, tu acceptes nos <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de paiement et d'annulation</button>.</p>
+    <label class="ligne-checkbox-marche cgv-resa" id="resa-cgv-bloc"><input type="checkbox" id="resa-cgv"> <span data-i18n-html="cgv.case">J'ai lu et accepté les <button type="button" class="lien-conditions" data-ouvrir-conditions>conditions de réservation, d'annulation et de remboursement</button> <span style="color:var(--rouge);">*</span></span></label>
     <button id="btn-reserver" data-i18n="f.demander">Demander cette course</button>
   </section>
 
@@ -2964,6 +2977,91 @@ const CONDITIONS_PAIEMENT_HTML = `
     <p><b>Communication à indiquer :</b> nom, prénom, date et heure de la réservation, numéro de téléphone</p>
   </div>`;
 I18N.fr["cond.html"] = CONDITIONS_PAIEMENT_HTML;   // les versions nl / en sont dans le dictionnaire
+// ---- Livraison 29 : acceptation à la réservation + frais d'annulation (client non payeur) ----
+(function () {
+  const LIEN = { fr: "conditions de réservation, d'annulation et de remboursement", nl: "reserverings-, annulerings- en terugbetalingsvoorwaarden", en: "booking, cancellation and refund terms" };
+  const btn = l => '<button type="button" class="lien-conditions" data-ouvrir-conditions>' + LIEN[l] + '</button> <span style="color:var(--rouge);">*</span>';
+  const BAR = {
+    fr: "Barème (rien payé) : 24 h ou plus avant → gratuit ; moins de 24 h → 30 % ; moins de 8 h → 50 % ; moins de 2 h ou course démarrée → 100 % du prix.",
+    nl: "Tarief (niets betaald): 24 uur of meer vooraf → gratis; minder dan 24 uur → 30 %; minder dan 8 uur → 50 %; minder dan 2 uur of rit gestart → 100 % van de prijs.",
+    en: "Scale (nothing paid): 24 hours or more before → free; less than 24 h → 30%; less than 8 h → 50%; less than 2 h or ride started → 100% of the price."
+  };
+  const D = {
+    fr: {
+      "cgv.case": "J'ai lu et accepté les " + btn("fr"),
+      "cgv.err": "Cochez la case : vous devez accepter les conditions de réservation, d'annulation et de remboursement.",
+      "an.resume": "Vous avez payé {m}. Annulation {h} avant → vous récupérez {r} ({p} %).",
+      "an.resumeDem": "Vous avez payé {m}. Course démarrée → vous récupérez {r} (0 %).",
+      "fa.btn": "Annuler la réservation",
+      "fa.confirm": "Annuler cette réservation ?\n\n{d}",
+      "fa.detail": "⚠️ Vous n'avez rien payé. Vous annulez {h} avant la prise en charge ({cas}) : selon nos conditions, des frais d'annulation de {p} % du prix de la course ({prix}) sont dus, soit {f}.",
+      "fa.detailDem": "⚠️ Vous n'avez rien payé. Le chauffeur a déjà démarré la course : selon nos conditions, les frais d'annulation sont de 100 % du prix de la course, soit {f}.",
+      "fa.sansPrix": "Aucun prix n'a encore été fixé pour cette course : il n'y a aucun frais d'annulation à payer.",
+      "fa.bareme": BAR.fr,
+      "fa.cas24": "moins de 24 h", "fa.cas8": "moins de 8 h", "fa.cas2": "moins de 2 h",
+      "fa.ok": "Votre réservation est annulée.\n\nFrais d'annulation dus : {f}. Vous pouvez les régler maintenant depuis la carte de la course (virement).",
+      "fa.okSans": "Votre réservation est annulée. Aucun frais à payer.",
+      "fa.titre": "Frais d'annulation : {f}",
+      "fa.pourquoi": "Annulation {h} avant la prise en charge → {p} % du prix de la course ({prix}).",
+      "fa.pourquoiDem": "Annulation après le démarrage de la course → 100 % du prix de la course ({prix}).",
+      "fa.nonPaye": "⏳ Non payés", "fa.declare": "📩 Paiement déclaré — la centrale vérifie la réception.", "fa.recu": "✅ Frais reçus — merci !",
+      "fa.bancontact": "💳 Payer par Bancontact", "fa.virement": "🏦 Virement",
+      "fa.benef": "Bénéficiaire", "fa.iban": "IBAN", "fa.montant": "Montant", "fa.comm": "Communication",
+      "fa.copier": "Copier", "fa.copie": "✓ Copié",
+      "fa.jaipaye": "J'ai payé", "fa.jaipayeConfirm": "Confirmez-vous avoir payé {f} par virement (communication : {n}) ?",
+      "fa.jaipayeOk": "Merci ! La centrale vérifie la réception de votre paiement."
+    },
+    nl: {
+      "cgv.case": "Ik heb de " + btn("nl") + " gelezen en aanvaard",
+      "cgv.err": "Vink het vakje aan: u moet de reserverings-, annulerings- en terugbetalingsvoorwaarden aanvaarden.",
+      "an.resume": "U hebt {m} betaald. Annulering {h} vooraf → u krijgt {r} terug ({p} %).",
+      "an.resumeDem": "U hebt {m} betaald. Rit gestart → u krijgt {r} terug (0 %).",
+      "fa.btn": "Reservering annuleren",
+      "fa.confirm": "Deze reservering annuleren?\n\n{d}",
+      "fa.detail": "⚠️ U hebt niets betaald. U annuleert {h} vóór het ophalen ({cas}): volgens onze voorwaarden is een annuleringskost van {p} % van de ritprijs ({prix}) verschuldigd, namelijk {f}.",
+      "fa.detailDem": "⚠️ U hebt niets betaald. De chauffeur is de rit al gestart: volgens onze voorwaarden bedraagt de annuleringskost 100 % van de ritprijs, namelijk {f}.",
+      "fa.sansPrix": "Er is nog geen prijs vastgelegd voor deze rit: er zijn geen annuleringskosten.",
+      "fa.bareme": BAR.nl,
+      "fa.cas24": "minder dan 24 uur", "fa.cas8": "minder dan 8 uur", "fa.cas2": "minder dan 2 uur",
+      "fa.ok": "Uw reservering is geannuleerd.\n\nVerschuldigde annuleringskosten: {f}. U kunt ze nu betalen via de kaart van de rit (overschrijving).",
+      "fa.okSans": "Uw reservering is geannuleerd. Geen kosten.",
+      "fa.titre": "Annuleringskosten: {f}",
+      "fa.pourquoi": "Annulering {h} vóór het ophalen → {p} % van de ritprijs ({prix}).",
+      "fa.pourquoiDem": "Annulering na de start van de rit → 100 % van de ritprijs ({prix}).",
+      "fa.nonPaye": "⏳ Niet betaald", "fa.declare": "📩 Betaling gemeld — de centrale controleert de ontvangst.", "fa.recu": "✅ Kosten ontvangen — bedankt!",
+      "fa.bancontact": "💳 Betalen met Bancontact", "fa.virement": "🏦 Overschrijving",
+      "fa.benef": "Begunstigde", "fa.iban": "IBAN", "fa.montant": "Bedrag", "fa.comm": "Mededeling",
+      "fa.copier": "Kopiëren", "fa.copie": "✓ Gekopieerd",
+      "fa.jaipaye": "Ik heb betaald", "fa.jaipayeConfirm": "Bevestigt u dat u {f} hebt overgeschreven (mededeling: {n})?",
+      "fa.jaipayeOk": "Bedankt! De centrale controleert de ontvangst van uw betaling."
+    },
+    en: {
+      "cgv.case": "I have read and accept the " + btn("en"),
+      "cgv.err": "Tick the box: you must accept the booking, cancellation and refund terms.",
+      "an.resume": "You paid {m}. Cancelling {h} before → you get back {r} ({p}%).",
+      "an.resumeDem": "You paid {m}. Ride started → you get back {r} (0%).",
+      "fa.btn": "Cancel booking",
+      "fa.confirm": "Cancel this booking?\n\n{d}",
+      "fa.detail": "⚠️ You haven't paid anything. You are cancelling {h} before pick-up ({cas}): under our terms, a cancellation fee of {p}% of the ride price ({prix}) is due, i.e. {f}.",
+      "fa.detailDem": "⚠️ You haven't paid anything. The driver has already started the ride: under our terms, the cancellation fee is 100% of the ride price, i.e. {f}.",
+      "fa.sansPrix": "No price has been set for this ride yet: there is no cancellation fee to pay.",
+      "fa.bareme": BAR.en,
+      "fa.cas24": "less than 24 h", "fa.cas8": "less than 8 h", "fa.cas2": "less than 2 h",
+      "fa.ok": "Your booking has been cancelled.\n\nCancellation fee due: {f}. You can pay it now from the ride card (bank transfer).",
+      "fa.okSans": "Your booking has been cancelled. No fee to pay.",
+      "fa.titre": "Cancellation fee: {f}",
+      "fa.pourquoi": "Cancelled {h} before pick-up → {p}% of the ride price ({prix}).",
+      "fa.pourquoiDem": "Cancelled after the ride started → 100% of the ride price ({prix}).",
+      "fa.nonPaye": "⏳ Not paid", "fa.declare": "📩 Payment reported — we are checking receipt.", "fa.recu": "✅ Fee received — thank you!",
+      "fa.bancontact": "💳 Pay with Bancontact", "fa.virement": "🏦 Bank transfer",
+      "fa.benef": "Beneficiary", "fa.iban": "IBAN", "fa.montant": "Amount", "fa.comm": "Reference",
+      "fa.copier": "Copy", "fa.copie": "✓ Copied",
+      "fa.jaipaye": "I have paid", "fa.jaipayeConfirm": "Do you confirm you have paid {f} by bank transfer (reference: {n})?",
+      "fa.jaipayeOk": "Thank you! We are checking receipt of your payment."
+    }
+  };
+  Object.keys(D).forEach(l => { if (I18N[l]) Object.assign(I18N[l], D[l]); });
+})();
 
 // Texte des conditions d'annulation (même source pour la fenêtre, le bloc avant paiement et la preuve p_texte)
 const CA_LISTE = ["ca.l1", "ca.l2", "ca.l3", "ca.l4", "ca.l5"];
@@ -3337,6 +3435,12 @@ async function envoyerDemandeCourse(opts) {
     erreur.textContent = t("resa.errOblig");
     return { ok: false, erreur: erreur.textContent };
   }
+  const cbCgv = document.getElementById(rapide ? "qr-cgv" : "resa-cgv");
+  if (cbCgv && !cbCgv.checked) {
+    erreur.textContent = t("cgv.err");
+    try { const bl = document.getElementById("resa-cgv-bloc"); if (!rapide && bl) { bl.classList.add("cgv-ko"); bl.scrollIntoView({ block: "center", behavior: "smooth" }); } } catch (e) {}
+    return { ok: false, erreur: erreur.textContent };
+  }
   if (window.validerDemandeClient && !(await window.validerDemandeClient())) return { ok: false, erreur: erreur.textContent };
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -3367,6 +3471,9 @@ async function envoyerDemandeCourse(opts) {
 
   if (error) { erreur.textContent = t("erreur", { msg: error.message }); return { ok: false, erreur: erreur.textContent }; }
   const numeroResa = nouvelleCourse && nouvelleCourse.numero_reservation ? nouvelleCourse.numero_reservation : "";
+  // Preuve d'acceptation des conditions (ne bloque jamais la réservation déjà créée)
+  try { if (nouvelleCourse && nouvelleCourse.id) enregistrerPreuveReservation(nouvelleCourse.id); else console.warn("[conditions] id de course absent : preuve non enregistrée"); } catch (e) { console.error("[conditions]", e); }
+  try { if (cbCgv) cbCgv.checked = false; } catch (e) {}
 
   document.getElementById("input-depart").value = "";
   document.getElementById("input-arrivee").value = "";
@@ -3382,6 +3489,24 @@ async function envoyerDemandeCourse(opts) {
   return { ok: true, course: nouvelleCourse || {} };
 }
 window.envoyerDemandeCourse = envoyerDemandeCourse;
+// Enregistre la preuve (même texte complet, version en vigueur, montant null) ; 3 essais, erreurs en console seulement
+async function enregistrerPreuveReservation(courseId) {
+  for (let essai = 1; essai <= 3; essai++) {
+    try {
+      const { error } = await supabase.rpc("client_enregistrer_acceptation", {
+        p_course: courseId, p_version: CONDITIONS_VERSION, p_texte: texteConditionsAnnulation(), p_langue: LANG,
+        p_montant: null, p_user_agent: String(navigator.userAgent || "").slice(0, 500)
+      });
+      if (!error) return true;
+      console.warn("[conditions] essai " + essai + " : " + error.message);
+    } catch (e) { console.warn("[conditions] essai " + essai + " :", e); }
+    await new Promise(r => setTimeout(r, 1500 * essai));
+  }
+  console.error("[conditions] preuve d'acceptation NON enregistrée pour la course " + courseId);
+  return false;
+}
+window.enregistrerPreuveReservation = enregistrerPreuveReservation;
+try { const cb = document.getElementById("resa-cgv"); if (cb) cb.addEventListener("change", () => { const bl = document.getElementById("resa-cgv-bloc"); if (bl) bl.classList.remove("cgv-ko"); if (cb.checked) { const e = document.getElementById("erreur-reservation"); if (e && e.textContent === t("cgv.err")) e.textContent = ""; } }); } catch (e) {}
 document.getElementById("btn-reserver").addEventListener("click", () => envoyerDemandeCourse());
 
 
@@ -3953,6 +4078,16 @@ function bilanRemboursementClient(c, infos) {
 }
 function texteBaremeClient(b) {
   if (!(b.paye > 0)) return t("an.rienPaye");
+  let resume = "";
+  try {
+    const hR = fmtHeuresDecimal(Math.max(0, b.h == null ? 0 : b.h));
+    const rR = b.demarree ? 0 : b.taux >= 1 ? b.paye : b.taux <= 0 ? 0 : b.r;
+    resume = (b.demarree ? t("an.resumeDem", { m: fmtEur(b.paye), r: fmtEur(0) })
+      : t("an.resume", { m: fmtEur(b.paye), h: hR, r: fmtEur(rR), p: b.demarree ? 0 : b.pct })) + "\n";
+  } catch (e) { resume = ""; }
+  return resume + texteBaremeClientDetail(b);
+}
+function texteBaremeClientDetail(b) {
   const h = fmtHeuresDecimal(Math.max(0, b.h == null ? 0 : b.h));
   if (b.demarree) return t("an.demarree", { m: fmtEur(b.paye) });
   if (b.taux >= 1) return t("an.remb", { h, m: fmtEur(b.paye) });
@@ -3995,8 +4130,101 @@ function annulationParDemandeClient(c) {
     || ["acompte_declare", "confirmee", "assignee"].includes(c.statut);
 }
 // "gratuite" | "directe" (payée, 24 h ou plus avant) | "demande" (payée, < 24 h avant, ou course démarrée) | "aucune"
+// ---- Frais d'annulation (client qui n'a RIEN payé) : prix × (1 − taux), même règle que course_frais_annulation() en base ----
+const FRAIS_BANCONTACT_ACTIF = false;   // passer à true une fois PATCH-paiement-en-ligne.txt déployé
+function bilanFraisClient(c, infos) {
+  const demarree = infos && infos.demarree != null ? !!infos.demarree : c.statut === "en_cours";
+  const h = infos && infos.heures_avant != null ? Number(infos.heures_avant) : (c.date_heure ? (new Date(c.date_heure).getTime() - Date.now()) / 3600000 : null);
+  const prix = infos && infos.prix_total != null ? Number(infos.prix_total) : totalCourseClient(c);
+  const taux = tauxRemboursementHeures(h, demarree);
+  const tf = 1 - taux;
+  const frais = infos && infos.frais_du != null ? Number(infos.frais_du) : (prix > 0 ? Math.round(prix * tf * 100) / 100 : 0);
+  return { demarree, h, prix, taux, tf, pct: Math.round(tf * 100), frais, sansPrix: !(prix > 0) };
+}
+function annulationAvecFraisLocal(c) {
+  if (["annulee", "terminee", "refusee", "expiree", "no_show"].includes(c.statut)) return false;
+  if (montantDejaPayeClient(c) > 0) return false;
+  const b = bilanFraisClient(c);
+  if (b.taux >= 1) return false;
+  return b.frais > 0 || c.statut === "en_cours" || !!c.chauffeur_id || annulationParDemandeClient(c);
+}
+function texteFraisClient(b) {
+  if (b.sansPrix) return t("fa.sansPrix");
+  const h = fmtHeuresDecimal(Math.max(0, b.h == null ? 0 : b.h));
+  const cas = b.tf >= 1 ? t("fa.cas2") : b.tf >= 0.5 ? t("fa.cas8") : t("fa.cas24");
+  return (b.demarree ? t("fa.detailDem", { f: fmtEur(b.frais) }) : t("fa.detail", { h, cas, p: b.pct, prix: fmtEur(b.prix), f: fmtEur(b.frais) }))
+    + "\n\n" + t("fa.bareme");
+}
+async function annulerAvecFraisClient(btn, course, infos) {
+  const b = bilanFraisClient(course, infos);
+  if (!(await twConfirm(t("fa.confirm", { d: texteFraisClient(b) })))) return;
+  btn.disabled = true;
+  const { data: rep, error } = await supabase.rpc("client_annuler_course", { p_course: course.id });
+  if (error) { btn.disabled = false; twAlert(t("erreur", { msg: error.message })); return; }
+  const f = rep && rep.frais_du != null ? Number(rep.frais_du) : b.frais;
+  await twAlert(f > 0 ? t("fa.ok", { f: fmtEur(f) }) : t("fa.okSans"));
+  try { window.__fraisOuvrirVirement = course.id; } catch (e) {}
+  chargerMesCourses();
+}
+// Bloc « Frais d'annulation » sur la carte d'une course annulée (montant, pourquoi, état, paiement)
+function blocFraisAnnulationClient(course) {
+  const f = Number(course.frais_annulation_du) || 0;
+  const z = document.createElement("div");
+  const recu = !!course.frais_annulation_paye_at, declare = !!course.frais_annulation_declare_at;
+  z.className = "frais-annulation" + (recu ? " recu" : "");
+  const tf = course.frais_annulation_taux != null ? Number(course.frais_annulation_taux) : null;
+  const prix = totalCourseClient(course);
+  const h = course.annulation_heures_avant != null ? fmtHeuresDecimal(Math.max(0, Number(course.annulation_heures_avant))) : "?";
+  const pourquoi = tf == null ? "" : (tf >= 1 && course.annulation_heures_avant != null && Number(course.annulation_heures_avant) >= 2)
+    ? t("fa.pourquoiDem", { prix: fmtEur(prix) }) : t("fa.pourquoi", { h, p: Math.round(tf * 100), prix: fmtEur(prix) });
+  const num = course.numero_reservation || "";
+  z.innerHTML = `<div class="fa-titre">${esc(t("fa.titre", { f: fmtEur(f) }))}</div>
+    ${pourquoi ? `<div class="fa-pourquoi">${esc(pourquoi)}</div>` : ""}
+    <div class="fa-etat">${esc(recu ? t("fa.recu") : declare ? t("fa.declare") : t("fa.nonPaye"))}</div>`;
+  if (recu || declare) return z;
+  const act = document.createElement("div"); act.className = "fa-actions";
+  if (FRAIS_BANCONTACT_ACTIF && typeof _etatPaiement !== "undefined" && _etatPaiement !== "inactif") {
+    const bb = document.createElement("button"); bb.type = "button"; bb.className = "fa-bancontact"; bb.textContent = t("fa.bancontact");
+    bb.addEventListener("click", async () => {
+      bb.disabled = true;
+      try {
+        const { data, error } = await supabase.functions.invoke("paiement-en-ligne", { body: { action: "creer", type: "frais_annulation", course_id: course.id, retour: location.origin + location.pathname } });
+        if (error || !data || !data.url) throw new Error((data && data.erreur) || (error && error.message) || "?");
+        location.href = data.url;
+      } catch (e) { bb.disabled = false; twAlert(t("erreur", { msg: e.message || e })); }
+    });
+    act.appendChild(bb);
+  }
+  const bv = document.createElement("button"); bv.type = "button"; bv.className = "secondaire fa-btn-virement"; bv.textContent = t("fa.virement");
+  act.appendChild(bv); z.appendChild(act);
+  const v = document.createElement("div"); v.className = "fa-virement"; v.style.display = "none";
+  const ligne = (lib, val, cle) => `<div class="fa-ligne"><span>${esc(lib)} : <b>${esc(val)}</b></span>${cle ? `<button type="button" class="secondaire" data-fa-copie="${cle}">${esc(t("fa.copier"))}</button>` : ""}</div>`;
+  let qr = null; try { qr = qrPaiementDataUrl({ montant: f, communication: num }); } catch (e) { qr = null; }
+  v.innerHTML = ligne(t("fa.benef"), COMPTE_BENEFICIAIRE, "") + ligne(t("fa.iban"), COMPTE_IBAN, "iban")
+    + ligne(t("fa.montant"), fmtEur(f), "montant") + ligne(t("fa.comm"), num || "—", num ? "comm" : "")
+    + (qr ? `<img class="fa-qr" alt="QR" src="${qr}">` : "")
+    + `<button type="button" class="fa-jaipaye">${esc(t("fa.jaipaye"))}</button>`;
+  z.appendChild(v);
+  bv.addEventListener("click", () => { v.style.display = v.style.display === "none" ? "" : "none"; });
+  v.querySelectorAll("[data-fa-copie]").forEach(b => b.addEventListener("click", () => {
+    const val = { iban: COMPTE_IBAN_BRUT, montant: (Math.round(f * 100) / 100).toFixed(2), comm: num }[b.dataset.faCopie];
+    copierTexte(val, b, t("fa.copie"));
+  }));
+  const bj = v.querySelector(".fa-jaipaye");
+  bj.addEventListener("click", async () => {
+    if (!(await twConfirm(t("fa.jaipayeConfirm", { f: fmtEur(f), n: num || "—" })))) return;
+    bj.disabled = true;
+    const { error } = await supabase.rpc("client_declarer_frais_annulation", { p_course: course.id, p_mode: "virement" });
+    if (error) { bj.disabled = false; twAlert(t("erreur", { msg: error.message })); return; }
+    await twAlert(t("fa.jaipayeOk"));
+    chargerMesCourses();
+  });
+  try { if (window.__fraisOuvrirVirement === course.id) { v.style.display = ""; window.__fraisOuvrirVirement = null; } } catch (e) {}
+  return z;
+}
 function modeAnnulationLocal(c) {
   if (["annulee", "terminee", "refusee", "expiree", "no_show"].includes(c.statut)) return "aucune";
+  try { if (annulationAvecFraisLocal(c)) return "frais"; } catch (e) { console.warn("frais annulation:", e); }
   if (c.statut === "en_cours") return "demande";
   if (!annulationParDemandeClient(c)) return ["en_attente", "prix_envoye", "attente_acompte"].includes(c.statut) && !c.chauffeur_id ? "gratuite" : "aucune";
   if (!c.date_heure || new Date(c.date_heure).getTime() - Date.now() >= DELAI_REMBOURSEMENT_MS) return "directe";
@@ -4030,10 +4258,14 @@ function ouvrirFormulaireDemandeAnnulation(carte, btn, course, infos) {
   env.addEventListener("click", async () => {
     env.disabled = true; err.style.display = "none";
     const motif = f.querySelector(".fda-motif").value.trim();
-    const { error } = await supabase.rpc("client_demander_annulation", { p_course: course.id, p_motif: motif || null });
+    const { data: repD, error } = await supabase.rpc("client_demander_annulation", { p_course: course.id, p_motif: motif || null });
     if (error) { env.disabled = false; err.textContent = t("erreur", { msg: error.message }); err.style.display = "block"; return; }
     f.remove();
-    await twAlert(t("an.envoyee"));
+    if (repD && repD.annulee_directement) {
+      const fd = Number(repD.frais_du) || 0;
+      await twAlert(fd > 0 ? t("fa.ok", { f: fmtEur(fd) }) : t("fa.okSans"));
+      try { window.__fraisOuvrirVirement = course.id; } catch (e) {}
+    } else await twAlert(t("an.envoyee"));
     chargerMesCourses();
   });
   setTimeout(() => { try { f.querySelector(".fda-motif").focus(); } catch (e) {} }, 30);
@@ -4605,6 +4837,11 @@ async function construireCarteCourseClient(course) {
     div.insertAdjacentHTML("beforeend", `<div class="ligne-remb ${course.acompte_remboursable ? "oui" : "non"}">${esc(t(course.acompte_remboursable ? "an.carteRemb" : "an.carteNon", { h }))}</div>`);
   }
 
+  // --- Course annulée sans paiement, tardivement : frais d'annulation ---
+  if (course.statut === "annulee" && Number(course.frais_annulation_du) > 0) {
+    try { div.appendChild(blocFraisAnnulationClient(course)); } catch (e) { console.error("bloc frais annulation:", e); }
+  }
+
   // --- Annulation par le client ---
   //  · pas encore payée / confirmée → annulation directe sans frais
   //  · payée / confirmée, 24 h ou plus avant → annulation directe, 100 % du montant payé remboursé par la centrale
@@ -4623,7 +4860,7 @@ async function construireCarteCourseClient(course) {
   if (modeLocal !== "aucune") {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = modeLocal === "gratuite" ? t(["acompte_declare", "confirmee"].includes(course.statut) ? "annuler.resa" : "annuler.demande")
+    btn.textContent = modeLocal === "frais" ? t("fa.btn") : modeLocal === "gratuite" ? t(["acompte_declare", "confirmee"].includes(course.statut) ? "annuler.resa" : "annuler.demande")
       : modeLocal === "directe" ? t("an.btnAnnuler") : t("an.btnDemande");
     btn.className = "secondaire btn-annuler-course";
     btn.dataset.mode = modeLocal;
@@ -4636,6 +4873,7 @@ async function construireCarteCourseClient(course) {
       } catch (e) {}
       btn.disabled = false;
       if (mode === "aucune" || mode === "demande_en_cours") { chargerMesCourses(); return; }
+      if (mode === "frais") { await annulerAvecFraisClient(btn, course, infos); return; }
       if (mode === "demande") {
         if (modeLocal === "directe") await twAlert(t("an.passeDemande"));
         ouvrirFormulaireDemandeAnnulation(div, btn, course, infos);
@@ -5064,6 +5302,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   if (info) etapes[3].appendChild(info);
   etapes[3].appendChild($("erreur-reservation"));
   if ($("mention-conditions-reservation")) etapes[3].appendChild($("mention-conditions-reservation"));
+  if ($("resa-cgv-bloc")) etapes[3].appendChild($("resa-cgv-bloc"));
   const btnReserver = $("btn-reserver");
   const nav = document.createElement("div"); nav.className = "rz-nav";
   nav.innerHTML = `<button type="button" class="rz-retour" data-i18n="rz.retour">${esc(t("rz.retour"))}</button><button type="button" class="rz-suivant" data-i18n="rz.continuer">${esc(t("rz.continuer"))}</button>`;
@@ -6512,7 +6751,7 @@ appliquerLangue();
   if (badge) badge.after(zone); else section.prepend(zone);
   section.classList.add("qr-on");
 
-  let quand = null, passagers = 1, contactOuvert = false, derniere = null, minuterieEtat = null;
+  let quand = null, passagers = 1, contactOuvert = false, derniere = null, minuterieEtat = null, cgvRapide = false;
   const deux = n => String(n).padStart(2, "0");
   const versChamp = d => d.getFullYear() + "-" + deux(d.getMonth() + 1) + "-" + deux(d.getDate()) + "T" + deux(d.getHours()) + ":" + deux(d.getMinutes());
   const arrondir5 = d => { d.setSeconds(0, 0); d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5); return d; };
@@ -6539,6 +6778,8 @@ appliquerLangue();
         <div class="qr-err" id="qr-err-date"></div></div>
       <div class="qr-bloc"><div class="qr-pass"><span>👥 ${esc(t("qr.passagers"))}</span><div><button type="button" id="qr-moins" aria-label="−">−</button><output id="qr-nb">${passagers}</output><button type="button" id="qr-plus" aria-label="+">+</button></div></div></div>
       <div class="qr-bloc" id="qr-contact"></div>
+      <label class="qr-cgv" id="qr-cgv-bloc"><input type="checkbox" id="qr-cgv"${cgvRapide ? " checked" : ""}><span>${t("cgv.case")}</span></label>
+      <div class="qr-err" id="qr-err-cgv"></div>
       <button type="button" class="qr-envoyer" id="qr-envoyer">${esc(t("qr.reserver"))}</button>
       <div class="qr-err" id="qr-err-envoi"></div>
       <button type="button" class="qr-plus" id="qr-plus-options">${esc(t("qr.plus"))}</button>
@@ -6548,6 +6789,7 @@ appliquerLangue();
     rendreContact(vals.nom, vals.tel);
     majPuces();
     ["qr-depart", "qr-arrivee", "qr-date"].forEach(id => $(id).addEventListener("input", () => effacer(id)));
+    $("qr-cgv").addEventListener("change", () => { cgvRapide = $("qr-cgv").checked; effacer("qr-cgv"); });
     try { $("qr-inverser").addEventListener("click", () => { twInverserChamps($("qr-depart"), $("qr-arrivee")); effacer("qr-depart"); effacer("qr-arrivee"); }); } catch (e) { console.warn(e); }
     $("qr-date").addEventListener("change", () => { quand = null; majPuces(); effacer("qr-date"); });
     zone.querySelectorAll("[data-qr-quand]").forEach(b => b.addEventListener("click", () => choisirQuand(b.dataset.qrQuand)));
@@ -6641,6 +6883,7 @@ appliquerLangue();
     if (arr.length < 4) ko("qr-arrivee", t("qr.e.arrivee"));
     if (!v) ko("qr-date", t("qr.e.date"));
     else if (new Date(v).getTime() < Date.now() - 5 * 60000) ko("qr-date", t("qr.e.passe"));
+    if ($("qr-cgv") && !$("qr-cgv").checked) ko("qr-cgv", t("cgv.err"));
     if (nom.length < 2 || !telOk(tel)) { if (!$("qr-nom")) { contactOuvert = true; rendreContact(nom, tel); } if (nom.length < 2) ko("qr-nom", t("qr.e.nom")); if (!telOk(tel)) ko("qr-tel", t("qr.e.tel")); }
     if (premier) { const el = $(premier); if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); try { el.focus({ preventScroll: true }); } catch (e) {} } return; }
 
@@ -6662,7 +6905,7 @@ appliquerLangue();
     b.disabled = false; b.textContent = t("qr.reserver");
     if (!r || !r.ok) { $("qr-err-envoi").textContent = (r && r.erreur) || $("erreur-reservation").textContent || t("resa.errOblig"); return; }
     derniere = { id: r.course.id, numero: r.course.numero_reservation || "", reservation_directe: !!r.course.reservation_directe, dep, arr, date: v, passagers };
-    $("qr-depart").value = ""; $("qr-arrivee").value = ""; $("qr-date").value = ""; quand = null; passagers = 1;
+    $("qr-depart").value = ""; $("qr-arrivee").value = ""; $("qr-date").value = ""; quand = null; passagers = 1; cgvRapide = false;
     rendreConfirmation();
   }
 
