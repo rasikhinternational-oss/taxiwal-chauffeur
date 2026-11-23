@@ -638,6 +638,7 @@ function uberAppConfirme(id) { try { return !!(JSON.parse(localStorage.getItem(C
 // 🚕 Uber payé dans l'app : petite fenêtre « Prix de la course » (facultative, bouton « Plus tard »)
 // Le montant va dans « Prix taximètre » (jamais dans la recette). Une seule demande par course et par ouverture.
 const demandesPrixUberFaites = new Set();
+const prixUberEnCours = new Set();
 function demanderPrixUberApp(ligne, inputPrix) {
   try {
     if (!ligne || !ligne.id || ligne.cloturee || estPriveOuGarage(ligne.type_course)) return;
@@ -659,7 +660,7 @@ function demanderPrixUberApp(ligne, inputPrix) {
       </div></div>`;
     const champ = fond.querySelector(".fpu-montant");
     if (actuel !== null && actuel > 0) champ.value = String(actuel).replace(".", ",");
-    const fermer = () => { try { fond.remove(); } catch (_) {} };
+    const fermer = () => { try { fond.remove(); } catch (_) {} try { planifierClotureAuto(id); } catch (_) {} };
     fond.addEventListener("click", (ev) => { ev.stopPropagation(); if (ev.target === fond) fermer(); });
     fond.querySelector(".fpu-plus-tard").addEventListener("click", (ev) => { ev.stopPropagation(); fermer(); });
     fond.querySelector(".fpu-ok").addEventListener("click", (ev) => {
@@ -667,14 +668,18 @@ function demanderPrixUberApp(ligne, inputPrix) {
       const v = frNum(champ.value);
       fermer();
       if (v === null || !(v > 0) || !inputPrix) return;
+      prixUberEnCours.add(id);
+      const finPrix = () => setTimeout(() => { prixUberEnCours.delete(id); try { planifierClotureAuto(id); } catch (_) {} }, 1500);
       // On attend que le mode « uber » soit enregistré (deux écritures, jamais en même temps)
       const debut = Date.now();
       (function attendre() {
         const pret = ligne.mode_paiement === "uber" || ligne.type_course === "uber";
         if (pret || Date.now() - debut > 20000) {
-          inputPrix.value = String(v);
-          inputPrix.dispatchEvent(new Event("change"));
-          try { planifierCaisse(); } catch (_) {}
+          try {
+            inputPrix.value = String(v);
+            inputPrix.dispatchEvent(new Event("change"));
+            try { planifierCaisse(); } catch (_) {}
+          } finally { finPrix(); }
           return;
         }
         setTimeout(attendre, 120);
@@ -703,6 +708,9 @@ async function tenterClotureAuto(id) {
   if (el && (el.classList.contains("plein-ecran") || saisieDansCarte(el))) return;
   const qr = document.getElementById("overlay-qr");
   if (qr && qr.style.display === "flex") { planifierClotureAuto(id, 3000); return; }
+  // Fenêtre « Prix de la course Uber » ouverte (ou prix en route) : on attend, sinon la course serait clôturée
+  // avant le prix et le serveur refuserait le prix (course clôturée = plus modifiable par le chauffeur)
+  if (document.getElementById("fenetre-prix-uber") || prixUberEnCours.has(id)) { planifierClotureAuto(id, 3000); return; }
   if (!etatCompletude(ligne, null, feuilleActuelle).complet) return;
   if (uberPaiementAConfirmer(ligne)) return;
   const err = await cloturerLigneEnBase(ligne);
@@ -1737,7 +1745,17 @@ window.onerror = function(msg, url, line, col, err) {
 
   // Écriture « robuste » : directe si possible, sinon mise en attente (jamais bloquant pour le chauffeur).
   // Renvoie { data, error } comme supabase, avec enAttente: true si la modification attend le réseau.
-  async function ecrire(spec) {
+  // Écritures directes UNE PAR UNE, dans l'ordre d'appel : une écriture lancée pendant qu'une autre est en vol
+  // attend qu'elle soit terminée (ex. « Clôture » ne peut plus doubler le « prix » saisi juste avant).
+  var chaineDirecte = Promise.resolve();
+  function ecrire(spec) {
+    // sécurité : on n'attend jamais plus de 15 s l'écriture précédente (jamais bloquant pour le chauffeur)
+    var avant = Promise.race([chaineDirecte, new Promise(function (r) { setTimeout(r, 15000); })]);
+    var p = avant.then(function () { return ecrireUne(spec); });
+    chaineDirecte = p.catch(function () {});
+    return p;
+  }
+  async function ecrireUne(spec) {
     spec.id = uuid();
     spec.cree = Date.now();
     if (spec.local === undefined) spec.local = spec.payload ? copie(spec.payload) : null;
