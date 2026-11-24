@@ -404,6 +404,23 @@ function sansArgentExplique(l) {
     || ["facture", "uber", "uber_cash", "annulee"].includes(l.mode_paiement)
     || ["uber", "prive", "garage"].includes(l.type_course);
 }
+// ❌ Course annulée : choix « frais d'annulation » noté dans sommes_texte (valeurs existantes, aucune nouvelle colonne)
+const TEXTES_ANNULATION = { rien: "Annulée – rien reçu", uber: "Annulée – frais Uber", client: "Annulée – frais client" };
+function choixAnnulation(l) {
+  const t = String((l && l.sommes_texte) || "").trim();
+  return Object.keys(TEXTES_ANNULATION).find(k => TEXTES_ANNULATION[k] === t) || "";
+}
+// Course marquée annulée (mode « annulee » ou choix de frais fait) ; Uber à 0 € = candidate (bouton « annulée ? »)
+function estCourseAnnulee(l) { return !!l && (l.mode_paiement === "annulee" || !!choixAnnulation(l)); }
+function uberSansMontant(l) {
+  if (!l || estPriveOuGarage(l.type_course) || choixAnnulation(l)) return false;
+  const p = frNum(l.prix_taximetre);
+  return (l.mode_paiement === "uber_cash" || l.mode_paiement === "uber" || l.type_course === "uber") && !(p !== null && p > 0);
+}
+// Annulée sans choix (ni texte, ni motif) → reste « à compléter » (la clôture manuelle reste toujours possible)
+function annulationAChoisir(l) {
+  return !!l && l.mode_paiement === "annulee" && !choixAnnulation(l) && !(l.sommes_texte && String(l.sommes_texte).trim()) && !l.motif_sans_prix;
+}
 // Uber payé en CASH : montant reçu = « Prix taximètre » (jamais dans la recette, Uber déclare lui-même).
 // Anciennes lignes : montant noté par erreur dans « Sommes perçues » → repris comme montant reçu.
 function montantUberCash(l) {
@@ -426,14 +443,15 @@ function montantUberApp(l) {
 }
 // Vue d'ensemble : recette (règle inchangée) + Uber (en ligne + cash) + factures = total global des courses
 function totauxVueGlobale(lignes) {
-  let uberApp = 0, uberCash = 0, factures = 0, nbUberSansPrix = 0;
+  let uberApp = 0, uberCash = 0, factures = 0, nbUberSansPrix = 0, nbFactures = 0, nbFacturesSansPrix = 0;
   (lignes || []).forEach(l => {
     if (!l || estPriveOuGarage(l.type_course)) return;
     try { if (estLigneRelais(l)) return; } catch (_) {}
     if (l.mode_paiement === "uber_cash") { uberCash += montantUberCash(l) || 0; return; }
     if (l.mode_paiement === "facture") {
       const pf = frNum(l.prix_taximetre), sf = frNum(l.sommes_percues);
-      factures += (pf !== null && pf > 0) ? pf : ((sf !== null && sf > 0) ? sf : 0);
+      const mf = (pf !== null && pf > 0) ? pf : ((sf !== null && sf > 0) ? sf : 0);
+      factures += mf; nbFactures++; if (!mf) nbFacturesSansPrix++;
       return;
     }
     if (estUberApp(l)) { const m = montantUberApp(l); if (m !== null) uberApp += m; else nbUberSansPrix++; }
@@ -441,12 +459,16 @@ function totauxVueGlobale(lignes) {
   const r2 = v => Math.round(v * 100) / 100;
   const recette = r2(recetteDesLignes(lignes));
   const uber = r2(uberApp + uberCash);
-  return { recette, uberApp: r2(uberApp), uberCash: r2(uberCash), uber, factures: r2(factures), nbUberSansPrix, total: r2(recette + uber + factures) };
+  return { recette, uberApp: r2(uberApp), uberCash: r2(uberCash), uber, factures: r2(factures), nbFactures, nbFacturesSansPrix, nbUberSansPrix, total: r2(recette + uber + factures) };
+}
+function texteAPartVueGlobale(v) {
+  const fac = formatEuro(v.factures) + (v.nbFacturesSansPrix ? " + " + v.nbFacturesSansPrix + " course" + (v.nbFacturesSansPrix > 1 ? "s" : "") + " sur facture sans montant" : "");
+  return "à part, hors recette : Uber " + formatEuro(v.uberApp) + " · Uber cash " + formatEuro(v.uberCash) + " · Factures " + fac;
 }
 function htmlVueGlobale(lignes, classe) {
   const v = totauxVueGlobale(lignes);
   return `<div class="${classe || "caisse-ligne"} vue-globale-uber"><span>🚕 Uber (en ligne ${esc(formatEuro(v.uberApp))} + cash ${esc(formatEuro(v.uberCash))})${v.nbUberSansPrix ? " · " + v.nbUberSansPrix + " sans prix" : ""} — hors recette</span><b>${esc(formatEuro(v.uber))}</b></div>
-    <div class="${classe || "caisse-ligne"} vue-globale-total"><span>📊 Total global des courses (recette + Uber + factures)</span><b>${esc(formatEuro(v.total))}</b></div>`;
+    <div class="${classe || "caisse-ligne"} vue-globale-total"><span>💰 Recette (cash + carte) <small>(${esc(texteAPartVueGlobale(v))})</small></span><b>${esc(formatEuro(v.recette))}</b></div>`;
 }
 // Motifs « pas de prix » qui passent quand même par un paiement (facture, Uber, annulée) → mode obligatoire
 const MOTIFS_AVEC_PAIEMENT = { "Forfait école": "facture", "Contrat / sur facture": "facture", "Uber (prix dans l'app)": "uber", "Course annulée / client absent": "annulee" };
@@ -499,7 +521,11 @@ function etatCompletude(l, triees, feuille) {
     exiger(rempli(l.debarquement_lieu), "debarquement_lieu", "lieu de débarquement");
     exiger(!!l.debarquement_heure, "debarquement_heure", "heure de débarquement");
   }
-  const typeSansPrix = ["uber", "prive", "garage"].includes(l.type_course) || ["uber", "uber_cash", "annulee"].includes(l.mode_paiement);
+  const choixAnn = choixAnnulation(l);
+  const typeSansPrix = ["uber", "prive", "garage"].includes(l.type_course) || ["uber", "uber_cash", "annulee"].includes(l.mode_paiement) || choixAnn === "client";
+  if (annulationAChoisir(l)) exiger(false, "mode_paiement", "course annulée : frais d'annulation reçus ? (choisir)");
+  if (choixAnn === "client") exiger(somme !== null && somme > 0, "sommes_percues", "montant des frais d'annulation (client)");
+  if (choixAnn === "uber" && l.mode_paiement !== "uber_cash") exiger(prix !== null && prix > 0, "prix_taximetre", "montant des frais Uber");
   if (l.mode_paiement === "uber_cash" && !estPriveOuGarage(l.type_course)) {
     // Uber payé cash : le montant reçu (Prix taximètre) est obligatoire ; jamais de « sommes perçues »
     exiger(montantUberCash(l) !== null, "prix_taximetre", "montant reçu en cash (Uber)");
@@ -535,7 +561,10 @@ function resumeLigneFermee(l, numero) {
   const mode = l.mode_paiement === "facture" ? texteFacture(l.numero_dossier)
     : (LIBELLES_MODE_COURT[l.mode_paiement] || (l.mode_paiement ? String(l.mode_paiement).toUpperCase() : ""));
   let argent;
-  if (l.mode_paiement === "annulee") argent = "❌ ANNULÉE";
+  const chAnn = choixAnnulation(l);
+  if (chAnn === "uber") argent = "❌ " + l.sommes_texte + " " + formatEuro(frNum(l.prix_taximetre) || 0) + " (hors recette)";
+  else if (chAnn === "client") argent = "❌ " + l.sommes_texte + " " + formatEuro(somme || 0) + (mode ? " " + mode : "");
+  else if (l.mode_paiement === "annulee") argent = "❌ ANNULÉE" + (chAnn === "rien" ? " — rien reçu" : "");
   else if (estPriveOuGarage(l.type_course)) argent = libellePriveOuGarage(l);
   else if (l.mode_paiement === "facture" && !(somme !== null && somme > 0)) {
     const prixF = frNum(l.prix_taximetre), numF = lirePayeurFacture(l.numero_dossier).numero;
@@ -689,6 +718,87 @@ function demanderPrixUberApp(ligne, inputPrix) {
     setTimeout(() => { try { champ.focus(); } catch (_) {} }, 50);
   } catch (e) { console.warn("Fenêtre prix Uber :", e); }
 }
+// ❌ Panneau « Course annulée — avez-vous reçu des frais d'annulation ? » (3 gros boutons + « Plus tard »)
+// onChoix({ choix: "rien" | "uber" | "client", montant, mode }) ; rien n'est écrit ici.
+const annulationEnCours = new Set();
+function ouvrirPanneauAnnulation(ligne, onChoix) {
+  try {
+    if (!ligne || !ligne.id || ligne.cloturee || (feuilleActuelle && feuilleActuelle.verrouillee)) return;
+    if (document.getElementById("fenetre-annulation")) return;
+    const id = String(ligne.id);
+    const fond = document.createElement("div");
+    fond.id = "fenetre-annulation";
+    fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;";
+    const gros = "display:block; width:100%; padding:16px; margin-top:10px; font-size:1.1rem; font-weight:800; border-radius:12px; border:2px solid #999; background:#fff; text-align:left;";
+    const actuel = choixAnnulation(ligne);
+    const mAct = actuel === "uber" ? frNum(ligne.prix_taximetre) : actuel === "client" ? frNum(ligne.sommes_percues) : null;
+    fond.innerHTML = `<div style="background:#fff; border-radius:14px; padding:18px; max-width:380px; width:100%; max-height:92vh; overflow:auto; box-shadow:0 8px 30px rgba(0,0,0,.3);">
+      <div style="font-weight:800; font-size:1.15rem;">❌ Course annulée — avez-vous reçu des frais d'annulation ?</div>
+      <div class="fa-etape1">
+        <button type="button" class="fa-rien" style="${gros}">❌ Rien reçu</button>
+        <button type="button" class="fa-uber" style="${gros}">🚖 Frais Uber</button>
+        <button type="button" class="fa-client" style="${gros}">💵 Frais client (taxi normal)</button>
+      </div>
+      <div class="fa-etape2" style="display:none; margin-top:12px;">
+        <div class="fa-titre2" style="font-weight:700; margin-bottom:6px;"></div>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="text" inputmode="decimal" class="fa-montant" placeholder="ex : 10,00" style="flex:1; font-size:1.3rem; padding:10px; border:2px solid #999; border-radius:10px;"><b style="font-size:1.2rem;">€</b></div>
+        <div class="fa-modes" style="display:none; gap:8px; margin-top:10px;">
+          <button type="button" data-m="cash" class="fa-mode" style="flex:1; padding:14px; font-size:1rem; font-weight:800; border-radius:10px; border:2px solid #999; background:#fff;">💵 Cash</button>
+          <button type="button" data-m="carte" class="fa-mode" style="flex:1; padding:14px; font-size:1rem; font-weight:800; border-radius:10px; border:2px solid #999; background:#fff;">💳 Carte</button>
+        </div>
+        <div class="fa-erreur" style="color:#b3141b; font-weight:700; margin-top:8px; display:none;"></div>
+        <button type="button" class="fa-ok" style="display:block; width:100%; margin-top:12px; padding:14px; font-size:1rem; font-weight:800; border-radius:10px; border:2px solid #1a7f37; background:#1a7f37; color:#fff;">Enregistrer</button>
+        <button type="button" class="fa-retour" style="display:block; width:100%; margin-top:8px; padding:12px; border-radius:10px; border:1px solid #ccc; background:#fff;">← Retour</button>
+      </div>
+      <button type="button" class="fa-plus-tard" style="display:block; width:100%; margin-top:14px; padding:12px; font-weight:700; border-radius:10px; border:2px solid #999; background:#eee;">Plus tard (la course reste à compléter)</button>
+    </div>`;
+    const q = s => fond.querySelector(s);
+    const champ = q(".fa-montant");
+    let choix = "", mode = (actuel === "client" && ["cash", "carte"].includes(ligne.mode_paiement)) ? ligne.mode_paiement : "";
+    const majModes = () => fond.querySelectorAll(".fa-mode").forEach(b => {
+      const on = b.dataset.m === mode; b.style.background = on ? "#1a7f37" : "#fff"; b.style.color = on ? "#fff" : "#111"; b.style.borderColor = on ? "#1a7f37" : "#999";
+    });
+    const etape2 = (c) => {
+      choix = c;
+      q(".fa-etape1").style.display = "none"; q(".fa-etape2").style.display = "";
+      q(".fa-titre2").textContent = c === "uber" ? "🚖 Frais Uber (payés par l'app — hors recette)" : "💵 Frais payés par le client (comptent dans la recette)";
+      q(".fa-modes").style.display = c === "client" ? "flex" : "none";
+      champ.value = (actuel === c && mAct !== null && mAct > 0) ? String(mAct).replace(".", ",") : "";
+      majModes();
+      setTimeout(() => { try { champ.focus(); } catch (_) {} }, 50);
+    };
+    const fermer = () => { try { fond.remove(); } catch (_) {} try { planifierClotureAuto(id); } catch (_) {} };
+    const valider = (res) => {
+      annulationEnCours.add(id);
+      try { fond.remove(); } catch (_) {}
+      Promise.resolve().then(() => onChoix(res)).catch(e => console.warn("Annulation :", e))
+        .finally(() => { annulationEnCours.delete(id); try { planifierClotureAuto(id); } catch (_) {} });
+    };
+    fond.addEventListener("click", ev => { ev.stopPropagation(); if (ev.target === fond) fermer(); });
+    q(".fa-plus-tard").addEventListener("click", ev => { ev.stopPropagation(); fermer(); });
+    q(".fa-rien").addEventListener("click", ev => { ev.stopPropagation(); valider({ choix: "rien", montant: null, mode: "annulee" }); });
+    q(".fa-uber").addEventListener("click", ev => { ev.stopPropagation(); etape2("uber"); });
+    q(".fa-client").addEventListener("click", ev => { ev.stopPropagation(); etape2("client"); });
+    q(".fa-retour").addEventListener("click", ev => { ev.stopPropagation(); q(".fa-etape2").style.display = "none"; q(".fa-etape1").style.display = ""; q(".fa-erreur").style.display = "none"; });
+    fond.querySelectorAll(".fa-mode").forEach(b => b.addEventListener("click", ev => { ev.stopPropagation(); mode = b.dataset.m; majModes(); }));
+    q(".fa-ok").addEventListener("click", ev => {
+      ev.stopPropagation();
+      const v = frNum(champ.value), err = q(".fa-erreur");
+      const msg = !(v !== null && v > 0) ? "Indique le montant (€)." : (choix === "client" && !mode) ? "Choisis cash ou carte." : "";
+      if (msg) { err.textContent = msg; err.style.display = ""; return; }
+      valider({ choix, montant: Math.round(v * 100) / 100, mode: choix === "uber" ? "uber" : mode });
+    });
+    document.body.appendChild(fond);
+  } catch (e) { console.warn("Panneau annulation :", e); }
+}
+// Valeurs écrites en base pour chaque choix (colonnes / valeurs déjà utilisées par l'app)
+function payloadAnnulation(ligne, res) {
+  if (res.choix === "rien") return { mode_paiement: "annulee", sommes_percues: null, prix_taximetre: null, sommes_texte: TEXTES_ANNULATION.rien };
+  if (res.choix === "uber") return { type_course: "uber", mode_paiement: "uber", prix_taximetre: res.montant, sommes_percues: null, sommes_texte: TEXTES_ANNULATION.uber, motif_sans_prix: null };
+  const t = ligne.type_course;
+  return { type_course: (!t || t === "uber") ? "normale" : t, mode_paiement: res.mode, sommes_percues: res.montant, prix_taximetre: null,
+    sommes_texte: TEXTES_ANNULATION.client, motif_sans_prix: null };
+}
 function confirmerUberApp(id) {
   try { const o = JSON.parse(localStorage.getItem(CLE_UBER_CONFIRME) || "{}"); o[String(id)] = Date.now();
     const lim = Date.now() - 7 * 864e5; Object.keys(o).forEach(k => { if (o[k] < lim) delete o[k]; });
@@ -711,6 +821,8 @@ async function tenterClotureAuto(id) {
   // Fenêtre « Prix de la course Uber » ouverte (ou prix en route) : on attend, sinon la course serait clôturée
   // avant le prix et le serveur refuserait le prix (course clôturée = plus modifiable par le chauffeur)
   if (document.getElementById("fenetre-prix-uber") || prixUberEnCours.has(id)) { planifierClotureAuto(id, 3000); return; }
+  // Panneau « Course annulée — frais ? » ouvert ou choix en route : on attend
+  if (document.getElementById("fenetre-annulation") || annulationEnCours.has(id)) { planifierClotureAuto(id, 3000); return; }
   if (!etatCompletude(ligne, null, feuilleActuelle).complet) return;
   if (uberPaiementAConfirmer(ligne)) return;
   const err = await cloturerLigneEnBase(ligne);
@@ -4601,6 +4713,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
       if (champ === "type_course" && valeur === "garage" && !ligne.sommes_texte) maj.sommes_texte = TEXTE_SOMMES_GARAGE;
       if (champ === "type_course" && valeur !== "garage" && ligne.sommes_texte === TEXTE_SOMMES_GARAGE) maj.sommes_texte = null;
       if (champ === "prix_taximetre" && valeur !== null && ligne.motif_sans_prix) maj.motif_sans_prix = null;
+      // ❌ Quitter « Annulée – rien reçu » par la grille des modes : le texte automatique est effacé
+      if (champ === "mode_paiement" && valeur !== "annulee" && choixAnnulation(ligne) === "rien") maj.sommes_texte = null;
       // Motif qui implique un paiement (école / contrat → facture, Uber, annulée) : mode choisi d'office s'il est vide
       if (champ === "motif_sans_prix" && valeur && MOTIFS_AVEC_PAIEMENT[valeur] && !ligne.mode_paiement) maj.mode_paiement = MOTIFS_AVEC_PAIEMENT[valeur];
       // 🚕 Uber (app ou cash) : un motif « pas de prix » qui n'est pas Uber (ex. « Contrat / sur facture ») est effacé → plus de mélange
@@ -4783,6 +4897,67 @@ function construireLigneHtml(ligne, numeroAffiche) {
   mentionAnnulee.className = "mention-uber";
   mentionAnnulee.textContent = "❌ Course annulée : rien n'est encaissé, elle ne compte pas dans la caisse. Sur la feuille imprimée, « ANNULÉE » est marqué dans Sommes perçues. Indique la raison dans la note (client absent, annulé sur place…).";
   corps.insertBefore(mentionAnnulee, wrapsParChamp["mode_paiement"]);
+
+  // ---- ❌ Course annulée : choix des frais d'annulation (panneau), modifiable tant que la course n'est pas clôturée ----
+  const blocAnnulation = document.createElement("div");
+  blocAnnulation.className = "mention-uber bloc-annulation";
+  blocAnnulation.style.cssText = "background:#fdecec; color:#7a1010; border:2px solid #d33;";
+  corps.insertBefore(blocAnnulation, wrapsParChamp["mode_paiement"]);
+  async function enregistrerAnnulation(res) {
+    // Le mode « annulee » choisi juste avant doit être écrit d'abord (écritures dans l'ordre)
+    const debut = Date.now();
+    while (ligne.mode_paiement !== "annulee" && inputsParChamp["mode_paiement"].value === "annulee" && Date.now() - debut < 20000) await new Promise(r => setTimeout(r, 120));
+    const maj = payloadAnnulation(ligne, res);
+    const etatEl = document.getElementById(`etat-ligne-${ligne.id}`);
+    if (etatEl) { etatEl.textContent = "Enregistrement…"; etatEl.className = "etat-sauvegarde en-cours"; }
+    const { data: lsrv, error, enAttente } = await TWHL.ecrire({ table: "lignes_feuille_route", op: "update", match: { id: ligne.id },
+      payload: maj, select: "*", single: "maybe", optimiste: Object.assign({}, ligne, maj),
+      label: "Course n° " + numeroAffiche + " : annulée (" + maj.sommes_texte + ")" });
+    if (error || !lsrv) {
+      if (etatEl) { etatEl.textContent = "⚠️ Non enregistré — réessaie"; etatEl.className = "etat-sauvegarde erreur"; }
+      alert("⚠️ Non enregistré : " + (error ? error.message : "course déjà clôturée ?") + "\n\nRéessaie.");
+      return;
+    }
+    Object.assign(ligne, lsrv);
+    if (res.choix === "uber") confirmerUberApp(ligne.id);
+    if (etatEl) { etatEl.textContent = enAttente ? TEXTE_EN_ATTENTE : "✓ Enregistré"; etatEl.className = "etat-sauvegarde " + (enAttente ? "en-cours" : "ok"); }
+    inputsParChamp["motif_sans_prix"].value = ligne.motif_sans_prix ?? "";
+    synchroniserChampsUber();
+    if (wrapsParChamp["sommes_percues"]._rendreTexte) wrapsParChamp["sommes_percues"]._rendreTexte();
+    appliquerVisibilitePaiement();
+    rafraichirPuces();
+    majInfoCompletude();
+    try { mettreAJourRenduMonnaie(); } catch (_) {}
+    planifierCaisse();
+    if (!ligne.cloturee) lignesAClotureAuto.add(String(ligne.id));
+  }
+  const ouvrirAnnulation = () => ouvrirPanneauAnnulation(ligne, enregistrerAnnulation);
+  div._ouvrirAnnulation = ouvrirAnnulation;
+  function majBlocAnnulation() {
+    const mode = inputsParChamp["mode_paiement"].value;
+    const ch = choixAnnulation(ligne);
+    const aChoisir = mode === "annulee" && annulationAChoisir(Object.assign({}, ligne, { mode_paiement: "annulee" }));
+    const uber0 = !ch && mode !== "annulee" && uberSansMontant(ligne);
+    if (!ch && !aChoisir && !uber0) { blocAnnulation.style.display = "none"; return; }
+    blocAnnulation.style.display = "";
+    let txt;
+    if (ch === "rien") txt = "❌ Course annulée — rien reçu (0 €, hors caisse).";
+    else if (ch === "uber") txt = "❌ Course annulée — frais Uber " + formatEuro(frNum(ligne.prix_taximetre) || 0) + " (payés par l'app, hors recette).";
+    else if (ch === "client") txt = "❌ Course annulée — frais client " + formatEuro(frNum(ligne.sommes_percues) || 0) + " " + (LIBELLES_MODE_COURT[ligne.mode_paiement] || "") + " (dans la recette).";
+    else if (aChoisir) txt = "❌ Course annulée — ⚠️ à compléter : avez-vous reçu des frais d'annulation ?";
+    else txt = "🚕 Course Uber sans montant : elle a été annulée ?";
+    blocAnnulation.replaceChildren();
+    const t = document.createElement("div"); t.style.fontWeight = "700"; t.textContent = txt;
+    blocAnnulation.appendChild(t);
+    if (!ligneVerrouillee) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.style.cssText = "margin-top:8px; width:100%; padding:12px; font-size:1rem; font-weight:800; border-radius:10px; border:2px solid #d33; background:#fff; color:#7a1010;";
+      b.textContent = ch ? "✏️ Modifier les frais d'annulation" : (aChoisir ? "👉 Choisir : rien / frais Uber / frais client" : "❌ Marquer annulée (frais ?)");
+      b.addEventListener("click", ev => { ev.stopPropagation(); ouvrirAnnulation(); });
+      blocAnnulation.appendChild(b);
+    }
+  }
 
   const mentionUberCash = document.createElement("div");
   mentionUberCash.className = "mention-uber";
@@ -5183,7 +5358,8 @@ function construireLigneHtml(ligne, numeroAffiche) {
     mentionUber.style.display = estUber ? "" : "none";
     mentionUberCash.style.display = estUberCash ? "" : "none";
     blocMonnaie.style.display = (!(payeEnLigne && payeEnLigne.tout) && !estUber && !estPrive && (mode === "cash" || mode === "" || estUberCash)) ? "" : "none";
-    mentionAnnulee.style.display = estAnnulee ? "" : "none";
+    mentionAnnulee.style.display = (estAnnulee && !choixAnnulation(ligne)) ? "" : "none";
+    try { majBlocAnnulation(); } catch (_) {}
     blocQr.style.display = (mode === "qr" && !estPrive && !(payeEnLigne && payeEnLigne.tout)) ? "" : "none";
     if (div._majUberCash) div._majUberCash();
   }
@@ -5375,6 +5551,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
             return;
           }
           const etaitUber = (ligne.mode_paiement || "") === "uber";
+          if (b.cle === "annulee") { choisirMode("annulee"); if (div._ouvrirAnnulation) div._ouvrirAnnulation(); return; }
           choisirMode(b.cle);
           if (b.cle === "uber" && !etaitUber) demanderPrixUberApp(ligne, inputsParChamp["prix_taximetre"]);
         });
@@ -5554,7 +5731,17 @@ function construireLigneHtml(ligne, numeroAffiche) {
       const estUberCash = (ligne.mode_paiement === "uber_cash" || selMode.value === "uber_cash") && !estPriveOuGarage(ligne.type_course);
       const puceUC = creerPuce("🚕💵 Uber cash", estUberCash, ligneVerrouillee, activerUberCash);
       puceUC.classList.add("puce-uber-cash");
-      zoneBouton.replaceChildren(puceUC);
+      // 🧾 Sur facture : raccourci vers le motif « Contrat / sur facture » (même logique, rien de nouveau en base)
+      const estFact = ligneEnFacture(ligne) && !estPriveOuGarage(ligne.type_course);
+      const puceFact = creerPuce("🧾 Sur facture", estFact, ligneVerrouillee, () => {
+        const b = div.querySelector('[data-grille="motif_sans_prix"] [data-valeur="Contrat / sur facture"]');
+        if (!b) return;
+        if (!estFact) b.click();
+        afficherToast("🧾 Sur facture : choisis le client à facturer (ex. Taxi Vert)");
+        setTimeout(() => { try { b.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {} }, 150);
+      });
+      puceFact.classList.add("puce-sur-facture");
+      zoneBouton.replaceChildren(puceUC, puceFact);
       zoneBouton.style.display = ligneVerrouillee ? "none" : "";
       const manque = estUberCash && !ligneVerrouillee && montantUberCash(ligne) === null && !(frNum(inputPrix && inputPrix.value) > 0);
       consigne.style.display = manque ? "" : "none";
@@ -5665,6 +5852,7 @@ function construireLigneHtml(ligne, numeroAffiche) {
   const btnCloturerEl = corps.querySelector(".btn-cloturer-course");
   if (btnCloturerEl) corps.insertBefore(infoCompletude, btnCloturerEl);
   function majInfoCompletude() {
+    try { majBlocAnnulation(); } catch (_) {}
     if (ligne.cloturee || ligneVerrouillee || !btnCloturerEl) {
       infoCompletude.style.display = "none";
       Object.values(wrapsParChamp).forEach(w => w.classList.remove("obligatoire"));
@@ -6003,6 +6191,9 @@ function celluleSommesImpression(l, fmt) {
   const petit = (t, rouge) => `<br><span style="font-size:8px; font-weight:bold;${rouge ? " color:#b3141b;" : " letter-spacing:.5px;"}">${t}</span>`;
   const recu = (l.recu_demande && l.mode_paiement !== "facture") ? petit("(reçu)") : "";
   const compte = n !== null && !isNaN(n) && n > 0 && !estUber && !estPriveOuGarage(l.type_course) && l.mode_paiement !== "uber_cash" && l.mode_paiement !== "facture";
+  // ❌ Annulée sans frais / frais Uber : texte « Annulée – … » (jamais « Course Uber payée en ligne »)
+  const chAnnImp = choixAnnulation(l);
+  if (chAnnImp === "rien" || chAnnImp === "uber") return `<span style="font-weight:bold; font-size:8px;">${esc(l.sommes_texte)}</span>`;
   // 🚕 Uber (app, cash ou ancienne « carte ») : mention AVANT tout test motif_sans_prix → jamais vide ni « — »
   if (estUber || ["uber_cash", "uber_carte"].includes(l.mode_paiement) || l.motif_sans_prix === "Uber (prix dans l'app)")
     return `<span style="font-weight:bold; font-size:8.5px;">${texteSommesUberImp(l)}</span>`;
@@ -6490,7 +6681,7 @@ document.getElementById("btn-imprimer-fr").addEventListener("click", async () =>
             <td>Total pourboires (hors recette) : <b>${esc(formatEuro(totalPbF))}</b></td></tr>
         <tr><td></td><td>Uber reçu en cash (hors recette) : <b>${esc(formatEuro(Math.round((lignesF || []).reduce((t, l) => t + ((l && l.mode_paiement === "uber_cash" && !estPriveOuGarage(l.type_course)) ? (montantUberCash(l) || 0) : 0), 0) * 100) / 100))}</b></td></tr>
         ${(() => { const v = totauxVueGlobale(lignesF); return `<tr><td>Uber (en ligne + cash) : <b>${esc(formatEuro(v.uber))}</b> — hors recette</td>
-            <td>Total global des courses (recette + Uber + factures) : <b>${esc(formatEuro(v.total))}</b></td></tr>`; })()}
+            <td>Recette (cash + carte) : <b>${esc(formatEuro(v.recette))}</b> <small>(${esc(texteAPartVueGlobale(v))})</small></td></tr>`; })()}
       </table>
     `);
   }

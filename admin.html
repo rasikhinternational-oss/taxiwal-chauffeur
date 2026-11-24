@@ -10248,7 +10248,9 @@ function problemesLigneCaisse(l) {
     if (l.type_course === "forfait") { if (!l.motif_forfait) pb.push("Motif du forfait manquant"); }
     else {
       const prix = frNum(l.prix_taximetre);
-      if (!(prix !== null && prix > 0) && !l.motif_sans_prix && !feuillesSansTaximetreFA.has(l.feuille_route_id)) pb.push("Prix manquant");
+      // ❌ Course annulée avec frais client (« Annulée – frais client ») : pas de prix taximètre exigé
+      const annuleeFraisClient = String(l.sommes_texte || "").trim() === "Annulée – frais client";
+      if (!(prix !== null && prix > 0) && !l.motif_sans_prix && !annuleeFraisClient && !feuillesSansTaximetreFA.has(l.feuille_route_id)) pb.push("Prix manquant");
     }
   }
   if (l.cloturee && !ligneSansDeplacement(l)) {
