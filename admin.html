@@ -201,9 +201,6 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
 function normaliserArrets(liste) {
   return (Array.isArray(liste) ? liste : []).map(a => ({ type: a && a.type === "prise" ? "prise" : "depose", adresse: String((a && a.adresse) || "").trim() }));
 }
-function texteArrets(liste) {
-  return normaliserArrets(liste).filter(a => a.adresse).map(a => (a.type === "prise" ? "📍 Prise en charge : " : "🏁 Dépose : ") + a.adresse);
-}
 // Éditeur : lignes [type ▾] [adresse] [✕] + bouton « Ajouter une adresse ». onChange(liste) est appelé à chaque modification.
 function creerEditeurArrets(listeInitiale, options) {
   const { desactive = false, onChange = () => {}, avecSuggestions = null } = options || {};
@@ -9801,30 +9798,7 @@ function ouvrirFeuilleChauffeurFA(chauffeurId, feuilleId, dateChoisie) {
 // Un chauffeur (ex. le gérant qui roule 18–24 h d'affilée) peut avoir plusieurs feuilles le même jour :
 // « ➕ Ajouter une feuille » sur chaque carte crée une feuille de plus pour ce chauffeur / cette date.
 const MSG_FEUILLE_DOUBLON_FA = "Impossible de créer une 2e feuille ce jour-là pour l'instant — contacte la centrale";
-function ajouterBoutonNouvelleFeuilleFA(carte, chauffeur, dateVue, feuille) {
-  // Dans l'en-tête de la carte (visible aussi en liste compacte, où les autres actions sont masquées)
-  const entete = carte && carte.firstElementChild;
-  if (!entete || carte.querySelector(".btn-ajouter-feuille-fa")) return carte;
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "btn-ajouter-feuille-fa";
-  b.textContent = "➕ Ajouter une feuille";
-  b.style.cssText = "display:block; width:auto; margin-top:8px; padding:7px 12px; font-size:.82rem; font-weight:700; border-radius:8px; background:#eef4fb; color:#1d4f86; border:1px solid #9cbbe0;";
-  b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirAjoutFeuilleFA(chauffeur, dateVue, (feuille && feuille.vehicule_id) || (vehiculeDuJourAdmin(chauffeur && chauffeur.id, dateVue) || {}).id); });
-  const ref = entete.querySelector(".btn-ouvrir-grand-fa");
-  if (ref) ref.insertAdjacentElement("afterend", b); else entete.appendChild(b);
-  return carte;
-}
 // Onglet « ➕ Nouvelle feuille » dans la vue chauffeur → jour → onglets par voiture
-function ongletNouvelleFeuilleFA(chauffeur, dateVue) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "onglet-feuille-fa onglet-nouvelle-feuille-fa";
-  b.innerHTML = `<span class="of-nom">➕ Nouvelle feuille</span><span class="of-statut" style="color:#1f6b3f;">choisir la voiture</span>`;
-  b.style.cssText = "border:3px dashed var(--vert); background:#eef8f1; color:var(--vert);";
-  b.addEventListener("click", (e) => { e.stopPropagation(); ouvrirAjoutFeuilleFA(chauffeur, dateVue, (vehiculeDuJourAdmin(chauffeur && chauffeur.id, dateVue) || {}).id); });
-  return b;
-}
 function ouvrirAjoutFeuilleFA(chauffeur, dateVue, vehiculeId) {
   const fond = document.createElement("div");
   fond.className = "modale-ajout-feuille-fa";

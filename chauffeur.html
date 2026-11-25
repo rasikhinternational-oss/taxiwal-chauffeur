@@ -533,11 +533,6 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
 <button id="btn-installer-app" style="display:none; margin:10px 20px 0; background:var(--vert);">📲 Installer l'application</button>
 
 <div id="ecran-login">
-  <div class="tw-photo tw-hero-login">
-    <img src="van-soir.webp" alt="Van Taxi Wal" width="540" height="720" loading="lazy" decoding="async" style="object-position:center 60%;" onerror="var p=this.closest('.tw-photo');if(p)p.style.display='none';else this.style.display='none';">
-    <div class="tw-voile"></div>
-    <div class="tw-texte"><b>Espace Chauffeur</b><span>Connecte-toi pour recevoir tes courses</span></div>
-  </div>
   <label for="email">Adresse email</label>
   <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email">
 
@@ -1494,13 +1489,6 @@ function indexDebutFeuille(feuille) {
   return v === null ? null : Math.round(v) % 1000;
 }
 // Index de départ proposé pour une ligne : fin de la course précédente (ordre chronologique), sinon début de service
-function indexDepartSuggere(triees, ligne, feuille) {
-  const idx = triees.findIndex(x => x.id === ligne.id);
-  for (let j = (idx < 0 ? triees.length : idx) - 1; j >= 0; j--) {
-    if (frNum(triees[j].debarquement_index) !== null) return frNum(triees[j].debarquement_index);
-  }
-  return indexDebutFeuille(feuille);
-}
 // Problèmes d'une ligne (triees = lignes déjà dans l'ordre chronologique).
 // opts.heures : contrôle aussi les heures manquantes ; opts.suivante : contrôle aussi la course suivante.
 function problemesLigne(triees, idx, feuille, opts) {
@@ -1546,32 +1534,7 @@ function problemesLigne(triees, idx, feuille, opts) {
   return pb;
 }
 // Anomalies d'une feuille entière (index qui recule, débarquement = embarquement, heures manquantes…)
-function anomaliesFeuille(lignes, feuille) {
-  const triees = trierLignesChrono(lignes, feuille);
-  const parId = new Map();
-  const liste = [];
-  triees.forEach((l, i) => {
-    const pbs = problemesLigne(triees, i, feuille, { heures: true });
-    if (pbs.length) {
-      parId.set(l.id, pbs);
-      pbs.forEach(p => liste.push(`Course n° ${i + 1} (${frHHMM(l.embarquement_heure)}) : ${p}`));
-    }
-  });
-  return { triees, parId, liste, total: parId.size };
-}
 // Nouveaux problèmes créés par la modification d'un champ (on ne bloque pas pour une erreur déjà là avant)
-function nouveauxProblemesSaisie(lignes, feuille, ligne, champ, valeur) {
-  const avantTriees = trierLignesChrono(lignes, feuille);
-  const avant = problemesLigne(avantTriees, avantTriees.findIndex(x => x.id === ligne.id), feuille, { suivante: true });
-  const candidat = Object.assign({}, ligne, { [champ]: valeur });
-  const apresTriees = trierLignesChrono(lignes.map(x => x.id === ligne.id ? candidat : x), feuille);
-  const apres = problemesLigne(apresTriees, apresTriees.indexOf(candidat), feuille, { suivante: true });
-  return apres.filter(p => !avant.includes(p));
-}
-function messageConfirmImpression(an) {
-  const items = an.liste.slice(0, 10).map(t => "• " + t).join("\n") + (an.liste.length > 10 ? `\n… et ${an.liste.length - 10} autre(s)` : "");
-  return "⚠️ Cette feuille contient des erreurs d'index :\n\n" + items + "\n\nImprimer quand même ?";
-}
 
 let positionInterval = null;
 let derniereLecturePosition = null; // dernière position lue par le suivi GPS (déclarée tôt : utilisée par obtenirPosition)
