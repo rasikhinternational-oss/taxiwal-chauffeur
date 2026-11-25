@@ -3551,6 +3551,7 @@ async function signerFeuilleActuelleAvantNouvelle() {
     return false;
   }
   if (!(await confirmerDansPage("🔒 Je signe et je clôture la feuille actuelle (elle ne pourra plus être modifiée), puis j'ouvre la nouvelle feuille.", "🔒 Je signe et je clôture", "Annuler"))) return false;
+  await terminerPauseSiEnCours("clôture");
   const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: feuilleActuelle.id },
     payload: { signee: true }, local: { signee: true, verrouillee: true }, label: "Signature de la feuille" });
   if (error) { alert("Erreur à la signature de la feuille actuelle : " + error.message); return false; }
@@ -4228,6 +4229,16 @@ async function basculerPause() {
     if (await enregistrerInterruptions(a.elements, "Fin de pause")) { ecrirePauseEnCours(null); afficherPauses(); }
   } finally { pauseEnregistrementEnCours = false; }
 }
+// Pause oubliée : dès que le chauffeur commence une nouvelle course (ou clôture la feuille),
+// la pause en cours se termine toute seule et part dans « Interruptions ».
+async function terminerPauseSiEnCours(raison) {
+  try {
+    if (!feuilleActuelle || feuilleActuelle.verrouillee || pauseEnregistrementEnCours) return;
+    if (!lirePauseEnCours()) return;
+    await basculerPause();
+    afficherToast("▶️ Pause terminée automatiquement" + (raison ? " (" + raison + ")" : ""));
+  } catch (e) { console.warn(e); }
+}
 document.getElementById("btn-pause-manuelle").addEventListener("click", () => {
   if (!feuilleActuelle || feuilleActuelle.verrouillee) return;
   const r = lireLignesPauses();
@@ -4248,8 +4259,12 @@ async function chargerLignes() {
 
   if (error) { document.getElementById("erreur").textContent = "Erreur : " + error.message; return; }
   // Toujours dans l'ordre chronologique (heure d'embarquement), même avant la renumérotation en base
+  const avantNb = Array.isArray(lignesActuelles) ? lignesActuelles.length : 0;
+  const avantId = feuilleActuelle.id;
   lignesActuelles = trierLignesChrono(data || [], feuilleActuelle);
   afficherLignes();
+  if (window.__nbLignesVu && window.__nbLignesVu[avantId] != null && lignesActuelles.length > window.__nbLignesVu[avantId]) terminerPauseSiEnCours("nouvelle course");
+  (window.__nbLignesVu = window.__nbLignesVu || {})[avantId] = lignesActuelles.length;
   planifierCaisse();
 }
 
@@ -5900,6 +5915,7 @@ if ("serviceWorker" in navigator) {
 }
 
 document.getElementById("btn-ajouter-ligne").addEventListener("click", async () => {
+  await terminerPauseSiEnCours("nouvelle course");
   const prochainNumero = lignesActuelles.length > 0
     ? Math.max(...lignesActuelles.map(l => l.n_ordre || 0)) + 1 : 1;
 
@@ -6066,6 +6082,7 @@ document.getElementById("btn-signer-annuler").addEventListener("click", () => { 
 document.getElementById("btn-signer-confirmer").addEventListener("click", async () => {
   if (manquesSignature().length || !document.getElementById("chk-fin-journee").checked) return;
   document.getElementById("etape-signature").style.display = "none";
+  await terminerPauseSiEnCours("clôture");
 
   const idsAVerrouiller = [feuilleActuelle.id];
   const { error } = await TWHL.ecrire({ table: "feuilles_route", op: "update", match: { id: idsAVerrouiller[0] },

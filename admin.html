@@ -10244,7 +10244,9 @@ function problemesLigneCaisse(l) {
   // Montant obligatoire seulement pour Uber cash / carte (argent reçu) ; Uber payé dans l'app : facultatif
   if (["uber_cash", "uber_carte"].includes(l.mode_paiement) && montantUberImp(l) === null) pb.push("Prix Uber manquant");
   if (l.type_course === "garage" && !l.motif_garage) pb.push("Motif du garage manquant");
-  if (!prive && !uber && !annulee) {
+  // 🧾 Course sur facture : pas de prix ni de montant exigés (le montant arrive avec la facture) — jamais en rouge
+  const surFacture = l.mode_paiement === "facture" || l.motif_sans_prix === "Contrat / sur facture";
+  if (!prive && !uber && !annulee && !surFacture) {
     if (l.type_course === "forfait") { if (!l.motif_forfait) pb.push("Motif du forfait manquant"); }
     else {
       const prix = frNum(l.prix_taximetre);
@@ -11863,6 +11865,57 @@ function controleCaisseFeuille(feuille, lignes) {
   r.rouge = r.niveau === "rouge";
   return r;
 }
+// 💶 Résumé de l'argent de la feuille — TOUJOURS visible (même feuille vérifiée), recalculé à chaque modification.
+// Recette = cash + carte + QR des courses normales ; Uber (en ligne et cash) et factures sont À PART, jamais dans la recette.
+function resumeArgentFA(feuille, lignes) {
+  const nb = x => (x === null || x === undefined || x === "" || isNaN(Number(x))) ? null : Number(x);
+  const r = { cash: 0, carte: 0, qr: 0, nbCash: 0, nbCarte: 0, nbQr: 0, uber: 0, nbUber: 0, nbUberSansPrix: 0, uberCash: 0, nbUberCash: 0,
+    facture: 0, nbFacture: 0, nbFactureSansMontant: 0, pourboires: 0, annulees: 0 };
+  (lignes || []).forEach(l => {
+    if (!l || l.type_course === "relais" || l.type_course === "relais_fin" || l.type_course === "prive" || l.type_course === "garage") return;
+    const recu = nb(l.sommes_percues), prix = nb(l.prix_taximetre), pb = nb(l.pourboire);
+    if (pb > 0) r.pourboires += pb;
+    if (l.mode_paiement === "annulee") { r.annulees++; return; }
+    if (l.mode_paiement === "uber_cash") { const m = montantUberImp(l); r.nbUberCash++; r.uberCash += (m || 0); if (!m) r.nbUberSansPrix++; return; }
+    if (estLigneUberImp(l)) { const m = montantUberImp(l); r.nbUber++; r.uber += (m || 0); if (!m) r.nbUberSansPrix++; return; }
+    if (l.mode_paiement === "facture" || (l.motif_sans_prix === "Contrat / sur facture" && !(recu > 0))) {
+      const m = recu > 0 ? recu : (prix > 0 ? prix : 0); r.nbFacture++; r.facture += m; if (!m) r.nbFactureSansMontant++; return; }
+    if (l.mode_paiement === "cash" && recu > 0) { r.cash += recu; r.nbCash++; }
+    else if (l.mode_paiement === "carte" && recu > 0) { r.carte += recu; r.nbCarte++; }
+    else if (l.mode_paiement === "qr" && recu > 0) { r.qr += recu; r.nbQr++; }
+  });
+  Object.keys(r).forEach(k => { if (typeof r[k] === "number" && !/^nb/.test(k)) r[k] = Math.round(r[k] * 100) / 100; });
+  // Recette = sommes perçues (courses normales, forfaits, à l'heure…) — même calcul que partout dans l'admin
+  r.recette = recetteLignesFA(lignes || []);
+  r.autre = Math.max(0, Math.round((r.recette - r.cash - r.carte - r.qr) * 100) / 100);
+  r.aRemettre = Math.round((r.cash + r.uberCash) * 100) / 100;
+  return r;
+}
+function htmlResumeArgentFA(feuille, lignes) {
+  const r = resumeArgentFA(feuille, lignes);
+  const e = x => esc(eurosFr(x));
+  const n = (k, txt) => k ? ` <span style="opacity:.7;">(${k} ${txt}${k > 1 ? "s" : ""})</span>` : "";
+  const ligne = (label, val, extra, style) => `<tr style="${style || ""}"><td style="padding:3px 6px 3px 0;">${label}${extra || ""}</td><td style="padding:3px 0; text-align:right; white-space:nowrap; font-weight:700;">${val}</td></tr>`;
+  const verifiee = feuille && (feuille.verifiee_admin || feuille.archivee_papier_at);
+  return `<div class="resume-argent-fa" style="margin:10px 0; padding:10px 12px; border-radius:10px; background:#fff; border:2px solid ${verifiee ? "#1f9d55" : "#1d4f86"}; font-size:.9rem; color:#222;">`
+    + `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;"><b style="font-size:1rem;">💶 Résumé de la feuille</b>`
+    + (verifiee ? `<span style="background:#e3f4e8; color:#1f6b3f; font-weight:800; padding:3px 8px; border-radius:999px; font-size:.8rem;">✅ Vérifiée</span>` : "") + `</div>`
+    + `<table style="width:100%; border-collapse:collapse;">`
+    + ligne("💰 <b>Recette</b> (sommes perçues)", e(r.recette), "", "background:#eef7f1; font-size:1rem;")
+    + ligne("&nbsp;&nbsp;💵 Cash", e(r.cash), n(r.nbCash, "course"))
+    + ligne("&nbsp;&nbsp;💳 Carte", e(r.carte), n(r.nbCarte, "course"))
+    + (r.qr ? ligne("&nbsp;&nbsp;📱 QR", e(r.qr), n(r.nbQr, "course")) : "")
+    + (r.autre ? ligne("&nbsp;&nbsp;➕ Autres (chèque, frais d'annulation…)", e(r.autre)) : "")
+    + `<tr><td colspan="2" style="padding:6px 0 2px; font-weight:800; color:#555;">À part — hors recette</td></tr>`
+    + ligne("🚕 <b>Uber</b> (payé dans l'app)", e(r.uber), n(r.nbUber, "course"))
+    + ligne("🚕💵 <b>Uber cash</b>", e(r.uberCash), n(r.nbUberCash, "course"))
+    + (r.nbUberSansPrix ? `<tr><td colspan="2" style="color:#a3261b; font-weight:700;">⚠️ ${r.nbUberSansPrix} course${r.nbUberSansPrix > 1 ? "s" : ""} Uber sans prix</td></tr>` : "")
+    + ligne("🧾 <b>Factures</b>", e(r.facture), n(r.nbFacture, "course") + (r.nbFactureSansMontant ? ` <span style="opacity:.7;">· ${r.nbFactureSansMontant} à facturer</span>` : ""))
+    + ligne("💶 Pourboires", e(r.pourboires))
+    + (r.annulees ? ligne("❌ Courses annulées", String(r.annulees)) : "")
+    + ligne("💵 <b>Cash à remettre</b> (cash + Uber cash)", e(r.aRemettre), "", "border-top:1px solid #ddd; background:#fff7e0;")
+    + `</table></div>`;
+}
 const COULEURS_CC = { vert: ["#e3f4e8", "#1f6b3f"], orange: ["#fff1d6", "#8a5a00"], rouge: ["#fde3e1", "#a3261b"], gris: ["#efefed", "#555"], neutre: ["#eaf0f7", "#34495e"] };
 const PASTILLES_CC = { vert: "🟢", orange: "🟠", rouge: "🔴", gris: "⚪", neutre: "🚘" };
 function feuilleControleeCC(feuille) { return !!(feuille && (feuille.verifiee_admin || feuille.archivee_papier_at)); }
@@ -11877,7 +11930,7 @@ function pastilleControleCaisse(feuille, lignes) {
   return s;
 }
 function blocControleCaisse(feuille, lignes) {
-  if (feuilleControleeCC(feuille)) { const vide = document.createElement("div"); vide.className = "controle-caisse-fa"; vide.style.display = "none"; return vide; }
+  if (feuilleControleeCC(feuille)) { const w = document.createElement("div"); w.className = "controle-caisse-fa"; w.innerHTML = htmlResumeArgentFA(feuille, lignes); return w; }
   const r = controleCaisseFeuille(feuille, lignes);
   const d = document.createElement("div");
   d.className = "controle-caisse-fa";
@@ -11887,7 +11940,7 @@ function blocControleCaisse(feuille, lignes) {
     ? r.remises.map(x => `<div>Course ${x.num} : compteur ${esc(eurosFr(x.prix))} → reçu ${esc(eurosFr(x.recu))} (remise ${esc(eurosFr(x.remise))})</div>`).join("")
       + `<div><b>Total des remises : ${esc(eurosFr(r.totalRemises))}</b></div>`
     : `<div style="opacity:.75;">Aucune remise.</div>`;
-  d.innerHTML = `<div style="font-weight:700; margin-bottom:6px;">🔍 Contrôle caisse <span style="font-weight:400; font-size:.75rem; opacity:.7;">(visible seulement par la direction)</span></div>`
+  d.innerHTML = htmlResumeArgentFA(feuille, lignes) + `<div style="font-weight:700; margin-bottom:6px;">🔍 Contrôle caisse <span style="font-weight:400; font-size:.75rem; opacity:.7;">(visible seulement par la direction)</span></div>`
     + r.signaux.map(s => `<div style="font-weight:700; color:${COULEURS_CC[s.c][1]};">${esc(s.t)}</div>`).join("")
     + `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:2px 14px; margin-top:6px;">`
     + (r.sansTaximetre ? `<div>Recette déclarée : <b>${esc(eurosFr(r.recette))}</b></div></div>`
