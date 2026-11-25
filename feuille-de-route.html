@@ -1205,6 +1205,31 @@ input, select, textarea{ font-size:max(16px, 1em); max-width:100%; }
 img, video, canvas{ max-width:100%; }
 table{ max-width:100%; }
 </style>
+<style id="tw-theme-ch-v1">
+/* ===== Thème Taxi Wal chauffeur v1 — présentation uniquement (aucune logique) ===== */
+:root{ --vert:#178a46; --tw-vert:#22b35e; --tw-vert-fonce:#178a46; --tw-ombre:0 2px 10px rgba(16,40,24,.08), 0 1px 2px rgba(0,0,0,.05); }
+button, input, select, textarea{ font-family:inherit; }
+button{ -webkit-appearance:none; appearance:none; transition:transform .12s ease, filter .12s ease, box-shadow .15s ease; }
+button:not(:disabled):active, a[role="button"]:active{ transform:scale(.97); filter:brightness(.93); }
+button:disabled{ cursor:not-allowed; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible, .switch:focus-visible{ outline:3px solid var(--tw-vert); outline-offset:2px; }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), select, textarea{ border-radius:10px; line-height:1.3; }
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not(.champ-heure-invalide):not(.champ-avert-index):focus, select:not(.champ-heure-invalide):not(.champ-avert-index):focus, textarea:focus{ border-color:var(--tw-vert) !important; box-shadow:0 0 0 3px rgba(34,179,94,.25); outline:none; }
+input[type=checkbox], input[type=radio]{ accent-color:var(--tw-vert-fonce); }
+input[type=date], input[type=time], input[type=datetime-local]{ min-height:44px; }
+textarea{ overflow-wrap:anywhere; }
+@media (prefers-reduced-motion: reduce){ *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
+
+body{ line-height:1.45; }
+.bloc, .bloc-repliable{ border-radius:14px; box-shadow:var(--tw-ombre); }
+.bloc-repliable .entete-repliable{ min-height:52px; }
+.bloc h2, .bloc-repliable .entete-repliable h2{ font-weight:800; }
+#btn-retour{ background:var(--tw-vert-fonce); min-height:48px; box-shadow:0 3px 10px rgba(23,138,70,.25); }
+.btn-y-aller, .btn-cloturer-course.pret{ background:var(--tw-vert-fonce); }
+.btn-cloturer-course, .btn-supprimer-course, .btn-plein-ecran, .bloc-qr-ligne button, .question-uber button{ min-height:48px; border-radius:11px; }
+.btn-maintenant, .btn-position, .btn-y-aller{ min-height:44px; }
+input:not([type=checkbox]):not([type=radio]):not([type=file]), select{ min-height:44px; }
+</style>
 </head>
 <body>
 
@@ -2711,16 +2736,84 @@ async function changerVoitureDeLaFeuille(vImpose) {
     return true;
   } finally { changementVoitureFeuilleEnCours = false; }
 }
+// ================== VOITURE TOUCHÉE SUR L'ACCUEIL (?vehicule=PLAQUE) ==================
+// Lu UNE fois au chargement puis retiré de l'URL (pas réappliqué au rechargement).
+// Utilisé seulement quand le chauffeur n'a encore ni feuille ouverte ni voiture du jour ;
+// sinon simple message poli. En cas de doute : comportement habituel (choix à la main).
+let plaqueDemandeeAccueil = null;
+try {
+  const pq = new URLSearchParams(location.search);
+  const brut = pq.get("vehicule") || pq.get("plaque");
+  if (brut) {
+    plaqueDemandeeAccueil = normaliserPlaque(brut) || null;
+    pq.delete("vehicule"); pq.delete("plaque");
+    const q = pq.toString();
+    history.replaceState(history.state, "", location.pathname + (q ? "?" + q : "") + location.hash);
+  }
+} catch (e) { plaqueDemandeeAccueil = null; }
+// Message laissé par l'accueil (ex. « La centrale t'a attribué la Mercedes (TXAW769) aujourd'hui. ») : lu une fois, puis effacé.
+try {
+  const m = JSON.parse(sessionStorage.getItem("taxiwal_msg_accueil") || "null");
+  sessionStorage.removeItem("taxiwal_msg_accueil");
+  if (m && m.texte && Date.now() - (m.quand || 0) < 60000) {
+    const afficherMsgAccueil = () => { try { messageAccueilTexte(String(m.texte).slice(0, 200)); } catch (e) {} };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", afficherMsgAccueil); else setTimeout(afficherMsgAccueil, 0);
+  }
+} catch (e) {}
+function normaliserPlaque(p) { return String(p || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16); }
+// Décision pure (testable) : appliquer la voiture de l'accueil seulement sans feuille ouverte ni voiture du jour
+function decisionVehiculeAccueil(plaque, aFeuilleOuverte, aVoitureDuJour) {
+  if (!plaque) return "rien";
+  return (aFeuilleOuverte || aVoitureDuJour) ? "ignorer" : "appliquer";
+}
+function trouverVehiculeParPlaque(liste, plaque) {
+  if (!plaque || !Array.isArray(liste)) return null;
+  return liste.find(v => v && v.id && normaliserPlaque(v.plaque) === plaque) || null;
+}
+function nomVoitureMessage(nom) { return nomVehiculeCourt(nom).replace(/\s+classe$/i, ""); }
+// « Tu roules aujourd'hui avec la Mercedes (TXAW769). Pour changer de voiture, clôture d'abord ta feuille de route. »
+function messageVoitureDejaChoisie(v) {
+  try {
+    if (!v) return;
+    const txt = "Tu roules aujourd'hui avec la " + nomVoitureMessage(v.nom) + (v.plaque ? " (" + v.plaque + ")" : "")
+      + ". Pour changer de voiture, clôture d'abord ta feuille de route.";
+    messageAccueilTexte(txt);
+  } catch (e) {}
+}
+function messageAccueilTexte(txt) {
+  try {
+    let b = document.getElementById("msg-voiture-du-jour-accueil");
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "msg-voiture-du-jour-accueil";
+      b.setAttribute("role", "status");
+      b.style.cssText = "position:fixed; left:12px; right:12px; top:calc(env(safe-area-inset-top,0px) + 10px); z-index:4500; background:#e7f5ec; color:#1f6b3f; border:2px solid #22b35e; border-radius:12px; padding:12px 40px 12px 14px; font-weight:700; font-size:.95rem; box-shadow:0 4px 14px rgba(0,0,0,.18);";
+      const x = document.createElement("button");
+      x.type = "button"; x.textContent = "✕"; x.setAttribute("aria-label", "Fermer");
+      x.style.cssText = "position:absolute; top:6px; right:6px; width:30px; height:30px; border:none; background:transparent; color:#1f6b3f; font-size:1.1rem; font-weight:800;";
+      x.onclick = () => b.remove();
+      const t = document.createElement("span"); t.className = "txt";
+      b.appendChild(t); b.appendChild(x);
+      document.body.appendChild(b);
+    }
+    b.querySelector(".txt").textContent = "🚗 " + txt;
+    clearTimeout(b._m); b._m = setTimeout(() => { try { b.remove(); } catch (e) {} }, 9000);
+  } catch (e) {}
+}
 // Le matin, sans voiture attribuée : le chauffeur choisit sa voiture parmi TOUTES (réseau obligatoire).
 // Renvoie l'objet véhicule choisi, ou null (« Plus tard » / pas de réseau).
-async function choisirVehiculeDuJourLibre() {
+// plaqueSouhaitee (facultatif, voiture touchée sur l'accueil) : remplace SEULEMENT le premier affichage de
+// la liste ; ensuite mêmes contrôles (voiture déjà prise → message habituel puis choix à la main).
+async function choisirVehiculeDuJourLibre(plaqueSouhaitee) {
   for (let essai = 0; essai < 5; essai++) {
     const libres = await chargerVehiculesDisponibles();
     if (!libres) {
       afficherToast("📴 Pas de réseau : choisir une voiture demande du réseau. Réessaie dès que le réseau revient.");
       return null;
     }
-    const v = await choisirVehicule("🚗 Aucune voiture ne t'a été attribuée aujourd'hui — choisis ta voiture", {
+    let vAccueil = null;
+    if (essai === 0 && plaqueSouhaitee) { try { vAccueil = trouverVehiculeParPlaque(libres, plaqueSouhaitee); } catch (e) { vAccueil = null; } }
+    const v = vAccueil || await choisirVehicule("🚗 Aucune voiture ne t'a été attribuée aujourd'hui — choisis ta voiture", {
       liste: libres, libelleAnnuler: "Plus tard", note: libres.length ? "" : "Aucune voiture active pour le moment — appelle la centrale."
     });
     if (!v) return null;
@@ -2743,17 +2836,26 @@ async function creerFeuilleVoitureAttribuee(uid, vdj) {
 }
 // Véhicule de la nouvelle feuille du jour : attribution du jour, sinon choix parmi toutes les voitures.
 // Hors ligne : attribution gardée sur le téléphone, sinon la dernière voiture utilisée.
-async function vehiculePourFeuilleDuJour(uid) {
+async function vehiculePourFeuilleDuJour(uid, plaqueSouhaitee) {
   const hors = TWHL.horsLigne();
   const vdj = await chargerVehiculeDuJour(uid);
-  if (vdj) return { id: vdj.vehicule_id, nom: vdj.nom, plaque: vdj.plaque };
+  if (vdj) {
+    // Voiture du jour déjà connue : la voiture touchée sur l'accueil est ignorée (message si elle diffère)
+    try {
+      if (plaqueSouhaitee && normaliserPlaque(vdj.plaque) !== plaqueSouhaitee) {
+        if (vdj.choisi_par === "admin") messageAccueilTexte("La centrale t'a attribué la " + nomVoitureMessage(vdj.nom) + (vdj.plaque ? " (" + vdj.plaque + ")" : "") + " aujourd'hui.");
+        else messageVoitureDejaChoisie(vdj);
+      }
+    } catch (e) {}
+    return { id: vdj.vehicule_id, nom: vdj.nom, plaque: vdj.plaque };
+  }
   if (hors || TWHL.horsLigne()) {
     const der = lireDernierVehicule(uid);
     if (der) { afficherToast("📴 Hors ligne : feuille ouverte avec ta dernière voiture (" + libelleVehicule(der) + ")."); return { id: der.vehicule_id, nom: der.nom, plaque: der.plaque }; }
     afficherToast("📴 Pas de réseau : choisis ta voiture dès que le réseau revient.");
     return null;
   }
-  return await choisirVehiculeDuJourLibre();
+  return await choisirVehiculeDuJourLibre(plaqueSouhaitee);
 }
 // Feuille actuelle utilisable pour la journée (aujourd'hui, ou service de nuit en cours)
 function feuilleDuServiceEnCours(f) {
@@ -3204,7 +3306,11 @@ const APRES_DECONNEXION_COMPTE_ADMIN = () => { location.href = "chauffeur.html";
       // Voiture du jour : attribuée par la centrale → directement ; sinon choix parmi toutes les voitures
       const { data: vehsInit } = await supabase.from("vehicules").select("*").eq("actif", true);
       vehiculesActifsCache = vehsInit || vehiculesActifsCache;
-      const vehInit = await vehiculePourFeuilleDuJour(user.id);
+      // Voiture touchée sur l'accueil : appliquée seulement ici (aucune feuille du jour, aucune feuille ouverte)
+      let plaqueAccueil = null;
+      try { if (!idDepuisUrl && decisionVehiculeAccueil(plaqueDemandeeAccueil, false, false) === "appliquer") plaqueAccueil = plaqueDemandeeAccueil; } catch (e) {}
+      plaqueDemandeeAccueil = null;   // traitée
+      const vehInit = await vehiculePourFeuilleDuJour(user.id, plaqueAccueil);
       const champsF = { id: TWHL.uuid(), chauffeur_id: user.id, date_service: aujourdHui };
       if (vehInit && vehInit.id) champsF.vehicule_id = vehInit.id;
       const localeF = Object.assign({ signee: false, verrouillee: false, verifiee_admin: false, created_at: new Date().toISOString() }, champsF);
@@ -3239,6 +3345,16 @@ const APRES_DECONNEXION_COMPTE_ADMIN = () => { location.href = "chauffeur.html";
   mettreAJourAffichageDate();
 
   await chargerFeuilleActive(user); // (branche aussi le temps réel)
+
+  // Voiture touchée sur l'accueil alors qu'une feuille est déjà ouverte : on ne change RIEN, petit message poli.
+  try {
+    if (plaqueDemandeeAccueil && !idDepuisUrl && feuilleActuelle && !feuilleActuelle.verrouillee && !feuilleActuelle.signee) {
+      const vF = (vehiculesActifsCache || []).find(x => x.id === feuilleActuelle.vehicule_id)
+        || (vehiculeDuJour && vehiculeDuJour.vehicule_id === feuilleActuelle.vehicule_id ? { nom: vehiculeDuJour.nom, plaque: vehiculeDuJour.plaque } : null);
+      if (vF && normaliserPlaque(vF.plaque) !== plaqueDemandeeAccueil) messageVoitureDejaChoisie(vF);
+    }
+  } catch (e) {}
+  plaqueDemandeeAccueil = null;
 })();
 
 // Affiche uniquement le bouton de changement de véhicule — les véhicules déjà utilisés

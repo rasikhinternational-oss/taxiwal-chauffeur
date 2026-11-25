@@ -2539,6 +2539,48 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
 </style>
 <!-- Générateur de QR code (côté navigateur) pour le QR de virement SEPA / EPC -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" crossorigin="anonymous"></script>
+<style id="tw-theme-v1">
+/* ===== Thème Taxi Wal v1 — couche purement visuelle (CSS seul) ===== */
+:root{ --vert:#178a46; --tw-vert:#22b35e; --tw-vert-fonce:#178a46; --tw-vert-tres-fonce:#11693a; --tw-vert-pale:#eaf7ef; --tw-ombre:0 2px 10px rgba(16,24,20,.07); --tw-ombre-haute:0 8px 24px rgba(16,24,20,.10); }
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+html, body{ max-width:100%; overflow-x:hidden; }
+body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; -webkit-tap-highlight-color:rgba(34,179,94,.15); }
+button, a, [role="button"], select, label{ touch-action:manipulation; }
+/* Pas de zoom automatique iOS : champs >= 16px */
+@media (max-width:820px){ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea{ font-size:16px !important; } }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea{ transition:border-color .15s ease, box-shadow .15s ease; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus, select:focus, textarea:focus{ outline:none; border-color:var(--tw-vert) !important; box-shadow:0 0 0 3px rgba(34,179,94,.20) !important; }
+input[type="checkbox"], input[type="radio"]{ accent-color:var(--tw-vert-fonce); }
+/* Boutons : retour visuel et focus clavier */
+button{ transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .08s ease, filter .15s ease; }
+button:not(:disabled):active{ transform:scale(.97); filter:brightness(.94); }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible{ outline:3px solid rgba(34,179,94,.55); outline-offset:2px; }
+@media (hover:hover){ button:not(:disabled):hover{ filter:brightness(1.04); } }
+/* Liens/éléments de marque */
+header{ box-shadow:0 1px 0 rgba(0,0,0,.03), 0 4px 14px rgba(16,24,20,.05); }
+header h1{ font-weight:800 !important; letter-spacing:.03em; text-transform:uppercase; }
+.course{ box-shadow:var(--tw-ombre); border-radius:14px; }
+::selection{ background:rgba(34,179,94,.25); }
+@media (prefers-reduced-motion: reduce){ *, *::before, *::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; } }
+/* --- App client : couleur principale verte (le rouge reste pour erreurs/danger) --- */
+button{ background:var(--tw-vert-fonce); }
+#btn-envoyer-code, #btn-valider-code, #btn-creer-profil, #btn-reserver, #btn-sauver-profil, #fa-envoyer, #btn-installer-app{ min-height:48px; border-radius:12px; }
+button.vert{ background:var(--tw-vert-fonce); }
+#ecran-login input, #ecran-profil-setup input{ border-radius:12px; border-color:#d6d8d4; }
+nav.onglets button.actif{ background:var(--tw-vert-fonce); border-color:var(--tw-vert-fonce); box-shadow:0 4px 12px rgba(23,138,70,.25); }
+.cal-jour.selectionne{ background:var(--tw-vert-fonce); }
+.rz-progress span.fait{ background:var(--tw-vert); }
+.rz-vehicule.choisi{ border-color:var(--tw-vert); background:var(--tw-vert-pale); box-shadow:0 6px 16px rgba(23,138,70,.14); }
+.choix-paiement button.actif, .choix-langue-profil button.actif{ border-color:var(--tw-vert); background:var(--tw-vert-pale); }
+button.sv-tuile.choisi{ border-color:var(--tw-vert); box-shadow:0 0 0 3px rgba(34,179,94,.22); }
+button.sv-puce.choisi{ background:var(--tw-vert-fonce); border-color:var(--tw-vert-fonce); }
+.cp-carte.choisi{ border-color:var(--tw-vert); box-shadow:0 6px 16px rgba(23,138,70,.16); }
+.cp-carte.choisi::after{ background:var(--tw-vert-fonce); }
+.favoris-rapides button{ border-color:var(--tw-vert-fonce); color:var(--tw-vert-fonce); background:#fff; }
+.lien-favoris{ color:var(--tw-vert-fonce); }
+.qr-envoyer{ box-shadow:0 6px 16px rgba(23,138,70,.28); }
+header img{ box-shadow:0 2px 8px rgba(0,0,0,.12); }
+</style>
 </head>
 <body>
 
@@ -5231,6 +5273,53 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
   return { prix, base: baseChoisie, kmTrajet: trajet.km, kmApproche, minutes: trajet.min, allerRetour, nuit, detail, ligne: trajet.ligne, depart: a, arrivee: b };
 }
 
+// ================== SUPPLÉMENTS SELON LA VOITURE CHOISIE (pourcentages faciles à changer) ==================
+// Mercedes Classe E : +15 % · Renault Trafic : +10 % seulement au-delà de 4 passagers · Toyota / BMW : prix normal.
+// ⚠️ Même constante dans admin.html et client.html : changer les DEUX fichiers ensemble.
+const SUPPLEMENTS_VEHICULE = { mercedes_classe_e: 15, renault_trafic_plus4: 15 };
+function supplementVehiculePct(modele, passagers) {
+  try {
+    const n = parseInt(passagers, 10) || 1;
+    if (modele === "mercedes_classe_e") return Number(SUPPLEMENTS_VEHICULE.mercedes_classe_e) || 0;
+    if (modele === "renault_trafic" && n > 4) return Number(SUPPLEMENTS_VEHICULE.renault_trafic_plus4) || 0;
+  } catch (e) {}
+  return 0;
+}
+// Prix de base (calcul TARIF_TAXIWAL inchangé) → prix avec supplément voiture, arrondi au centime
+function appliquerSupplementVehicule(prix, modele, passagers) {
+  const base = Number(prix) || 0;
+  const pct = supplementVehiculePct(modele, passagers);
+  const final = Math.round(base * (1 + pct / 100) * 100) / 100;
+  const libelle = modele === "mercedes_classe_e" ? "Mercedes Classe E (haut de gamme)" : modele === "renault_trafic" ? "van pour plus de 4 passagers" : "";
+  return { prix: final, base, pct, montant: Math.round((final - base) * 100) / 100,
+    detail: pct ? `supplément ${libelle} +${pct} % (+${(final - base).toFixed(2).replace(".", ",")} €)` : "" };
+}
+window.__twSupplementPct = supplementVehiculePct;
+window.__twAppliquerSupplement = appliquerSupplementVehicule;
+
+// Textes « voiture choisie » (FR / NL / EN)
+try {
+  Object.assign(I18N.fr, { "tv.choisie": "Voiture choisie", "tv.modifier": "Changer", "tv.retirer": "Retirer",
+    "tv.supMerc": "Mercedes Classe E — confort haut de gamme · tarif adapté au véhicule choisi", "tv.supVan": "Van spacieux pour 5 à 7 passagers · tarif adapté au véhicule choisi",
+    "tv.vanNormal": "Van spacieux, idéal pour les bagages", "tv.normal": "Voiture confortable" });
+  Object.assign(I18N.nl, { "tv.choisie": "Gekozen wagen", "tv.modifier": "Wijzigen", "tv.retirer": "Verwijderen",
+    "tv.supMerc": "Mercedes E-Klasse — topcomfort · tarief aangepast aan het gekozen voertuig", "tv.supVan": "Ruim busje voor 5 tot 7 passagiers · tarief aangepast aan het gekozen voertuig",
+    "tv.vanNormal": "Ruim busje, ideaal voor bagage", "tv.normal": "Comfortabele wagen" });
+  Object.assign(I18N.en, { "tv.choisie": "Chosen car", "tv.modifier": "Change", "tv.retirer": "Remove",
+    "tv.supMerc": "Mercedes E-Class — premium comfort · rate adapted to the chosen vehicle", "tv.supVan": "Spacious van for 5 to 7 passengers · rate adapted to the chosen vehicle",
+    "tv.vanNormal": "Spacious van, ideal for luggage", "tv.normal": "Comfortable car" });
+  const stTv = document.createElement("style");
+  stTv.textContent = ".twv-bandeau{display:flex;align-items:center;gap:10px;background:#f1f9f4;border:2px solid #178a46;border-radius:14px;padding:8px 10px;margin:10px 0 12px;transition:box-shadow .3s}"
+    + ".twv-bandeau.twv-flash{box-shadow:0 0 0 4px rgba(245,179,1,.75)}"
+    + ".twv-photo{width:84px;height:52px;object-fit:contain;background:#fff;border-radius:10px;flex:none}.twv-vide{display:flex;align-items:center;justify-content:center;font-size:1.6rem}"
+    + ".twv-txt{flex:1;min-width:0}.twv-lbl{font-size:.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:.04em}.twv-nom{font-weight:800;line-height:1.2}"
+    + ".twv-sup{font-size:.8rem;color:#2f5d3f;margin-top:2px}.twv-sup.plus{color:#2f5d3f;font-weight:600}"
+    + ".twv-btns{display:flex;flex-direction:column;gap:4px;flex:none}.twv-btns button{width:auto!important;margin:0!important;padding:5px 10px!important;font-size:.78rem!important;border-radius:999px!important;min-height:0!important;background:#178a46;color:#fff;border:none}"
+    + ".twv-btns .twv-retirer{background:#fff!important;color:#8a1520!important;border:1px solid #e3c4c7!important}"
+    + ".twv-sup-recap{background:#f1f9f4;border:1px solid #bfe3cc;color:#1f5e37;border-radius:10px;padding:7px 10px;margin-bottom:8px;font-weight:700;font-size:.86rem}";
+  document.head.appendChild(stTv);
+} catch (e) { console.warn("[voiture textes]", e); }
+
 // ================== RÉSERVATION EN ÉTAPES (trajet → quand → véhicule → récap) ==================
 (function () {
   const $ = id => document.getElementById(id);
@@ -5464,6 +5553,7 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     const km = infoTrajet.km;
     zone.innerHTML = `<div class="rz-prix">${km ? `${t("rz.distance", { km: fmtNombre(km, 1) })}${infoTrajet.min ? ` · ⏱️ ${Math.max(1, Math.round(infoTrajet.min))} min` : ""}` : `<b>${esc(t("rz.distanceCalcul"))}</b>`}
       <small>${t("rz.prixInfo")}</small></div>`;
+    try { const sup = window.__twMessageSupplement && window.__twMessageSupplement(); if (sup) zone.insertAdjacentHTML("afterbegin", `<div class="twv-sup-recap">🚘 ${esc(sup)}</div>`); } catch (e) {}
   }
   function majRecap() {
     const d = $("input-date").value ? new Date($("input-date").value) : null;
@@ -5592,7 +5682,8 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       <div class="cp-grille">${MODELES.map(([v, nom, det, pl, img, pos]) => {
         const trop = n > pl;
         return `<button type="button" class="cp-carte${modele === v ? " choisi" : ""}" data-modele="${v}" aria-pressed="${modele === v}" ${trop ? "disabled" : ""}>
-          ${img ? `<div class="cp-photo"><img src="${img}" alt="${esc(t(nom))}" width="200" height="86" loading="lazy" decoding="async" style="object-position:${pos};" onerror="twImgKo(this)"></div>`
+          ${photoFlotte(v) ? `<div class="cp-photo" style="background:#fff;"><img src="${photoFlotte(v)}" alt="${esc(t(nom))}" width="200" height="86" decoding="async" style="object-fit:contain;"></div>`
+          : img ? `<div class="cp-photo"><img src="${img}" alt="${esc(t(nom))}" width="200" height="86" loading="lazy" decoding="async" style="object-position:${pos};" onerror="twImgKo(this)"></div>`
                 : `<div class="cp-photo vide" aria-hidden="true"><span class="cp-sil">🚘</span><small>${esc(t("cp.bientot"))}</small></div>`}
           <div class="cp-nom">${esc(t(nom))}</div><div class="cp-det">${esc(t(det))}</div>
           <span class="cp-places">👥 ${esc(trop ? t("cp.trop", { n }) : t("cp.places", { n: pl }))}</span>
@@ -5607,11 +5698,20 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
       majVehicules(); rendreChoixVoiture();
     }));
   }
+  // Photo identique à l'écran d'accueil (exposée par promo-aeroports.js), sinon null
+  function photoFlotte(v) { try { return (window.__twPhotosFlotte && window.__twPhotosFlotte[v]) || null; } catch (e) { return null; } }
   function majChoixVoiture() {
     const prive = service === "chauffeur_prive";
     cpZone.style.display = prive ? "" : "none";
     grille.style.display = prive ? "none" : "";
-    if (!prive) { if (modele) { modele = null; if (["berline", "van"].includes(selVeh.value)) selVeh.value = ""; majVehicules(); } avisRetire = ""; return; }
+    if (!prive) {
+      // Hors « chauffeur privé » : la voiture choisie (ex. depuis l'écran d'accueil) est gardée, sauf si trop petite
+      avisRetire = "";
+      const n0 = nbPassagers();
+      const m0 = MODELES.find(x => x[0] === modele);
+      if (m0 && n0 > m0[3]) { avisRetire = t("cp.retire", { v: t(m0[1]), n: m0[3] }); modele = null; if (["berline", "van"].includes(selVeh.value)) selVeh.value = ""; }
+      majVehicules(); majBandeauVoiture(); return;
+    }
     const n = nbPassagers();
     const m = MODELES.find(x => x[0] === modele);
     if (m && n > m[3]) { avisRetire = t("cp.retire", { v: t(m[1]), n: m[3] }); modele = null; selVeh.value = ""; }
@@ -5619,13 +5719,82 @@ async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, ba
     if (selVeh.value === "pmr") selVeh.value = "";
     majVehicules();
     rendreChoixVoiture();
+    majBandeauVoiture();
   }
   window.__majChoixVoiture = majChoixVoiture;
-  window.__modeleVehicule = () => service === "chauffeur_prive" ? modele : null;
-  window.__recapVoiture = () => { const m = service === "chauffeur_prive" && MODELES.find(x => x[0] === modele); return m ? t("cp.recap", { v: t(m[1]) }) : ""; };
-  ["input", "change"].forEach(ev => $("input-passagers").addEventListener(ev, () => { if (service === "chauffeur_prive") majChoixVoiture(); }));
-  window.__hooksLangue.push(() => { if (service === "chauffeur_prive") rendreChoixVoiture(); });
-  ["rr-moins", "rr-plus"].forEach(id => { const b = $(id); if (b) b.addEventListener("click", () => setTimeout(() => { if (service === "chauffeur_prive") majChoixVoiture(); }, 0)); });
+  window.__modeleVehicule = () => modele || null;
+  window.__recapVoiture = () => { const m = MODELES.find(x => x[0] === modele); return m ? t("cp.recap", { v: t(m[1]) }) : ""; };
+  // Message de supplément (texte simple) pour la voiture choisie, ou ""
+  function messageSupplement() {
+    try {
+      if (!modele) return "";
+      const pct = supplementVehiculePct(modele, nbPassagers());
+      if (modele === "mercedes_classe_e" && pct) return t("tv.supMerc", { p: pct });
+      if (modele === "renault_trafic") return pct ? t("tv.supVan", { p: pct }) : t("tv.vanNormal");
+      return t("tv.normal");
+    } catch (e) { return ""; }
+  }
+  window.__twMessageSupplement = messageSupplement;
+  // Bandeau « Voiture choisie » (photo + supplément + changer / retirer), visible à toutes les étapes
+  const bandeauVoiture = document.createElement("div");
+  bandeauVoiture.className = "twv-bandeau"; bandeauVoiture.id = "twv-bandeau"; bandeauVoiture.style.display = "none";
+  function majBandeauVoiture() {
+    try {
+      if (!bandeauVoiture.isConnected && entete.parentNode) entete.parentNode.insertBefore(bandeauVoiture, entete);
+      const m = MODELES.find(x => x[0] === modele);
+      if (!m) { bandeauVoiture.style.display = avisRetire && service !== "chauffeur_prive" ? "" : "none"; bandeauVoiture.innerHTML = avisRetire ? `<div class="cp-avis" style="margin:0;">${esc(avisRetire)}</div>` : ""; return; }
+      const ph = photoFlotte(m[0]) || m[4];
+      const sup = messageSupplement();
+      const pct = supplementVehiculePct(modele, nbPassagers());
+      bandeauVoiture.innerHTML = `${ph ? `<img src="${ph}" alt="" class="twv-photo">` : `<span class="twv-photo twv-vide">🚘</span>`}
+        <div class="twv-txt"><div class="twv-lbl">${esc(t("tv.choisie"))}</div><div class="twv-nom">${esc(t(m[1]))}</div>
+        ${sup ? `<div class="twv-sup${pct ? " plus" : ""}">${esc(sup)}</div>` : ""}</div>
+        <div class="twv-btns"><button type="button" data-twv="modif">${esc(t("tv.modifier"))}</button><button type="button" data-twv="retirer" class="twv-retirer">${esc(t("tv.retirer"))}</button></div>`;
+      bandeauVoiture.style.display = "";
+      bandeauVoiture.querySelector('[data-twv="modif"]').addEventListener("click", () => { try { allerEtape(3); } catch (e) {} });
+      bandeauVoiture.querySelector('[data-twv="retirer"]').addEventListener("click", () => {
+        try {
+          modele = null; avisRetire = "";
+          if (["berline", "van"].includes(selVeh.value)) { selVeh.value = ""; selVeh.dispatchEvent(new Event("change", { bubbles: true })); }
+          majVehicules(); majChoixVoiture();
+          if (window.__majRecapResa) window.__majRecapResa();
+        } catch (e) { console.warn(e); }
+      });
+    } catch (e) { console.warn("[voiture]", e); }
+  }
+  // Si le client choisit un autre type dans la grille (berline / van / PMR / peu importe), la voiture précise est retirée
+  selVeh.addEventListener("change", () => {
+    try {
+      if (!modele || service === "chauffeur_prive") return;
+      const attendu = modele === "renault_trafic" ? "van" : "berline";
+      if (selVeh.value !== attendu) { modele = null; avisRetire = ""; majBandeauVoiture(); if (window.__majRecapResa) window.__majRecapResa(); }
+    } catch (e) { console.warn(e); }
+  });
+  // Appelé par l'écran d'accueil (promo-aeroports.js) : choisit la voiture et ouvre le formulaire complet
+  window.__twChoisirVehicule = function (v) {
+    try {
+      const m = MODELES.find(x => x[0] === v); if (!m) return false;
+      const onglet = document.querySelector('nav.onglets button[data-onglet="reserver"]');
+      if (onglet && !onglet.classList.contains("actif")) onglet.click();
+      // la réservation rapide ne garde pas la voiture : on passe au formulaire complet
+      if (section.classList.contains("qr-on")) { const b = $("qr-plus-options"); if (b) b.click(); }
+      if (section.classList.contains("qr-on")) section.classList.remove("qr-on");   // filet de sécurité
+      modele = v; avisRetire = "";
+      selVeh.value = v === "renault_trafic" ? "van" : "berline";
+      selVeh.dispatchEvent(new Event("change", { bubbles: true }));
+      majVehicules(); majChoixVoiture();
+      if (service === "chauffeur_prive") rendreChoixVoiture();
+      setTimeout(() => { try {
+        const cible = bandeauVoiture.isConnected && bandeauVoiture.style.display !== "none" ? bandeauVoiture : section;
+        cible.scrollIntoView({ behavior: "smooth", block: "center" });
+        bandeauVoiture.classList.add("twv-flash"); setTimeout(() => bandeauVoiture.classList.remove("twv-flash"), 2200);
+      } catch (e) {} }, 200);
+      return true;
+    } catch (e) { console.warn("[voiture accueil]", e); return false; }
+  };
+  ["input", "change"].forEach(ev => $("input-passagers").addEventListener(ev, () => { if (service === "chauffeur_prive" || modele) majChoixVoiture(); }));
+  window.__hooksLangue.push(() => { if (service === "chauffeur_prive") rendreChoixVoiture(); majBandeauVoiture(); });
+  ["rr-moins", "rr-plus"].forEach(id => { const b = $(id); if (b) b.addEventListener("click", () => setTimeout(() => { if (service === "chauffeur_prive" || modele) majChoixVoiture(); }, 0)); });
 
   const zoneSv = document.createElement("div");
   zoneSv.className = "sv-zone"; zoneSv.id = "sv-zone";
@@ -6951,6 +7120,6 @@ appliquerLangue();
 // Fenêtres de message de l'app client : même nettoyage des détails techniques
 (function () { try { if (typeof twAlert === "function" && window.twTexteSansDetail) { var b = twAlert; twAlert = function (m) { return b(window.twTexteSansDetail(m)); }; } } catch (e) {} })();
 </script>
-<script src="promo-aeroports.js?v=16" defer></script>
+<script src="promo-aeroports.js?v=18" defer></script>
 </body>
 </html>

@@ -143,6 +143,31 @@ async function distanceRouteKm(a, b) {
   const route = d.routes && d.routes[0];
   return route ? { km: route.distance / 1000, min: route.duration / 60, ligne: route.geometry.coordinates.map(c => [c[1], c[0]]) } : null;
 }
+
+// ================== SUPPLÉMENTS SELON LA VOITURE CHOISIE (pourcentages faciles à changer) ==================
+// Mercedes Classe E : +15 % · Renault Trafic : +10 % seulement au-delà de 4 passagers · Toyota / BMW : prix normal.
+// ⚠️ Même constante dans admin.html et client.html : changer les DEUX fichiers ensemble.
+const SUPPLEMENTS_VEHICULE = { mercedes_classe_e: 15, renault_trafic_plus4: 15 };
+function supplementVehiculePct(modele, passagers) {
+  try {
+    const n = parseInt(passagers, 10) || 1;
+    if (modele === "mercedes_classe_e") return Number(SUPPLEMENTS_VEHICULE.mercedes_classe_e) || 0;
+    if (modele === "renault_trafic" && n > 4) return Number(SUPPLEMENTS_VEHICULE.renault_trafic_plus4) || 0;
+  } catch (e) {}
+  return 0;
+}
+// Prix de base (calcul TARIF_TAXIWAL inchangé) → prix avec supplément voiture, arrondi au centime
+function appliquerSupplementVehicule(prix, modele, passagers) {
+  const base = Number(prix) || 0;
+  const pct = supplementVehiculePct(modele, passagers);
+  const final = Math.round(base * (1 + pct / 100) * 100) / 100;
+  const libelle = modele === "mercedes_classe_e" ? "Mercedes Classe E (haut de gamme)" : modele === "renault_trafic" ? "van pour plus de 4 passagers" : "";
+  return { prix: final, base, pct, montant: Math.round((final - base) * 100) / 100,
+    detail: pct ? `supplément ${libelle} +${pct} % (+${(final - base).toFixed(2).replace(".", ",")} €)` : "" };
+}
+window.__twSupplementPctAdmin = supplementVehiculePct;
+window.__twAppliquerSupplementAdmin = appliquerSupplementVehicule;
+
 // Renvoie { prix, kmTrajet, kmApproche, minutes, allerRetour, nuit, detail, ligne, depart, arrivee } ou null
 // base : "mons" | "saintghislain" | "aucune" | "auto" (auto = gare de Mons si départ en Mons-Borinage)
 async function calculerPrixConseille(depart, arrivee, dateHeure, allerRetour, base) {
@@ -1166,6 +1191,43 @@ window.onerror = function(msg, url, line, col, err) {
   /* FX-CSS>> */
   .fx-bandeau-fa{ margin:8px 0 6px; }
   .ligne-admin .probleme-caisse-fa .fx-btn-carte{ margin:6px 0 0; }
+</style>
+<style id="tw-theme-v1">
+/* ===== Thème Taxi Wal v1 — couche purement visuelle (CSS seul) ===== */
+:root{ --vert:#178a46; --tw-vert:#22b35e; --tw-vert-fonce:#178a46; --tw-vert-tres-fonce:#11693a; --tw-vert-pale:#eaf7ef; --tw-ombre:0 2px 10px rgba(16,24,20,.07); --tw-ombre-haute:0 8px 24px rgba(16,24,20,.10); }
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+html, body{ max-width:100%; overflow-x:hidden; }
+body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; -webkit-tap-highlight-color:rgba(34,179,94,.15); }
+button, a, [role="button"], select, label{ touch-action:manipulation; }
+/* Pas de zoom automatique iOS : champs >= 16px */
+@media (max-width:820px){ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea{ font-size:16px !important; } }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea{ transition:border-color .15s ease, box-shadow .15s ease; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus, select:focus, textarea:focus{ outline:none; border-color:var(--tw-vert) !important; box-shadow:0 0 0 3px rgba(34,179,94,.20) !important; }
+input[type="checkbox"], input[type="radio"]{ accent-color:var(--tw-vert-fonce); }
+/* Boutons : retour visuel et focus clavier */
+button{ transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .08s ease, filter .15s ease; }
+button:not(:disabled):active{ transform:scale(.97); filter:brightness(.94); }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible{ outline:3px solid rgba(34,179,94,.55); outline-offset:2px; }
+@media (hover:hover){ button:not(:disabled):hover{ filter:brightness(1.04); } }
+/* Liens/éléments de marque */
+header{ box-shadow:0 1px 0 rgba(0,0,0,.03), 0 4px 14px rgba(16,24,20,.05); }
+header h1{ font-weight:800 !important; letter-spacing:.03em; text-transform:uppercase; }
+.course{ box-shadow:var(--tw-ombre); border-radius:14px; }
+::selection{ background:rgba(34,179,94,.25); }
+@media (prefers-reduced-motion: reduce){ *, *::before, *::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; } }
+/* --- Admin : couleur principale verte (le rouge reste pour erreurs/suppression/badges) --- */
+nav button{ box-shadow:var(--tw-ombre); transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .08s ease; }
+nav button.actif{ background:var(--tw-vert-fonce); border-color:var(--tw-vert-fonce); box-shadow:0 4px 12px rgba(23,138,70,.25); }
+#btn-retour-menu{ background:var(--tw-vert-fonce); min-height:44px; }
+.cal-jour.selectionne{ background:var(--tw-vert-fonce); }
+.pc-puces button.actif{ background:var(--tw-vert-fonce); border-color:var(--tw-vert-fonce); }
+.chat-seg button.actif{ background:var(--tw-vert-fonce); }
+#feuilles-sous-onglets button.actif{ background:var(--tw-vert-fonce); border-color:var(--tw-vert-fonce); }
+.chat-conv-item.active{ border-color:var(--tw-vert); box-shadow:0 0 0 2px rgba(34,179,94,.20); }
+#ecran-login-admin button{ background:var(--tw-vert-fonce); border-radius:12px; min-height:48px; }
+#modale-actions button{ min-height:46px; border-radius:12px; }
+.calendrier{ box-shadow:var(--tw-ombre); border-radius:14px; }
+#modale-contenu{ box-shadow:0 -8px 30px rgba(0,0,0,.18); }
 </style>
 </head>
 <body>
@@ -6389,7 +6451,14 @@ function construireCarteAdmin(course) {
   const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour auto (aller-retour)</span>` : "";
   // ⭐ Client habitué (Chauffeur privé) : pas de prix à envoyer · voiture précise souhaitée · société à facturer (copie figée)
   const badgeHabitue = course.reservation_directe ? `<span class="badge-ar badge-habitue" style="background:#1f8a4c; color:#fff;">✅ Client habitué — pas de prix à envoyer : attribue un chauffeur</span>` : "";
-  const badgeModele = course.modele_vehicule ? `<span class="badge-ar badge-modele">🚘 Voiture souhaitée : ${esc(LIBELLES_MODELE_VEHICULE[course.modele_vehicule] || course.modele_vehicule)}</span>` : "";
+  let badgeModele = course.modele_vehicule ? `<span class="badge-ar badge-modele">🚘 Voiture souhaitée : ${esc(LIBELLES_MODELE_VEHICULE[course.modele_vehicule] || course.modele_vehicule)}</span>` : "";
+  try {
+    if (course.modele_vehicule) {
+      const supV = supplementVehiculePct(course.modele_vehicule, course.passagers);
+      const nomV = String(LIBELLES_MODELE_VEHICULE[course.modele_vehicule] || course.modele_vehicule).toUpperCase();
+      badgeModele = `<span class="badge-ar badge-modele" style="background:#5b21b6; color:#fff; font-weight:800; font-size:.85rem; border:2px solid #3b0f80;">🚘 VOITURE DEMANDÉE : ${esc(nomV)}${supV ? ` · SUPPLÉMENT +${supV} %` : ""}</span>`;
+    }
+  } catch (e) { console.warn("[badge voiture]", e); }
   const sf = course.societe_facturation && typeof course.societe_facturation === "object" ? course.societe_facturation : null;
   const badgeSociete = sf && sf.nom ? `<span class="badge-ar badge-societe">🏢 À facturer à : ${esc(texteSocieteFacturation(sf))}</span>` : "";
   // Service choisi par le client (tuiles de l'app client) + acompte remboursable ou non à l'annulation (calculé par la base)
@@ -6626,11 +6695,15 @@ function construireCarteAdmin(course) {
       let r = null;
       try { r = await calculerPrixConseille(course.adresse_depart, course.adresse_arrivee, course.date_heure, outil.querySelector(".okm-allerretour").checked, outil.querySelector(".okm-base").value); } catch (err) {}
       if (!r) { zone.textContent = "Adresse introuvable : vérifie les adresses."; return; }
+      // Supplément selon la voiture demandée par le client (Mercedes +15 %, van > 4 passagers +10 %)
+      let supV = null;
+      try { if (course.modele_vehicule) { supV = appliquerSupplementVehicule(r.prix, course.modele_vehicule, course.passagers); if (supV.pct) { r.prixBase = r.prix; r.prix = supV.prix; r.detail += " + " + supV.detail; } else supV = null; } } catch (e) { supV = null; }
       const f1 = x => x.toFixed(1).replace(".", ",");
       zone.innerHTML = `
         ${r.kmApproche ? `<div>🚕 ${BASES_TAXIWAL[r.base].nom} → départ : <b>${f1(r.kmApproche)} km</b></div>` : ""}
         <div>📍 Départ → arrivée : <b>${f1(r.kmTrajet)} km</b> (${Math.round(r.minutes)} min)</div>
-        <div>💶 Prix conseillé (tarif officiel${r.allerRetour ? " aller-retour" : " aller simple"}) : <b>≈ ${r.prix.toFixed(2).replace(".", ",")} €</b></div>
+        ${supV ? `<div>💶 Prix de base (tarif officiel${r.allerRetour ? " aller-retour" : " aller simple"}) : ≈ ${r.prixBase.toFixed(2).replace(".", ",")} €</div><div style="color:#5b21b6; font-weight:700;">🚘 Supplément ${esc(LIBELLES_MODELE_VEHICULE[course.modele_vehicule] || course.modele_vehicule)} : +${supV.pct} % (+${supV.montant.toFixed(2).replace(".", ",")} €)</div>` : ""}
+        <div>💶 Prix conseillé${supV ? " avec supplément voiture" : ` (tarif officiel${r.allerRetour ? " aller-retour" : " aller simple"})`} : <b>≈ ${r.prix.toFixed(2).replace(".", ",")} €</b></div>
         <div class="okm-note">${r.detail}. À vérifier : c'est toi qui décides le prix.</div>
         ${champPrixCible ? `<button type="button" class="okm-utiliser">➡️ Mettre ${Math.round(r.prix)} € dans le prix à proposer</button>` : ""}`;
       const u = zone.querySelector(".okm-utiliser");

@@ -475,6 +475,46 @@ input, select, textarea{ font-size:max(16px, 1em); max-width:100%; }
 img, video, canvas{ max-width:100%; }
 table{ max-width:100%; }
 </style>
+<style id="tw-theme-ch-v1">
+/* ===== Thème Taxi Wal chauffeur v1 — présentation uniquement (aucune logique) ===== */
+:root{ --vert:#178a46; --tw-vert:#22b35e; --tw-vert-fonce:#178a46; --tw-ombre:0 2px 10px rgba(16,40,24,.08), 0 1px 2px rgba(0,0,0,.05); }
+button, input, select, textarea{ font-family:inherit; }
+button{ -webkit-appearance:none; appearance:none; transition:transform .12s ease, filter .12s ease, box-shadow .15s ease; }
+button:not(:disabled):active, a[role="button"]:active{ transform:scale(.97); filter:brightness(.93); }
+button:disabled{ cursor:not-allowed; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible, .switch:focus-visible{ outline:3px solid var(--tw-vert); outline-offset:2px; }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), select, textarea{ border-radius:10px; line-height:1.3; }
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not(.champ-heure-invalide):not(.champ-avert-index):focus, select:not(.champ-heure-invalide):not(.champ-avert-index):focus, textarea:focus{ border-color:var(--tw-vert) !important; box-shadow:0 0 0 3px rgba(34,179,94,.25); outline:none; }
+input[type=checkbox], input[type=radio]{ accent-color:var(--tw-vert-fonce); }
+input[type=date], input[type=time], input[type=datetime-local]{ min-height:44px; }
+textarea{ overflow-wrap:anywhere; }
+@media (prefers-reduced-motion: reduce){ *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
+
+body{ line-height:1.45; }
+header{ box-shadow:0 1px 0 rgba(0,0,0,.04), 0 4px 14px rgba(0,0,0,.05); }
+header h1{ font-weight:800; letter-spacing:.01em; }
+/* Bouton principal par défaut : vert Taxi Wal (les boutons colorés en ligne gardent leur couleur) */
+button{ background:var(--tw-vert-fonce); }
+button.secondaire{ background:var(--noir-2); color:var(--blanc); }
+#ecran-login input{ min-height:50px; border-radius:12px; }
+#btn-envoyer-code, #btn-valider-code{ min-height:52px; border-radius:12px; font-size:1.05rem; font-weight:700; box-shadow:0 3px 10px rgba(23,138,70,.25); }
+#btn-valider-code{ background:var(--tw-vert-fonce); color:#fff; border:none; }
+nav.onglets button{ min-height:52px; box-shadow:var(--tw-ombre); }
+nav.onglets button.actif, nav.onglets button[data-onglet="messages"].actif, .cal-jour.selectionne{ background:var(--tw-vert-fonce); border-color:var(--tw-vert-fonce); color:#fff; }
+nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
+#btn-feuille-route{ min-height:50px; border-radius:12px; font-weight:700; box-shadow:0 3px 10px rgba(23,138,70,.25); }
+#barre-dispo, #bloc-gains-jour, #bloc-photos-vehicule, .pl-ligne{ box-shadow:var(--tw-ombre); }
+.switch.actif{ background:var(--tw-vert); }
+.course{ border-radius:14px; box-shadow:var(--tw-ombre); border-top:1px solid rgba(0,0,0,.04); border-right:1px solid rgba(0,0,0,.04); border-bottom:1px solid rgba(0,0,0,.04); }
+.course h3{ font-weight:800; }
+.course .trajet{ overflow-wrap:anywhere; }
+.course-actions button{ min-height:46px; border-radius:11px; font-weight:700; }
+#modale-fr-contenu{ border-radius:20px 20px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,.18); }
+#modale-fr-actions button{ min-height:48px; }
+#modale-fr-contenu input, #modale-fr-contenu textarea{ border-radius:10px; }
+.ttw-btn, .dc-gros-bouton{ min-height:50px; }
+#btn-paiement-cash, #btn-paiement-carte, #btn-paiement-facture, #btn-paiement-cheque, #btn-paiement-qr, #btn-paiement-uber, #btn-paiement-uber-cash, #btn-terminer-deja-paye{ min-height:50px; border-radius:12px; font-weight:700; }
+</style>
 </head>
 <body>
 
@@ -4579,6 +4619,6 @@ async function chargerMesEntretiens() {
 <script src="gps-natif.js"></script>
 <script src="rappel-uber.js"></script>
 <script src="course-alerte.js"></script>
-<script src="accueil-chauffeur.js?v=2" defer></script>
+<script src="accueil-chauffeur.js?v=5" defer></script>
 </body>
 </html>
