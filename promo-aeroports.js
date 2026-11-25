@@ -1,11 +1,14 @@
 // Écran promo « transfert aéroport » — app client Taxi Wal. Affiché au maximum une fois par jour.
 (function () {
   try {
-    var CLE = "tw_promo_aeroports_vu";
-    var auj = new Date().toISOString().slice(0, 10);
-    var forcer = /[?&]promo=test/.test(location.search);
-    try { if (!forcer && localStorage.getItem(CLE) === auj) return; } catch (e) {}
-    if (/[?&]promo=0/.test(location.search)) return;
+    // Affiché à CHAQUE ouverture de l'app (et à chaque retour dans l'app),
+    // sauf si le client a commencé une réservation : on le laisse alors là où il était.
+    function reservationEnCours() {
+      var ids = ["qr-depart", "qr-arrivee", "input-depart", "input-arrivee"];
+      for (var i = 0; i < ids.length; i++) { var el = document.getElementById(ids[i]); if (el && String(el.value || "").trim()) return true; }
+      var conf = document.querySelector(".qr-confirmation, #qr-confirmation, #ecran-confirmation");
+      return !!(conf && conf.offsetParent !== null);
+    }
     var L = (typeof LANG !== "undefined" && LANG) || "fr";
     var TX = {
       fr: { t1: "Votre transfert aéroport", t2: "au départ de Mons", sous: "Tous les aéroports, en Belgique et chez nos voisins", flotte: "Notre flotte",
@@ -45,7 +48,6 @@
       var ancienOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       function fermer() {
-        try { localStorage.setItem(CLE, auj); } catch (e) {}
         document.body.style.overflow = ancienOverflow;
         fond.remove();
       }
@@ -58,7 +60,13 @@
       });
     }
     // Laisse l'app s'afficher d'abord (ne ralentit jamais la réservation)
-    function lancer() { setTimeout(afficher, 900); }
+    function lancer() { setTimeout(function () { if (!reservationEnCours()) afficher(); }, 900); }
+    var cacheA = 0;
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) { cacheA = Date.now(); return; }
+      // Retour dans l'app après au moins 3 secondes ailleurs
+      if (cacheA && Date.now() - cacheA > 3000 && !reservationEnCours()) setTimeout(afficher, 300);
+    });
     if (document.readyState === "complete") lancer(); else window.addEventListener("load", lancer);
   } catch (e) { /* ne jamais bloquer l'app */ }
 })();
