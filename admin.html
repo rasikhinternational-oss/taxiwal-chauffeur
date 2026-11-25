@@ -1645,10 +1645,12 @@ window.onerror = function(msg, url, line, col, err) {
       <div id="panneau-depuis-message" hidden>
         <label for="input-message-course">Collez le message WhatsApp ou dictez (🎤 micro du clavier)</label>
         <textarea id="input-message-course" placeholder="Ex. : Bonjour, c'est Marie. Demain 6h de la rue de la Station 12 à Boussu vers l'aéroport de Charleroi, 3 personnes, 2 valises. 0475 12 34 56"></textarea>
-        <p class="astuce-message">Astuce iPhone : sur une capture d'écran, appuyez longuement sur le texte (Texte en direct) → Copier, puis collez ici. Ou dictez avec le 🎤 du clavier.</p>
+        <p class="astuce-message">📷 <b>Capture / photo</b> : choisissez une capture d'écran (mail Taxis Verts, WhatsApp…), le texte est lu automatiquement.<br>Astuce iPhone : sur une capture d'écran, appuyez longuement sur le texte (Texte en direct) → Copier, puis collez ici. Ou dictez avec le 🎤 du clavier.</p>
         <div class="actions-message">
           <button type="button" id="btn-analyser-message">✨ Analyser</button>
           <button type="button" id="btn-coller-message">📋 Coller</button>
+          <button type="button" id="btn-capture-message">📷 Capture / photo</button>
+          <input type="file" id="input-capture-message" accept="image/*" hidden>
           <button type="button" id="btn-effacer-message">Effacer</button>
         </div>
         <div id="resultat-analyse-message" aria-live="polite"></div>
@@ -7805,6 +7807,129 @@ document.getElementById("btn-toggle-depuis-message").addEventListener("click", (
   else { panneau.hidden = true; document.getElementById("btn-toggle-depuis-message").setAttribute("aria-expanded", "false"); }
 });
 document.getElementById("btn-analyser-message").addEventListener("click", lancerAnalyseMessage);
+/* ===== 📧 Réservations « formulaire » (Taxis Verts, centrales, mails) : Pickup / Destination / Passenger / Date / Reference =====
+   Complète l'analyse habituelle. Rien n'est créé tout seul : le formulaire est seulement pré-rempli. */
+function analyserReservationStructuree(texte) {
+  const t = String(texte || "").replace(/\r\n?/g, "\n");
+  const lignes = t.split("\n").map(x => x.trim());
+  const LABELS = {
+    depart: /^(pickup|pick-up|prise en charge|ophaling|ophaal(adres)?|départ|depart|vertrek|from)\b\s*:?\s*/i,
+    arrivee: /^(destination|bestemming|arrivée|arrivee|aankomst|to|dépose|depose)\b\s*:?\s*/i,
+    passager: /^(passenger|passager|passagier|klant|client|nom)(?!'|’)\b\s*:?\s*/i,
+    date: /^(date|datum|ophaaltijd|pickup time|heure)\b\s*:?\s*/i,
+    reference: /^(reference|référence|referentie|ref\.?)\b\s*:?\s*/i,
+    fleet: /^(fleet|flotte|vloot)\b\s*:?\s*/i,
+    instructions: /^(special instructions|instructions|remarques?|opmerkingen)\b\s*:?\s*/i
+  };
+  const tousLabels = Object.values(LABELS).concat([/^notes?\s*:/i, /^copyright/i, /^booking details/i]);
+  const res = {};
+  for (let i = 0; i < lignes.length; i++) {
+    for (const [k, re] of Object.entries(LABELS)) {
+      if (!re.test(lignes[i]) || res[k] !== undefined) continue;
+      const bloc = [lignes[i].replace(re, "")];
+      for (let j = i + 1; j < lignes.length && j < i + 5; j++) {
+        if (!lignes[j] || tousLabels.some(r => r.test(lignes[j]))) break;
+        bloc.push(lignes[j]);
+      }
+      res[k] = bloc.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+      break;
+    }
+  }
+  const out = {};
+  const adr = a => String(a || "").replace(/,?\s*(Région wallonne|Region wallonne|Wallonie|Hainaut|Henegouwen|Belgique|België|Belgie|Belgium)\b/gi, "")
+    .replace(/,\s*,/g, ",").replace(/^[\s,]+|[\s,]+$/g, "").replace(/^(\D[^,]*?),\s*(\d+[a-zA-Z]?)\s*,/, "$1 $2,");
+  if (res.depart) out.adresse_depart = adr(res.depart);
+  if (res.arrivee) out.adresse_arrivee = adr(res.arrivee);
+  if (res.passager) {
+    const tel = (res.passager.match(/\+?\d[\d\s./-]{7,}\d/) || [""])[0];
+    if (tel) out.client_telephone = tel.replace(/[\s./-]/g, "");
+    out.client_nom = res.passager.replace(tel, "").replace(/\s+/g, " ").trim();
+  }
+  if (res.date) {
+    const m = res.date.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+    const h = res.date.match(/(\d{1,2})[:hH](\d{2})/);
+    if (m) {
+      const y = m[3].length === 2 ? "20" + m[3] : m[3];
+      out.date = y + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+      if (h) out.heure = h[1].padStart(2, "0") + ":" + h[2];
+      else if (/snel mogelijk|tout de suite|asap|immédiat|immediat|dès que possible/i.test(res.date)) {
+        const n = new Date(); out.heure = String(n.getHours()).padStart(2, "0") + ":" + String(n.getMinutes()).padStart(2, "0"); out.immediat = true;
+      }
+    }
+  }
+  const num = (t.match(/(?:N°|No|Nr|n°)\s*de\s*réservation\s*:?\s*(\d{4,})/i) || t.match(/booking\s+(\d{5,})/i) || [])[1];
+  const dossier = (t.match(/(?:Dossier|dossiernummer)\s*:?\s*([A-Z0-9-]{5,})/i) || [])[1];
+  const pour = (t.replace(/\n/g, " ").match(/réservation pour\s+(.+?)\s+ci-dessous/i) || [])[1];
+  const taxisVerts = /taxis?\s*verts?/i.test(t);
+  out.notes = [];
+  if (taxisVerts || num) out.notes.push("🧾 " + (taxisVerts ? "Taxis Verts" : "Centrale") + (num ? " — réservation n° " + num : ""));
+  if (dossier) out.notes.push("Dossier n° " + dossier);
+  if (pour) out.notes.push("Pour : " + pour.trim());
+  if (res.instructions && !/^driver notes:\s*x?\s*(passenger'?s language)?$/i.test(res.instructions)) out.notes.push("Instructions : " + res.instructions);
+  if (out.immediat) out.notes.push("⚡ Course immédiate (tout de suite)");
+  out.facture = taxisVerts || !!dossier;
+  out.payeur = taxisVerts ? "Taxi Vert" : "";
+  out.trouve = Object.keys(res);
+  return out;
+}
+function appliquerReservationStructuree(texte) {
+  let s; try { s = analyserReservationStructuree(texte); } catch (e) { console.warn(e); return false; }
+  if (!s || !s.trouve || s.trouve.length < 2) return false;
+  const v = id => document.getElementById(id);
+  if (s.client_nom) v("input-client-nom").value = s.client_nom;
+  if (s.client_telephone) v("input-client-tel").value = s.client_telephone;
+  if (s.adresse_depart) v("input-depart").value = s.adresse_depart;
+  if (s.adresse_arrivee) v("input-arrivee").value = s.adresse_arrivee;
+  if (s.date && s.heure) v("input-date").value = s.date + "T" + s.heure;
+  if (s.notes.length) {
+    const n = v("input-notes");
+    const ajout = s.notes.filter(x => !n.value.includes(x)).join("\n");
+    if (ajout) n.value = (n.value.trim() ? n.value.trim() + "\n" : "") + ajout;
+  }
+  if (s.facture) { const b = document.querySelector('#nc-puces-paiement [data-mode="facture"]'); if (b) b.click(); }
+  const zone = document.getElementById("resultat-analyse-message");
+  if (zone) zone.insertAdjacentHTML("afterbegin", `<div class="ram-ok" style="margin-bottom:6px;">📧 Réservation de centrale reconnue${s.payeur ? " (<b>" + esc(s.payeur) + "</b>, sur facture)" : ""} : client, adresses, date et références remplis. Vérifiez puis <b>Créer la course</b>.</div>`);
+  return true;
+}
+document.getElementById("btn-analyser-message").addEventListener("click", () => setTimeout(() => {
+  appliquerReservationStructuree(document.getElementById("input-message-course").value);
+}, 30));
+/* ===== 📷 Lire le texte d'une capture d'écran (gratuit, dans le navigateur — Tesseract) ===== */
+let promesseTesseract = null;
+function chargerTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (promesseTesseract) return promesseTesseract;
+  promesseTesseract = new Promise((ok, ko) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    sc.onload = () => ok(window.Tesseract); sc.onerror = () => { promesseTesseract = null; ko(new Error("chargement impossible")); };
+    document.head.appendChild(sc);
+  });
+  return promesseTesseract;
+}
+document.getElementById("btn-capture-message").addEventListener("click", () => document.getElementById("input-capture-message").click());
+document.getElementById("input-capture-message").addEventListener("change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const zone = document.getElementById("resultat-analyse-message");
+  const btn = document.getElementById("btn-capture-message");
+  btn.disabled = true;
+  zone.innerHTML = `<div class="ram-ok">📷 Lecture de la capture… (10 à 30 secondes la première fois)</div>`;
+  try {
+    const T = await chargerTesseract();
+    const { data } = await T.recognize(f, "fra+eng+nld", { logger: m => { if (m.status === "recognizing text") zone.innerHTML = `<div class="ram-ok">📷 Lecture de la capture… ${Math.round((m.progress || 0) * 100)} %</div>`; } });
+    const texte = (data && data.text || "").trim();
+    if (!texte) { zone.innerHTML = `<div class="ram-vide">Je n'ai pas pu lire de texte sur cette image. Essayez une capture plus nette, ou collez le texte.</div>`; return; }
+    document.getElementById("input-message-course").value = texte;
+    lancerAnalyseMessage();
+    appliquerReservationStructuree(texte);
+  } catch (err) {
+    console.warn(err);
+    zone.innerHTML = `<div class="ram-vide">Lecture de la capture impossible (${esc(err.message || "erreur")}). Collez le texte à la place.</div>`;
+  } finally { btn.disabled = false; }
+});
+
 document.getElementById("btn-effacer-message").addEventListener("click", () => {
   document.getElementById("input-message-course").value = "";
   document.getElementById("resultat-analyse-message").innerHTML = "";
