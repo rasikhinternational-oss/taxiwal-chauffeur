@@ -1196,6 +1196,15 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-course.ligne-a-completer{ outline:3px solid #e8a200; outline-offset:2px; }
   .btn-y-aller{ width:100%; padding:11px; margin:-4px 0 10px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:800; font-size:.95rem; }
 </style>
+<style id="tw-mobile-safe">
+/* Confort mobile (iPhone + Android) : pas de défilement de côté, pas de zoom au toucher, champs lisibles */
+html,body{ max-width:100%; overflow-x:hidden; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+body{ overflow-wrap:break-word; }
+button, a, input, select, textarea, label, [role="button"]{ touch-action:manipulation; -webkit-tap-highlight-color:rgba(0,0,0,0.06); }
+input, select, textarea{ font-size:max(16px, 1em); max-width:100%; }
+img, video, canvas{ max-width:100%; }
+table{ max-width:100%; }
+</style>
 </head>
 <body>
 

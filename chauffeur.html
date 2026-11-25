@@ -466,6 +466,15 @@ window.onerror = function(msg, url, line, col, err) {
   #vehicule-du-jour-chauffeur.avec{ background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; }
   #vehicule-du-jour-chauffeur.sans{ background:#fff4e0; border:1px solid #e9c27a; color:#6b4200; }
 </style>
+<style id="tw-mobile-safe">
+/* Confort mobile (iPhone + Android) : pas de défilement de côté, pas de zoom au toucher, champs lisibles */
+html,body{ max-width:100%; overflow-x:hidden; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+body{ overflow-wrap:break-word; }
+button, a, input, select, textarea, label, [role="button"]{ touch-action:manipulation; -webkit-tap-highlight-color:rgba(0,0,0,0.06); }
+input, select, textarea{ font-size:max(16px, 1em); max-width:100%; }
+img, video, canvas{ max-width:100%; }
+table{ max-width:100%; }
+</style>
 </head>
 <body>
 
