@@ -61,12 +61,27 @@
     }
     // Laisse l'app s'afficher d'abord (ne ralentit jamais la réservation)
     function lancer() { setTimeout(function () { if (!reservationEnCours()) afficher(); }, 900); }
-    var cacheA = 0;
+    // Retour dans l'app : plusieurs signaux selon le téléphone (navigateur, app iPhone, app Android)
+    var cacheA = 0, dernierAffichage = 0;
+    function auRetour() {
+      if (Date.now() - dernierAffichage < 1500) return;
+      if (reservationEnCours()) return;
+      dernierAffichage = Date.now();
+      setTimeout(afficher, 300);
+    }
     document.addEventListener("visibilitychange", function () {
       if (document.hidden) { cacheA = Date.now(); return; }
-      // Retour dans l'app après au moins 3 secondes ailleurs
-      if (cacheA && Date.now() - cacheA > 3000 && !reservationEnCours()) setTimeout(afficher, 300);
+      if (cacheA && Date.now() - cacheA > 800) auRetour();
     });
+    window.addEventListener("pageshow", function (ev) { if (ev.persisted) auRetour(); });
+    document.addEventListener("resume", auRetour, false); // Cordova
+    try {
+      var Cap = window.Capacitor;
+      if (Cap && Cap.Plugins && Cap.Plugins.App && Cap.Plugins.App.addListener) {
+        Cap.Plugins.App.addListener("appStateChange", function (st) { if (st && st.isActive) auRetour(); });
+        Cap.Plugins.App.addListener("resume", auRetour);
+      }
+    } catch (e) {}
     if (document.readyState === "complete") lancer(); else window.addEventListener("load", lancer);
   } catch (e) { /* ne jamais bloquer l'app */ }
 })();
