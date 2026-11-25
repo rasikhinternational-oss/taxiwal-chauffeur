@@ -2581,6 +2581,21 @@ button.sv-puce.choisi{ background:var(--tw-vert-fonce); border-color:var(--tw-ve
 .qr-envoyer{ box-shadow:0 6px 16px rgba(23,138,70,.28); }
 header img{ box-shadow:0 2px 8px rgba(0,0,0,.12); }
 </style>
+<style id="tw-flotte-mini-style">
+#tw-flotte-mini{margin:6px 0 14px}
+#tw-flotte-mini .tfm-titre{display:flex;flex-direction:column;margin:0 0 8px}
+#tw-flotte-mini .tfm-titre b{font-weight:800;font-size:1.05rem}
+#tw-flotte-mini .tfm-titre small{font-size:.8rem;color:#6b7383;margin-top:2px}
+#tw-flotte-mini .tfm-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#tw-flotte-mini .tfm-v{display:flex;flex-direction:column;align-items:center;gap:1px;background:#fff;border:1.5px solid #e3e6ea;border-radius:14px;padding:6px 4px 8px;margin:0;width:auto;min-height:0;color:#0e1a2c;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;font:inherit}
+#tw-flotte-mini .tfm-v:active{transform:scale(.97)}
+#tw-flotte-mini .tfm-v.choisie{border-color:#22b35e;box-shadow:0 0 0 3px rgba(34,179,94,.25)}
+#tw-flotte-mini .tfm-v img{width:100%;height:64px;object-fit:contain;display:block}
+#tw-flotte-mini .tfm-v b{font-size:.82rem;line-height:1.15;margin-top:4px}
+#tw-flotte-mini .tfm-v small{font-size:.72rem;color:#6b7383}
+body.tfm-actif .tw-hero-reserver, body.tfm-actif #tw-galerie{display:none!important}
+.badge-marque{background:#178a46!important}
+</style>
 </head>
 <body>
 
@@ -2651,6 +2666,14 @@ header img{ box-shadow:0 2px 8px rgba(0,0,0,.12); }
   <!-- Onglet Réserver -->
   <section id="section-reserver" class="visible">
     <span class="badge-marque">TAXI WAL</span>
+    <div id="tw-flotte-mini" hidden>
+      <div class="tfm-titre"><b data-i18n="gal.titre">Notre flotte</b><small id="tfm-sous">Touchez une voiture pour la choisir</small></div>
+      <div class="tfm-grille">
+        <button type="button" class="tfm-v" data-m="mercedes_classe_e"><img alt=""><b>Mercedes</b><small>Classe E</small></button>
+        <button type="button" class="tfm-v" data-m="renault_trafic"><img alt=""><b>Renault Trafic</b><small>Van 7 places</small></button>
+        <button type="button" class="tfm-v" data-m="toyota_corolla"><img alt=""><b>Toyota Corolla</b><small>Berline</small></button>
+      </div>
+    </div>
     <div class="tw-photo tw-hero-reserver">
       <img src="van-principal.webp" alt="Véhicule Taxi Wal" data-i18n-alt="alt.vehicule" width="720" height="540" loading="lazy" decoding="async" onerror="twImgKo(this)">
       <div class="tw-voile"></div>
@@ -7121,5 +7144,25 @@ appliquerLangue();
 (function () { try { if (typeof twAlert === "function" && window.twTexteSansDetail) { var b = twAlert; twAlert = function (m) { return b(window.twTexteSansDetail(m)); }; } } catch (e) {} })();
 </script>
 <script src="promo-aeroports.js?v=18" defer></script>
+<script>
+/* « Notre flotte » compacte en haut de Réserver (remplace la grande photo et la galerie). Si quelque chose manque, l'ancien affichage reste. */
+(function(){try{
+  var tentatives=0;
+  function init(){
+    var z=document.getElementById("tw-flotte-mini"), P=window.__twPhotosFlotte;
+    if(!z) return;
+    if(!P){ if(++tentatives<20) setTimeout(init,300); return; }
+    z.querySelectorAll(".tfm-v").forEach(function(b){
+      var im=b.querySelector("img"); if(P[b.dataset.m]) im.src=P[b.dataset.m];
+      b.addEventListener("click",function(){
+        try{ if(typeof window.__twChoisirVehicule==="function") window.__twChoisirVehicule(b.dataset.m); }catch(e){}
+        z.querySelectorAll(".tfm-v").forEach(function(x){x.classList.toggle("choisie",x===b);});
+      });
+    });
+    z.hidden=false; document.body.classList.add("tfm-actif");
+  }
+  if(document.readyState==="complete") init(); else window.addEventListener("load",init);
+}catch(e){}})();
+</script>
 </body>
 </html>
