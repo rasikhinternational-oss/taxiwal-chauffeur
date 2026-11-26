@@ -1053,7 +1053,7 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
     viderDonneesUtilisateur();
     var c = etat.client, r = null;
     if (c) {
-      try { r = await c.auth.signOut(); } catch (e) { r = { error: e }; }
+      try { r = await c.auth.signOut({ scope: "local" }); } catch (e) { r = { error: e }; }
       if (r && r.error) { try { await c.auth.signOut({ scope: "local" }); } catch (e) {} }
     }
     try { window.localStorage.removeItem(CLE_SESSION); } catch (e) {}
@@ -2276,8 +2276,10 @@ function activerLocalisationAutomatique() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
     () => {
-      dispoActive = true;
-      switchDispo.classList.add("actif");
+      let choix = null;
+      try { choix = JSON.parse(localStorage.getItem("taxiwal_dispo_choix") || "null"); } catch (e) {}
+      dispoActive = !(choix && choix.jour === new Date().toDateString() && choix.dispo === false);
+      switchDispo.classList.toggle("actif", dispoActive);
       demarrerPartagePosition();
     },
     (err) => {
@@ -3471,13 +3473,26 @@ switchDispo.addEventListener("click", () => {
   if (suiviGpsId === null) { alertePermissionSuiviMontree = false; demarrerPartagePosition(); }
 });
 
-async function majDisponibilite(dispo) {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("positions_chauffeurs").update({ disponible: dispo }).eq("chauffeur_id", user.id);
-  } catch (e) { /* pas bloquant */ }
+// Utilisateur connecté lu sur le téléphone (instantané, pas d'appel réseau)
+async function utilisateurRapide() {
+  try { const { data } = await supabase.auth.getSession(); if (data && data.session && data.session.user) return data.session.user; } catch (e) {}
+  try { const { data: { user } } = await supabase.auth.getUser(); return user || null; } catch (e) { return null; }
 }
+let essaiDispo = null;
+async function majDisponibilite(dispo, essai = 0) {
+  try { localStorage.setItem("taxiwal_dispo_choix", JSON.stringify({ dispo, jour: new Date().toDateString() })); } catch (e) {}
+  if (essaiDispo) { clearTimeout(essaiDispo); essaiDispo = null; }
+  try {
+    const user = await utilisateurRapide();
+    if (!user) throw new Error("pas connecté");
+    const { error } = await supabase.from("positions_chauffeurs").update({ disponible: dispo, updated_at: new Date().toISOString() }).eq("chauffeur_id", user.id);
+    if (error) throw error;
+  } catch (e) {
+    // Réseau faible : on réessaie tout seul (5 s, 10 s, 20 s… max 60 s) tant que le choix n'a pas changé
+    if (dispo === dispoActive && essai < 20) essaiDispo = setTimeout(() => { if (dispo === dispoActive) majDisponibilite(dispo, essai + 1); }, Math.min(60000, 5000 * Math.pow(2, Math.min(essai, 4))));
+  }
+}
+window.addEventListener("online", () => { try { majDisponibilite(dispoActive); } catch (e) {} });
 
 // Indicateur visible par le chauffeur : suivi actif ou localisation désactivée
 let localisationRefusee = false;
@@ -3574,7 +3589,7 @@ async function envoyerLignePosition(user, pos) {
 async function envoyerPositionLue(pos) {
   dernierEnvoiPosition = Date.now();
   if (navigator.onLine === false) return; // hors ligne : position non envoyée (pas de file d'attente)
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await utilisateurRapide();
   if (!user) return;
   await envoyerLignePosition(user, pos);
 }
@@ -3586,7 +3601,7 @@ document.addEventListener("visibilitychange", () => {
 let verrouEcran = null;
 async function gererEcranAllume() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await utilisateurRapide();
     if (!user) return;
     const { data } = await supabase.from("courses").select("id").eq("chauffeur_id", user.id).eq("statut", "en_cours").limit(1);
     const enCourse = !!(data && data.length);
@@ -3609,7 +3624,7 @@ async function envoyerPosition() {
   navigator.geolocation.getCurrentPosition(async (pos) => {
     derniereLecturePosition = pos; dernierEnvoiPosition = Date.now();
     if (navigator.onLine === false) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await utilisateurRapide();
     if (!user) return;
 
     await envoyerLignePosition(user, pos);
@@ -3617,7 +3632,7 @@ async function envoyerPosition() {
 }
 
 async function metPositionIndisponible() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await utilisateurRapide();
   if (!user) return;
   await supabase.from("positions_chauffeurs")
     .update({ disponible: false })

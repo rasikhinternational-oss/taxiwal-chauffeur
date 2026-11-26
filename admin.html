@@ -2594,11 +2594,17 @@ document.getElementById("btn-valider-code-admin").addEventListener("click", asyn
 async function verifierEtDemarrerAdmin() {
   const erreur = document.getElementById("erreur-login-admin");
   const { data: profil, error } = await supabase
-    .from("profils").select("role").eq("id", (await supabase.auth.getUser()).data.user.id).single();
+    .from("profils").select("role").eq("id", ((await supabase.auth.getSession()).data.session?.user?.id) || (await supabase.auth.getUser()).data.user.id).single();
 
-  if (error || !profil || profil.role !== "admin") {
+  if (error) {
+    // Réseau faible : on NE déconnecte PAS, on réessaie tout seul
+    erreur.textContent = "Connexion lente… nouvel essai dans 3 secondes.";
+    setTimeout(() => { try { location.reload(); } catch (e) {} }, 3000);
+    return;
+  }
+  if (!profil || profil.role !== "admin") {
     erreur.textContent = "Ce compte n'est pas autorisé à accéder à l'administration.";
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     return;
   }
 
@@ -2946,7 +2952,7 @@ document.getElementById("btn-deconnexion-admin").addEventListener("click", async
   if (!(await confirmerDansPageFA("Se déconnecter de l'administration Taxi Wal ?", "🔒 Se déconnecter", "Annuler"))) return;
   try { window.sessionStorage.clear(); } catch (e) {}
   let r = null;
-  try { r = await supabase.auth.signOut(); } catch (e) { r = { error: e }; }
+  try { r = await supabase.auth.signOut({ scope: "local" }); } catch (e) { r = { error: e }; }
   if (r && r.error) { try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {} }
   location.reload();
 });

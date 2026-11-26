@@ -1792,7 +1792,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=file]), select{ min-heigh
     viderDonneesUtilisateur();
     var c = etat.client, r = null;
     if (c) {
-      try { r = await c.auth.signOut(); } catch (e) { r = { error: e }; }
+      try { r = await c.auth.signOut({ scope: "local" }); } catch (e) { r = { error: e }; }
       if (r && r.error) { try { await c.auth.signOut({ scope: "local" }); } catch (e) {} }
     }
     try { window.localStorage.removeItem(CLE_SESSION); } catch (e) {}
