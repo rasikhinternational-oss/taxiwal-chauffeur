@@ -1569,7 +1569,13 @@ document.getElementById("btn-valider-code").addEventListener("click", async () =
   const otp = document.getElementById("otp").value.trim();
   const erreur = document.getElementById("erreur-login");
 
-  const { data, error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+  const btnCode = document.getElementById("btn-valider-code");
+  if (btnCode.disabled) return;   // double appui : une seule vérification
+  btnCode.disabled = true;
+  let data, error;
+  try { ({ data, error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" })); }
+  catch (e) { error = e; }
+  finally { btnCode.disabled = false; }
   if (error) { erreur.textContent = "Code invalide."; return; }
 
   demarrerEspaceChauffeur();
@@ -2038,12 +2044,15 @@ async function verifierCompteChauffeur(user) {
 // Après déconnexion : retour à l'écran de connexion
 const APRES_DECONNEXION_COMPTE_ADMIN = () => { location.reload(); };
 
+let espaceChauffeurDemarre = false;   // évite de lancer 2 fois minuteries + abonnements temps réel
 async function demarrerEspaceChauffeur() {
+  if (espaceChauffeurDemarre) return;
+  espaceChauffeurDemarre = true;
   // Compte ADMIN : on ne lance pas l'espace chauffeur (ni courses, ni GPS, ni feuille)
-  {
+  try {
     const { data: { user: compte } } = await supabase.auth.getUser();
     if (!(await verifierCompteChauffeur(compte))) { document.getElementById("ecran-login").style.display = "none"; return; }
-  }
+  } catch (e) { espaceChauffeurDemarre = false; throw e; }
   document.getElementById("ecran-login").style.display = "none";
   document.getElementById("ecran-principal").style.display = "block";
   document.getElementById("sous-titre").textContent = "Connecté";
@@ -2263,27 +2272,6 @@ function activerLocalisationAutomatique() {
     }
   );
   surveillerPermissionLocalisation();
-}
-
-async function creerFeuilleDuJourSiAbsente() {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const aujourdHui = dateLocaleISO();
-
-    const { data: feuilleExistante } = await supabase
-      .from("feuilles_route").select("id").eq("chauffeur_id", user.id).eq("date_service", aujourdHui).limit(1);
-    // (limit au lieu de maybeSingle : avec 2 feuilles le même jour — changement de véhicule — maybeSingle
-    //  renvoyait une erreur et une feuille vide en trop était créée)
-    if (feuilleExistante && feuilleExistante.length) return;
-
-    let vehiculeId = null;
-    try { const { data } = await supabase.rpc("mon_vehicule_du_jour", { p_date: aujourdHui }); vehiculeId = (Array.isArray(data) && data[0] && data[0].vehicule_id) || null; } catch (e) {}
-
-    await supabase.from("feuilles_route").insert({
-      chauffeur_id: user.id, date_service: aujourdHui, vehicule_id: vehiculeId
-    });
-  } catch (e) { console.error("Création feuille du jour :", e); }
 }
 
 let idsCoursesConnues = null;
@@ -3303,16 +3291,6 @@ ${(Array.isArray(course.arrets) ? course.arrets : []).filter(a => a && a.adresse
     chargerDemandesOuvertes();
   });
   return div;
-}
-
-async function changerStatut(courseId, nouveauStatut) {
-  const { error } = await supabase
-    .from("courses")
-    .update({ statut: nouveauStatut })
-    .eq("id", courseId);
-
-  if (error) { alert("Impossible de modifier : " + error.message); return; }
-  chargerCourses();
 }
 
 async function accepterCourse(courseId) {
@@ -4582,6 +4560,6 @@ async function chargerMesEntretiens() {
 <script src="gps-natif.js"></script>
 <script src="rappel-uber.js"></script>
 <script src="course-alerte.js"></script>
-<script src="accueil-chauffeur.js?v=5" defer></script>
+<script src="accueil-chauffeur.js?v=6" defer></script>
 </body>
 </html>

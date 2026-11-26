@@ -13756,15 +13756,22 @@ document.getElementById("btn-creer-partenaire").addEventListener("click", async 
     erreur.textContent = "Nom, email et taux de commission sont obligatoires.";
     return;
   }
+  const btnCreerPartenaire = document.getElementById("btn-creer-partenaire");
+  if (btnCreerPartenaire.disabled) return;   // évite une double création (double clic)
   erreur.textContent = "Création en cours…";
-  const { data, error } = await supabase.functions.invoke("creer-partenaire", {
-    body: {
-      nom, email,
-      telephone: document.getElementById("input-partenaire-telephone").value.trim() || null,
-      societe: document.getElementById("input-partenaire-societe").value.trim() || null,
-      taux_commission: parseFloat(taux)
-    }
-  });
+  btnCreerPartenaire.disabled = true;
+  let data, error;
+  try {
+    ({ data, error } = await supabase.functions.invoke("creer-partenaire", {
+      body: {
+        nom, email,
+        telephone: document.getElementById("input-partenaire-telephone").value.trim() || null,
+        societe: document.getElementById("input-partenaire-societe").value.trim() || null,
+        taux_commission: parseFloat(taux)
+      }
+    }));
+  } catch (e) { error = e; }
+  finally { btnCreerPartenaire.disabled = false; }
   if (error || data?.error) { erreur.textContent = "Erreur : " + (data?.error || error.message); return; }
   document.getElementById("modale-partenaire").classList.remove("visible");
   await chargerChauffeurs();

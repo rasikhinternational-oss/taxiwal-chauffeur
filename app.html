@@ -7144,7 +7144,7 @@ appliquerLangue();
 // Fenêtres de message de l'app client : même nettoyage des détails techniques
 (function () { try { if (typeof twAlert === "function" && window.twTexteSansDetail) { var b = twAlert; twAlert = function (m) { return b(window.twTexteSansDetail(m)); }; } } catch (e) {} })();
 </script>
-<script src="promo-aeroports.js?v=18" defer></script>
+<script src="promo-aeroports.js?v=19" defer></script>
 <script>
 /* « Notre flotte » compacte en haut de Réserver (remplace la grande photo et la galerie). Si quelque chose manque, l'ancien affichage reste. */
 (function(){try{
@@ -7172,7 +7172,7 @@ appliquerLangue();
       if(src){himg.removeAttribute("srcset");himg.src=src;hero.classList.add("tfm-voiture");}
       else{himg.src=orig;hero.classList.remove("tfm-voiture");}
       z.querySelectorAll(".tfm-v").forEach(function(x){x.classList.toggle("choisie",x.dataset.m===m);});
-    }catch(e){}},600);
+    }catch(e){}},1000);
   }
   if(document.readyState==="complete") init(); else window.addEventListener("load",init);
 }catch(e){}})();
