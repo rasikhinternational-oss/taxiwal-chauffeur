@@ -2593,7 +2593,8 @@ header img{ box-shadow:0 2px 8px rgba(0,0,0,.12); }
 #tw-flotte-mini .tfm-v img{width:100%;height:64px;object-fit:contain;display:block}
 #tw-flotte-mini .tfm-v b{font-size:.82rem;line-height:1.15;margin-top:4px}
 #tw-flotte-mini .tfm-v small{font-size:.72rem;color:#6b7383}
-body.tfm-actif .tw-hero-reserver, body.tfm-actif #tw-galerie{display:none!important}
+body.tfm-actif #tw-galerie{display:none!important}
+.tw-hero-reserver.tfm-voiture img{object-fit:contain!important;background:#fff;padding:10px 8px 40px}
 .badge-marque{background:#178a46!important}
 </style>
 </head>
@@ -7160,6 +7161,18 @@ appliquerLangue();
       });
     });
     z.hidden=false; document.body.classList.add("tfm-actif");
+    /* La grande photo « Où allons-nous ? » montre la voiture choisie */
+    var hero=document.querySelector(".tw-hero-reserver"), himg=hero&&hero.querySelector("img"), orig=himg&&himg.getAttribute("src"), dernier=null;
+    setInterval(function(){try{
+      var m=(typeof window.__modeleVehicule==="function"&&window.__modeleVehicule())||null;
+      if(!m){var sv=document.getElementById("input-vehicule-souhaite"),t=sv&&sv.value;
+        if(t==="van") m="renault_trafic"; else if(t==="berline") m="toyota_corolla";}
+      if(m===dernier||!himg) return; dernier=m;
+      var src=m&&P[m];
+      if(src){himg.removeAttribute("srcset");himg.src=src;hero.classList.add("tfm-voiture");}
+      else{himg.src=orig;hero.classList.remove("tfm-voiture");}
+      z.querySelectorAll(".tfm-v").forEach(function(x){x.classList.toggle("choisie",x.dataset.m===m);});
+    }catch(e){}},600);
   }
   if(document.readyState==="complete") init(); else window.addEventListener("load",init);
 }catch(e){}})();
