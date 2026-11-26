@@ -2591,15 +2591,19 @@ document.getElementById("btn-valider-code-admin").addEventListener("click", asyn
   await verifierEtDemarrerAdmin();
 });
 
-async function verifierEtDemarrerAdmin() {
+async function verifierEtDemarrerAdmin(essai = 0) {
   const erreur = document.getElementById("erreur-login-admin");
-  const { data: profil, error } = await supabase
-    .from("profils").select("role").eq("id", ((await supabase.auth.getSession()).data.session?.user?.id) || (await supabase.auth.getUser()).data.user.id).single();
+  let uid = null;
+  try { uid = (await supabase.auth.getSession()).data.session?.user?.id || null; } catch (e) {}
+  if (!uid) { erreur.textContent = ""; return; }   // pas connecté : on laisse simplement l'écran de connexion
+  const { data: profil, error } = await supabase.from("profils").select("role").eq("id", uid).single();
 
   if (error) {
-    // Réseau faible : on NE déconnecte PAS, on réessaie tout seul
-    erreur.textContent = "Connexion lente… nouvel essai dans 3 secondes.";
-    setTimeout(() => { try { location.reload(); } catch (e) {} }, 3000);
+    // Réseau lent : 2 nouveaux essais SANS recharger la page (on ne gêne pas la saisie du code)
+    if (essai < 2) { erreur.textContent = "Connexion lente… nouvel essai."; setTimeout(() => verifierEtDemarrerAdmin(essai + 1), 3000); return; }
+    // Session périmée sur ce téléphone : on l'efface et on affiche la connexion normale
+    try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
+    erreur.textContent = "Reconnecte-toi avec ton email (un seul code).";
     return;
   }
   if (!profil || profil.role !== "admin") {
@@ -2607,6 +2611,7 @@ async function verifierEtDemarrerAdmin() {
     await supabase.auth.signOut({ scope: "local" });
     return;
   }
+  erreur.textContent = "";
 
   document.getElementById("ecran-login-admin").style.display = "none";
   document.getElementById("app-admin").style.display = "block";
