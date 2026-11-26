@@ -515,6 +515,21 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
 .ttw-btn, .dc-gros-bouton{ min-height:50px; }
 #btn-paiement-cash, #btn-paiement-carte, #btn-paiement-facture, #btn-paiement-cheque, #btn-paiement-qr, #btn-paiement-uber, #btn-paiement-uber-cash, #btn-terminer-deja-paye{ min-height:50px; border-radius:12px; font-weight:700; }
 </style>
+<style id="tw-dispo-bouton">
+#barre-dispo{gap:14px;cursor:pointer;user-select:none;-webkit-user-select:none;padding:16px 18px!important;border-radius:18px!important;border:2px solid #d5d8dc;background:#f2f3f5!important;transition:background .25s,border-color .25s,box-shadow .25s;min-height:64px}
+#barre-dispo #label-dispo{flex:1;min-width:0;font-size:1.08rem!important;font-weight:800;line-height:1.25;color:#3a4250}
+#barre-dispo #label-dispo small{display:block;font-size:.8rem;font-weight:600;opacity:.8;margin-top:2px}
+#barre-dispo.en-ligne{background:#178a46!important;border-color:#178a46;box-shadow:0 6px 18px rgba(23,138,70,.35)}
+#barre-dispo.en-ligne #label-dispo{color:#fff}
+#barre-dispo .switch{flex:none;transform:scale(1.25);transform-origin:right center}
+#barre-dispo.en-ligne .switch{background:#fff!important}
+#barre-dispo.en-ligne .switch::after{background:#178a46}
+#barre-dispo .point-dispo{display:inline-block;width:12px;height:12px;border-radius:50%;background:#8a919c;margin-right:8px;vertical-align:1px}
+#barre-dispo.en-ligne .point-dispo{background:#7CFFB0;box-shadow:0 0 0 0 rgba(124,255,176,.7);animation:twPulse 1.8s infinite}
+@keyframes twPulse{0%{box-shadow:0 0 0 0 rgba(124,255,176,.7)}70%{box-shadow:0 0 0 10px rgba(124,255,176,0)}100%{box-shadow:0 0 0 0 rgba(124,255,176,0)}}
+@media (prefers-reduced-motion:reduce){#barre-dispo.en-ligne .point-dispo{animation:none}}
+#barre-dispo:active{transform:scale(.985)}
+</style>
 </head>
 <body>
 
@@ -4561,5 +4576,29 @@ async function chargerMesEntretiens() {
 <script src="rappel-uber.js"></script>
 <script src="course-alerte.js"></script>
 <script src="accueil-chauffeur.js?v=6" defer></script>
+<script>
+/* Grand bouton « En ligne / Hors ligne » : toute la barre est cliquable, même action que l'interrupteur existant */
+(function(){try{
+  var barre=document.getElementById("barre-dispo"), sw=document.getElementById("switch-dispo"), lab=document.getElementById("label-dispo");
+  if(!barre||!sw||!lab) return;
+  barre.setAttribute("role","button"); barre.tabIndex=0;
+  function maj(){ var on=sw.classList.contains("actif"); barre.classList.toggle("en-ligne",on);
+    lab.innerHTML=on?'<span class="point-dispo"></span>EN LIGNE — disponible<small>Tu reçois les courses. Touche pour passer hors ligne.</small>'
+                    :'<span class="point-dispo"></span>HORS LIGNE<small>Touche pour te mettre disponible et recevoir des courses.</small>'; }
+  /* Petit son quand le chauffeur passe en ligne (montant) ou hors ligne (descendant) — seulement après un toucher */
+  var ctxS=null, toucheA=0, etatAvant=sw.classList.contains("actif");
+  function son(notes){ try{ var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; ctxS=ctxS||new AC(); if(ctxS.state==="suspended") ctxS.resume();
+    var t0=ctxS.currentTime+0.03; notes.forEach(function(n,i){ var o=ctxS.createOscillator(), g=ctxS.createGain(), t=t0+i*0.12;
+      o.type="sine"; o.frequency.value=n; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.18,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.45);
+      o.connect(g); g.connect(ctxS.destination); o.start(t); o.stop(t+0.5); }); }catch(e){} }
+  function apresChangement(){ var on=sw.classList.contains("actif"); if(on===etatAvant) return; etatAvant=on;
+    if(Date.now()-toucheA<1500){ son(on?[523.25,659.25,783.99]:[659.25,440]); try{ if(navigator.vibrate) navigator.vibrate(on?[60,40,60]:80); }catch(e){} } }
+  sw.addEventListener("click",function(){ toucheA=Date.now(); },true);
+  barre.addEventListener("click",function(e){ toucheA=Date.now(); if(e.target===sw) return; sw.click(); });
+  barre.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); sw.click(); } });
+  new MutationObserver(function(){ maj(); apresChangement(); }).observe(sw,{attributes:true,attributeFilter:["class"]});
+  maj();
+}catch(e){}})();
+</script>
 </body>
 </html>

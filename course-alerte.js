@@ -101,13 +101,45 @@
       });
     } catch (e) {}
   }
+  // Sonnerie type « appel téléphonique » : ~10 s (trilles de 2 tons), s'arrête dès que l'alerte se ferme
+  var SONNERIE_MS = 15000, notesSonnerie = [], finSonnerie = null;
+  function arreterSonnerie() {
+    try { notesSonnerie.forEach(function (o) { try { o.stop(); } catch (e) {} }); } catch (e) {}
+    notesSonnerie = [];
+    try { if (finSonnerie) clearTimeout(finSonnerie); } catch (e) {} finSonnerie = null;
+    try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
+  }
+  function sonnerieAppel() {
+    try {
+      var ctx = contexteAudio(); if (!ctx || ctx.state !== "running") { carillon(); return; }
+      arreterSonnerie();
+      var t0 = ctx.currentTime + 0.05, cycle = 2.0, nb = Math.max(1, Math.floor(SONNERIE_MS / 1000 / cycle) + 1);
+      for (var k = 0; k < nb; k++) {
+        var debut = t0 + k * cycle;
+        // 1,2 s de « dring » : 2 tons qui alternent vite (comme un téléphone), puis 0,8 s de silence
+        for (var i = 0; i < 24; i++) {
+          var t = debut + i * 0.05;
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = "sine"; o.frequency.value = (i % 2) ? 784 : 659;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.16, t + 0.015);
+          g.gain.setValueAtTime(0.16, t + 0.038);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+          o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.055);
+          notesSonnerie.push(o);
+        }
+      }
+      try { if (navigator.vibrate) { var v = []; for (var j = 0; j < nb; j++) v.push(1200, 800); navigator.vibrate(v); } } catch (e) {}
+      finSonnerie = setTimeout(function () { notesSonnerie = []; finSonnerie = null; }, SONNERIE_MS + 500);
+    } catch (e) { try { carillon(); } catch (_) {} }
+  }
   function vibrer() { try { if (navigator.vibrate) navigator.vibrate([200, 120, 200]); } catch (e) {} }
   function alerter() {
-    carillon(); vibrer();
+    sonnerieAppel();
     arreterRappel();
     try {
       rappelSon = setInterval(function () {
-        if (overlay && overlayMode === "accepter" && document.visibilityState === "visible") { carillon(); vibrer(); }
+        if (overlay && overlayMode === "accepter" && document.visibilityState === "visible") { sonnerieAppel(); }
         else arreterRappel();
       }, RAPPEL_MS);
     } catch (e) {}
@@ -118,6 +150,7 @@
   function fermerOverlay() {
     try { if (overlay) overlay.remove(); } catch (e) {}
     arreterRappel();
+    arreterSonnerie();
     overlay = null; overlayCourseId = null; overlayMode = null;
   }
   function bouton(txt, fond, taille) {
