@@ -7184,5 +7184,25 @@ appliquerLangue();
   if(document.readyState==="complete") init(); else window.addEventListener("load",init);
 }catch(e){}})();
 </script>
+<script>
+/* iPhone : l'app peut redémarrer pendant qu'on lit le mail → on garde « code envoyé » 15 min et on réaffiche la case du code */
+(function(){try{
+  var K="taxiwal_otp_"+(location.pathname.split("/").pop()||"index"), $=function(i){return document.getElementById(i);};
+  var bloc=$("bloc-otp"), em=$("email"), env=$("btn-envoyer-code"), val=$("btn-valider-code"), login=$("ecran-login");
+  if(!bloc||!em||!env||!val||!login) return;
+  new MutationObserver(function(){ if(bloc.style.display==="block"&&em.value.trim()){ try{localStorage.setItem(K,JSON.stringify({email:em.value.trim(),t:Date.now()}));}catch(e){} } })
+    .observe(bloc,{attributes:true,attributeFilter:["style"]});
+  new MutationObserver(function(){ if(login.style.display==="none"){ try{localStorage.removeItem(K);}catch(e){} } })
+    .observe(login,{attributes:true,attributeFilter:["style"]});
+  var o=null; try{o=JSON.parse(localStorage.getItem(K)||"null");}catch(e){}
+  if(!o||!o.email||Date.now()-o.t>15*60000) return;
+  em.value=o.email; bloc.style.display="block"; env.style.display="none"; val.style.display="block";
+  var a=document.createElement("button"); a.type="button"; a.textContent="↻ Renvoyer un nouveau code";
+  a.style.cssText="margin-top:10px;background:none;border:none;color:#178a46;text-decoration:underline;font-weight:700;width:100%;";
+  a.onclick=function(){ try{localStorage.removeItem(K);}catch(e){} bloc.style.display="none"; val.style.display="none"; env.style.display="block"; a.remove(); };
+  val.after(a);
+}catch(e){}})();
+</script>
 </body>
+
 </html>

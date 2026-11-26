@@ -2573,6 +2573,8 @@ document.getElementById("btn-envoyer-code-admin").addEventListener("click", asyn
     document.getElementById("bloc-otp-admin").style.display = "block";
     btn.style.display = "none";
     document.getElementById("btn-valider-code-admin").style.display = "block";
+    // iPhone : l'app peut redémarrer pendant qu'on lit le mail → on garde « code envoyé » 15 min
+    try { localStorage.setItem("taxiwal_otp_admin", JSON.stringify({ email, t: Date.now() })); } catch (e) {}
   } catch (e) {
     erreur.textContent = "Connexion impossible. Vérifie ta connexion internet et réessaie.";
     btn.disabled = false;
@@ -2586,10 +2588,27 @@ document.getElementById("btn-valider-code-admin").addEventListener("click", asyn
   const erreur = document.getElementById("erreur-login-admin");
 
   const { data, error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
-  if (error) { erreur.textContent = "Code invalide."; return; }
+  if (error) { erreur.textContent = "Code invalide ou expiré : utilise le DERNIER code reçu."; return; }
 
+  try { localStorage.removeItem("taxiwal_otp_admin"); } catch (e) {}
   await verifierEtDemarrerAdmin();
 });
+// Au redémarrage de l'app (retour depuis Mail) : réafficher directement la case du code
+(function () {
+  try {
+    const o = JSON.parse(localStorage.getItem("taxiwal_otp_admin") || "null");
+    if (!o || !o.email || Date.now() - o.t > 15 * 60000) return;
+    document.getElementById("email-admin").value = o.email;
+    document.getElementById("bloc-otp-admin").style.display = "block";
+    document.getElementById("btn-envoyer-code-admin").style.display = "none";
+    document.getElementById("btn-valider-code-admin").style.display = "block";
+    document.getElementById("erreur-login-admin").textContent = "Code déjà envoyé à " + o.email + " : tape-le ci-dessus.";
+    const lien = document.createElement("button"); lien.type = "button"; lien.className = "secondaire";
+    lien.textContent = "Renvoyer un nouveau code"; lien.style.marginTop = "10px";
+    lien.onclick = () => { try { localStorage.removeItem("taxiwal_otp_admin"); } catch (e) {} location.reload(); };
+    document.getElementById("btn-valider-code-admin").after(lien);
+  } catch (e) {}
+})();
 
 async function verifierEtDemarrerAdmin(essai = 0) {
   const erreur = document.getElementById("erreur-login-admin");
