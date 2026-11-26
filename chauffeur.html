@@ -4593,7 +4593,26 @@ async function chargerMesEntretiens() {
       o.connect(g); g.connect(ctxS.destination); o.start(t); o.stop(t+0.5); }); }catch(e){} }
   function apresChangement(){ var on=sw.classList.contains("actif"); if(on===etatAvant) return; etatAvant=on;
     if(Date.now()-toucheA<1500){ son(on?[523.25,659.25,783.99]:[659.25,440]); try{ if(navigator.vibrate) navigator.vibrate(on?[60,40,60]:80); }catch(e){} } }
-  sw.addEventListener("click",function(){ toucheA=Date.now(); },true);
+  /* Passer HORS LIGNE demande une confirmation (case à cocher) pour éviter un toucher par erreur ; passer EN LIGNE reste direct */
+  var horsOk=false;
+  function demanderHorsLigne(){ if(document.getElementById("tw-confirm-hl")) return;
+    var f=document.createElement("div"); f.id="tw-confirm-hl";
+    f.style.cssText="position:fixed;inset:0;z-index:2147482000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box";
+    f.innerHTML='<div style="background:#fff;border-radius:18px;padding:22px 18px;max-width:420px;width:100%;font-family:inherit;color:#222;text-align:center">'+
+      '<div style="font-size:1.3rem;font-weight:900">Passer HORS LIGNE ?</div>'+
+      '<div style="margin-top:8px;font-size:.95rem;color:#555">Tu ne recevras plus de nouvelles courses.</div>'+
+      '<label style="display:flex;align-items:center;gap:12px;margin:18px 0 6px;padding:14px;border:2px solid #d5d8dc;border-radius:12px;font-weight:800;font-size:1.05rem;text-align:left;cursor:pointer">'+
+      '<input type="checkbox" id="tw-hl-coche" style="width:26px;height:26px;flex:none;accent-color:#c81e2c">Oui, je veux passer hors ligne</label>'+
+      '<button type="button" id="tw-hl-ok" disabled style="display:block;width:100%;margin-top:12px;padding:16px;border:none;border-radius:12px;background:#c81e2c;color:#fff;font-weight:900;font-size:1.1rem;opacity:.4">Passer hors ligne</button>'+
+      '<button type="button" id="tw-hl-non" style="display:block;width:100%;margin-top:10px;padding:16px;border:none;border-radius:12px;background:#178a46;color:#fff;font-weight:900;font-size:1.1rem">Rester EN LIGNE</button></div>';
+    document.body.appendChild(f);
+    var c=f.querySelector("#tw-hl-coche"), ok=f.querySelector("#tw-hl-ok");
+    c.addEventListener("change",function(){ ok.disabled=!c.checked; ok.style.opacity=c.checked?"1":".4"; });
+    ok.addEventListener("click",function(){ if(!c.checked) return; f.remove(); horsOk=true; toucheA=Date.now(); try{ sw.click(); }finally{ horsOk=false; } });
+    f.querySelector("#tw-hl-non").addEventListener("click",function(){ f.remove(); });
+  }
+  sw.addEventListener("click",function(e){ toucheA=Date.now();
+    if(sw.classList.contains("actif") && !horsOk){ e.stopImmediatePropagation(); e.preventDefault(); demanderHorsLigne(); } },true);
   barre.addEventListener("click",function(e){ toucheA=Date.now(); if(e.target===sw) return; sw.click(); });
   barre.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); sw.click(); } });
   new MutationObserver(function(){ maj(); apresChangement(); }).observe(sw,{attributes:true,attributeFilter:["class"]});
