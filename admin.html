@@ -8364,7 +8364,7 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
           </div>
         </div>
         <div class="cc-ligne">🟢 Départ : ${esc(courseActive.adresse_depart || "")}</div>
-        <div class="cc-ligne">🚕 En route vers <b>${esc(courseActive.adresse_arrivee)}</b></div>
+        <div class="cc-ligne" id="cc-phase-${courseActive.id}">🚕 En route vers <b>${esc(courseActive.adresse_arrivee)}</b></div>
         <div class="cc-ligne">📍 Position actuelle : <span id="cc-adresse-${p.chauffeur_id}">chargement…</span>
           <button onclick="copierAdresseChauffeur(document.getElementById('cc-adresse-${p.chauffeur_id}').textContent)" style="width:auto; padding:2px 8px; font-size:.75rem; margin-left:4px;">📋 Copier</button></div>
         <div class="cc-ligne">⏱️ Dépose du client : <b id="cc-depose-${courseActive.id}">calcul…</b></div>
@@ -8374,6 +8374,7 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
 
       calculerEta(courseActive.id, p.latitude, p.longitude, courseActive.adresse_arrivee).then(eta => {
         const el = document.getElementById(`cc-depose-${courseActive.id}`);
+        if (el && el.dataset.phase1) return;   // le chauffeur va encore chercher le client
         if (el) el.textContent = eta ? `dans environ ${eta.texte} (arrivée ~${heureDansXMinutes(eta.minutes)})` : "indisponible";
       });
       majSuiviTempsReel(courseActive, p);
@@ -8583,6 +8584,24 @@ async function majSuiviTempsReel(course, p) {
       <div style="font-size:.8rem; color:var(--gris); margin-top:4px;">L'app du chauffeur est fermée ou le téléphone est en veille. Demande-lui de rouvrir l'app Taxi Wal pendant la course. Si la course est finie, elle n'a peut-être pas été marquée « terminée ».</div>`;
     return;
   }
+  // Phase 1 : le chauffeur va CHERCHER le client (pas encore passé au départ) → on montre le trajet vers le client
+  const aBord = await clientDejaPrisFA(course, p);
+  const phaseEl = document.getElementById(`cc-phase-${course.id}`);
+  if (!aBord) {
+    const dep = await geocoderAdresse(course.adresse_depart);
+    const vers = dep ? await calculerTrajetCoords(p.latitude, p.longitude, dep.lat, dep.lon) : null;
+    if (phaseEl) phaseEl.innerHTML = `🚖 Va chercher le client à <b>${esc(course.adresse_depart || "?")}</b>`;
+    if (zoneSuivi) zoneSuivi.innerHTML = vers
+      ? `<div class="cc-chiffres"><div><span>Vers le client</span><b>${parseFloat(vers.km).toFixed(1).replace(".", ",")} km</b></div><div><span>Temps</span><b>${vers.minutes < 1 ? "sur place" : "≈ " + vers.minutes + " min"}</b></div><div><span>Chez le client vers</span><b>${heureDansXMinutes(vers.minutes)}</b></div></div>`
+      : `<div style="color:var(--gris);">En route vers le client…</div>`;
+    const dp = document.getElementById(`cc-depose-${course.id}`);
+    if (dp) dp.dataset.phase1 = "1";
+    if (dp && vers) { const tc = await trajetTotalCourse(course); dp.textContent = tc ? `après la prise en charge : ≈ ${Math.round(tc.minutes || 0)} min de course (arrivée ~${heureDansXMinutes(vers.minutes + Math.round(tc.minutes || 0))})` : "après la prise en charge"; }
+    const span0 = document.getElementById(`eta-${course.id}`);
+    if (span0 && vers) span0.textContent = `🚖 Vers le client : ≈ ${vers.minutes} min`;
+    return;
+  }
+  if (phaseEl) phaseEl.innerHTML = `🚕 Client à bord, en route vers <b>${esc(course.adresse_arrivee || "?")}</b>`;
   const dest = await geocoderAdresse(course.adresse_arrivee);
   if (!dest) return;
   const [reste, total] = await Promise.all([calculerTrajetCoords(p.latitude, p.longitude, dest.lat, dest.lon), trajetTotalCourse(course)]);
@@ -8602,6 +8621,26 @@ async function majSuiviTempsReel(course, p) {
   // aussi dans la bulle du marqueur
   const span = document.getElementById(`eta-${course.id}`);
   if (span) span.textContent = `⏱️ ≈ ${reste.minutes} min · reste ${f(kmReste)}${kmFait != null ? " · parcouru " + f(kmFait) : ""}`;
+}
+// Client déjà pris ? = le chauffeur est passé à moins de 600 m de l'adresse de départ depuis le début de la course
+const clientPrisFA = {};
+function distKmFA(a, b, c, d) { const R = 6371, r = x => x * Math.PI / 180; const x = Math.sin(r(c - a) / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
+async function clientDejaPrisFA(course, p) {
+  try {
+    if (clientPrisFA[course.id]) return true;
+    try { if (localStorage.getItem("tw_client_pris_" + course.id)) return (clientPrisFA[course.id] = true); } catch (e) {}
+    const dep = await geocoderAdresse(course.adresse_depart);
+    if (!dep) return true;                                   // adresse inconnue : on garde l'affichage normal
+    const marquer = () => { clientPrisFA[course.id] = true; try { localStorage.setItem("tw_client_pris_" + course.id, "1"); } catch (e) {} return true; };
+    if (distKmFA(p.latitude, p.longitude, dep.lat, dep.lon) <= 0.6) return marquer();
+    const depuis = new Date(Math.min(Date.now() - 3 * 3600000, new Date(course.date_heure || Date.now()).getTime() - 30 * 60000)).toISOString();
+    const d = 0.007;
+    const { data } = await supabase.from("trajets_gps").select("id").eq("chauffeur_id", p.chauffeur_id)
+      .gte("enregistre_le", depuis).gte("latitude", dep.lat - d).lte("latitude", dep.lat + d)
+      .gte("longitude", dep.lon - d * 1.6).lte("longitude", dep.lon + d * 1.6).limit(1);
+    if (data && data.length) return marquer();
+    return false;
+  } catch (e) { return true; }
 }
 function ageMiseAJour(dateIso) {
   const s = Math.max(0, Math.round((Date.now() - new Date(dateIso).getTime()) / 1000));
