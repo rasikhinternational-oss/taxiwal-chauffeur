@@ -15061,14 +15061,52 @@ function pastilleRentaFA(feuille, lignes) {
   s.title = "Rentabilité : total " + eurosFr(r.total) + " · " + fmtKm(r.km) + " · seuil " + fmtEurKm(r.seuil);
   return s;
 }
+// ⏳ Estimation « en cours » : reconstruit le compteur complet à partir des 3 derniers chiffres des lignes
+// (ordre n_ordre, passage 999→000). Retourne le dernier compteur connu ou null si incohérent.
+function reconstruireCompteurFA(deb, indexes) {
+  try {
+    deb = Number(deb);
+    if (!isFinite(deb) || deb <= 0) return null;
+    let prev = deb, vu = false;
+    for (const v of (indexes || [])) {
+      if (v === null || v === undefined || v === "") continue;
+      const i = Number(v);
+      if (!isFinite(i) || i < 0 || i > 999) return null;
+      let c = Math.floor(prev / 1000) * 1000 + Math.round(i);
+      while (c < prev) c += 1000;
+      prev = c; vu = true;
+    }
+    if (!vu || prev - deb < 0 || prev - deb > 1500) return null;
+    return prev;
+  } catch (_) { return null; }
+}
+function rentaEnCoursFA(feuille, lignes, r) {
+  try {
+    if (!feuille || frNum(feuille.index_km_fin) !== null) return null;
+    const deb = frNum(feuille.index_km_debut);
+    if (deb === null) return null;
+    const tri = (lignes || []).filter(Boolean).slice().sort((a, b) => (Number(a.n_ordre) || 0) - (Number(b.n_ordre) || 0));
+    const idx = [];
+    tri.forEach(l => { [l.index_depart, l.embarquement_index, l.debarquement_index].forEach(v => { const n = frNum(v); if (n !== null) idx.push(n); }); });
+    const der = reconstruireCompteurFA(deb, idx);
+    if (der === null || der <= deb) return null;
+    const km = Math.round((der - deb) * 10) / 10;
+    const eurKm = Math.round(r.total / km * 100) / 100;
+    const kmHors = Math.max(0, Math.round((km - (r.kmPrives || 0)) * 10) / 10);
+    const eurKmHors = kmHors ? Math.round(r.total / kmHors * 100) / 100 : null;
+    return { km, eurKm, kmHors, eurKmHors };
+  } catch (_) { return null; }
+}
 function blocRentabiliteFA(feuille, lignes) {
   const r = rentaFeuilleFA(feuille, lignes);
+  let ec = null; try { if (r.km === null) ec = rentaEnCoursFA(feuille, lignes, r); } catch (_) {}
   const d = document.createElement("div");
   d.className = "bloc-rentabilite-fa";
   d.style.cssText = "background:#fff; border:1px solid #cfcfcd; border-left:5px solid " + (r.km === null ? "#999" : (r.ok ? "#1f6b3f" : "#b3141b")) + "; border-radius:10px; padding:10px 12px; margin:10px 0; color:#111; font-size:.9rem;";
   const l = (a, b) => `<div style="display:flex; justify-content:space-between; gap:10px; padding:2px 0;"><span>${a}</span><b>${b}</b></div>`;
   let verdict;
-  if (r.km === null) verdict = `<div style="color:#7a4a00; font-weight:800; margin-top:6px;">⚠️ km incomplets (compteur tableau de bord début / fin manquant)</div>`;
+  if (r.km === null && ec) verdict = `<div style="color:#1d4f91; font-weight:800; margin-top:6px;">⏳ En cours (jusqu'à la dernière course) : ~${fmtKm(ec.km)} · ${fmtEurKm(ec.eurKm)}${ec.eurKmHors !== null && r.kmPrives ? ` <small>(hors km privés : ${fmtEurKm(ec.eurKmHors)})</small>` : ""}</div><div style="color:#666; font-size:.82rem; margin-top:3px;">Estimation provisoire — le total définitif s'affichera à la clôture (compteur de fin)</div>`;
+  else if (r.km === null) verdict = `<div style="color:#7a4a00; font-weight:800; margin-top:6px;">⚠️ km incomplets (compteur tableau de bord début / fin manquant)</div>`;
   else if (r.ok) verdict = `<div style="color:#1f6b3f; font-weight:800; margin-top:6px;">🟢 Journée rentable (${fmtEurKm(r.eurKm)} ≥ ${fmtEurKm(r.seuil)})</div>`;
   else verdict = `<div style="color:#b3141b; font-weight:800; margin-top:6px;">🔴 Journée à perte : il manque ${esc(eurosFr(r.manque))} pour atteindre le seuil (${fmtEurKm(r.seuil)})</div>`;
   d.innerHTML = `<div style="font-weight:800; margin-bottom:4px;">📈 Rentabilité</div>`
