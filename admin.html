@@ -1226,6 +1226,7 @@ nav button.actif{ background:var(--tw-vert-fonce); border-color:var(--tw-vert-fo
 .calendrier{ box-shadow:var(--tw-ombre); border-radius:14px; }
 #modale-contenu{ box-shadow:0 -8px 30px rgba(0,0,0,.18); }
 </style>
+<style id="tw-chat-largeur">.chat-conv-item{max-width:100%;box-sizing:border-box;overflow:hidden}.chat-conv-item .cc-corps{min-width:0;flex:1}.chat-conv-item .cc-apercu{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}</style>
 </head>
 <body>
 
@@ -4500,7 +4501,19 @@ function afficherListeConversationsAdmin() {
         ${actives.length ? `<div class="cc-tel">🚖 ${esc(actives.map(x => x.numero_reservation).filter(Boolean).join(", "))}</div>` : ""}
         <div class="cc-apercu"${c.dernier_auteur !== "admin" && /^\s*❌/.test(c.dernier_texte || "") ? ` style="color:#b3141b; font-weight:800;"` : ""}>${c.dernier_auteur === "admin" ? "Toi : " : ""}${esc(c.dernier_texte || "")}</div>
       </div>
-      <div class="cc-droite">${c.dernier_at ? esc(chatFmtQuand(c.dernier_at)) : ""}${c.non_lus ? `<br><span class="cc-nb">${c.non_lus}</span>` : ""}</div>`;
+      <div class="cc-droite">${c.dernier_at ? esc(chatFmtQuand(c.dernier_at)) : ""}${c.non_lus ? `<br><span class="cc-nb">${c.non_lus}</span>` : ""}
+        <br><button type="button" class="cc-suppr" title="Supprimer cette conversation" style="margin-top:6px; width:auto; padding:6px 10px; background:#fdecee; color:#b3141b; border:1px solid #f0b8bd; border-radius:8px; font-size:1rem; cursor:pointer;">🗑️</button></div>`;
+    el.querySelector(".cc-suppr").addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      const ok = await confirmerDansPageFA(`Supprimer toute la conversation avec ${c.nom || "ce client"} ?\n\nLes messages seront effacés définitivement.`, "🗑️ Oui, supprimer", "Annuler", "#b3141b");
+      if (!ok) return;
+      const { error } = await supabase.rpc("admin_supprimer_conversation", { p_client_id: c.client_id });
+      if (error) { toastAdmin("❌ Suppression impossible : " + error.message, "#b3141b"); return; }
+      if (chatClientOuvert === c.client_id) { try { chatClientOuvert = null; } catch (e) {} }
+      chatConvs = chatConvs.filter(x => x.client_id !== c.client_id);
+      afficherListeConversationsAdmin(); majBadgeChatAdmin();
+      toastAdmin("🗑️ Conversation supprimée");
+    });
     el.addEventListener("click", () => ouvrirConversationAdmin(c.client_id));
     zone.appendChild(el);
   });
@@ -11250,19 +11263,24 @@ async function basculerArchiveFA(feuille, coche) {
 async function basculerVerifFA(feuille, verifier) {
   const d = descFeuilleFA(feuille);
   const ok = verifier
-    ? await confirmerDansPageFA(`Confirmer : la feuille de ${d} a bien été vérifiée ?`, "✅ Oui, confirmer", "Annuler")
+    ? await confirmerDansPageFA(feuille.verrouillee ? `Confirmer : la feuille de ${d} a bien été vérifiée ?` : `La feuille de ${d} n'est pas encore signée par le chauffeur.\n\nLa signer, la clôturer et la marquer vérifiée maintenant ?`, "✅ Oui, confirmer", "Annuler")
     : await confirmerDansPageFA(`Annuler la vérification de la feuille de ${d} ?`, "↩️ Oui, retirer la vérification", "Annuler", "#b86e00");
   if (!ok) return false;
   if (verifier) {
-    const { data: { user } } = await supabase.auth.getUser();
+    let uid = null;
+    try { uid = (await supabase.auth.getSession()).data.session?.user?.id || null; } catch (e) {}
     const quand = new Date().toISOString();
-    await supabase.from("feuilles_route").update({
-      verifiee_admin: true, verifiee_admin_a: quand, verifiee_admin_par: user?.id || null
-    }).eq("id", feuille.id);
+    // Feuille pas encore signée par le chauffeur : l'admin la signe et la clôture en même temps
+    const maj = { verifiee_admin: true, verifiee_admin_a: quand, verifiee_admin_par: uid };
+    if (!feuille.verrouillee) { maj.signee = true; maj.verrouillee = true; }
+    const { data: ok, error } = await supabase.from("feuilles_route").update(maj).eq("id", feuille.id).select("id").maybeSingle();
+    if (error || !ok) { toastAdmin("❌ Pas enregistré : " + (error ? error.message : "reconnecte-toi puis réessaie"), "#b3141b"); return false; }
+    if (maj.signee) { feuille.signee = true; feuille.verrouillee = true; }
     feuille.verifiee_admin = true; feuille.verifiee_admin_a = quand;
     marquerSessionFA(feuille.id, "verifiee", quand);
   } else {
-    await supabase.from("feuilles_route").update({ verifiee_admin: false, verifiee_admin_a: null, verifiee_admin_par: null }).eq("id", feuille.id);
+    const { error } = await supabase.from("feuilles_route").update({ verifiee_admin: false, verifiee_admin_a: null, verifiee_admin_par: null }).eq("id", feuille.id);
+    if (error) { toastAdmin("❌ Pas enregistré : " + error.message, "#b3141b"); return false; }
     feuille.verifiee_admin = false; feuille.verifiee_admin_a = null;
     marquerSessionFA(feuille.id, "verifiee", null);
   }
@@ -11442,7 +11460,7 @@ function construireFeuilleAdmin(feuille, lignes, dateChoisie, chauffeur, numeroF
       </div>
       <div class="entete-fa-actions">
         <button class="btn-verrou ${feuille.verrouillee ? "rouvrir" : "cloturer"}">${feuille.verrouillee ? "🔓 Rouvrir pour le chauffeur" : "🔒 Signer / clôturer"}</button>
-        ${feuille.verrouillee ? `<button class="btn-verifier-admin" style="background:${feuille.verifiee_admin ? "#dcdcda" : "var(--vert)"}; color:${feuille.verifiee_admin ? "var(--blanc)" : "#fff"}; border:none;">${feuille.verifiee_admin ? "✅ Vérifiée" : "☑️ Marquer vérifiée"}</button>` : ""}
+        ${true ? `<button class="btn-verifier-admin" style="background:${feuille.verifiee_admin ? "#dcdcda" : "var(--vert)"}; color:${feuille.verifiee_admin ? "var(--blanc)" : "#fff"}; border:none;">${feuille.verifiee_admin ? "✅ Vérifiée" : (feuille.verrouillee ? "☑️ Marquer vérifiée" : "☑️ Signer + marquer vérifiée")}</button>` : ""}
         <button class="btn-details-fa">▾ Détails</button>
         <button class="btn-nouvelle-course-fa">+ Course</button>
         <button class="btn-plein-ecran-fa" style="background:#3b82c4; color:#fff; border:none;">🔍 Plein écran</button>
