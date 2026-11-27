@@ -515,6 +515,12 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
 .ttw-btn, .dc-gros-bouton{ min-height:50px; }
 #btn-paiement-cash, #btn-paiement-carte, #btn-paiement-facture, #btn-paiement-cheque, #btn-paiement-qr, #btn-paiement-uber, #btn-paiement-uber-cash, #btn-paiement-bolt, #btn-paiement-bolt-cash, #btn-terminer-deja-paye{ min-height:50px; border-radius:12px; font-weight:700; }
 </style>
+<style id="tw-role-externe">
+/* Partenaires et chauffeurs de partenaires : pas de feuille de route Taxi Wal, captures Uber/Bolt, mode privé, véhicules Taxi Wal */
+body.tw-externe #btn-feuille-route, body.tw-externe #btn-capture-uber, body.tw-externe #btn-capture-bolt,
+body.tw-externe #ligne-mode-prive, body.tw-externe #bandeau-mode-prive, body.tw-externe #bloc-photos-vehicule,
+body.tw-externe #vehicule-du-jour-chauffeur, body.tw-externe #bloc-gains-jour, body.tw-externe #horaire-du-jour { display:none !important; }
+</style>
 <style id="tw-dispo-bouton">
 #barre-dispo{gap:14px;cursor:pointer;user-select:none;-webkit-user-select:none;padding:16px 18px!important;border-radius:18px!important;border:2px solid #d5d8dc;background:#f2f3f5!important;transition:background .25s,border-color .25s,box-shadow .25s;min-height:64px}
 #barre-dispo #label-dispo{flex:1;min-width:0;font-size:1.08rem!important;font-weight:800;line-height:1.25;color:#3a4250}
@@ -570,6 +576,14 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
   <div id="barre-dispo">
     <span id="label-dispo">Disponible pour les courses</span>
     <div class="switch" id="switch-dispo"></div>
+  </div>
+  <label id="ligne-mode-prive" style="display:none; align-items:center; gap:12px; margin:10px 20px 0; padding:12px 14px; border:2px solid #d5d8dc; border-radius:14px; background:#fff; font-weight:700; font-size:.98rem; color:#3a4250; cursor:pointer;">
+    <input type="checkbox" id="case-mode-prive" style="width:26px; height:26px; flex:none; margin:0; accent-color:#555;">
+    <span>🔒 Mode privé — ma position n'est pas partagée</span>
+  </label>
+  <div id="bandeau-mode-prive" style="display:none; margin:10px 20px 0; background:#e4e6ea; border:2px solid #8a919c; color:#3a4250; border-radius:12px; padding:12px 14px; font-size:.95rem; font-weight:700;">
+    🔒 Mode privé activé : Taxi Wal ne voit pas ta position.
+    <button type="button" id="btn-desactiver-prive" style="display:block; width:100%; margin-top:10px; background:#3a4250; color:#fff; border:none; border-radius:10px; padding:13px; font-weight:800; font-size:1rem;">Désactiver</button>
   </div>
   <div id="bloc-gains-jour" style="flex-wrap:wrap; row-gap:6px;">
     <span>Aujourd'hui : <b id="gains-nb-courses">0</b> course(s)</span>
@@ -797,13 +811,16 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
     <div id="mp-boutons" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
       <button id="btn-paiement-cash" style="background:var(--vert);">💶 Cash</button>
       <button id="btn-paiement-carte" style="background:var(--bleu, #3b82c4);">💳 Carte</button>
+      <button id="btn-paiement-qr" style="background:#2f6fb5;">📱 QR code / virement</button>
+      <!-- Uber / Bolt groupés (2×2) : Uber cash, Uber en ligne, Bolt cash, Bolt en ligne -->
+      <div id="mp-plateformes" style="flex:1 1 100%; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button id="btn-paiement-uber-cash" style="background:#444;">🚕💵 Uber payé en cash</button>
+        <button id="btn-paiement-uber" style="background:#1c1c1c;">🚕 Uber (payé sur Uber)</button>
+        <button id="btn-paiement-bolt-cash" style="background:#1fa866;">🟢💵 Bolt cash</button>
+        <button id="btn-paiement-bolt" style="background:#34D186; color:#06301b;">🟢 Bolt en ligne</button>
+      </div>
       <button id="btn-paiement-facture" style="background:#8a5a00;">🧾 Facture</button>
       <button id="btn-paiement-cheque" style="background:#6a4fa0;">🎫 Chèque social/communal</button>
-      <button id="btn-paiement-qr" style="background:#2f6fb5;">📱 QR code / virement</button>
-      <button id="btn-paiement-uber" style="background:#1c1c1c;">🚕 Uber (payé sur Uber)</button>
-      <button id="btn-paiement-uber-cash" style="background:#444;">🚕💵 Uber payé en cash</button>
-      <button id="btn-paiement-bolt" style="background:#34D186; color:#06301b;">🟢 Bolt en ligne</button>
-      <button id="btn-paiement-bolt-cash" style="background:#1fa866;">🟢💵 Bolt cash</button>
     </div>
     <button id="btn-annuler-paiement" class="secondaire" style="margin-top:12px;">Annuler</button>
   </div>
@@ -2074,6 +2091,9 @@ async function verifierCompteChauffeur(user) {
   if (!user) return true;
   const role = await roleDuCompte(user);
   if (role === "admin") { afficherBlocageCompteAdmin(user); return false; }
+  // Comptes partenaire / chauffeur de partenaire : on masque les outils internes Taxi Wal
+  if (role === "partenaire" || role === "chauffeur_partenaire") { try { document.body.classList.add("tw-role-" + role, "tw-externe"); } catch (e) {} }
+  try { verifierDroitModePrive(user); } catch (e) {}
   return true;
 }
 // Après déconnexion : retour à l'écran de connexion
@@ -2298,8 +2318,9 @@ function activerLocalisationAutomatique() {
     () => {
       let choix = null;
       try { choix = JSON.parse(localStorage.getItem("taxiwal_dispo_choix") || "null"); } catch (e) {}
-      dispoActive = !(choix && choix.jour === new Date().toDateString() && choix.dispo === false);
+      dispoActive = !modePrive && !(choix && choix.jour === new Date().toDateString() && choix.dispo === false);
       switchDispo.classList.toggle("actif", dispoActive);
+      if (modePrive) { majDisponibilite(false); pontGpsNatif(true); majModePriveBase(true, 0, true); return; } // 🔒 privé : on ne partage pas
       demarrerPartagePosition();
     },
     (err) => {
@@ -3497,6 +3518,8 @@ let dispoActive = false;
 switchDispo.addEventListener("click", () => {
   dispoActive = !dispoActive;
   switchDispo.classList.toggle("actif", dispoActive);
+  // Passer EN LIGNE coupe automatiquement le mode privé
+  if (dispoActive && modePrive) { definirModePrive(false, { silencieux: true }); afficherToastPrive("Mode privé désactivé : tu es en ligne"); }
 
   // Disponible / occupé uniquement : l'envoi de la position continue dans les deux cas
   majDisponibilite(dispoActive);
@@ -3522,7 +3545,113 @@ async function majDisponibilite(dispo, essai = 0) {
     if (dispo === dispoActive && essai < 20) essaiDispo = setTimeout(() => { if (dispo === dispoActive) majDisponibilite(dispo, essai + 1); }, Math.min(60000, 5000 * Math.pow(2, Math.min(essai, 4))));
   }
 }
-window.addEventListener("online", () => { try { majDisponibilite(dispoActive); } catch (e) {} });
+window.addEventListener("online", () => { try { majDisponibilite(dispoActive); } catch (e) {} try { if (peutModePrive) majModePriveBase(modePrive, 0, true); } catch (e) {} });
+
+// ================== 🔒 MODE PRIVÉ : la position n'est plus envoyée du tout ==================
+// Choix gardé sur le téléphone (survit au redémarrage). Privé = hors ligne + aucun envoi GPS
+// (pas d'upsert positions_chauffeurs → pas de point trajets_gps). Passer EN LIGNE le désactive.
+const CLE_MODE_PRIVE = "taxiwal_mode_prive";
+// 🔒 Réservé aux chauffeurs avec profils.peut_mode_prive = true (caché par défaut, confirmé après connexion).
+// Droit gardé sur le téléphone seulement pour l'usage hors ligne ; sans droit confirmé, jamais d'arrêt du partage de position.
+const CLE_PEUT_MODE_PRIVE = "taxiwal_peut_mode_prive";
+let peutModePrive = false;
+try { peutModePrive = localStorage.getItem(CLE_PEUT_MODE_PRIVE) === "1"; } catch (e) {}
+let modePrive = false;
+try { modePrive = peutModePrive && localStorage.getItem(CLE_MODE_PRIVE) === "1"; if (!modePrive) localStorage.removeItem(CLE_MODE_PRIVE); } catch (e) {}
+window.TAXIWAL_MODE_PRIVE = modePrive;
+let essaiPrive = null;
+async function majModePriveBase(prive, essai = 0, garderDepuis = false) {
+  if (essaiPrive) { clearTimeout(essaiPrive); essaiPrive = null; }
+  try {
+    const user = await utilisateurRapide();
+    if (!user) throw new Error("pas connecté");
+    const maj = { mode_prive: prive };
+    if (!garderDepuis) maj.mode_prive_depuis = prive ? new Date().toISOString() : null;
+    if (prive) maj.disponible = false;
+    const { error } = await supabase.from("positions_chauffeurs").update(maj).eq("chauffeur_id", user.id);
+    if (error) throw error;
+  } catch (e) {
+    if (prive === modePrive && essai < 20) essaiPrive = setTimeout(() => { if (prive === modePrive) majModePriveBase(prive, essai + 1, garderDepuis); }, Math.min(60000, 5000 * Math.pow(2, Math.min(essai, 4))));
+  }
+}
+function afficherToastPrive(t) {
+  try {
+    const d = document.createElement("div");
+    d.textContent = t;
+    d.style.cssText = "position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:2147483000; background:#3a4250; color:#fff; padding:12px 18px; border-radius:12px; font-weight:700; box-shadow:0 6px 18px rgba(0,0,0,.3); max-width:90%; text-align:center;";
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 3500);
+  } catch (e) {}
+}
+// Pont GPS natif (gps-natif.js / app native) : on l'arrête / le relance s'il expose une fonction
+function pontGpsNatif(prive) {
+  try {
+    const g = window.GpsNatif || window.TaxiWalGpsNatif;
+    if (g) {
+      const f = prive ? (g.arreter || g.stop || g.arreterSuivi) : (g.demarrer || g.start || g.demarrerSuivi);
+      if (typeof f === "function") f.call(g);
+    }
+  } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent("taxiwal-mode-prive", { detail: { prive } })); } catch (e) {}
+}
+function afficherModePrive() {
+  const c = document.getElementById("case-mode-prive"), b = document.getElementById("bandeau-mode-prive");
+  const lg = document.getElementById("ligne-mode-prive");
+  if (lg) lg.style.display = peutModePrive ? "flex" : "none";
+  if (c) c.checked = modePrive;
+  if (b) b.style.display = (peutModePrive && modePrive) ? "block" : "none";
+  const ok = document.getElementById("etat-suivi-gps");
+  if (ok && modePrive) ok.style.display = "none";
+}
+// Lecture du droit (profils.peut_mode_prive) ; faux / absent / erreur → caché, privé forcé à OFF
+async function verifierDroitModePrive(user) {
+  let ok = false;
+  try {
+    const { data, error } = await supabase.from("profils").select("peut_mode_prive").eq("id", user.id).maybeSingle();
+    if (error) throw error;
+    ok = !!(data && data.peut_mode_prive === true);
+  } catch (e) {
+    // Hors ligne : on garde le dernier droit confirmé (sinon : pas de droit)
+    ok = !!(typeof TWHL !== "undefined" && TWHL.horsLigne && TWHL.horsLigne() && peutModePrive);
+  }
+  peutModePrive = ok;
+  try { if (ok) localStorage.setItem(CLE_PEUT_MODE_PRIVE, "1"); else { localStorage.removeItem(CLE_PEUT_MODE_PRIVE); localStorage.removeItem(CLE_MODE_PRIVE); } } catch (e) {}
+  if (!ok && modePrive) {
+    // Privé jamais permis : on repasse en partage normal (sans écriture « mode_prive » refusée par la base)
+    modePrive = false; window.TAXIWAL_MODE_PRIVE = false;
+    pontGpsNatif(false);
+    try { demarrerPartagePosition(); } catch (e) {}
+  }
+  afficherModePrive();
+  return ok;
+}
+function definirModePrive(prive, opts = {}) {
+  prive = !!prive;
+  if (prive && !peutModePrive) { afficherModePrive(); return; }
+  if (prive === modePrive && !opts.force) { afficherModePrive(); return; }
+  modePrive = prive;
+  window.TAXIWAL_MODE_PRIVE = prive;
+  try { localStorage.setItem(CLE_MODE_PRIVE, prive ? "1" : "0"); } catch (e) {}
+  afficherModePrive();
+  pontGpsNatif(prive);
+  if (prive) {
+    // Arrêt complet de l'envoi de position
+    if (positionInterval) clearInterval(positionInterval);
+    positionInterval = null;
+    if (suiviGpsId !== null) { try { navigator.geolocation.clearWatch(suiviGpsId); } catch (e) {} suiviGpsId = null; }
+    derniereLecturePosition = null;
+    // Privé = hors ligne
+    if (dispoActive) { dispoActive = false; switchDispo.classList.remove("actif"); }
+    majDisponibilite(false);
+  } else {
+    alertePermissionSuiviMontree = false;
+    demarrerPartagePosition();
+  }
+  majModePriveBase(prive);
+}
+document.getElementById("case-mode-prive").addEventListener("change", (e) => definirModePrive(e.target.checked));
+document.getElementById("btn-desactiver-prive").addEventListener("click", () => definirModePrive(false));
+afficherModePrive();
 
 // Indicateur visible par le chauffeur : suivi actif ou localisation désactivée
 let localisationRefusee = false;
@@ -3577,6 +3706,7 @@ function gererErreurSuiviGps(err) {
   alert(messageErreurPosition(err));
 }
 function demarrerPartagePosition() {
+  if (modePrive) return; // 🔒 mode privé : aucun suivi GPS
   if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible sur cet appareil."); return; }
   if (positionInterval) clearInterval(positionInterval);
   if (suiviGpsId === null) {
@@ -3602,6 +3732,7 @@ function arreterPartagePosition() {
 
 // Position du véhicule → positions_chauffeurs (la base l'ajoute aussi à l'historique trajets_gps)
 async function envoyerLignePosition(user, pos) {
+  if (modePrive) return; // 🔒 mode privé : rien n'est envoyé (ni position, ni trajets_gps)
   const c = pos.coords;
   const { error } = await supabase.from("positions_chauffeurs").upsert({
     chauffeur_id: user.id,
@@ -3617,6 +3748,7 @@ async function envoyerLignePosition(user, pos) {
 }
 
 async function envoyerPositionLue(pos) {
+  if (modePrive) return;
   dernierEnvoiPosition = Date.now();
   if (navigator.onLine === false) return; // hors ligne : position non envoyée (pas de file d'attente)
   const user = await utilisateurRapide();
@@ -3646,6 +3778,7 @@ async function gererEcranAllume() {
 setInterval(gererEcranAllume, 60000);
 
 async function envoyerPosition() {
+  if (modePrive) return;
   // position récente déjà connue grâce au suivi continu : on l'envoie directement
   if (derniereLecturePosition && Date.now() - derniereLecturePosition.timestamp < 20000) {
     envoyerPositionLue(derniereLecturePosition);
@@ -4299,6 +4432,10 @@ async function chargerMesEntretiens() {
     zone.textContent = "Chargement…";
     const { data, error } = await supabase.rpc("partenaire_courses_publiees");
     if (error) { zone.textContent = "Erreur : " + error.message; return; }
+    let mesVehicules = [];
+    try { const r = await supabase.from("vehicules_partenaires").select("id, plaque, marque, modele, categorie, places").eq("statut", "approuve").order("created_at"); mesVehicules = r.data || []; } catch (x) {}
+    const CAT_LIB = { berline: "Berline", break: "Break", van: "Van / minibus", premium: "Premium" };
+    const categorieDemandee = (v) => { const t = String(v || "").toLowerCase(); if (!t.trim()) return null; if (/(van|trafic|vito|minibus|8 places|7 places)/.test(t)) return "van"; if (/(premium|mercedes|classe|bmw|audi|luxe)/.test(t)) return "premium"; if (/break/.test(t)) return "break"; return "berline"; };
     if (!data || !data.length) { zone.innerHTML = `<p style="color:#6b6b6b; text-align:center;">Aucune course proposée pour le moment.</p>`; return; }
     zone.innerHTML = "";
     data.forEach(c => {
@@ -4306,13 +4443,18 @@ async function chargerMesEntretiens() {
       carte.className = "course";
       const quand = new Date(c.date_heure).toLocaleString("fr-BE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
       const traitee = c.mon_statut && c.mon_statut !== "proposee";
+      const catDem = categorieDemandee(c.vehicule_souhaite);
+      const compatibles = mesVehicules.filter(v => (!c.passagers || v.places >= c.passagers) && (!["van", "premium"].includes(catDem) || v.categorie === catDem));
+      const choixVehicule = mesVehicules.length
+        ? `<select class="op-vehicule" style="flex:2; min-width:160px; padding:10px; border-radius:8px; border:1px solid #cfcfcd;"><option value="">— Véhicule pour cette course —</option>${compatibles.map(v => `<option value="${esc(v.id)}">${esc(v.plaque)} · ${esc([v.marque, v.modele].filter(Boolean).join(" "))} (${esc(CAT_LIB[v.categorie] || v.categorie)}, ${esc(v.places)} pl.)</option>`).join("")}</select>${compatibles.length ? "" : `<div style="width:100%; font-size:.8rem; color:#c81e2c;">Aucun de tes véhicules validés ne convient (catégorie ou places).</div>`}`
+        : `<input type="text" class="op-type" placeholder="Véhicule (ex : Berline, Van 8 places)" value="${esc(c.mon_type_vehicule || "")}" style="flex:2; min-width:160px; padding:10px; border-radius:8px; border:1px solid #cfcfcd;">`;
       carte.innerHTML = `<div style="font-weight:700;">${esc(quand)}</div>
         <div>${esc(c.adresse_depart)} → ${esc(c.adresse_arrivee)}</div>
-        <div style="color:#6b6b6b; font-size:.9rem;">${esc(c.passagers || 1)} passager(s)${c.bagages ? " · " + esc(c.bagages) + " bagage(s)" : ""}${c.aller_retour ? " · aller-retour" : ""}${c.vehicule_souhaite ? " · " + esc(c.vehicule_souhaite) : ""}</div>
+        <div style="color:#6b6b6b; font-size:.9rem;">${esc(c.passagers || 1)} passager(s)${c.bagages ? " · " + esc(c.bagages) + " bagage(s)" : ""}${c.aller_retour ? " · aller-retour" : ""}${catDem ? " · 🚗 Catégorie demandée : <b>" + esc(CAT_LIB[catDem]) + "</b>" : ""}</div>
         ${c.mon_prix != null ? `<div style="margin-top:6px;">Ton offre : <b>${eur(c.mon_prix)}</b>${traitee ? " · transmise au client" : ""}</div>` : ""}
         ${traitee ? "" : `<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
           <input type="number" class="op-prix" min="1" step="0.5" placeholder="Ton prix (€)" value="${c.mon_prix != null ? esc(c.mon_prix) : ""}" style="flex:1; min-width:110px; padding:10px; border-radius:8px; border:1px solid #cfcfcd;">
-          <input type="text" class="op-type" placeholder="Véhicule (ex : Berline, Van 8 places)" value="${esc(c.mon_type_vehicule || "")}" style="flex:2; min-width:160px; padding:10px; border-radius:8px; border:1px solid #cfcfcd;">
+          ${choixVehicule}
           <button type="button" class="op-envoyer" style="width:100%; padding:10px; border-radius:8px; border:none; background:#1f8a4c; color:#fff; font-weight:700;">${c.mon_prix != null ? "Modifier mon offre" : "Envoyer mon offre"}</button>
           <div class="op-msg" style="min-height:1em; font-size:.85rem; color:#c81e2c;"></div></div>`}`;
       const btn = carte.querySelector(".op-envoyer");
@@ -4320,8 +4462,10 @@ async function chargerMesEntretiens() {
         const prix = parseFloat(carte.querySelector(".op-prix").value);
         const msg = carte.querySelector(".op-msg");
         if (!(prix > 0)) { msg.textContent = "Indique un prix."; return; }
+        const selV = carte.querySelector(".op-vehicule"), txtV = carte.querySelector(".op-type");
+        if (selV && !selV.value) { msg.textContent = (selV.options.length <= 1) ? "Aucun de tes véhicules approuvés ne convient à cette course (places ou catégorie)." : "Choisis le véhicule qui fera la course."; return; }
         btn.disabled = true;
-        const { error: e } = await supabase.rpc("partenaire_faire_offre", { p_course: c.course_id, p_prix: prix, p_type_vehicule: carte.querySelector(".op-type").value, p_message: null });
+        const { error: e } = await supabase.rpc("partenaire_faire_offre", { p_course: c.course_id, p_prix: prix, p_type_vehicule: txtV ? txtV.value : null, p_message: null, p_vehicule: selV ? selV.value : null });
         btn.disabled = false;
         if (e) { msg.textContent = e.message; return; }
         chargerCoursesPartenaire();
@@ -4407,11 +4551,11 @@ async function chargerMesEntretiens() {
     // Seuls les 4 onglets de la société restent visibles
     const garder = ["courses-partenaire", "mes-courses", "mes-chauffeurs-partenaire", "portefeuille-partenaire"];
     const btnMesCourses = nav.querySelector('button[data-onglet="mes-courses"]');
-    if (btnMesCourses) btnMesCourses.textContent = "🚖 Mes courses";
+    if (btnMesCourses) btnMesCourses.textContent = "🗂️ Mes courses gagnées";
     const btnProp = nav.querySelector('button[data-onglet="courses-partenaire"]');
-    if (btnProp) btnProp.textContent = "📢 Courses proposées";
+    if (btnProp) btnProp.textContent = "🚖 Courses proposées";
     const btnPf = nav.querySelector('button[data-onglet="portefeuille-partenaire"]');
-    if (btnPf) btnPf.textContent = "💰 Portefeuille";
+    if (btnPf) btnPf.textContent = "💶 Portefeuille";
 
     const btn = document.createElement("button");
     btn.dataset.onglet = "mes-chauffeurs-partenaire"; btn.textContent = "👥 Mes chauffeurs";
@@ -4610,6 +4754,276 @@ async function chargerMesEntretiens() {
       if (role === "chauffeur_partenaire") { installerEspaceChauffeurPartenaire(); return; }
       if (role === null && (essai || 0) < 5) setTimeout(() => demarrer((essai || 0) + 1), 3000);
     } catch (err) { console.error(err); }
+  })(0);
+})();
+</script>
+<script>
+// ================== 📁 Mon dossier (partenaire) : documents, véhicules, échéances ==================
+(function () {
+  "use strict";
+  const BUCKET = "documents-partenaires";
+  const MAX = 10 * 1024 * 1024;
+  const EXT_OK = ["pdf", "jpg", "jpeg", "png", "heic", "heif", "webp"];
+  const MIME = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", heic: "image/heic", heif: "image/heif", webp: "image/webp" };
+  const VERT = "#1f8a4c";
+  const e = (v) => (typeof esc === "function" ? esc(v) : String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])));
+  const eur = (n) => (Number(n) || 0).toFixed(2).replace(".", ",") + " €";
+  const dateFr = (d) => d ? new Date(d + (String(d).length === 10 ? "T12:00:00" : "")).toLocaleDateString("fr-BE") : "";
+  const STATUT = {
+    en_attente: ["⏳ En attente de vérification", "#b86e00"],
+    documents_manquants: ["⚠️ Documents manquants", "#c81e2c"],
+    approuve: ["✅ Approuvé", VERT],
+    suspendu: ["⛔ Suspendu", "#c81e2c"],
+    refuse: ["⛔ Refusé", "#c81e2c"]
+  };
+  const ETAT = {
+    manquant: ["❌ Manquant", "#c81e2c"], en_attente: ["⏳ En vérification", "#b86e00"], approuve: ["✅ Validé", VERT],
+    refuse: ["⛔ Refusé", "#c81e2c"], expire: ["⌛ Expiré", "#c81e2c"], expire_bientot: ["⏰ Expire bientôt", "#b86e00"]
+  };
+  const CATS = { berline: "Berline", break: "Break", van: "Van / minibus", premium: "Premium" };
+  let uid = null, dossier = null;
+  const champ = "width:100%; padding:10px; border-radius:8px; border:1px solid #cfcfcd; margin-bottom:6px; box-sizing:border-box;";
+  const btnVert = "padding:10px 12px; border-radius:8px; border:none; background:" + VERT + "; color:#fff; font-weight:700;";
+  const btnGris = "padding:10px 12px; border-radius:8px; border:1px solid " + VERT + "; background:#fff; color:" + VERT + "; font-weight:700;";
+
+  function badge(st, motif) {
+    const [t, c] = STATUT[st] || [st, "#555"];
+    return `<span style="display:inline-block; padding:4px 10px; border-radius:999px; border:2px solid ${c}; color:${c}; font-weight:800; font-size:.9rem;">${e(t)}</span>${motif ? `<div style="font-size:.85rem; color:#555; margin-top:4px;">Motif : ${e(motif)}</div>` : ""}`;
+  }
+
+  function ligneDoc(d, proprioType, proprioId) {
+    const [t, c] = ETAT[d.etat] || [d.etat, "#555"];
+    const estCasier = d.type_doc === "casier_modele2";
+    const aRenvoyer = d.etat !== "approuve" && d.etat !== "en_attente";
+    const cle = `${proprioType}|${proprioId || ""}|${d.type_doc}`;
+    return `<div class="md-doc" data-cle="${e(cle)}" style="border-top:1px solid #eee; padding:8px 0;">
+      <div style="display:flex; justify-content:space-between; gap:6px; align-items:flex-start;">
+        <div style="flex:1;"><div style="font-weight:600;">${e(d.libelle)}</div>
+          ${d.expire_le ? `<div style="font-size:.8rem; color:#6b6b6b;">Valable jusqu'au ${e(dateFr(d.expire_le))}</div>` : ""}
+          ${d.motif && d.etat === "refuse" ? `<div style="font-size:.8rem; color:#c81e2c;">Motif : ${e(d.motif)}</div>` : ""}</div>
+        <span style="color:${c}; font-weight:700; font-size:.85rem; white-space:nowrap;">${e(t)}</span>
+      </div>
+      <details ${aRenvoyer ? "open" : ""} style="margin-top:4px;"><summary style="font-size:.85rem; color:${VERT}; cursor:pointer;">${d.doc_id ? "Envoyer un nouveau document" : "Envoyer le document"}</summary>
+        ${d.expire_requis ? `<label style="font-size:.8rem; color:#6b6b6b;">${estCasier ? "Date de délivrance de l'extrait (valable 3 mois)" : "Date d'expiration du document"}</label>
+          <input type="date" class="md-date" style="${champ}">` : ""}
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="md-photo" style="flex:1; ${btnGris}">📷 Photo</button>
+          <button type="button" class="md-fichier" style="flex:1; ${btnGris}">📄 Fichier</button>
+        </div>
+        <input type="file" class="md-in-photo" accept="image/*" capture="environment" style="display:none;">
+        <input type="file" class="md-in-fichier" accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf,.jpg,.jpeg,.png" style="display:none;">
+        <div class="md-msg" style="min-height:1em; font-size:.85rem; margin-top:4px;"></div>
+      </details></div>`;
+  }
+
+  function blocDocs(titre, docs, proprioType, proprioId) {
+    return `<div class="course" style="margin-top:8px;"><div style="font-weight:800; margin-bottom:4px;">${titre}</div>
+      ${(docs || []).map(d => ligneDoc(d, proprioType, proprioId)).join("")}</div>`;
+  }
+
+  async function envoyer(div, f) {
+    const msg = div.querySelector(".md-msg");
+    const [ptype, pid, tdoc] = div.dataset.cle.split("|");
+    msg.style.color = "#c81e2c";
+    if (!f) return;
+    const ext = ((f.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
+    if (!EXT_OK.includes(ext)) { msg.textContent = "Format refusé : PDF, JPG, PNG ou HEIC uniquement."; return; }
+    if (f.size > MAX) { msg.textContent = "Fichier trop lourd (10 Mo maximum)."; return; }
+    const req = (dossierDocs(ptype, pid) || []).find(x => x.type_doc === tdoc) || {};
+    let expire = null;
+    const inp = div.querySelector(".md-date");
+    if (req.expire_requis) {
+      if (!inp || !inp.value) { msg.textContent = tdoc === "casier_modele2" ? "Indique la date de délivrance." : "Indique la date d'expiration."; return; }
+      if (tdoc === "casier_modele2") {
+        const d = new Date(inp.value + "T12:00:00"); d.setDate(d.getDate() + 90);
+        expire = d.toISOString().slice(0, 10);
+      } else expire = inp.value;
+      if (expire < new Date().toISOString().slice(0, 10)) { msg.textContent = "Ce document est déjà expiré."; return; }
+    }
+    msg.style.color = "#555"; msg.textContent = "Envoi en cours…";
+    div.querySelectorAll("button").forEach(b => b.disabled = true);
+    try {
+      const chemin = `partenaires/${uid}/${ptype}/${pid || "societe"}/${tdoc}-${Date.now()}.${ext}`;
+      const { error: eUp } = await supabase.storage.from(BUCKET).upload(chemin, f, { contentType: f.type || MIME[ext], upsert: false });
+      if (eUp) throw eUp;
+      const { error } = await supabase.from("documents_partenaires").insert({
+        partenaire_id: uid, proprietaire_type: ptype, proprietaire_id: pid || null, type_doc: tdoc, chemin, expire_le: expire
+      });
+      if (error) throw error;
+      msg.style.color = VERT; msg.textContent = "✅ Document envoyé. Taxi Wal va le vérifier.";
+      setTimeout(charger, 900);
+    } catch (err) { msg.style.color = "#c81e2c"; msg.textContent = "Erreur : " + (err.message || err); }
+    finally { div.querySelectorAll("button").forEach(b => b.disabled = false); }
+  }
+
+  function dossierDocs(ptype, pid) {
+    if (!dossier) return [];
+    if (ptype === "societe") return dossier.societe;
+    if (ptype === "chauffeur") return ((dossier.chauffeurs || []).find(c => c.id === pid) || {}).documents;
+    return ((dossier.vehicules || []).find(v => v.id === pid) || {}).documents;
+  }
+
+  function formVehicule(v) {
+    v = v || {};
+    return `<div class="md-form-vehicule course" data-id="${e(v.id || "")}" style="background:#f4f8f5;">
+      <div style="font-weight:800; margin-bottom:6px;">${v.id ? "Modifier le véhicule" : "Ajouter un véhicule"}</div>
+      <input class="mv-plaque" placeholder="Plaque (ex : 1-ABC-123)" value="${e(v.plaque || "")}" style="${champ}">
+      <div style="display:flex; gap:6px;"><input class="mv-marque" placeholder="Marque" value="${e(v.marque || "")}" style="${champ}">
+        <input class="mv-modele" placeholder="Modèle" value="${e(v.modele || "")}" style="${champ}"></div>
+      <div style="display:flex; gap:6px;"><input class="mv-annee" type="number" min="1990" max="2100" placeholder="Année" value="${e(v.annee || "")}" style="${champ}">
+        <input class="mv-places" type="number" min="1" max="9" placeholder="Places passagers" value="${e(v.places || "")}" style="${champ}"></div>
+      <select class="mv-categorie" style="${champ}">${Object.entries(CATS).map(([k, l]) => `<option value="${k}" ${v.categorie === k ? "selected" : ""}>${l}</option>`).join("")}</select>
+      <input class="mv-couleur" placeholder="Couleur (facultatif)" value="${e(v.couleur || "")}" style="${champ}">
+      <div style="display:flex; gap:6px;"><button type="button" class="mv-ok" style="flex:2; ${btnVert}">Enregistrer</button>
+        <button type="button" class="mv-annuler" style="flex:1; ${btnGris}">Annuler</button></div>
+      ${v.id && v.statut === "approuve" ? `<div style="font-size:.8rem; color:#b86e00; margin-top:4px;">Après modification, le véhicule repasse en vérification.</div>` : ""}
+      <div class="mv-msg" style="min-height:1em; font-size:.85rem; color:#c81e2c;"></div></div>`;
+  }
+
+  async function enregistrerVehicule(form) {
+    const q = (c) => form.querySelector(c).value.trim();
+    const msg = form.querySelector(".mv-msg");
+    const places = parseInt(q(".mv-places"), 10), annee = q(".mv-annee") ? parseInt(q(".mv-annee"), 10) : null;
+    if (q(".mv-plaque").replace(/[\s-]/g, "").length < 4) { msg.textContent = "Indique la plaque."; return; }
+    if (!(places >= 1 && places <= 9)) { msg.textContent = "Indique le nombre de places passagers (1 à 9)."; return; }
+    const ligne = { plaque: q(".mv-plaque").toUpperCase().replace(/\s/g, ""), marque: q(".mv-marque") || null, modele: q(".mv-modele") || null,
+      annee, places, categorie: q(".mv-categorie"), couleur: q(".mv-couleur") || null };
+    form.querySelector(".mv-ok").disabled = true;
+    const id = form.dataset.id;
+    const { error } = id ? await supabase.from("vehicules_partenaires").update(ligne).eq("id", id)
+                         : await supabase.from("vehicules_partenaires").insert({ ...ligne, partenaire_id: uid });
+    form.querySelector(".mv-ok").disabled = false;
+    if (error) { msg.textContent = "Erreur : " + error.message; return; }
+    charger();
+  }
+
+  async function tableauDeBord() {
+    const d = new Date();
+    let nb = 0, solde = 0;
+    try {
+      const { data } = await supabase.rpc("partenaire_portefeuille", { p_debut: new Date(d.getFullYear(), d.getMonth(), 1).toISOString(), p_fin: new Date(d.getFullYear(), d.getMonth() + 1, 1).toISOString() });
+      const t = (data || []).filter(c => c.statut === "terminee");
+      nb = t.length; solde = t.reduce((s, c) => s + Number(c.montant || 0), 0);
+    } catch (err) {}
+    const tuile = (val, lib, coul) => `<div style="flex:1; min-width:90px; background:#fff; border:2px solid ${coul}; border-radius:12px; padding:8px; text-align:center;">
+      <div style="font-size:1.3rem; font-weight:800; color:${coul};">${val}</div><div style="font-size:.75rem; color:#555;">${lib}</div></div>`;
+    const exp = Number(dossier.expirent_bientot || 0);
+    return `<div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;">
+      ${tuile(nb, "courses faites ce mois", VERT)}
+      ${tuile(e(eur(solde)), solde >= 0 ? "gains du mois" : "à reverser", solde >= 0 ? VERT : "#c81e2c")}
+      ${tuile(exp, "document(s) expirent bientôt", exp ? "#b86e00" : VERT)}</div>`;
+  }
+
+  async function charger() {
+    const zone = document.getElementById("md-contenu");
+    if (!zone) return;
+    const { data, error } = await supabase.rpc("partenaire_etat_dossier");
+    if (error) { zone.textContent = "Erreur : " + error.message; return; }
+    dossier = data || {};
+    const vehs = dossier.vehicules || [];
+    zone.innerHTML = `<div class="course"><div style="font-weight:800; font-size:1.05rem; margin-bottom:6px;">${e(dossier.societe_nom || "Ma société")}</div>
+        ${badge(dossier.statut, dossier.motif)}
+        ${dossier.statut !== "approuve" ? `<div style="font-size:.85rem; color:#555; margin-top:6px;">Envoie tous les documents ci-dessous. Tu recevras des courses dès que Taxi Wal aura approuvé ton dossier.</div>` : ""}</div>
+      <div id="md-tdb">…</div>
+      ${blocDocs("🏢 Documents de la société", dossier.societe, "societe", null)}
+      <div style="font-weight:800; margin:14px 0 4px;">👤 Documents des chauffeurs</div>
+      ${(dossier.chauffeurs || []).length ? dossier.chauffeurs.map(c => blocDocs(`${e(c.nom)} <span style="font-weight:400; font-size:.85rem; color:#6b6b6b;">${c.statut === "actif" ? "· validé" : c.statut === "en_attente" ? "· en attente" : "· " + e(c.statut)}</span>`, c.documents, "chauffeur", c.id)).join("")
+        : `<p style="color:#6b6b6b; font-size:.9rem;">Ajoute d'abord tes chauffeurs dans l'onglet « 👥 Mes chauffeurs ».</p>`}
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:14px 0 4px;"><div style="font-weight:800;">🚗 Mes véhicules</div>
+        <button type="button" id="md-ajout-vehicule" style="${btnVert}">+ Ajouter</button></div>
+      <div id="md-form-zone"></div>
+      ${vehs.length ? vehs.map(v => `<div class="course" style="margin-top:8px;">
+          <div style="display:flex; justify-content:space-between; gap:6px;"><div><b>${e(v.plaque)}</b> · ${e([v.marque, v.modele].filter(Boolean).join(" ") || "")}${v.annee ? " (" + e(v.annee) + ")" : ""}
+            <div style="font-size:.85rem; color:#555;">${e(CATS[v.categorie] || v.categorie)} · ${e(v.places)} places</div></div>
+            <button type="button" class="md-modif-vehicule" data-id="${e(v.id)}" style="${btnGris} padding:6px 10px;">✏️</button></div>
+          <div style="margin-top:4px;">${badge(v.statut, v.motif)}</div>
+          ${(v.documents || []).map(d => ligneDoc(d, "vehicule", v.id)).join("")}</div>`).join("")
+        : `<p style="color:#6b6b6b; font-size:.9rem;">Aucun véhicule. Ajoute ton premier véhicule pour pouvoir faire des offres.</p>`}`;
+
+    zone.querySelectorAll(".md-doc").forEach(div => {
+      const ph = div.querySelector(".md-in-photo"), fi = div.querySelector(".md-in-fichier");
+      div.querySelector(".md-photo").addEventListener("click", () => ph.click());
+      div.querySelector(".md-fichier").addEventListener("click", () => fi.click());
+      [ph, fi].forEach(i => i.addEventListener("change", () => { envoyer(div, i.files[0]); i.value = ""; }));
+    });
+    const ouvrirForm = (v) => {
+      const fz = document.getElementById("md-form-zone");
+      fz.innerHTML = formVehicule(v);
+      const f = fz.firstElementChild;
+      f.querySelector(".mv-ok").addEventListener("click", () => enregistrerVehicule(f));
+      f.querySelector(".mv-annuler").addEventListener("click", () => { fz.innerHTML = ""; });
+      f.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    document.getElementById("md-ajout-vehicule").addEventListener("click", () => ouvrirForm(null));
+    zone.querySelectorAll(".md-modif-vehicule").forEach(b => b.addEventListener("click", () => ouvrirForm(vehs.find(v => v.id === b.dataset.id))));
+    const tdb = document.getElementById("md-tdb");
+    if (tdb) tdb.innerHTML = await tableauDeBord();
+  }
+
+  function installer() {
+    const nav = document.querySelector("nav.onglets");
+    const ref = document.getElementById("section-mes-courses");
+    if (!nav || !ref || document.getElementById("section-mon-dossier-partenaire")) return;
+    const btn = document.createElement("button");
+    btn.dataset.onglet = "mon-dossier-partenaire"; btn.textContent = "📁 Mon dossier";
+    const sec = document.createElement("section");
+    sec.id = "section-mon-dossier-partenaire";
+    sec.innerHTML = `<div id="md-contenu">Chargement…</div>`;
+    nav.appendChild(btn);
+    ref.parentNode.appendChild(sec);
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("nav.onglets button").forEach(b => b.classList.remove("actif"));
+      btn.classList.add("actif");
+      document.querySelectorAll("#ecran-principal section, section").forEach(s => s.classList.remove("visible"));
+      sec.classList.add("visible");
+      charger();
+    });
+    // Ordre des onglets : 📁 Mon dossier · 🚖 Courses proposées · 🗂️ Mes courses gagnées · 👥 Mes chauffeurs · 💶 Portefeuille
+    ["mon-dossier-partenaire", "courses-partenaire", "mes-courses", "mes-chauffeurs-partenaire", "portefeuille-partenaire"].forEach(id => {
+      const b = nav.querySelector(`button[data-onglet="${id}"]`); if (b) nav.appendChild(b);
+    });
+    supabase.rpc("partenaire_etat_dossier").then(({ data }) => {
+      if (data && data.statut && data.statut !== "approuve") {
+        // Dossier pas encore approuvé : bandeau explicatif + ouverture directe du dossier
+        const MOTIFS = { en_attente: "ton dossier est en cours de vérification par Taxi Wal", documents_manquants: "il manque des documents dans ton dossier", suspendu: "ton compte est suspendu", refuse: "ton dossier a été refusé" };
+        const texte = `⚠️ Tu ne peux pas encore recevoir de courses : ${MOTIFS[data.statut] || "ton dossier n'est pas encore approuvé"}. Complète « 📁 Mon dossier » ; dès que Taxi Wal l'approuve, les courses arrivent ici.`;
+        const secProp = document.getElementById("section-courses-partenaire");
+        if (secProp && !document.getElementById("md-bandeau-non-approuve")) {
+          const bd = document.createElement("div");
+          bd.id = "md-bandeau-non-approuve";
+          bd.style.cssText = "margin:0 0 10px; padding:12px 14px; border-radius:12px; border:2px solid #c81e2c; background:#fdecee; color:#8a1520; font-weight:700; font-size:.92rem;";
+          bd.textContent = texte;
+          secProp.insertBefore(bd, secProp.firstChild);
+        }
+        btn.click();
+      } else if (data && data.statut === "approuve") {
+        const bp = nav.querySelector('button[data-onglet="courses-partenaire"]'); if (bp) bp.click();
+      }
+    }).catch(() => {});
+  }
+  window.twRechargerDossierPartenaire = charger;
+
+  (async function demarrer(essai) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from("profils").select("role").eq("id", user.id).maybeSingle();
+        if (data && data.role === "partenaire") {
+          uid = user.id;
+          let n = 0;
+          const t = setInterval(() => {
+            n++;
+            if (document.getElementById("section-mes-chauffeurs-partenaire") || n > 30) {
+              clearInterval(t);
+              try { installer(); } catch (err) { console.error(err); }
+            }
+          }, 500);
+          return;
+        }
+        if (data) return;
+      }
+    } catch (err) {}
+    if ((essai || 0) < 5) setTimeout(() => demarrer((essai || 0) + 1), 3000);
   })(0);
 })();
 </script>

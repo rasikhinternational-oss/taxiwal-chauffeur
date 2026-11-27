@@ -418,6 +418,12 @@ fr: {
   "ch.appeler": "📞 Appeler Taxi Wal (0495 35 35 94)",
   "ch.localisation": "📍 Localisation du chauffeur en cours…",
   "ch.carteIndispo": "Carte indisponible pour le moment.",
+  "eta.versDepart": "🚖 Votre chauffeur arrive dans ≈ {min} min · {km} km",
+  "eta.arrive": "Votre chauffeur est arrivé 📍",
+  "eta.versArrivee": "🏁 Arrivée à destination dans ≈ {min} min (vers {heure})",
+  "eta.terminee": "Course terminée",
+  "eta.depart": "Lieu de prise en charge",
+  "eta.destination": "Destination",
   "pp.total": "{p} — à payer en totalité à l'avance",
   "pp.choix": "{p} — acompte de {a} ou totalité, au choix",
   "pp.acompte": "{p} — acompte de {a}",
@@ -931,6 +937,12 @@ nl: {
   "ch.appeler": "📞 Taxi Wal bellen (0495 35 35 94)",
   "ch.localisation": "📍 Chauffeur wordt gelokaliseerd…",
   "ch.carteIndispo": "Kaart momenteel niet beschikbaar.",
+  "eta.versDepart": "🚖 Uw chauffeur is er over ≈ {min} min · {km} km",
+  "eta.arrive": "Uw chauffeur is aangekomen 📍",
+  "eta.versArrivee": "🏁 Aankomst op bestemming over ≈ {min} min (rond {heure})",
+  "eta.terminee": "Rit beëindigd",
+  "eta.depart": "Ophaalplaats",
+  "eta.destination": "Bestemming",
   "pp.total": "{p} — volledig vooraf te betalen",
   "pp.choix": "{p} — voorschot van {a} of volledig bedrag, naar keuze",
   "pp.acompte": "{p} — voorschot van {a}",
@@ -1466,6 +1478,12 @@ en: {
   "ch.appeler": "📞 Call Taxi Wal (0495 35 35 94)",
   "ch.localisation": "📍 Locating the driver…",
   "ch.carteIndispo": "Map currently unavailable.",
+  "eta.versDepart": "🚖 Your driver arrives in ≈ {min} min · {km} km",
+  "eta.arrive": "Your driver has arrived 📍",
+  "eta.versArrivee": "🏁 Arrival at destination in ≈ {min} min (around {heure})",
+  "eta.terminee": "Ride completed",
+  "eta.depart": "Pick-up point",
+  "eta.destination": "Destination",
   "pp.total": "{p} — to be paid in full in advance",
   "pp.choix": "{p} — deposit of {a} or full amount, your choice",
   "pp.acompte": "{p} — deposit of {a}",
@@ -2114,6 +2132,8 @@ function twPrompt(m, d) { return twDialogue("prompt", m, d); }
   .bloc-chauffeur-assigne .code-verification b{ font-size:1.2rem; letter-spacing:2px; color:#c81e2c; }
   .bloc-chauffeur-assigne .code-verification small{ color:#5a5a5a; }
   .btn-appeler-chauffeur{ background:#1f8a4c; color:#fff; border:none; border-radius:8px; padding:10px 14px; font-weight:600; width:100%; }
+  .eta-chauffeur{ margin:8px 0 0; padding:8px 10px; border-radius:10px; background:#eef7f0; color:#1a5c2b; font-weight:600; font-size:.9rem; }
+  .eta-chauffeur:empty{ display:none; }
   .mini-carte-chauffeur{ height:160px; border-radius:10px; overflow:hidden; margin:8px 0; background:#e8e8e5; }
   .mini-carte-chauffeur .carte-en-attente{ margin:0; padding:16px; text-align:center; color:var(--gris); font-size:.85rem; }
   .bloc-notation{ background:#ffffff; border:1px solid #e2e2df; border-radius:10px; padding:12px; margin-top:6px; text-align:center; }
@@ -3310,7 +3330,7 @@ async function apresConnexion() {
   if (!user) return;
 
   const { data: profil } = await supabase
-    .from("profils").select("*").eq("id", user.id).maybeSingle();
+    .from("profils").select("id, role, nom, telephone, actif, created_at, taux_commission, societe, client_habitue, peut_mode_prive").eq("id", user.id).maybeSingle();
 
   document.getElementById("ecran-login").style.display = "none";
 
@@ -3334,7 +3354,7 @@ document.getElementById("btn-creer-profil").addEventListener("click", async () =
   const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase.from("profils").insert({
     id: user.id, role: "client", nom, telephone: tel, actif: true
-  }).select().single();
+  }).select("id, role, nom, telephone, actif, created_at, taux_commission, societe, client_habitue, peut_mode_prive").single();
 
   if (error) { erreur.textContent = t("erreur", { msg: error.message }); return; }
 
@@ -3561,6 +3581,22 @@ async function envoyerDemandeCourse(opts) {
   chargerMesCourses();
   return { ok: true, course: nouvelleCourse || {} };
 }
+// Anti double envoi : un 2e tap pendant l'envoi ne crée pas une 2e course ; coupure réseau = message clair
+const _envoyerDemandeCourseBrut = envoyerDemandeCourse;
+let envoiCourseEnCours = false;
+envoyerDemandeCourse = async function (opts) {
+  if (envoiCourseEnCours) return { ok: false, erreur: "" };
+  envoiCourseEnCours = true;
+  const btn = document.getElementById("btn-reserver");
+  if (btn) btn.disabled = true;
+  try { return await _envoyerDemandeCourseBrut(opts); }
+  catch (e) {
+    const el = document.getElementById("erreur-reservation");
+    const msg = t("erreur", { msg: (e && e.message) || String(e) });
+    if (el) el.textContent = msg;
+    return { ok: false, erreur: msg };
+  } finally { envoiCourseEnCours = false; if (btn) btn.disabled = false; }
+};
 window.envoyerDemandeCourse = envoyerDemandeCourse;
 // Enregistre la preuve (même texte complet, version en vigueur, montant null) ; 3 essais, erreurs en console seulement
 async function enregistrerPreuveReservation(courseId) {
@@ -4487,7 +4523,7 @@ async function construireCarteCourseClient(course) {
       });
     }
     div.appendChild(bloc);
-    afficherCarteChauffeurClient(course.id, course.chauffeur_id);
+    afficherCarteChauffeurClient(course.id, course.chauffeur_id, course);
   }
 
   // --- Prix proposé : le client doit l'accepter avant de pouvoir payer l'acompte ---
@@ -4994,11 +5030,22 @@ async function construireCarteCourseClient(course) {
 
 // Affiche une petite carte en direct avec la position du chauffeur assigné (comme Uber),
 // ou un message d'attente tant que sa position n'est pas encore connue.
-async function afficherCarteChauffeurClient(courseId, chauffeurId) {
+async function afficherCarteChauffeurClient(courseId, chauffeurId, course) {
   const conteneurCarte = document.getElementById(`carte-course-${courseId}`);
   if (!conteneurCarte || !chauffeurId) return;
+  course = course || {};
 
-  // Position fournie par la base uniquement pour SA course (assignée bientôt ou en cours)
+  // Panneau « temps d'arrivée » (comme Uber) affiché juste au-dessus de la carte
+  let panneau = document.getElementById(`eta-course-${courseId}`);
+  if (!panneau) {
+    panneau = document.createElement("div");
+    panneau.className = "eta-chauffeur";
+    panneau.id = `eta-course-${courseId}`;
+    conteneurCarte.parentNode.insertBefore(panneau, conteneurCarte);
+  }
+
+  // Position fournie par la base uniquement pour SA course (assignée bientôt ou en cours).
+  // Confidentialité : la position reste en mémoire, JAMAIS dans localStorage.
   const lirePosition = async () => {
     const { data, error } = await supabase.rpc("position_chauffeur_pour_client", { p_course_id: courseId });
     if (error) { console.error("Position chauffeur :", error.message); return null; }
@@ -5006,24 +5053,125 @@ async function afficherCarteChauffeurClient(courseId, chauffeurId) {
     return p && p.latitude != null ? p : null;
   };
 
+  let minuterie = null, minuterieEta = null, carte = null;
+  const arreter = () => { clearInterval(minuterie); clearInterval(minuterieEta); minuterie = minuterieEta = null; };
+  // Plus de position (course terminée/annulée ou position trop ancienne) : on efface tout
+  const effacer = (texte) => {
+    arreter();
+    try { if (carte) carte.remove(); } catch (e) {}
+    carte = null;
+    panneau.remove();
+    conteneurCarte.innerHTML = '<p class="carte-en-attente">' + esc(texte) + '</p>';
+  };
+
   const position = await lirePosition();
   if (!position) {
+    panneau.remove();
     conteneurCarte.innerHTML = '<p class="carte-en-attente">' + esc(t("ch.localisation")) + '</p>';
     return;
   }
 
+  // Règle simple pour savoir vers où calculer le temps d'arrivée :
+  //  - statut « assignee » → le chauffeur vient chercher le client : ETA vers l'adresse de départ ;
+  //  - statut « en_cours » :
+  //      · chauffeur à moins de 300 m du départ → « Votre chauffeur est arrivé 📍 » (et on retient
+  //        qu'il a été au point de prise en charge pendant cette visite de la page) ;
+  //      · chauffeur à plus de 300 m APRÈS avoir été près du départ pendant cette visite → client à
+  //        bord : ETA vers la destination avec l'heure d'arrivée estimée ;
+  //      · sinon (jamais vu près du départ) → ETA vers le départ.
+  //  Le souvenir « a été près du départ » est uniquement en mémoire (jamais stocké).
+  let aEtePresDuDepart = false;
+  const cacheGeo = afficherCarteChauffeurClient._geo || (afficherCarteChauffeurClient._geo = {});
+  const geocoder = async (adresse) => {
+    if (!adresse) return null;
+    if (!(adresse in cacheGeo)) {
+      try { cacheGeo[adresse] = await geocoderAdresseTarif(adresse); } catch (e) { cacheGeo[adresse] = null; }
+    }
+    return cacheGeo[adresse];
+  };
+  const cacheRoute = {}; // clé = départ+arrivée arrondis + minute courante
+  const routeOsrm = async (a, b) => {
+    const cle = [a[0].toFixed(4), a[1].toFixed(4), b[0].toFixed(4), b[1].toFixed(4), Math.floor(Date.now() / 60000)].join(",");
+    if (!(cle in cacheRoute)) {
+      try {
+        const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=false`);
+        const d = await r.json();
+        const rt = d.routes && d.routes[0];
+        cacheRoute[cle] = rt ? { km: rt.distance / 1000, min: rt.duration / 60 } : null;
+      } catch (e) { cacheRoute[cle] = null; }
+    }
+    return cacheRoute[cle];
+  };
+  const distKm = (a, b) => {
+    const R = 6371, toR = Math.PI / 180;
+    const dLat = (b[0] - a[0]) * toR, dLon = (b[1] - a[1]) * toR;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * toR) * Math.cos(b[0] * toR) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+  let dernierePos = [position.latitude, position.longitude];
+  let marqueurCible = null, ligneCible = null;
+  const majEta = async () => {
+    if (!document.body.contains(conteneurCarte)) { arreter(); return; }
+    const pos = dernierePos;
+    const depart = await geocoder(course.adresse_depart);
+    let cible = depart, versArrivee = false;
+    if (course.statut === "en_cours" && depart) {
+      const d = distKm(pos, [depart.lat, depart.lon]);
+      if (d < 0.3) {
+        aEtePresDuDepart = true;
+        panneau.textContent = t("eta.arrive");
+        cible = depart;
+        cible && placerCible(cible, false);
+        return;
+      }
+      if (aEtePresDuDepart) { versArrivee = true; cible = await geocoder(course.adresse_arrivee); }
+    }
+    if (!document.body.contains(conteneurCarte) || !minuterie) return;
+    if (!cible) { panneau.textContent = ""; return; }
+    placerCible(cible, versArrivee);
+    const rt = await routeOsrm(pos, [cible.lat, cible.lon]);
+    if (!rt || !minuterie) return;
+    const min = Math.max(1, Math.round(rt.min));
+    if (versArrivee) {
+      const heure = new Date(Date.now() + min * 60000).toLocaleTimeString(LOCALE(), { hour: "2-digit", minute: "2-digit" });
+      panneau.textContent = t("eta.versArrivee", { min, heure });
+    } else {
+      panneau.textContent = t("eta.versDepart", { min, km: fmtNombre(rt.km, 1) });
+    }
+  };
+  const placerCible = (cible, versArrivee) => {
+    if (!carte) return;
+    const ll = [cible.lat, cible.lon];
+    const libelle = versArrivee ? t("eta.destination") : t("eta.depart");
+    if (!marqueurCible) {
+      marqueurCible = L.circleMarker(ll, { radius: 8, color: "#1a7f37", fillColor: "#fff", fillOpacity: 1, weight: 3 }).addTo(carte).bindPopup(libelle);
+    } else { marqueurCible.setLatLng(ll); marqueurCible.setPopupContent(libelle); }
+    if (!ligneCible) ligneCible = L.polyline([dernierePos, ll], { color: "#1a7f37", weight: 3, dashArray: "6 8" }).addTo(carte);
+    else ligneCible.setLatLngs([dernierePos, ll]);
+  };
+
   try {
-    const carte = L.map(conteneurCarte, { zoomControl: false, attributionControl: false })
+    carte = L.map(conteneurCarte, { zoomControl: false, attributionControl: false })
       .setView([position.latitude, position.longitude], 14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(carte);
     const marqueur = L.marker([position.latitude, position.longitude]).addTo(carte).bindPopup(t("ch.votre"));
-    // Mise à jour en direct toutes les 10 s tant que la carte est affichée
-    const minuterie = setInterval(async () => {
-      if (!document.body.contains(conteneurCarte)) { clearInterval(minuterie); return; }
+    // Position en direct toutes les 10 s tant que la carte est affichée
+    minuterie = setInterval(async () => {
+      if (!document.body.contains(conteneurCarte)) { arreter(); return; }
       const p = await lirePosition();
-      if (p) { marqueur.setLatLng([p.latitude, p.longitude]); carte.panTo([p.latitude, p.longitude]); }
+      if (!minuterie) return;
+      if (!p) { effacer(t("eta.terminee")); return; } // la base ne donne plus rien : on cache tout
+      dernierePos = [p.latitude, p.longitude];
+      marqueur.setLatLng(dernierePos); carte.panTo(dernierePos);
+      if (ligneCible && marqueurCible) ligneCible.setLatLngs([dernierePos, marqueurCible.getLatLng()]);
     }, 10000);
+    // Temps d'arrivée recalculé toutes les 30 s (routes mises en cache par minute)
+    minuterieEta = setInterval(majEta, 30000);
+    majEta();
   } catch (e) {
+    arreter();
+    panneau.remove();
     conteneurCarte.innerHTML = '<p class="carte-en-attente">' + esc(t("ch.carteIndispo")) + '</p>';
   }
 }

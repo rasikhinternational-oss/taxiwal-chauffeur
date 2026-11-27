@@ -882,10 +882,13 @@ window.onerror = function(msg, url, line, col, err) {
   .ligne-admin.plein-ecran-ligne .grille3-fa{ grid-template-columns:1fr; border:none; background:#fff; border-radius:10px; }
   .ligne-admin.plein-ecran-ligne .grille3-fa > div{ border-right:none; border-bottom:1px solid #eee; padding:10px 12px; }
   .ligne-admin.plein-ecran-ligne label{ font-size:.85rem; }
-  .grille-paiement-fa{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-top:4px; }
+  .grille-paiement-fa{ display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:6px; margin-top:4px; }
   .grille-paiement-fa button.puce-paiement-fa{ width:100%; min-width:0; min-height:46px; margin:0; padding:6px 2px; border-radius:12px; border:2px solid #cfd6d0; background:#fff; color:#1d2b22; font-weight:700; font-size:clamp(.72rem, 3.4vw, .9rem); line-height:1.15; white-space:normal; overflow-wrap:break-word; text-align:center; font-family:inherit; }
   .grille-paiement-fa button.puce-paiement-fa.choisie{ background:#1f8a4c; border-color:#1f8a4c; color:#fff; }
   .grille-paiement-fa button.puce-paiement-fa:disabled{ opacity:.6; }
+  .grille-paiement-fa button.puce-paiement-fa{ grid-column:span 2; }
+  /* Uber / Bolt : bloc 2×2 groupé */
+  .grille-paiement-fa button.puce-paiement-fa.puce-plateforme{ grid-column:span 3; }
   .grille-paiement-fa button.puce-paiement-fa.bouton-autre{ grid-column:1 / -1; }
   .grille-paiement-fa button.puce-paiement-fa.puce-bolt{ background:#e6f9ef; border-color:#34D186; }
   .grille-paiement-fa button.puce-paiement-fa.puce-bolt.choisie{ background:#34D186; border-color:#1fa866; color:#06301b; }
@@ -7656,21 +7659,32 @@ document.getElementById("btn-creer-course").addEventListener("click", async () =
       if (estRetourHeurePrecise) {
         const hr = new Date(heureRetourInput);
         heureRetour = new Date(d); heureRetour.setHours(hr.getHours(), hr.getMinutes(), 0, 0);
+        // Retour après minuit : on passe au lendemain (sinon la base refuse : erreur 400)
+        if (heureRetour <= dt) heureRetour.setDate(heureRetour.getDate() + 1);
       }
       lignesACreer.push(...coursesPourUneDate(dt.toISOString(), heureRetour ? heureRetour.toISOString() : null));
     });
   } else {
-    lignesACreer = coursesPourUneDate(
-      new Date(date).toISOString(),
-      estRetourHeurePrecise ? new Date(heureRetourInput).toISOString() : null
-    );
+    let retourUnique = estRetourHeurePrecise ? new Date(heureRetourInput) : null;
+    const departUnique = new Date(date);
+    // Retour après minuit saisi le même jour (ex : aller 22:50, retour 00:30) : on passe au lendemain.
+    // Cause des 2 erreurs 400 du 25/11 (la base refuse un retour avant l'aller).
+    if (retourUnique && retourUnique <= departUnique) {
+      if (retourUnique.toDateString() === departUnique.toDateString()) retourUnique.setDate(retourUnique.getDate() + 1);
+      else { erreur.textContent = "L'heure de retour doit être après l'heure de départ de l'aller."; erreur.scrollIntoView({ block: "center" }); return; }
+    }
+    lignesACreer = coursesPourUneDate(departUnique.toISOString(), retourUnique ? retourUnique.toISOString() : null);
   }
 
   btnCreer.disabled = true; btnCreer.textContent = "Création…";
-  const { error } = await supabase.from("courses").insert(lignesACreer);
+  // try/catch : si le réseau coupe, le bouton ne reste pas bloqué sur « Création… »
+  let error = null;
+  try { ({ error } = await supabase.from("courses").insert(lignesACreer)); }
+  catch (e) { error = { message: "pas de connexion, réessaie." }; }
   btnCreer.disabled = false; btnCreer.textContent = "✅ Créer la course";
 
-  if (error) { erreur.textContent = "Erreur : " + error.message; return; }
+  // Message d'erreur bien visible (sur iPhone il était parfois hors écran)
+  if (error) { erreur.textContent = "Erreur : " + error.message; try { erreur.scrollIntoView({ block: "center" }); } catch (e) {} return; }
 
   if (document.getElementById("input-enregistrer-carnet").checked && clientNom) {
     await enregistrerClientDepuisCourse({ nom: clientNom, telephone: clientTel, email: clientEmail, adresse: depart });
@@ -8352,6 +8366,18 @@ async function afficherListeChauffeursCarte(positions, coursesParChauffeur) {
     const courseActive = coursesParChauffeur[p.chauffeur_id];
 
     const div = document.createElement("div");
+    // 🔒 Mode privé : fiche sans position ni adresse (et pas de marqueur sur la carte)
+    if (p.mode_prive) {
+      div.className = "cc-chauffeur cc-prive";
+      const depuis = p.mode_prive_depuis ? new Date(p.mode_prive_depuis).toLocaleTimeString("fr-BE", { timeZone: "Europe/Brussels", hour: "2-digit", minute: "2-digit" }) : "";
+      const tel = p.profils?.telephone || "";
+      div.innerHTML = `<h4>${esc(nom)}</h4>
+        <div class="cc-ligne"><span class="cc-etat-gps" style="background:#8a919c;">🔒 Mode privé (position masquée)</span></div>
+        ${depuis ? `<div class="cc-ligne">depuis ${esc(depuis)}</div>` : ""}
+        <div class="cc-ligne cc-contact">${tel ? `📞 <a href="tel:${esc(tel.replace(/\s/g, ""))}">${esc(tel)}</a>` : "📞 —"}</div>`;
+      conteneur.appendChild(div);
+      continue;
+    }
     div.className = "cc-chauffeur " + (courseActive ? "cc-course" : (p.disponible ? "cc-dispo" : ""));
 
     if (courseActive) {
@@ -8416,6 +8442,7 @@ async function chargerEmailsChauffeurs() {
   } catch (e) { /* e-mail facultatif */ }
 }
 function etatSuiviChauffeur(p, courseActive) {
+  if (p.mode_prive) return { texte: "🔒 Mode privé (position masquée)", fond: "#8a919c" };
   const minutes = p.updated_at ? (Date.now() - new Date(p.updated_at).getTime()) / 60000 : 9999;
   if (p.localisation_refusee) return { texte: "⚠️ Localisation désactivée", fond: "#d97706" };
   if (minutes > 10) return { texte: "⚫ Hors ligne", fond: "#6b6b6b" };
@@ -8791,8 +8818,10 @@ async function chargerCarteInterne() {
   // seulement les chauffeurs / sous-traitants, et pas les positions de plus de 24 h
   const positions = (positionsBrutes || []).filter(p =>
     p.profils?.role !== "admin" && p.updated_at && Date.now() - new Date(p.updated_at).getTime() < 24 * 3600e3);
+  // 🔒 Chauffeurs en mode privé : jamais de marqueur, d'adresse ni de route sur la carte
+  const positionsVisibles = positions.filter(p => !p.mode_prive);
   Object.keys(marqueurs).forEach(id => {
-    if (!positions.some(p => p.chauffeur_id === id)) { carteLeaflet.removeLayer(marqueurs[id]); delete marqueurs[id]; }
+    if (!positionsVisibles.some(p => p.chauffeur_id === id)) { carteLeaflet.removeLayer(marqueurs[id]); delete marqueurs[id]; }
   });
 
   const { data: coursesEnCours } = await supabase
@@ -8802,15 +8831,17 @@ async function chargerCarteInterne() {
   const coursesParChauffeur = {};
   (coursesEnCours || []).filter(estReservationReelle).forEach(c => { coursesParChauffeur[c.chauffeur_id] = c; });
 
-  dernieresPositionsCarte = positions || [];
+  dernieresPositionsCarte = positionsVisibles;
   afficherListeChauffeursCarte(positions, coursesParChauffeur);
   setTimeout(() => centrerSurChauffeurs(false), 300);
 
   Object.keys(lignesRouteCarte).forEach(chauffeurId => {
-    if (!coursesParChauffeur[chauffeurId]) retirerRouteCarte(chauffeurId);
+    if (!coursesParChauffeur[chauffeurId] || !positionsVisibles.some(p => p.chauffeur_id === chauffeurId)) retirerRouteCarte(chauffeurId);
   });
 
-  for (const p of (positions || [])) {
+  // NB : quand les traceurs GPS matériels des voitures seront intégrés, la position du traceur d'un véhicule
+  // devra AUSSI être masquée (pas de marqueur) si le chauffeur actuel de ce véhicule est en mode privé.
+  for (const p of positionsVisibles) {
     const nom = p.profils?.nom || "Chauffeur";
     const courseActive = coursesParChauffeur[p.chauffeur_id];
     const maj = document.getElementById(`cc-maj-${p.chauffeur_id}`);
@@ -10578,9 +10609,10 @@ function majProblemesFA(lignes, conteneurLignes, zoneAlertes, ouvrirFx) {
 // l'assistant les montre UNE PAR UNE, en français simple, avec seulement le(s) champ(s) utile(s),
 // et enregistre par le chemin habituel de la page (adaptateur « ad » : file hors ligne côté chauffeur).
 // Jamais bloquant : « Passer » est toujours possible.
-const FX_MODES = [["cash", "💵 Cash"], ["carte", "💳 Carte"], ["qr", "📱 Bancontact / QR"], ["facture", "🧾 Facture"], ["cheque_social", "🎫 Chèque social"],
-  ["uber", "🚕 Uber (payé dans l'app)"], ["uber_cash", "🚕💵 Uber payé cash"], ["uber_carte", "🚕💳 Uber payé carte"],
-  ["bolt", "🟢 Bolt en ligne"], ["bolt_cash", "🟢💵 Bolt cash"], ["annulee", "❌ Annulée / client absent"]];
+const FX_MODES = [["cash", "💵 Cash"], ["carte", "💳 Carte"], ["qr", "📱 Bancontact / QR"],
+  ["uber_cash", "🚕💵 Uber payé cash"], ["uber", "🚕 Uber (payé dans l'app)"], ["uber_carte", "🚕💳 Uber payé carte"],
+  ["bolt_cash", "🟢💵 Bolt cash"], ["bolt", "🟢 Bolt en ligne"],
+  ["facture", "🧾 Facture"], ["cheque_social", "🎫 Chèque social"], ["annulee", "❌ Annulée / client absent"]];
 // Types de course ajoutés (se comportent exactement comme « normale ») : libellé lisible pour l'impression / le résumé
 const LIBELLES_TYPES_COURSE = { a_l_heure: "À l'heure", medical: "Médical", scolaire: "Scolaire" };
 function libelleTypeCourse(t) { return LIBELLES_TYPES_COURSE[t] || t; }
@@ -12465,11 +12497,11 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
         <option value="facture">🧾 Facture</option>
         <option value="qr">📱 QR code / virement instantané</option>
         <option value="cheque_social">🎫 Chèque social/communal</option>
-        <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_cash">🚕💵 Course Uber payée en cash</option>
+        <option value="uber">🚕 Uber (payé sur Uber)</option>
         <option value="uber_carte">🚕💳 Course Uber payée par carte</option>
-        <option value="bolt">🟢 Bolt en ligne</option>
         <option value="bolt_cash">🟢💵 Bolt cash</option>
+        <option value="bolt">🟢 Bolt en ligne</option>
         <option value="annulee">❌ Course annulée (rien encaissé)</option>
       `;
       ajouterTexteLibre(input, ligne.mode_paiement);
@@ -12794,8 +12826,9 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
     zone.className = "grille-paiement-fa";
     const BOUTONS = [
       { cle: "cash", texte: "💵 Cash" }, { cle: "carte", texte: "💳 Carte" }, { cle: "qr", texte: "📱 Bancontact / QR" },
-      { cle: "uber", texte: "🚕 Uber (app)" }, { cle: "uber_cash", texte: "🚕💵 Uber cash" },
-      { cle: "bolt", texte: "🟢 Bolt en ligne" }, { cle: "bolt_cash", texte: "🟢💵 Bolt cash" }, { cle: "facture", texte: "🧾 Facture" },
+      // Uber / Bolt groupés (2×2) : Uber cash, Uber en ligne, Bolt cash, Bolt en ligne
+      { cle: "uber_cash", texte: "🚕💵 Uber cash" }, { cle: "uber", texte: "🚕 Uber (app)" },
+      { cle: "bolt_cash", texte: "🟢💵 Bolt cash" }, { cle: "bolt", texte: "🟢 Bolt en ligne" }, { cle: "facture", texte: "🧾 Facture" },
       { cle: "facture_assurance", texte: "🛡️ Facture assurance" }, { cle: "cheque_social", texte: "🎫 Chèque social" }, { cle: "annulee", texte: "❌ Annulée / absent" },
       { cle: "autre", texte: "✏️ Autre…" }
     ];
@@ -12827,7 +12860,7 @@ function construireLigneAdmin(ligne, numeroAffiche, ctx) {
       zone.replaceChildren(...BOUTONS.map(b => {
         const bouton = document.createElement("button");
         bouton.type = "button";
-        bouton.className = "puce-paiement-fa" + (b.cle === choisie ? " choisie" : "") + (b.cle === "autre" ? " bouton-autre" : "") + ((b.cle === "bolt" || b.cle === "bolt_cash") ? " puce-bolt" : "");
+        bouton.className = "puce-paiement-fa" + (b.cle === choisie ? " choisie" : "") + (b.cle === "autre" ? " bouton-autre" : "") + ((b.cle === "bolt" || b.cle === "bolt_cash") ? " puce-bolt" : "") + (["uber_cash", "uber", "bolt_cash", "bolt"].includes(b.cle) ? " puce-plateforme" : "");
         bouton.dataset.mode = b.cle;
         bouton.textContent = (b.cle === "autre" && choisie === "autre") ? (LIBELLES_ANCIENS[m] || ("✏️ " + m)) : b.texte;
         bouton.disabled = select.disabled;
@@ -13549,6 +13582,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     .page-contenu { flex: 0 0 auto; }
     .page-pied { margin-top: 6px; }
     .num-page { font-size: 7pt; text-align: right; margin-top: 2px; }
+    .suite-titre { font-size: 9pt; font-weight: bold; text-align: center; margin: 0 0 4px; }
     .courses-table tr { break-inside: avoid; page-break-inside: avoid; }
     @media screen { body { background: #d9d9d9; padding: 10px; } .page { margin: 0 auto 14px; box-shadow: 0 2px 10px rgba(0,0,0,.25); outline: 8mm solid #fff; } #pages { padding: 8mm 0; } }
     @media print { #pages { padding: 0; } .page { break-after: page; page-break-after: always; } .page:last-child { break-after: auto; page-break-after: auto; } .page + .page { break-before: page; page-break-before: always; } }
@@ -13562,7 +13596,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     <div id="pages"></div>
     <div id="source">
     <h1>FEUILLE DE ROUTE</h1>
-    <table>
+    <table class="entete-identite" data-date="${esc(String(dateChoisie || "").split("-").reverse().join("/"))}">
       <tr><td style="width:35%"><span class="mini">Identité de l'exploitant</span></td>
           <td colspan="3" class="valeur">${esc(identiteFeuille)}</td></tr>
       <tr><td><span class="mini">Date</span> <span class="valeur">${esc(dateLisible)}</span></td>
@@ -13600,7 +13634,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     </table>`}
 
     <h2>Courses</h2>
-    <table class="courses-table">
+    <table class="courses-table" data-attendu="${(lignes || []).length}">
       <thead>
       <tr>
         <th rowspan="2">N° ordre</th><th rowspan="2">Index départ</th>
@@ -13643,12 +13677,20 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
     mesure.parentNode.removeChild(mesure);
     var mesureOk = isFinite(hauteurPage) && hauteurPage > 300;
     var pages = [], page = null, contenu = null;
+    // Pages suivantes = SUITE de la même feuille (même date) : « Suite de la feuille de route du … — page N/M »
+    // + même en-tête (exploitant, date, chauffeur, plaque, véhicule, n° identification) + en-têtes du tableau.
+    var enteteIdentite = source.querySelector(".entete-identite");
+    var dateFeuille = enteteIdentite ? (enteteIdentite.getAttribute("data-date") || "") : "";
     function nouvellePage(){
       page = document.createElement("div"); page.className = "page";
       contenu = document.createElement("div"); contenu.className = "page-contenu";
       var pied = document.createElement("div"); pied.className = "page-pied"; pied.innerHTML = tpl.innerHTML;
-      // La signature n'apparaît qu'une fois, sur le recto.
-      if (pages.length > 0){ var s = pied.querySelector(".signature"); if (s) s.parentNode.removeChild(s); }
+      if (pages.length > 0){
+        var t = document.createElement("div"); t.className = "suite-titre";
+        t.textContent = "Suite de la feuille de route du " + dateFeuille + " — page " + (pages.length + 1) + "/" + (pages.length + 1);
+        contenu.appendChild(t);
+        if (enteteIdentite) contenu.appendChild(enteteIdentite.cloneNode(true));
+      }
       page.appendChild(contenu); page.appendChild(pied);
       zone.appendChild(page); pages.push(page);
     }
@@ -13670,6 +13712,7 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
         var titre = (elements[i - 1] && elements[i - 1].tagName === "H2") ? elements[i - 1] : null;
         var lignes = [].slice.call(el.tBodies[0].rows);
         var table = null, titreCourant = null;
+        var tableSource = el, toutesLignes = lignes.slice();
         var debutTable = function(suite){
           titreCourant = null;
           if (titre){
@@ -13701,11 +13744,30 @@ function imprimerFeuilleDeRoute(feuille, lignes, chauffeur, dateChoisie, fenetre
         contenu.removeChild(el); nouvellePage(); contenu.appendChild(el);
       }
     }
+    // Sécurité : AUCUNE course ne doit disparaître faute de place. Toute ligne restée hors des pages
+    // est ajoutée à la fin du dernier tableau, et on prévient dans la console.
+    if (typeof toutesLignes !== "undefined"){
+      var perdues = toutesLignes.filter(function(tr){ return !zone.contains(tr); });
+      if (perdues.length){
+        console.warn("Impression : " + perdues.length + " ligne(s) replacée(s) en fin de tableau");
+        var tabs = zone.querySelectorAll(".courses-table tbody");
+        perdues.forEach(function(tr){ tabs[tabs.length - 1].appendChild(tr); });
+      }
+      var imprimees = zone.querySelectorAll(".courses-table tbody tr").length;
+      var attendu = parseInt(tableSource.getAttribute("data-attendu"), 10);
+      if (attendu > 0 && imprimees !== attendu) console.warn("Impression : " + imprimees + " lignes imprimées pour " + attendu + " lignes de la feuille");
+    }
     pages.forEach(function(p, k){
-      // La note de bas de page n'apparaît qu'une fois, à la fin du document.
-      if (k < pages.length - 1){ var nb = p.querySelector(".note-bas"); if (nb) nb.parentNode.removeChild(nb); }
+      // Signature et note de bas de page : une seule fois, sur la DERNIÈRE page (après les totaux).
+      if (k < pages.length - 1){
+        var nb = p.querySelector(".note-bas"); if (nb) nb.parentNode.removeChild(nb);
+        var sg = p.querySelector(".signature"); if (sg) sg.parentNode.removeChild(sg);
+      }
+      var st = p.querySelector(".suite-titre");
+      if (st) st.textContent = "Suite de la feuille de route du " + dateFeuille + " — page " + (k + 1) + "/" + pages.length;
+      // Petit numéro « page 1/M » sur la 1re page seulement (rien du tout si une seule page)
       var n = p.querySelector(".num-page");
-      if (n) n.textContent = pages.length > 1 ? ("Page " + (k + 1) + "/" + pages.length + (k % 2 === 0 ? " — recto" : " — verso")) : "";
+      if (n) n.textContent = (pages.length > 1 && k === 0) ? ("page 1/" + pages.length) : "";
     });
     source.parentNode.removeChild(source);
   }
@@ -14641,19 +14703,19 @@ function distanceKmPart(a, b) {
 }
 
 async function partenairesTriesParProximite(adresseDepart) {
-  const { data: partenaires } = await supabase.from("profils").select("id, nom, societe").eq("role", "partenaire").eq("actif", true);
-  const liste = (partenaires || []).map(p => ({ ...p, km: null }));
+  const { data: partenaires } = await supabase.from("profils").select("id, nom, societe, statut_partenaire").eq("role", "partenaire").eq("actif", true);
+  const liste = (partenaires || []).map(p => ({ ...p, km: null, approuve: (p.statut_partenaire || "approuve") === "approuve" }));
   if (!liste.length) return liste;
   let depart = null;
   try { depart = adresseDepart ? await geocoderAdresse(adresseDepart) : null; } catch (e) { depart = null; }
   if (!depart) return liste.sort((a, b) => String(a.societe || a.nom).localeCompare(String(b.societe || b.nom)));
   const ids = liste.map(p => p.id);
   const [{ data: pos }, { data: dem }] = await Promise.all([
-    supabase.from("positions_chauffeurs").select("chauffeur_id, latitude, longitude, updated_at").in("chauffeur_id", ids),
+    supabase.from("positions_chauffeurs").select("chauffeur_id, latitude, longitude, updated_at, mode_prive, mode_prive_depuis").in("chauffeur_id", ids),
     supabase.from("demandes_partenariat").select("partenaire_id, adresse").in("partenaire_id", ids).eq("statut", "active")
   ]);
   for (const p of liste) {
-    const gps = (pos || []).find(x => x.chauffeur_id === p.id && x.latitude != null && x.updated_at && Date.now() - new Date(x.updated_at).getTime() < 6 * 3600e3);
+    const gps = (pos || []).find(x => x.chauffeur_id === p.id && !x.mode_prive && x.latitude != null && x.updated_at && Date.now() - new Date(x.updated_at).getTime() < 6 * 3600e3);
     let point = gps ? { lat: Number(gps.latitude), lon: Number(gps.longitude) } : null;
     if (!point) {
       const adr = (dem || []).find(x => x.partenaire_id === p.id)?.adresse;
@@ -14679,21 +14741,37 @@ async function ouvrirPartenairesCourse(course) {
     supabase.from("publications_partenaires").select("partenaire_id").eq("course_id", course.id)
   ]);
   const dejaPublie = new Set((publis || []).map(x => x.partenaire_id));
+  // Statut du dossier : seuls les partenaires approuvés peuvent recevoir la course
+  const BADGE_DOSSIER = {
+    approuve: ["✅ Dossier approuvé", "var(--vert)"], en_attente: ["⏳ Dossier en attente", "#b86e00"],
+    documents_manquants: ["⚠️ Documents manquants", "#c81e2c"], suspendu: ["⛔ Suspendu", "#c81e2c"], refuse: ["⛔ Refusé", "#c81e2c"]
+  };
+  const badgeDossier = (st) => { const [t, c] = BADGE_DOSSIER[st || "approuve"] || [st, "var(--gris)"]; return `<span style="display:inline-block; padding:1px 8px; border-radius:999px; border:1px solid ${c}; color:${c}; font-size:.75rem; font-weight:700; white-space:nowrap;">${esc(t)}</span>`; };
+  const RAISON_DOSSIER = { en_attente: "dossier en attente", documents_manquants: "documents manquants", suspendu: "suspendu", refuse: "dossier refusé" };
+  const approuves = liste.filter(p => p.approuve);
+  const aPublier = approuves.filter(p => !dejaPublie.has(p.id));
   if (!liste.length) zoneP.innerHTML = `<p style="color:var(--gris); margin:0;">Aucun partenaire actif.</p>`;
   else {
-    zoneP.innerHTML = `<button type="button" class="mp-tous" style="width:100%; padding:10px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:8px;">📢 Publier à tous les partenaires actifs (${liste.length})</button>` +
-      liste.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid rgba(128,128,128,.2);">
-        <span>${esc(p.societe || p.nom)}${p.km != null ? ` <span style="color:var(--gris); font-size:.85rem;">· ${String(p.km).replace(".", ",")} km</span>` : ""}</span>
-        ${dejaPublie.has(p.id) ? `<span style="color:var(--vert); font-size:.85rem;">✅ Publiée</span>` : `<button type="button" class="mp-un" data-id="${esc(p.id)}" style="width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--vert); background:transparent; color:var(--vert);">Publier</button>`}
+    zoneP.innerHTML = (aPublier.length
+      ? `<button type="button" class="mp-tous" style="width:100%; padding:10px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:600; margin-bottom:8px;">📢 Publier à tous les partenaires approuvés (${aPublier.length})</button>`
+      : `<p style="color:var(--gris); margin:0 0 8px; font-size:.9rem;">${approuves.length ? "Déjà publiée à tous les partenaires approuvés." : "⚠️ Aucun partenaire n'a un dossier approuvé : la course ne peut être publiée à personne. Approuve d'abord un dossier (onglet Partenaires → 📁 Dossier)."}</p>`) +
+      liste.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid rgba(128,128,128,.2);${p.approuve ? "" : " opacity:.5;"}">
+        <span>${esc(p.societe || p.nom)} ${badgeDossier(p.statut_partenaire)}${p.km != null ? ` <span style="color:var(--gris); font-size:.85rem;">· ${String(p.km).replace(".", ",")} km</span>` : ""}</span>
+        ${dejaPublie.has(p.id) ? `<span style="color:var(--vert); font-size:.85rem;">✅ Publiée</span>`
+          : !p.approuve ? `<span style="color:var(--gris); font-size:.8rem; text-align:right;">Non sélectionnable<br>(${esc(RAISON_DOSSIER[p.statut_partenaire] || "dossier non approuvé")})</span>`
+          : `<button type="button" class="mp-un" data-id="${esc(p.id)}" style="width:auto; padding:6px 10px; border-radius:8px; border:1px solid var(--vert); background:transparent; color:var(--vert);">Publier</button>`}
       </div>`).join("");
     const publier = async (ids) => {
       msg.textContent = "Publication…";
       const { data: n, error } = await supabase.rpc("admin_publier_course_partenaires", { p_course: course.id, p_partenaires: ids });
       if (error) { msg.textContent = "Erreur : " + error.message; return; }
       fond.remove(); ouvrirPartenairesCourse(course);
-      setTimeout(() => alert(`Course publiée à ${n} partenaire(s).`), 50);
+      const texte = Number(n) > 0 ? `Course publiée à ${n} partenaire(s). Ils sont prévenus par notification.`
+        : "⚠️ La course n'a été publiée à aucun partenaire.\n\nRaisons possibles :\n• elle leur était déjà publiée ;\n• leur dossier n'est pas approuvé (en attente, documents manquants ou suspendu) ;\n• leur compte est désactivé ;\n• la course vient d'être attribuée à un chauffeur.";
+      setTimeout(() => alert(texte), 50);
     };
-    zoneP.querySelector(".mp-tous").addEventListener("click", () => publier(liste.map(p => p.id)));
+    const btnTous = zoneP.querySelector(".mp-tous");
+    if (btnTous) btnTous.addEventListener("click", () => publier(aPublier.map(p => p.id)));
     zoneP.querySelectorAll(".mp-un").forEach(b => b.addEventListener("click", () => publier([b.dataset.id])));
   }
 
@@ -14947,6 +15025,139 @@ function imprimerRelevePartenaire(p, lignes, solde, mois) {
       return div;
     };
   }
+})();
+</script>
+<script>
+// ================== 📁 Dossiers partenaires : documents, véhicules, statut (admin) ==================
+(function () {
+  "use strict";
+  const BUCKET = "documents-partenaires";
+  const STATUT = { en_attente: ["⏳ En attente", "#b86e00"], documents_manquants: ["⚠️ Documents manquants", "var(--rouge)"], approuve: ["✅ Approuvé", "var(--vert)"], suspendu: ["⛔ Suspendu", "var(--rouge)"], refuse: ["⛔ Refusé", "var(--rouge)"] };
+  const ETAT = { manquant: ["❌ Manquant", "var(--rouge)"], en_attente: ["⏳ À vérifier", "#b86e00"], approuve: ["✅ Validé", "var(--vert)"], refuse: ["⛔ Refusé", "var(--rouge)"], expire: ["⌛ Expiré", "var(--rouge)"], expire_bientot: ["⏰ Expire bientôt", "#b86e00"] };
+  const CATS = { berline: "Berline", break: "Break", van: "Van / minibus", premium: "Premium" };
+  const pastille = (st, map) => { const [t, c] = map[st] || [st, "var(--gris)"]; return `<span style="display:inline-block; padding:2px 8px; border-radius:999px; border:2px solid ${c}; color:${c}; font-weight:700; font-size:.8rem; white-space:nowrap;">${esc(t)}</span>`; };
+  const bouton = (cls, txt, plein, coul) => `<button type="button" class="${cls}" style="width:auto; padding:8px 10px; border-radius:8px; font-weight:600; ${plein ? `border:none; background:${coul}; color:#fff;` : `border:1px solid ${coul}; background:transparent; color:${coul};`}">${txt}</button>`;
+  const dateFr = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("fr-BE") : "";
+
+  async function majCompteur() {
+    try {
+      const { count } = await supabase.from("documents_partenaires").select("id", { count: "exact", head: true }).eq("statut", "en_attente");
+      const { count: nv } = await supabase.from("vehicules_partenaires").select("id", { count: "exact", head: true }).eq("statut", "en_attente");
+      const n = (count || 0) + (nv || 0);
+      const btn = document.querySelector('nav button[data-onglet="partenaires"]');
+      if (!btn) return;
+      let b = btn.querySelector(".badge-docs-partenaires");
+      if (!b) { b = document.createElement("span"); b.className = "badge-docs-partenaires"; b.style.cssText = "display:inline-block; margin-left:6px; min-width:20px; padding:1px 6px; border-radius:999px; background:var(--rouge); color:#fff; font-size:.75rem; font-weight:800;"; btn.appendChild(b); }
+      b.textContent = n; b.style.display = n ? "inline-block" : "none";
+      b.title = n + " document(s) / véhicule(s) à vérifier";
+    } catch (err) {}
+  }
+
+  function ligneDoc(d) {
+    return `<div class="dp-doc" data-id="${esc(d.doc_id || "")}" data-chemin="${esc(d.chemin || "")}" style="border-top:1px solid #eee; padding:8px 0;">
+      <div style="display:flex; gap:8px; align-items:flex-start;">
+        <div class="dp-vignette" style="width:56px; height:56px; flex-shrink:0; border-radius:8px; background:#f4f4f2; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:1.4rem;">${d.chemin ? "📄" : "—"}</div>
+        <div style="flex:1;"><div style="font-weight:600;">${esc(d.libelle)}</div>
+          <div style="font-size:.8rem; color:var(--gris);">${d.expire_le ? "Expire le " + esc(dateFr(d.expire_le)) : (d.expire_requis ? "Date d'expiration requise" : "")}${d.envoye_le ? " · envoyé le " + esc(new Date(d.envoye_le).toLocaleDateString("fr-BE")) : ""}</div>
+          ${d.motif ? `<div style="font-size:.8rem; color:var(--rouge);">Motif : ${esc(d.motif)}</div>` : ""}
+          <div style="margin-top:4px;">${pastille(d.etat, ETAT)}</div></div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          ${d.chemin ? `<a class="dp-ouvrir" href="#" target="_blank" rel="noopener" style="font-size:.85rem;">🔎 Ouvrir</a>` : ""}
+          ${d.doc_id && d.etat !== "approuve" && d.etat !== "expire_bientot" && d.etat !== "expire" ? bouton("dp-ok", "✅", true, "var(--vert)") : ""}
+          ${d.doc_id && d.etat !== "refuse" ? bouton("dp-ko", "⛔", false, "var(--rouge)") : ""}
+        </div></div></div>`;
+  }
+
+  async function ouvrirDossier(partenaireId, titre) {
+    const fond = ouvrirModalePart("📁 Dossier — " + titre, `<div class="dp-zone">Chargement…</div>`);
+    const zone = fond.querySelector(".dp-zone");
+    const recharger = async () => {
+      const { data: d, error } = await supabase.rpc("admin_dossier_partenaire", { p_partenaire: partenaireId });
+      if (error || !d) { zone.textContent = "Erreur : " + (error ? error.message : "dossier introuvable"); return; }
+      zone.innerHTML = `<div style="background:#f4f8f5; border-radius:10px; padding:10px;">
+          <div>Statut : ${pastille(d.statut, STATUT)}</div>${d.motif ? `<div style="font-size:.85rem; margin-top:4px;">Motif : ${esc(d.motif)}</div>` : ""}
+          <div style="font-size:.85rem; color:var(--gris); margin-top:4px;">${esc(d.a_verifier)} document(s) à vérifier · ${esc(d.expirent_bientot)} expirent dans 30 jours</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+            ${bouton("dp-st", "✅ Approuver", true, "var(--vert)").replace('class="dp-st"', 'class="dp-st" data-st="approuve"')}
+            ${bouton("dp-st", "⚠️ Documents manquants", false, "#b86e00").replace('class="dp-st"', 'class="dp-st" data-st="documents_manquants"')}
+            ${bouton("dp-st", "⛔ Suspendre", false, "var(--rouge)").replace('class="dp-st"', 'class="dp-st" data-st="suspendu"')}
+          </div>
+          <div style="font-size:.78rem; color:var(--gris); margin-top:6px;">Seuls les partenaires « Approuvé » reçoivent de nouvelles courses et peuvent faire des offres.</div></div>
+        <h3 style="margin:14px 0 4px;">🏢 Société</h3>${(d.societe || []).map(ligneDoc).join("")}
+        <h3 style="margin:14px 0 4px;">👤 Chauffeurs</h3>${(d.chauffeurs || []).length ? d.chauffeurs.map(c => `<div style="margin:8px 0 0; font-weight:700;">${esc(c.nom)} <span style="font-weight:400; color:var(--gris); font-size:.85rem;">· ${esc(c.statut)}</span></div>${(c.documents || []).map(ligneDoc).join("")}`).join("") : `<p style="color:var(--gris);">Aucun chauffeur.</p>`}
+        <h3 style="margin:14px 0 4px;">🚗 Véhicules</h3>${(d.vehicules || []).length ? d.vehicules.map(v => `<div class="dp-veh" data-id="${esc(v.id)}" style="margin-top:8px; background:#fff; border:1px solid #e3e3e0; border-radius:10px; padding:8px;">
+            <div style="display:flex; justify-content:space-between; gap:6px; flex-wrap:wrap;"><div><b>${esc(v.plaque)}</b> · ${esc([v.marque, v.modele].filter(Boolean).join(" "))}${v.annee ? " (" + esc(v.annee) + ")" : ""}<br><span style="font-size:.85rem; color:var(--gris);">${esc(CATS[v.categorie] || v.categorie)} · ${esc(v.places)} places${v.couleur ? " · " + esc(v.couleur) : ""}</span></div>
+              <div>${pastille(v.statut, STATUT)}</div></div>
+            ${v.motif ? `<div style="font-size:.8rem; color:var(--rouge);">Motif : ${esc(v.motif)}</div>` : ""}
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin:6px 0;">
+              ${bouton("dp-v", "✅ Approuver", true, "var(--vert)").replace('class="dp-v"', 'class="dp-v" data-st="approuve"')}
+              ${bouton("dp-v", "⛔ Refuser", false, "var(--rouge)").replace('class="dp-v"', 'class="dp-v" data-st="refuse"')}
+              ${bouton("dp-v", "⏸ Suspendre", false, "#b86e00").replace('class="dp-v"', 'class="dp-v" data-st="suspendu"')}
+            </div>${(v.documents || []).map(ligneDoc).join("")}</div>`).join("") : `<p style="color:var(--gris);">Aucun véhicule.</p>`}
+        <p class="dp-msg" style="min-height:1em; color:var(--rouge);"></p>`;
+      const msg = zone.querySelector(".dp-msg");
+      const erreur = (e) => { msg.textContent = "Erreur : " + e.message; msg.scrollIntoView({ block: "nearest" }); };
+      zone.querySelectorAll(".dp-doc").forEach(async (row) => {
+        const chemin = row.dataset.chemin, id = row.dataset.id;
+        if (chemin) {
+          try {
+            const { data: s } = await supabase.storage.from(BUCKET).createSignedUrl(chemin, 600);
+            const url = s && s.signedUrl;
+            const a = row.querySelector(".dp-ouvrir"); if (a && url) a.href = url;
+            if (url && /\.(jpe?g|png|webp)$/i.test(chemin)) row.querySelector(".dp-vignette").innerHTML = `<img src="${esc(url)}" alt="" style="width:100%; height:100%; object-fit:cover;">`;
+          } catch (err) {}
+        }
+        const ok = row.querySelector(".dp-ok"), ko = row.querySelector(".dp-ko");
+        if (ok) ok.addEventListener("click", async () => { const { error } = await supabase.rpc("admin_valider_document", { p_id: id, p_approuve: true, p_motif: null }); if (error) return erreur(error); recharger(); majCompteur(); });
+        if (ko) ko.addEventListener("click", async () => {
+          const motif = prompt("Motif du refus (le partenaire le verra) :", ""); if (!motif || !motif.trim()) return;
+          const { error } = await supabase.rpc("admin_valider_document", { p_id: id, p_approuve: false, p_motif: motif }); if (error) return erreur(error); recharger(); majCompteur();
+        });
+      });
+      zone.querySelectorAll(".dp-st").forEach(b => b.addEventListener("click", async () => {
+        let motif = null;
+        if (b.dataset.st !== "approuve") { motif = prompt("Motif (le partenaire le verra) :", ""); if (!motif || !motif.trim()) return; }
+        else if (!confirm("Approuver ce partenaire ? Il pourra recevoir des courses.")) return;
+        const { error } = await supabase.rpc("admin_statut_partenaire", { p_partenaire: partenaireId, p_statut: b.dataset.st, p_motif: motif });
+        if (error) return erreur(error); recharger();
+      }));
+      zone.querySelectorAll(".dp-v").forEach(b => b.addEventListener("click", async () => {
+        let motif = null;
+        if (b.dataset.st !== "approuve") { motif = prompt("Motif (le partenaire le verra) :", ""); if (!motif || !motif.trim()) return; }
+        const { error } = await supabase.rpc("admin_valider_vehicule_partenaire", { p_id: b.closest(".dp-veh").dataset.id, p_statut: b.dataset.st, p_motif: motif });
+        if (error) return erreur(error); recharger(); majCompteur();
+      }));
+    };
+    await recharger();
+    // à la fermeture : mise à jour de la liste
+    new MutationObserver((m, obs) => { if (!document.body.contains(fond)) { obs.disconnect(); majCompteur(); if (typeof chargerPartenairesAdmin === "function") chargerPartenairesAdmin(); } }).observe(document.body, { childList: true });
+  }
+  window.twOuvrirDossierPartenaire = ouvrirDossier;
+
+  if (typeof construireCartePartenaire === "function") {
+    const base = construireCartePartenaire;
+    construireCartePartenaire = async function (partenaire) {
+      const div = await base.apply(this, arguments);
+      try {
+        const { count } = await supabase.from("documents_partenaires").select("id", { count: "exact", head: true }).eq("partenaire_id", partenaire.id).eq("statut", "en_attente");
+        const bloc = document.createElement("div");
+        bloc.style.cssText = "display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;";
+        bloc.innerHTML = `<span>Dossier : ${pastille(partenaire.statut_partenaire || "approuve", STATUT)}</span>
+          <button type="button" class="btn-dossier-partenaire" style="width:auto; padding:8px 12px; border-radius:8px; border:none; background:var(--vert); color:#fff; font-weight:700;">📁 Dossier${count ? ` <span style="background:var(--rouge); border-radius:999px; padding:0 6px; margin-left:4px;">${count}</span>` : ""}</button>
+          ${partenaire.motif_statut ? `<span style="font-size:.8rem; color:var(--gris);">Motif : ${esc(partenaire.motif_statut)}</span>` : ""}`;
+        bloc.querySelector(".btn-dossier-partenaire").addEventListener("click", () => ouvrirDossier(partenaire.id, partenaire.societe || partenaire.nom || "Partenaire"));
+        const entete = div.firstElementChild;
+        if (entete && entete.nextSibling) div.insertBefore(bloc, entete.nextSibling); else div.appendChild(bloc);
+      } catch (err) { console.error(err); }
+      return div;
+    };
+  }
+  if (typeof chargerPartenairesAdmin === "function") {
+    const baseCharger = chargerPartenairesAdmin;
+    chargerPartenairesAdmin = async function () { const r = await baseCharger.apply(this, arguments); majCompteur(); return r; };
+  }
+  setTimeout(majCompteur, 4000);
+  setInterval(() => { if (!document.hidden) majCompteur(); }, 120000);
 })();
 </script>
 <script>
