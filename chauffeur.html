@@ -513,7 +513,7 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
 #modale-fr-actions button{ min-height:48px; }
 #modale-fr-contenu input, #modale-fr-contenu textarea{ border-radius:10px; }
 .ttw-btn, .dc-gros-bouton{ min-height:50px; }
-#btn-paiement-cash, #btn-paiement-carte, #btn-paiement-facture, #btn-paiement-cheque, #btn-paiement-qr, #btn-paiement-uber, #btn-paiement-uber-cash, #btn-terminer-deja-paye{ min-height:50px; border-radius:12px; font-weight:700; }
+#btn-paiement-cash, #btn-paiement-carte, #btn-paiement-facture, #btn-paiement-cheque, #btn-paiement-qr, #btn-paiement-uber, #btn-paiement-uber-cash, #btn-paiement-bolt, #btn-paiement-bolt-cash, #btn-terminer-deja-paye{ min-height:50px; border-radius:12px; font-weight:700; }
 </style>
 <style id="tw-dispo-bouton">
 #barre-dispo{gap:14px;cursor:pointer;user-select:none;-webkit-user-select:none;padding:16px 18px!important;border-radius:18px!important;border:2px solid #d5d8dc;background:#f2f3f5!important;transition:background .25s,border-color .25s,box-shadow .25s;min-height:64px}
@@ -577,6 +577,7 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
     <span>💳/📱 <b id="gains-carte">0,00 €</b></span>
     <span>🧾 <b id="gains-facture">0,00 €</b></span>
     <span>🚕 Uber : <b id="gains-uber">0</b></span>
+    <span>🟢 Bolt : <b id="gains-bolt">0</b></span>
   </div>
   <div id="etat-suivi-gps" style="display:none; margin:10px 20px 0; background:#e7f5ec; border:1px solid #b7dfc5; color:#1f6b3f; border-radius:12px; padding:8px 14px; font-weight:700; font-size:.85rem;">📍 Suivi actif <span style="font-weight:400;">— Taxi Wal suit la position du véhicule pendant le service.</span></div>
   <div id="bandeau-gps-refuse" style="display:none; margin:10px 20px 0; background:#fdecee; border:2px solid #c81e2c; color:#8a1520; border-radius:12px; padding:12px 14px; font-size:.88rem; font-weight:600;">
@@ -608,6 +609,7 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
     <button data-onglet="messages">💬 Messages avec la centrale</button>
   </nav>
   <button type="button" id="btn-capture-uber" onclick="if (window.RappelUber) RappelUber.ouvrir()" style="display:block; width:calc(100% - 32px); margin:10px 16px 0; padding:14px; border:none; border-radius:12px; background:#111; color:#fff; font-weight:800; font-size:1rem;">📸 Envoyer la capture Uber</button>
+  <button type="button" id="btn-capture-bolt" onclick="if (window.RappelBolt) RappelBolt.ouvrir()" style="display:block; width:calc(100% - 32px); margin:8px 16px 0; padding:14px; border:none; border-radius:12px; background:#34D186; color:#06301b; font-weight:800; font-size:1rem;">📸 Capture Bolt</button>
 
   <section id="section-mes-courses" class="visible">
     <div id="liste-courses"></div>
@@ -800,6 +802,8 @@ nav.onglets button.actif .badge-msg{ color:var(--tw-vert-fonce); }
       <button id="btn-paiement-qr" style="background:#2f6fb5;">📱 QR code / virement</button>
       <button id="btn-paiement-uber" style="background:#1c1c1c;">🚕 Uber (payé sur Uber)</button>
       <button id="btn-paiement-uber-cash" style="background:#444;">🚕💵 Uber payé en cash</button>
+      <button id="btn-paiement-bolt" style="background:#34D186; color:#06301b;">🟢 Bolt en ligne</button>
+      <button id="btn-paiement-bolt-cash" style="background:#1fa866;">🟢💵 Bolt cash</button>
     </div>
     <button id="btn-annuler-paiement" class="secondaire" style="margin-top:12px;">Annuler</button>
   </div>
@@ -1912,6 +1916,22 @@ async function verifierEtatNotifications() {
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    // Aucun abonnement enregistré pour ce chauffeur → il ne serait JAMAIS sonné : grand bandeau rouge
+    try {
+      const [w, n] = await Promise.all([
+        supabase.from("push_subscriptions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("push_tokens_natifs").select("id", { count: "exact", head: true }).eq("user_id", user.id)
+      ]);
+      if (!w.error && !n.error && (w.count || 0) + (n.count || 0) === 0) {
+        try { await activerNotificationsPushReelles(); } catch (e) {}
+        const w2 = await supabase.from("push_subscriptions").select("id", { count: "exact", head: true }).eq("user_id", user.id);
+        if (!w2.error && !w2.count) {
+          texte.textContent = "🔕 La sonnerie des courses n'est PAS activée sur ce téléphone : tu ne seras pas prévenu. Touche le bouton rouge ci-dessous.";
+          bandeau.style.display = "block";
+          return;
+        }
+      }
+    } catch (e) {}
     const { data: derniere } = await supabase.from("notifications")
       .select("statut_envoi, created_at").eq("chauffeur_id", user.id)
       .order("created_at", { ascending: false }).limit(1);
@@ -2523,7 +2543,7 @@ function mettreAJourGainsJour(courses) {
     c.statut === "terminee" && c.date_heure && dateLocaleISO(c.date_heure) === aujourdHui && !courseSurFeuilleSignee(c)
   );
 
-  let totalCash = 0, totalCarte = 0, totalFacture = 0, nbUber = 0;
+  let totalCash = 0, totalCarte = 0, totalFacture = 0, nbUber = 0, nbBolt = 0;
   coursesDuJourTerminees.forEach(c => {
     const prix = Number(c.prix) || 0;
     if (c.mode_paiement === "cash") totalCash += prix;
@@ -2531,6 +2551,8 @@ function mettreAJourGainsJour(courses) {
     else if (c.mode_paiement === "uber_cash") { totalCash += prix; nbUber++; }
     else if (c.mode_paiement === "facture") totalFacture += prix;
     else if (c.mode_paiement === "uber") nbUber++;
+    else if (c.mode_paiement === "bolt_cash") { totalCash += prix; nbBolt++; }
+    else if (c.mode_paiement === "bolt") nbBolt++;
   });
 
   const fmt = (n) => n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -2540,6 +2562,8 @@ function mettreAJourGainsJour(courses) {
   document.getElementById("gains-facture").textContent = fmt(totalFacture);
   const elUber = document.getElementById("gains-uber");
   if (elUber) elUber.textContent = nbUber;
+  const elBolt = document.getElementById("gains-bolt");
+  if (elBolt) elBolt.textContent = nbBolt;
 }
 
 document.getElementById("btn-menu-chauffeur").addEventListener("click", (e) => {
@@ -2585,7 +2609,8 @@ function libellePaiement(mode) {
   return {
     cash: "💶 Cash", carte: "💳 Carte", facture: "🧾 Facture",
     cheque_social: "🎫 Chèque social/communal", uber: "🚕 Uber",
-    qr: "📱 QR / virement", uber_cash: "🚕💵 Uber payé en cash"
+    qr: "📱 QR / virement", uber_cash: "🚕💵 Uber payé en cash",
+    bolt: "🟢 Bolt en ligne", bolt_cash: "🟢💵 Bolt payé en cash"
   }[mode] || "";
 }
 function libelleTypeCourse(type) {
@@ -2711,6 +2736,7 @@ function construireFeuilleHistorique(feuille, lignes, estAujourdhui) {
       const heures = [l.embarquement_heure?.slice(0, 5), l.debarquement_heure?.slice(0, 5)].filter(Boolean).join(" → ");
       let montants;
       if (mode === "uber") montants = "🚕 Payé sur Uber";
+      else if (mode === "bolt") montants = "🟢 Payé sur Bolt";
       else if (mode === "facture") montants = `🧾 Facture${l.numero_dossier ? " · dossier " + esc(l.numero_dossier) : ""}`;
       else {
         const parties = [];
@@ -2836,7 +2862,7 @@ document.getElementById("cal-next").addEventListener("click", () => {
 // La centrale peut corriger le prix à tout moment : elle enregistre alors « reste_a_payer ».
 const eurosChauffeur = (n) => (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace(".", ",") + " €";
 function montantAEncaisser(c) {
-  if (!c || c.mode_paiement === "uber") return null;
+  if (!c || c.mode_paiement === "uber" || c.mode_paiement === "bolt") return null;
   const total = Math.round(((Number(c.prix) || 0) + (Number(c.surprime) || 0)) * 100) / 100;
   const enLigne = Math.round((Number(c.paye_en_ligne_montant) || 0) * 100) / 100;
   let reste;
@@ -2888,8 +2914,10 @@ function construireCarteCourse(course) {
   const badgeRetourAuto = course.est_retour ? `<span class="badge-ar">🔄 Retour (aller-retour)</span>` : "";
   const estTaximetre = course.mode_tarification === "taximetre";
   const estUber = course.mode_paiement === "uber";
+  const estBoltEnLigne = course.mode_paiement === "bolt";
   const badgeTarification = estUber
     ? `<span class="badge-ar">🚕 Payé sur Uber</span>`
+    : estBoltEnLigne ? `<span class="badge-ar">🟢 Payé sur Bolt</span>`
     : `<span class="badge-ar">${estTaximetre ? "🔢 Taximètre" : "💶 Forfait" + (course.prix ? " " + course.prix + " €" : "")}</span>`;
 
   const labelTypeVehicule = { berline: "4 places", van: "7 places", pmr: "PMR" }[course.vehicule_souhaite] || "";
@@ -3408,6 +3436,8 @@ document.getElementById("btn-paiement-facture").addEventListener("click", () => 
 document.getElementById("btn-paiement-uber").addEventListener("click", () => terminerAvecPaiement("uber"));
 document.getElementById("btn-paiement-cheque").addEventListener("click", () => terminerAvecPaiement("cheque_social"));
 document.getElementById("btn-paiement-uber-cash").addEventListener("click", () => terminerAvecPaiement("uber_cash"));
+document.getElementById("btn-paiement-bolt").addEventListener("click", () => terminerAvecPaiement("bolt"));
+document.getElementById("btn-paiement-bolt-cash").addEventListener("click", () => terminerAvecPaiement("bolt_cash"));
 
 // ---- Paiement par QR code (virement instantané, norme EPC lue par toutes les apps bancaires belges) ----
 function urlQrPaiementChauffeur(montant, communication) {
@@ -4185,7 +4215,7 @@ async function chargerMesEntretiens() {
 <script>
 // ================== Espace partenaire (sociétés sous-traitantes) ==================
 (function () {
-  const MODES_CASH = ["cash", "uber_cash"];
+  const MODES_CASH = ["cash", "uber_cash", "bolt_cash"];
   const eur = (n) => (Number(n) || 0).toFixed(2).replace(".", ",") + " €";
 
   const prixPartenaireParCourse = new Map();
@@ -4588,6 +4618,133 @@ async function chargerMesEntretiens() {
 (function () { try { if (typeof ttwMessageErreurRpc === "function" && window.twTexteSansDetail) { var b = ttwMessageErreurRpc; ttwMessageErreurRpc = function (e) { return window.twTexteSansDetail(b(e)); }; } } catch (e) {} })();
 </script>
 <script src="gps-natif.js"></script>
+<script>
+// ================== 📸 CAPTURE BOLT (même principe que la capture Uber) ==================
+// Une capture des gains Bolt par jour → table captures_uber avec plateforme = 'bolt' (bucket « captures-uber »).
+// « Je n'ai pas roulé avec Uber/Bolt aujourd'hui » = ligne captures_uber avec chemin « <chauffeur>/aucune:<plateforme>:<date> ».
+// Jamais bloquant : seulement un rappel rouge après la clôture de la feuille.
+window.RappelBolt = (function () {
+  const BUCKET = "captures-uber";
+  const CLE_LOCALE = "taxiwal_pas_roule_plateforme";
+  const jourBxl = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Brussels" });
+  const sb = () => (typeof supabase !== "undefined" ? supabase : null);
+  async function uid() {
+    try { const { data } = await sb().auth.getSession(); return data && data.session ? data.session.user.id : null; } catch (_) { return null; }
+  }
+  function toast(t) {
+    try { if (typeof afficherToast === "function") return afficherToast(t); } catch (_) {}
+    alert(t);
+  }
+  function lireLocal() { try { return JSON.parse(localStorage.getItem(CLE_LOCALE) || "{}"); } catch (_) { return {}; } }
+  function marquerLocal(plat, date) { try { const o = lireLocal(); o[plat + "|" + date] = Date.now(); localStorage.setItem(CLE_LOCALE, JSON.stringify(o)); } catch (_) {} }
+  // État du jour : { uber: "capture" | "pas_roule" | "", bolt: idem }
+  async function etatJour(date) {
+    const id = await uid();
+    const etat = { uber: "", bolt: "" };
+    const loc = lireLocal();
+    ["uber", "bolt"].forEach(p => { if (loc[p + "|" + date]) etat[p] = "pas_roule"; });
+    if (!id) return etat;
+    try {
+      const { data } = await sb().from("captures_uber").select("chemin, plateforme").eq("chauffeur_id", id).eq("date_service", date);
+      (data || []).forEach(c => {
+        const p = c.plateforme === "bolt" ? "bolt" : "uber";
+        if (String(c.chemin || "").includes("/aucune:")) { if (!etat[p]) etat[p] = "pas_roule"; }
+        else etat[p] = "capture";
+      });
+    } catch (_) {}
+    if (etat.uber !== "capture") {
+      try { const { data } = await sb().from("fin_service_uber").select("pas_uber").eq("chauffeur_id", id).eq("date_service", date).maybeSingle(); if (data && data.pas_uber) etat.uber = etat.uber || "pas_roule"; } catch (_) {}
+    }
+    return etat;
+  }
+  async function declarerPasRoule(plat, date, feuilleId) {
+    marquerLocal(plat, date);
+    const id = await uid();
+    if (!id) { toast("✅ Noté sur ce téléphone (pas de connexion)"); return true; }
+    const { error } = await sb().from("captures_uber").insert({ chauffeur_id: id, date_service: date, feuille_route_id: feuilleId || null,
+      chemin: id + "/aucune:" + plat + ":" + date, plateforme: plat });
+    if (error && error.code !== "23505") { toast("⚠️ Pas enregistré en base : " + error.message); return false; }
+    toast(plat === "bolt" ? "✅ Noté : pas roulé avec Bolt aujourd'hui" : "✅ Noté : pas roulé avec Uber aujourd'hui");
+    return true;
+  }
+  async function envoyerCapture(fichier, date, feuilleId) {
+    const id = await uid();
+    if (!id) { toast("⚠️ Connecte-toi pour envoyer la capture Bolt"); return false; }
+    const ext = ((fichier.name || "").split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const chemin = id + "/" + date + "/bolt-" + Date.now() + "." + ext;
+    const up = await sb().storage.from(BUCKET).upload(chemin, fichier, { contentType: fichier.type || "image/jpeg", upsert: false });
+    if (up.error) { toast("⚠️ Envoi impossible : " + up.error.message); return false; }
+    const { error } = await sb().from("captures_uber").insert({ chauffeur_id: id, date_service: date, feuille_route_id: feuilleId || null, chemin, plateforme: "bolt" });
+    if (error) { toast("⚠️ Capture envoyée mais pas enregistrée : " + error.message); return false; }
+    toast("✅ Capture Bolt envoyée");
+    return true;
+  }
+  // Fenêtre « 📸 Capture Bolt » : envoyer la capture OU cocher « pas roulé avec Bolt »
+  function ouvrir(opts) {
+    opts = opts || {};
+    const date = opts.date || jourBxl();
+    const feuilleId = opts.feuilleId || null;
+    if (document.getElementById("fenetre-capture-bolt")) return;
+    const fond = document.createElement("div");
+    fond.id = "fenetre-capture-bolt";
+    fond.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:100000; display:flex; align-items:center; justify-content:center; padding:16px;";
+    fond.innerHTML = `<div style="background:#fff; color:#111; border-radius:14px; padding:18px; max-width:420px; width:100%; border:3px solid #34D186;">
+      <div style="font-weight:800; font-size:1.15rem; margin-bottom:6px;">📸 Capture Bolt du ${date.split("-").reverse().join("/")}</div>
+      <div style="font-size:.9rem; margin-bottom:12px;">Fais une capture d'écran de tes gains Bolt du jour et envoie-la ici.</div>
+      <label style="display:block; padding:16px; border-radius:12px; background:#34D186; color:#06301b; font-weight:800; text-align:center; cursor:pointer;">📷 Choisir la capture Bolt
+        <input type="file" accept="image/*" class="cb-fichier" style="display:none;"></label>
+      <label style="display:flex; gap:10px; align-items:center; margin-top:14px; font-weight:700;"><input type="checkbox" class="cb-pas-roule" style="width:24px; height:24px; margin:0;"> Je n'ai pas roulé avec Bolt aujourd'hui</label>
+      <button type="button" class="cb-fermer" style="display:block; width:100%; margin-top:14px; padding:13px; border-radius:10px; border:none; background:#e5e5e5; color:#111; font-weight:700;">Fermer</button>
+    </div>`;
+    const fermer = () => { fond.remove(); if (opts.apres) try { opts.apres(); } catch (_) {} };
+    fond.querySelector(".cb-fermer").addEventListener("click", fermer);
+    fond.querySelector(".cb-fichier").addEventListener("change", async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      if (await envoyerCapture(f, date, feuilleId)) fermer();
+    });
+    fond.querySelector(".cb-pas-roule").addEventListener("change", async (e) => {
+      if (e.target.checked && await declarerPasRoule("bolt", date, feuilleId)) fermer();
+    });
+    document.body.appendChild(fond);
+  }
+  // Rappel ROUGE (jamais bloquant) après la clôture : capture Uber ET capture Bolt, ou « pas roulé »
+  async function rappel(feuille) {
+    const date = (feuille && feuille.date_service) || jourBxl();
+    const feuilleId = feuille && feuille.id;
+    const etat = await etatJour(date);
+    const ancien = document.getElementById("rappel-captures-plateformes");
+    if (ancien) ancien.remove();
+    if (etat.uber && etat.bolt) return;
+    const b = document.createElement("div");
+    b.id = "rappel-captures-plateformes";
+    b.style.cssText = "position:fixed; left:10px; right:10px; bottom:10px; z-index:99999; background:#c81e2c; color:#fff; border-radius:14px; padding:14px; box-shadow:0 6px 20px rgba(0,0,0,.35); font-size:.95rem;";
+    const btn = "display:block; width:100%; margin-top:8px; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:1rem;";
+    b.innerHTML = `<div style="font-weight:800; font-size:1.05rem;">📸 Captures du jour manquantes</div>
+      ${etat.uber ? "" : `<div style="margin-top:6px;">🚕 Uber : capture pas encore envoyée</div>
+        <button type="button" data-a="uber" style="${btn} background:#111; color:#fff;">📸 Envoyer la capture Uber</button>
+        <label style="display:flex; gap:8px; align-items:center; margin-top:6px; font-weight:700;"><input type="checkbox" data-pas="uber" style="width:22px; height:22px; margin:0;"> Je n'ai pas roulé avec Uber aujourd'hui</label>`}
+      ${etat.bolt ? "" : `<div style="margin-top:10px;">🟢 Bolt : capture pas encore envoyée</div>
+        <button type="button" data-a="bolt" style="${btn} background:#34D186; color:#06301b;">📸 Envoyer la capture Bolt</button>
+        <label style="display:flex; gap:8px; align-items:center; margin-top:6px; font-weight:700;"><input type="checkbox" data-pas="bolt" style="width:22px; height:22px; margin:0;"> Je n'ai pas roulé avec Bolt aujourd'hui</label>`}
+      <button type="button" data-a="plus-tard" style="${btn} background:#fff; color:#7a1010;">Plus tard</button>`;
+    const relancer = () => setTimeout(() => rappel(feuille), 800);
+    b.addEventListener("click", async (e) => {
+      const a = e.target.closest("[data-a]");
+      if (!a) return;
+      if (a.dataset.a === "plus-tard") { b.remove(); return; }
+      if (a.dataset.a === "bolt") { b.remove(); ouvrir({ date, feuilleId, apres: relancer }); return; }
+      if (a.dataset.a === "uber") { b.remove(); try { if (window.RappelUber && RappelUber.ouvrir) RappelUber.ouvrir(); } catch (_) {} return; }
+    });
+    b.querySelectorAll("[data-pas]").forEach(cb => cb.addEventListener("change", async () => {
+      if (cb.checked && await declarerPasRoule(cb.dataset.pas, date, feuilleId)) rappel(feuille);
+    }));
+    document.body.appendChild(b);
+  }
+  function apresCloture(feuille) { setTimeout(() => { rappel(feuille).catch(e => console.warn("Rappel captures :", e)); }, 1500); }
+  return { ouvrir, apresCloture, rappel, etatJour, declarerPasRoule };
+})();
+</script>
 <script src="rappel-uber.js"></script>
 <script src="course-alerte.js"></script>
 <script src="accueil-chauffeur.js?v=6" defer></script>
