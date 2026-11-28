@@ -3015,7 +3015,7 @@ if ("serviceWorker" in navigator) {
 // Un chauffeur qui commence le 17 à 18:00 et finit le 18 à 04:00 garde UNE seule feuille
 // (datée du 17) pendant tout son service : pas de blocage « feuille pas clôturée » ni de
 // nouvelle feuille vide à minuit. Au-delà de 16 h après le début, la règle normale revient.
-const DUREE_MAX_SERVICE_MS = 16 * 3600e3;
+const DUREE_MAX_SERVICE_MS = 24 * 3600e3;   // service de nuit : une feuille non signée reste la feuille en cours jusqu'à 24 h
 function dateHierISO() {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
